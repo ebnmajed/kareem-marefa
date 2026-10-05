@@ -165,26 +165,6 @@ export interface AttendanceSessionRow {
 }
 
 /**
- * SCR-044's own entry point (docs/plan/notes/console.md's moderator/
- * `/sessions` decision): a moderator has no reason to see full session
- * management (`REQ-ADM-005` is admin-only — edit/cancel/publish are exactly
- * the "scheduling endpoint" `REQ-ADM-020` keeps out of a moderator's
- * reach), but DOES have a reason to reach a session's attendance report
- * (`REQ-CHK-008`/`REQ-CHK-012`, `REQ-ADM-020`'s "event-day operations").
- * `admin/sessions/page.tsx` branches on role and renders this minimal list
- * — id, title, state, start time, nothing else — with only an attendance
- * link, for a moderator; an admin keeps the full page exactly as it was.
- */
-export async function listSessionsForAttendance(locale: string): Promise<AttendanceSessionRow[] | null> {
-  const { session, supabase } = await sessionClient(locale);
-  if (session.role !== "admin" && session.role !== "moderator") return null;
-
-  const { data, error } = await supabase.from("sessions").select("id, title, state, starts_at").order("starts_at", { ascending: false, nullsFirst: false });
-  if (error) throw new Error(`sessions.select: ${error.message}`);
-  return (data ?? []).map((r) => ({ id: r.id, title: r.title, state: r.state as SessionState, startsAt: r.starts_at }));
-}
-
-/**
  * Approved proposals with no session yet (SCR-042's «جاهزة للجدولة»).
  *
  * Two reads and a filter rather than a `not.in` with an inline subquery:
@@ -1212,6 +1192,11 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
   if (error) throw new Error(`sessions.select: ${error.message}`);
   if (!data) return null;
   const row = data as unknown as Record<string, unknown>;
+  // Started now, awaited where the phase needs it: it depends on the id alone, so it runs beside the reads below
+  // instead of after them. The no-op catch keeps an early throw below from leaving its rejection unobserved; the
+  // await still throws.
+  const daysRead = listSessionDays(locale, id);
+  daysRead.catch(() => {});
 
   // The same rule a DAY's place follows — `venueFrom()`, one expression, so the
   // event page and its day list can never disagree about what «المكان» means.
@@ -1268,7 +1253,7 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
     state: row.state as SessionState,
     startsAt: (row.starts_at as string) ?? null,
     endsAt: (row.ends_at as string) ?? null,
-    days: await listSessionDays(locale, id),
+    days: await daysRead,
   });
   const rsvpStatus = (mineRes.data?.status as EventSession["rsvpStatus"] | undefined) ?? null;
   if (checkInRes.error) throw new Error(`check_ins: ${checkInRes.error.message}`);

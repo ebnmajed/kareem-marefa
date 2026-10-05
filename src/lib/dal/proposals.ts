@@ -498,42 +498,6 @@ export interface ReviewItem extends ProposalSummary {
   ageDays: number;
 }
 
-/**
- * The proposals waiting on an admin.
- *
- * Admin only, and enforced here rather than in the page: `03` §5.2a lets a
- * MODERATOR read proposals too (they are `is_staff()`), but `09` §7.1 gives a
- * moderator four screens and this is not one of them, and `review_proposal()`
- * refuses them anyway. Returning null lets the route 404 instead of showing a
- * queue whose every button would fail.
- */
-export async function listProposalsForReview(locale: string): Promise<ReviewItem[] | null> {
-  const { session, supabase } = await sessionClient(locale);
-  if (session.role !== "admin") return null;
-
-  const { data, error } = await supabase
-    .from("proposals")
-    .select(`${PROPOSAL_COLUMNS}, target_audience, admin_notes`)
-    .in("state", ["submitted", "in_review"])
-    .order("created_at", { ascending: true }); // oldest first: a queue, not a feed
-  if (error) throw new Error(`proposals.select: ${error.message}`);
-
-  const rows = (data ?? []) as unknown as (ProposalRow & { target_audience: string | null; admin_notes: string | null })[];
-  const day = 24 * 60 * 60 * 1000;
-  return Promise.all(
-    rows.map(async (row) => {
-      const presenters = await presentersOf(supabase, row.id, row.proposer_id);
-      return {
-        ...toSummary(row, presenters, session.memberId),
-        targetAudience: row.target_audience,
-        adminNotes: row.admin_notes,
-        proposerName: presenters.find((p) => p.isProposer)?.displayName ?? null,
-        ageDays: Math.max(0, Math.floor((Date.now() - new Date(row.updated_at).getTime()) / day)),
-      };
-    }),
-  );
-}
-
 export type ReviewAction = "open" | "approve" | "reject" | "request_changes";
 
 /**

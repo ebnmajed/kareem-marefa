@@ -198,8 +198,11 @@ export const deactivateInput = z.object({ memberId: z.uuid(), reason: z.string()
 export type DeactivateInput = z.infer<typeof deactivateInput>;
 
 export async function deactivateMember(locale: string, input: DeactivateInput): Promise<{ error: string | null }> {
+  // The schema is the function's own rule, said before the round trip: a reason of three characters or more.
+  const parsed = deactivateInput.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues.some((i) => i.path[0] === "reason") ? "reason_required" : "failed" };
   const { supabase } = await sessionClient(locale);
-  const { error } = await supabase.rpc("deactivate_member", { p_member: input.memberId, p_reason: input.reason });
+  const { error } = await supabase.rpc("deactivate_member", { p_member: parsed.data.memberId, p_reason: parsed.data.reason });
   if (error) return { error: classify(error.message, DEACTIVATE_ERRORS) };
   return { error: null };
 }

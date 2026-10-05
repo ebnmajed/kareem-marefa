@@ -113,7 +113,9 @@ export function PreviewSheet({ open, onOpenChange, messageKey, subject, document
                     ? { title: td("testSent"), tone: "success" }
                     : result.status === "rate_limited"
                       ? { title: td("testRateLimited"), tone: "error" }
-                      : { title: td("errors.notPermitted"), tone: "error" },
+                      : result.status === "not_permitted"
+                        ? { title: td("errors.notPermitted"), tone: "error" }
+                        : { title: td("errors.testFailed"), tone: "error" },
                 );
               } finally {
                 setTesting(false);

@@ -26,7 +26,6 @@ export const REWARD_ATTENDEE_ACTIONS = ["check_in", "rating_submitted", "comment
 export const REWARD_PRESENTER_ACTIONS = ["proposal_accepted", "session_delivered", "attendee_bonus", "rating_bonus", "materials_uploaded"] as const;
 /** `REQ-PTS-008`: seeded at 0 — «مغلقة افتراضيًا». An admin decides which cost points. */
 export const PENALTY_ACTIONS = ["no_show", "late_cancellation", "comment_removed", "photo_removed"] as const;
-export const isPenalty = (actionKey: string) => (PENALTY_ACTIONS as readonly string[]).includes(actionKey);
 
 export interface ScoringRule {
   id: string;

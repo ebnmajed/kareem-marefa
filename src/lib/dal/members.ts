@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { avatarHref } from "@/lib/dal/avatars";
@@ -38,7 +39,8 @@ export interface Company {
   teamColor?: string | null;
 }
 
-export async function getMe(locale: string): Promise<SelfProfile> {
+// Request-scoped: the app layout, the console layout and the hub page each read it once per render.
+export const getMe = cache(async (locale: string): Promise<SelfProfile> => {
   const { supabase } = await sessionClient(locale);
   const { data, error } = await supabase.rpc("me");
   if (error || !data) throw new Error(`me(): ${error?.message ?? "no row"}`);
@@ -58,7 +60,7 @@ export async function getMe(locale: string): Promise<SelfProfile> {
     leaderboardOptOut: Boolean(m.leaderboard_opt_out),
     createdAt: m.created_at as string,
   };
-}
+});
 
 /** Another member, at the member tier. Null when not visible (other org, deactivated). */
 export async function getMemberProfile(locale: string, id: string): Promise<MemberTier | null> {

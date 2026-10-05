@@ -3,7 +3,6 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import {
   assetIdsOf,
-  type BindingContext,
   type DesignDocument,
   type BindingOptions,
   declaredBindingsOf,
@@ -206,12 +205,6 @@ function certificateBindings(row: CertificateRow | null, options: BindingOptions
  *  cannot disagree about what a document asks for. */
 export const declaredBindings = declaredBindingsOf;
 
-/** The binding context the runtime renders with — the editor and the export
- *  build it the same way, which is what keeps the preview honest. */
-export function bindingContext(values: Record<string, string>, placeholderLabel?: (binding: string) => string): BindingContext {
-  return { values, ...(placeholderLabel ? { placeholderLabel } : {}) };
-}
-
 /* ── reads ──────────────────────────────────────────────────────────────── */
 
 /** SCR-057. `null` when the policy returns no row: the page calls `notFound()`. */
@@ -244,10 +237,10 @@ export async function getDesignerDocument(
   const document = parsed.document;
   const timeZone = (settings?.time_zone as string | undefined) ?? "Asia/Riyadh";
 
-  const [{ data: sessionRow }, { data: certificateRow }, { data: fontRows }, { data: version }, { data: poster }, { data: draftTemplate }] = await Promise.all([
+  const reads = await Promise.all([
     row.bound_session_id
       ? supabase.from("sessions").select("id, title, abstract, starts_at, time_zone, custom_venue_name, custom_venue_address, venues(name, address)").eq("id", row.bound_session_id).maybeSingle()
-      : Promise.resolve({ data: null }),
+      : Promise.resolve({ data: null, error: null }),
     row.bound_certificate_id
       ? supabase
           .from("certificates")
@@ -256,18 +249,22 @@ export async function getDesignerDocument(
           .select("*")
           .eq("id", row.bound_certificate_id)
           .maybeSingle()
-      : Promise.resolve({ data: null }),
+      : Promise.resolve({ data: null, error: null }),
     supabase.from("fonts").select("family, weight, style, sha256, parity_status").order("family"),
     row.template_version_id
       ? supabase.from("design_template_versions").select("document").eq("id", row.template_version_id).maybeSingle()
-      : Promise.resolve({ data: null }),
+      : Promise.resolve({ data: null, error: null }),
     row.bound_session_id
       ? supabase.from("session_posters").select("binding").eq("session_id", row.bound_session_id).maybeSingle()
-      : Promise.resolve({ data: null }),
+      : Promise.resolve({ data: null, error: null }),
     row.draft_for_template_id
       ? supabase.from("design_templates").select("id, name, purpose, family").eq("id", row.draft_for_template_id).maybeSingle()
-      : Promise.resolve({ data: null }),
+      : Promise.resolve({ data: null, error: null }),
   ]);
+  // A failed read is thrown, never rendered as an editor with no session, no certificate or no fonts — an admin
+  // who saved over that would lose the binding for good.
+  for (const read of reads) if (read.error) throw new Error(`designer: ${read.error.message}`);
+  const [{ data: sessionRow }, { data: certificateRow }, { data: fontRows }, { data: version }, { data: poster }, { data: draftTemplate }] = reads;
   const purpose = row.purpose as DesignerPurpose;
   // A certificate renders the scheme PINNED on it (DEC-148); a template or an
   // unbound certificate document previews what is asked for; a poster, dark.

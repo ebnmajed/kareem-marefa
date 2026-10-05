@@ -65,22 +65,6 @@ export async function duplicate(locale: string, purpose: TemplatePurpose, source
   return answer(locale, purpose, await duplicateTemplate(locale, parsed.data), "duplicated");
 }
 
-/** A blank template — and for a certificate, the composition it starts on. */
-export async function createTemplate(locale: string, purpose: TemplatePurpose, form: FormData): Promise<TemplateActionState> {
-  const name = form.get("name");
-  const invalidName = nameError(name);
-  if (invalidName) return invalidName;
-  const orientation = form.get("orientation");
-  const parsed = createBlankInput.safeParse({
-    purpose,
-    family: form.get("family"),
-    name,
-    ...(purpose === "certificate" && typeof orientation === "string" ? { orientation } : {}),
-  });
-  if (!parsed.success) return { status: "invalid", at: Date.now() };
-  return answer(locale, purpose, await createBlankTemplate(locale, parsed.data), "created");
-}
-
 /** Opens the template's working document in SCR-057, creating it on the first
  *  open from the latest version — so an admin never faces an empty editor. */
 export async function editTemplate(locale: string, templateId: string): Promise<TemplateActionState> {

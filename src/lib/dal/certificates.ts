@@ -555,7 +555,7 @@ export async function listEligibleRecipients(locale: string, sessionId: string):
   const { session, supabase } = await sessionClient(locale);
   if (session.role !== "admin" && session.role !== "moderator") return [];
 
-  const [checkInRead, presenterRead, { data: certs }, completeRead] = await Promise.all([
+  const [checkInRead, presenterRead, certsRead, completeRead] = await Promise.all([
     // The member's own embed, named: `check_ins` reaches `members` through
     // `marked_by` and `removed_by` too, and the unnamed embed is an ambiguity
     // error — which, swallowed, rendered as «لا أحد بعد» over a full room.
@@ -578,7 +578,9 @@ export async function listEligibleRecipients(locale: string, sessionId: string):
   // eligible» is a claim, and the route's error boundary is the honest answer.
   if (checkInRead.error) throw checkInRead.error;
   if (presenterRead.error) throw presenterRead.error;
+  if (certsRead.error) throw certsRead.error;
   if (completeRead.error) throw completeRead.error;
+  const certs = certsRead.data;
   const complete = new Set(((completeRead.data ?? []) as unknown[]).map((v) => String(v)));
   // A member who attended three days has three check-ins and is ONE recipient.
   const seen = new Set<string>();

@@ -32,15 +32,6 @@ export async function requireStaffSession(locale: string): Promise<Session> {
   return session;
 }
 
-/** Admin-only pages call this instead: 404s a moderator too, same shape as
- *  `listVenuesForAdmin`'s `session.role !== "admin"` check, just centralised
- *  so every inherited/new admin-only page reads the same sentence. */
-export async function requireAdminSession(locale: string): Promise<Session> {
-  const session = await requireStaffSession(locale);
-  if (session.role !== "admin") notFound();
-  return session;
-}
-
 export interface PipelineCounts {
   draft: number;
   submitted: number;

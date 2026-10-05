@@ -180,15 +180,6 @@ export async function setCompanyActive(locale: string, companyId: string, active
   );
 }
 
-/** `null` clears the colour to «بلا لون». Written through `p2_admin_update`
- *  (`0004`), the same policy `setCompanyActive` already relies on — no new
- *  grant (REQ-UIX-043). The change is audited by `companies_team_color_
- *  audit()` (`0161`), a trigger on the write itself, so this function does nothing beyond the write. */
-export async function setCompanyTeamColor(locale: string, companyId: string, teamColorHex: string | null): Promise<ListWrite> {
-  const { supabase } = await sessionClient(locale);
-  return wrote(await supabase.from("companies").update({ team_color: teamColorHex }).eq("id", companyId).select("id"));
-}
-
 // ★ wave 27 — a company carries its domains, and the save asks before it moves anyone (`REQ-ADM-024`, `REQ-PRF-012`,
 // `DEC-254` §2.7, `DEC-255` §4). One definer function, `save_company()` (`supabase/proposed/console/`), writes the
 // company, its domains and the members they place, in one transaction: a dry run first, then the confirm with the
