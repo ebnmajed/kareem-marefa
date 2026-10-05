@@ -332,8 +332,8 @@ admin's direct API write now succeeds only before publication and is audited. No
   `hub-header.tsx`'s actions; `sessions.hub.rename.*`. Tests: `rename-action.test.tsx` (11), `tests/rls/session-rename.test.ts`
   (22, green against `0200` applied locally), `tests/e2e/wave27-sessions-rename.spec.ts` (written, **not run** — the lead's
   window through the gate lock).
-- ★ **Held:** `session.renamed` in `SESSION_LOG_ACTIONS` and `schedule.log.renamed` — the schedule page's `LOG_KEY`
-  (`schedule/page.tsx:56-69`) needs its one line too, or the log renders `log.undefined`; asked of the lead in writing.
+- `220eb596` — `session.renamed` in `SESSION_LOG_ACTIONS`, `LOG_KEY` (`schedule/page.tsx`, granted) and
+  `schedule.log.renamed` «تغيّر الاسم». `0200` confirmed by the lead: the five states, `55000`, no-session statements exempt.
 - No existing assertion changed — nothing for `wave-27-ledger-a.md`.
 ---
 
