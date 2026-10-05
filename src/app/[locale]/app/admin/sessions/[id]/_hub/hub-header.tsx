@@ -5,9 +5,10 @@ import { ButtonLink } from "@/components/ui/button";
 import { SessionStatusBadge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton, SkeletonPageHeader } from "@/components/ui/skeleton";
-import { getSessionHubHeader } from "@/lib/dal/sessions";
+import { RenameAction } from "@/components/sessions/session-rename";
+import { getSessionHubHeader, RENAMEABLE_STATES } from "@/lib/dal/sessions";
 import { storedPhase } from "@/lib/session-status";
-import { cancelFromHub, publishFromHub } from "./actions";
+import { cancelFromHub, publishFromHub, renameFromHub } from "./actions";
 import { HubTabAction, type HubTab } from "./hub-tab-action";
 import { CancelAction, PublishAction } from "./lifecycle";
 
@@ -35,6 +36,13 @@ export async function HubHeader({ locale, sessionId, tabActions }: { locale: str
     lifecycle = <CancelAction action={cancelFromHub.bind(null, locale as Locale, sessionId)} title={header.title} />;
   }
 
+  // wave 27 (REQ-SES-021, DEC-255): «عدّل الاسم», an admin's, before publication only — from `published` on it is not
+  // drawn at all. The database's guard is the rule; this is only whether to offer it.
+  const rename =
+    header.viewerRole === "admin" && RENAMEABLE_STATES.has(header.state) ? (
+      <RenameAction action={renameFromHub.bind(null, locale as Locale, sessionId)} title={header.title} />
+    ) : null;
+
   return (
     <PageHeader
       className="mb-4"
@@ -43,6 +51,7 @@ export async function HubHeader({ locale, sessionId, tabActions }: { locale: str
       breadcrumbLabel={t("breadcrumbLabel")}
       actions={
         <>
+          {rename}
           {/* The status beside the actions, at the end of the row, as AdminSessionHub.dc.html draws it. */}
           <SessionStatusBadge phase={storedPhase(header.state)} />
           <HubTabAction

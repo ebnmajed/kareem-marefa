@@ -190,6 +190,20 @@
         "failed": "That didn't work — try again.",
         "published": "Session published.",
         "cancelled": "Session cancelled."
+      },
+      "rename": {
+        "open": "Rename",
+        "dialogTitle": "Name of “<t>{title}</t>”",
+        "label": "Name",
+        "save": "Save",
+        "keep": "Back",
+        "close": "Close",
+        "pending": "Working…",
+        "saved": "Name saved.",
+        "tooShort": "The name is too short.",
+        "tooLong": "The name is too long.",
+        "locked": "The session is published — its name no longer changes.",
+        "failed": "That didn't work — try again."
       }
     },
     "download": {

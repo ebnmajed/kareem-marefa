@@ -5,6 +5,7 @@ import { sessionClient } from "@/lib/dal/session";
 import { avatarHref } from "@/lib/dal/avatars";
 import { readAll } from "@/lib/dal/admin-paging";
 import { createServerClient } from "@/lib/supabase/server";
+import { PROPOSAL_LIMITS } from "@/components/sessions/proposal-rules";
 import { sessionPhase, viewerRelation as deriveRelation, type DayWindow, type ViewerRelation } from "@/lib/session-status";
 
 // Sessions — REQ-SES-001 … REQ-SES-013, REQ-PRO-007, 02 §4.3, §6.2, 03 §5.2c/d.
@@ -1746,6 +1747,40 @@ export async function getSessionHubHeader(locale: string, sessionId: string): Pr
   } catch {
     return null;
   }
+}
+
+// ── wave 27 · a session renamed until it is published (add-only, REQ-SES-021, DEC-254 §5, DEC-255) ──────────────────
+
+/**
+ * The states a title may still change in — every state before `published` (`0010:17`, `0024`). The owner's ruling
+ * (DEC-255): renamed until published, with or without a proposal; locked from `published` on, a session cancelled
+ * before publication included. ★ The DATABASE holds the rule (the lead's guard raises `session_title_locked`); this set
+ * only decides whether the hub offers the control.
+ */
+export const RENAMEABLE_STATES: ReadonlySet<SessionState> = new Set<SessionState>(["draft", "submitted", "in_review", "changes_requested", "approved"]);
+
+/** The proposal's bounds, which are the table's (`0010:72`): one source, `PROPOSAL_LIMITS`. */
+export const sessionRenameInput = z.object({ title: z.string().trim().min(PROPOSAL_LIMITS.titleMin).max(PROPOSAL_LIMITS.titleMax) }).strict();
+
+export type RenameResult = { ok: true; title: string } | { ok: false; reason: "refused" | "locked" | "failed" };
+
+/**
+ * Renames a session through `0010`'s column grant and `sessions_update_admin` — no function, no audit write here: the
+ * lead's trigger writes `session.renamed` with both titles (`DEC-231` §4). The saved title is the ROW's, read back from
+ * the update, never the input. Zero rows is RLS's refusal (a `using` miss returns nothing, not `42501`);
+ * `session_title_locked` is the guard's, from `published` on.
+ */
+export async function renameSession(locale: string, sessionId: string, title: string): Promise<RenameResult> {
+  if (!z.uuid().safeParse(sessionId).success) return { ok: false, reason: "refused" };
+  const parsed = sessionRenameInput.safeParse({ title });
+  if (!parsed.success) return { ok: false, reason: "failed" };
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin") return { ok: false, reason: "refused" };
+  const { data, error } = await supabase.from("sessions").update({ title: parsed.data.title }).eq("id", sessionId).select("id, title");
+  if (error) return { ok: false, reason: error.message.includes("session_title_locked") ? "locked" : "failed" };
+  const row = (data ?? [])[0];
+  if (!row) return { ok: false, reason: "refused" };
+  return { ok: true, title: row.title as string };
 }
 
 /** One presenter as SCR-043's read row draws them — a face, a ring, a name; pending marked. */
