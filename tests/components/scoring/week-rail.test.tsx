@@ -124,11 +124,12 @@ describe("CompanyRaceCard", () => {
     expect(c.textContent).not.toMatch(/الجولة/);
   });
 
-  it("no company: the leaders, no outline, and the way to choose one", async () => {
+  // wave 27 (DEC-255 §4): no «choose your company» link — a member does not choose one (REQ-PRF-012).
+  it("no company: the leaders, no outline, and nothing asking for one", async () => {
     race = companyRace({ ownCompanyId: null, rows: companyRace().rows.slice(0, 2) });
     const c = renderIntl((await CompanyRaceCard({ locale: "ar" }))!).container;
     expect(c.querySelector("li.border-accent")).toBeNull();
-    expect(screen.getByRole("link", { name: "اختر شركتك لتدخل السباق" })).toBeInTheDocument();
+    expect(screen.queryByText(/اختر شركتك/)).not.toBeInTheDocument();
   });
 
   it("final: «نهائي · <month>»; no race: nothing at all", async () => {

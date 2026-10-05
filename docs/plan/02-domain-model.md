@@ -287,6 +287,18 @@ non-scoring settings too.
 `p1_org_read` and written through `p2_admin_update`, with no new policy and no new grant. **No migration writes
 one** (`DEC-183` §4.11): it is set on `SCR-048`.
 
+#### `ENT-company_domains`
+**Serves:** `REQ-PRF-012`, `REQ-ADM-024` · added by `DEC-254` §2 (`0203`)
+
+| Column | Type | Notes |
+|---|---|---|
+| `company_id` | `uuid not null references companies(id) on delete cascade` | same org as the row, by trigger |
+| `domain` | `citext not null` | stored lowercase, no leading `@`, as `org_domains` |
+
+`unique (org_id, domain)` — **one domain maps to at most one company per org**; two orgs may each map it. ★ Independent
+of `ENT-org_domains`: that list decides who may join the org, this one only which company a member lands in, and
+neither validates the other. **No client role writes it** — `save_company()` is the one writer.
+
 #### `ENT-members`
 **Serves:** `REQ-AUT-003`, `REQ-TEN-004`, `REQ-TEN-005`, `REQ-PRF-001`, `REQ-AUT-007`
 
@@ -295,7 +307,8 @@ one** (`DEC-183` §4.11): it is set on `SCR-048`.
 | `auth_user_id` | `uuid not null unique references auth.users(id)` | keyed to the auth user, **not** to an email or a provider ID — `REQ-AUT-002` |
 | `email` | `citext not null` | `unique (org_id, email)` |
 | `display_name`, `avatar_url` | `text` | refreshed from Google on sign-in |
-| `company_id` | `uuid references companies(id)` | required before RSVP or proposal — `REQ-PRF-001` |
+| `company_id` | `uuid references companies(id)` | ★ follows the member's email domain or an admin's placement (`REQ-PRF-012`, `DEC-254` §2); **never required** — the «required before RSVP or proposal» line is withdrawn |
+| `company_assigned_by` | `company_source` (`'domain'` · `'admin'`), nullable | ★ `0203` — who placed the member. `'admin'` is never moved by a domain change, a deliberate null company included; null only while nobody has ever placed them. Kept by a normalising trigger; in no column grant |
 | `job_title`, `bio` | `text` | `bio` capped at 600 chars |
 | `org_role` | `org_role not null default 'member'` | `REQ-TEN-005` |
 | `status` | `member_status not null default 'active'` | |

@@ -320,7 +320,11 @@
         "nameRequired": "اسم الشركة مطلوب.",
         "nameTooLong": "الاسم أطول من اللازم.",
         "failed": "تعذّر الحفظ — حاول مرة أخرى.",
-        "teamColourInvalid": "اختر لونًا من القائمة."
+        "teamColourInvalid": "اختر لونًا من القائمة.",
+        "domainsInvalid": "نطاق لا يُقبل.",
+        "domainMalformed": "<d>{domain}</d> ليس نطاقًا.",
+        "domainTaken": "<d>{domain}</d> على شركة «<t>{company}</t>».",
+        "domainsTooMany": "عشرون نطاقًا على الأكثر."
       },
       "teamColourLabel": "لون الفريق",
       "newCompany": "شركة جديدة",
@@ -337,7 +341,15 @@
       "saving": "جارٍ الحفظ…",
       "saved": "حُفظت الشركة.",
       "closeEditor": "أغلق",
-      "notWritten": "لم يُحفظ — حاول مرة أخرى."
+      "notWritten": "لم يُحفظ — حاول مرة أخرى.",
+      "domainsLabel": "النطاقات",
+      "domainsHint": "نطاق في كل سطر",
+      "columnDomain": "النطاق",
+      "moveTitle": "حفظ نطاقات «<t>{name}</t>»؟",
+      "moveCount": "{count, plural, zero {لا ينتقل أحد إلى «<t>{name}</t>»} one {ينتقل عضو واحد إلى «<t>{name}</t>»} two {ينتقل عضوان إلى «<t>{name}</t>»} few {ينتقل <bdi>{value}</bdi> أعضاء إلى «<t>{name}</t>»} many {ينتقل <bdi>{value}</bdi> عضوًا إلى «<t>{name}</t>»} other {ينتقل <bdi>{value}</bdi> عضو إلى «<t>{name}</t>»}}",
+      "heldCount": "{count, plural, zero {لا يبقى أحد خارجها} one {يبقى عضو واحد مكانه لأن مشرفًا وضعه يدويًا} two {يبقى عضوان مكانهما لأن مشرفًا وضعهما يدويًا} few {يبقى <bdi>{value}</bdi> أعضاء مكانهم لأن مشرفًا وضعهم يدويًا} many {يبقى <bdi>{value}</bdi> عضوًا مكانهم لأن مشرفًا وضعهم يدويًا} other {يبقى <bdi>{value}</bdi> عضو مكانهم لأن مشرفًا وضعهم يدويًا}}",
+      "moveChanged": "تغيّر العدد منذ ضغطت «احفظ».",
+      "moveConfirm": "انقل واحفظ"
     },
     "members": {
       "title": "الأعضاء",
@@ -383,7 +395,8 @@
         "role_not_allowed": "لا يمكن إضافة مشرف مؤسسة بالبريد — أضفه عضوًا ثم غيّر دوره بعد تسجيل دخوله.",
         "already_signed_in": "سجّل الدخول بالفعل — عطّل العضوية بسبب بدلًا من الحذف.",
         "no_addresses": "اكتب بريدًا إلكترونيًا واحدًا على الأقل.",
-        "company_other_org": "هذه الشركة ليست من شركات مؤسستك."
+        "company_other_org": "هذه الشركة ليست من شركات مؤسستك.",
+        "company_deactivated": "هذه الشركة معطّلة."
       },
       "columnLevel": "المستوى",
       "columnPoints": "النقاط",
@@ -436,7 +449,11 @@
       "remove": "احذف",
       "removeDone": "حُذف من المؤسسة.",
       "removeConfirmTitle": "حذف <t>{name}</t> من المؤسسة؟",
-      "removeConfirmBody": "لم يسجّل الدخول بعد، فلا شيء له في المؤسسة. بعد أن يسجّل الدخول لا يبقى إلا تعطيل العضوية."
+      "removeConfirmBody": "لم يسجّل الدخول بعد، فلا شيء له في المؤسسة. بعد أن يسجّل الدخول لا يبقى إلا تعطيل العضوية.",
+      "changeCompany": "غيّر الشركة",
+      "companyTitle": "شركة «<t>{name}</t>»",
+      "companySave": "احفظ",
+      "companyChanged": "حُفظت الشركة."
     },
     "exports": {
       "title": "التصدير",
@@ -563,7 +580,9 @@
           "created": "إنشاء شركة",
           "changed": "تعديل شركة",
           "deactivated": "تعطيل شركة",
-          "reactivated": "إعادة تفعيل شركة"
+          "reactivated": "إعادة تفعيل شركة",
+          "domain_added": "إضافة نطاق إلى شركة",
+          "domain_removed": "إزالة نطاق من شركة"
         },
         "design": {
           "export_requested": "طلب تصدير تصميم",
@@ -604,7 +623,8 @@
           "added": "إضافة عضو",
           "add_undone": "حذف عضو مضاف قبل تسجيل دخوله",
           "invite_resent": "إعادة إرسال دعوة عضو",
-          "claimed": "تسجيل دخول عضو مضاف لأول مرة"
+          "claimed": "تسجيل دخول عضو مضاف لأول مرة",
+          "company_changed": "تغيير شركة عضو"
         },
         "org": {
           "created": "إنشاء المؤسسة",

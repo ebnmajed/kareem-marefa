@@ -94,6 +94,9 @@ async function org(tx: Tx, name: string, slug: string, prefix: string, domain: s
   const [s] = await tx.q<{ id: string }>(`insert into public.org_settings (org_id) values ($1) returning id`, [o.id]);
   await tx.q(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [o.id, domain]);
   const [c] = await tx.q<{ id: string }>(`insert into public.companies (org_id, name) values ($1, $2) returning id`, [o.id, `شركة ${name}`]);
+  // wave 27 (0203, REQ-PRF-012): each org's company carries one domain — deliberately NOT the org's own, so no fixture
+  // sign-in is placed by it; the isolation sweep meets a real row of org B behind the wall.
+  await tx.q(`insert into public.company_domains (org_id, company_id, domain) values ($1, $2, $3)`, [o.id, c.id, `co.${domain}`]);
   const [cat] = await tx.q<{ id: string }>(`insert into public.categories (org_id, name) values ($1, $2) returning id`, [o.id, "فني"]);
   const [v] = await tx.q<{ id: string }>(`insert into public.venues (org_id, name, capacity) values ($1, $2, 40) returning id`, [o.id, `قاعة ${name}`]);
   const base = { id: o.id, domain };

@@ -34,7 +34,9 @@ const sql = readdirSync(dir)
 // `notification_bindings()` (`0133`, REQ-NTF-012) declares for every message
 // key, which a template writes as `{{member.name}}`. A dotted path, never an
 // audit action (wave 10).
-const NOT_ACTIONS = new Set(["background.color", "kareem.days_writer", "kareem.check_in_shadow", "kareem.days_notified", "member.name", "member.email",
+// `kareem.company_source` is `0203`'s: the transaction-local setting by which a definer function that places a member
+// by their email domain names its source to `members_company_source()` (DEC-255 §4). A setting, never an action.
+const NOT_ACTIONS = new Set(["background.color", "kareem.days_writer", "kareem.check_in_shadow", "kareem.days_notified", "kareem.company_source", "member.name", "member.email",
   // 0140: Resend's own event names in the webhook's `case`, not audit actions.
   "email.sent", "email.delivered", "email.bounced", "email.failed", "email.complained",
   // 0198: a FILE NAME in `story_media_read` — the story video's poster in the `story-media` bucket, never an action.

@@ -9,7 +9,7 @@
 | Artifact | Count |
 |---|---|
 | Requirements (`REQ-*`) | **453** |
-| Entities (`ENT-*`) | **89** |
+| Entities (`ENT-*`) | **90** |
 | Stories (`STORY-*`) | **278** |
 | Screens cited (`SCR-*`) | 60 |
 | Jobs cited (`JOB-*`) | 44 |
@@ -89,7 +89,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-ADM-021` | — | — | `SCR-012` `SCR-043` `SCR-045` | `JOB-zip_session_photos` | `MSG-photo_album_ready` | `STORY-ADM-009` | M11, M15, M16 |
 | `REQ-ADM-022` | — | — | `SCR-046` | — | — | `STORY-ADM-010` `STORY-UIX-083` | M24 |
 | `REQ-ADM-023` | — | — | `SCR-043` `SCR-046` `SCR-047` +3 | — | — | `STORY-ADM-011` | M24 |
-| `REQ-ADM-024` | `ENT-sessions` | — | `SCR-021` `SCR-045` `SCR-048` +1 | — | — | `STORY-ADM-012` | M29 |
+| `REQ-ADM-024` | `ENT-company_domains` `ENT-org_domains` `ENT-sessions` | — | `SCR-021` `SCR-045` `SCR-048` +1 | — | — | `STORY-ADM-012` | M29 |
 
 ### AUT
 
@@ -345,7 +345,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-PRF-009` | `ENT-companies` | — | `SCR-016` `SCR-020` `SCR-048` | `JOB-anonymise_members` `JOB-import_avatar` +1 | — | `STORY-PRF-005` | M10, M16 |
 | `REQ-PRF-010` | — | — | `SCR-020` `SCR-021` `SCR-029` +1 | `JOB-anonymise_members` | `MSG-photo_album_ready` | `STORY-PRF-005` | M10, M16 |
 | `REQ-PRF-011` | — | — | `SCR-020` `SCR-021` `SCR-029` | `JOB-anonymise_members` `JOB-zip_session_photos` | — | `STORY-PRF-005` | M10, M16 |
-| `REQ-PRF-012` | `ENT-sessions` | — | `SCR-021` `SCR-045` `SCR-048` +1 | — | — | `STORY-ADM-012` `STORY-PRF-006` +1 | M29 |
+| `REQ-PRF-012` | `ENT-company_domains` `ENT-org_domains` `ENT-sessions` | — | `SCR-021` `SCR-045` `SCR-048` +1 | — | — | `STORY-ADM-012` `STORY-PRF-006` +1 | M29 |
 | `REQ-PRF-013` | `ENT-sessions` | — | `SCR-021` `SCR-045` `SCR-048` +1 | — | — | `STORY-ADM-013` | M29 |
 
 ### PRO

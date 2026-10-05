@@ -376,7 +376,6 @@
       "own": "فريقك",
       "rankLabel": "المركز <bdi>{value}</bdi>",
       "full": "اللوحة الكاملة، <bdi>{metric}</bdi>",
-      "noCompany": "اختر شركتك لتدخل السباق",
       "metric": {
         "total_points": "مجموع النقاط",
         "points_per_active_member": "نقاط لكل عضو نشط"

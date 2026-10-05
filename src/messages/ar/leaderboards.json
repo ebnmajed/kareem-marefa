@@ -61,8 +61,7 @@
         "presenting": "<bdi>{presenting}</bdi> من <bdi>{active}</bdi> من الأعضاء النشطين قدّموا (<bdi>{percent}</bdi>٪)"
       },
       "balanceLabel": "رصيد شركتك من قواعد الشركات",
-      "noCompany": "اختر شركتك لتعرف كيف حصلت على نقاطها.",
-      "chooseCompany": "اختر شركتك",
+      "noCompany": "بلا شركة",
       "sessions": "{count, plural, zero {بلا جلسات} one {جلسة واحدة} two {جلستان} few {<bdi>{value}</bdi> جلسات} many {<bdi>{value}</bdi> جلسة} other {<bdi>{value}</bdi> جلسة}}"
     },
     "description": "من يتصدّر مؤسستك هذا الشهر ومنذ البداية، وكيف تتسابق الشركات.",

@@ -43,8 +43,7 @@
         "checkIn": "Check in",
         "reserved": "Seat reserved",
         "attended": "You attended",
-        "rate": "Rate the session",
-        "noCompany": "Choose your company first to reserve a seat"
+        "rate": "Rate the session"
       }
     },
     "recap": {

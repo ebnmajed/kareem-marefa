@@ -1,7 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
 import { signedFigure } from "@/components/scoring/points-ledger";
-import { EmptyState } from "@/components/ui/empty-state";
 import { LedgerRow } from "@/components/ui/ledger-row";
 import type { CompanyPointsBreakdown } from "@/lib/dal/leaderboards";
 
@@ -11,8 +10,8 @@ import type { CompanyPointsBreakdown } from "@/lib/dal/leaderboards";
 //
 // The reader's OWN company only — there is no browsing of another company's ledger, by design. Its balance from the
 // company rules, with the company in `<bdi>`; each row of `company_points_ledger` as a signed line (`ledger-row`), its
-// reason and its numbers in `<bdi>`; then what earns a company points, read live. A member with no company is asked to
-// choose one (M10c §8) in place of the breakdown.
+// reason and its numbers in `<bdi>`; then what earns a company points, read live. A member with no company sees «بلا
+// شركة» in place of the breakdown — ★ wave 27 (DEC-255 §4, REQ-PRF-012): never a way to choose one, a member does not.
 // ★ One row per LEDGER row, as before: the artboard draws one per source with an aggregate, but a percentage is
 // per session and has no honest sum (scoring's plan, D44 — not ruled, so the ledger's own rows stay).
 
@@ -25,7 +24,7 @@ export async function CompanyPointsBreakdownSection({ breakdown, locale, timeZon
         <h2 id="company-breakdown-heading" className="font-display text-play-sm font-extrabold text-fg-heading">
           {t("heading")}
         </h2>
-        <EmptyState size="sm" title={t("noCompany")} action={{ label: t("chooseCompany"), href: "/app/me?edit" }} />
+        <p className="text-body text-fg-muted">{t("noCompany")}</p>
       </section>
     );
   }

@@ -2,7 +2,6 @@ import "server-only";
 import { cache } from "react";
 import { orgDay } from "@/components/browse/session-post";
 import { groupFeed, toEntries, type FeedAnnouncement, type FeedGroup } from "@/components/feed/feed-merge";
-import { getMe } from "@/lib/dal/members";
 import { getRecapPhotos, type RecapPhotos } from "@/lib/dal/photos";
 import { getAchievementItems, type AchievementItem } from "@/lib/dal/recognition";
 import { getSessionPosts } from "@/lib/dal/search";
@@ -19,7 +18,8 @@ import { getShellData, type ShellAttention } from "@/lib/dal/shell";
 //     opt-out is enforced;
 //   · the org's announcements — `feed_announcements` (0164), read through RLS with the caller's client.
 // And beside them (the rings are `sessions'` story feed since wave 26, DEC-251 §4): the staff strip's counts (`getShellData()`, the
-// lead's — null for a member, never a 404), and whether the member has a company.
+// lead's — null for a member, never a 404). ★ wave 27 (DEC-255 §4): «whether the member has a company» left this
+// read with the gate it fed — a company follows the email domain (REQ-PRF-012) and its absence refuses nothing.
 //
 // ★ ONE SOURCE FAILING DOES NOT TAKE THE HOME WITH IT. The session posts are the page: if they fail, the
 // route's error boundary answers. The others are items among many — a failed read drops that source, says so
@@ -41,7 +41,7 @@ export interface RecapExtra extends RecapPhotos {
 }
 
 export interface Feed {
-  viewer: { memberId: string; isStaff: boolean; hasCompany: boolean };
+  viewer: { memberId: string; isStaff: boolean };
   groups: FeedGroup[];
   /** Per ended session in the feed. */
   recaps: Record<string, RecapExtra>;
@@ -85,7 +85,7 @@ export const getFeed = cache(async (locale: string): Promise<Feed> => {
     return ((data ?? []) as { id: string; body: string; published_at: string }[]).map((r) => ({ id: r.id, body: r.body, publishedAt: r.published_at }));
   };
 
-  const [postsData, achievements, announcements, me, shell] = await Promise.all([
+  const [postsData, achievements, announcements, shell] = await Promise.all([
     getSessionPosts(locale, { now }),
     settled<AchievementItem[]>(
       "achievements",
@@ -93,7 +93,6 @@ export const getFeed = cache(async (locale: string): Promise<Feed> => {
       [],
     ),
     settled("announcements", announcementsRead(), []),
-    getMe(locale),
     settled("attention", getShellData(locale), { teamColor: null, attention: null }),
   ]);
 
@@ -117,7 +116,7 @@ export const getFeed = cache(async (locale: string): Promise<Feed> => {
 
   const today = orgDay(now, timeZone);
   return {
-    viewer: { memberId: session.memberId, isStaff, hasCompany: me.companyId !== null },
+    viewer: { memberId: session.memberId, isStaff },
     groups: groupFeed(toEntries({ posts: postsData.posts, achievements, announcements }, timeZone), today),
     recaps,
     attention: isStaff ? shell.attention : null,

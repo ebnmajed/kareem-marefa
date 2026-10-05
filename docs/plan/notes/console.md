@@ -4,6 +4,353 @@
 
 ---
 
+## ★★ Wave 27 — plan (PR B, `wave-27b/companies-by-domain`) — a member's company follows their email domain
+
+> Planning only, written at `50b534fa` in `../kareem-marefa-wave27b`, after `.claude/agents/console.md`, `CLAUDE.md`
+> § *Ownership map (wave 27)*, `DEC-254` in full, `STATUS.md`'s wave-27 block, the brief, `REQ-PRF-001/002/003/012/013`,
+> `REQ-ADM-023/024`, `M11b.md` and `AdminCompanies.dc.html`. **No code is edited before «the plans are approved».**
+> Every figure below was read from the tree with its file and line. `REQ-PRF-012`, `REQ-PRF-013`, `REQ-ADM-024`;
+> `STORY-ADM-012`, `013`, `STORY-PRF-007`.
+
+### ★ The lead's rulings on this plan (before sync 1) — they win over anything below that reads otherwise
+
+- §5's five needs accepted: `company_domains` (org_domains' normaliser and regex, admin select, no client write
+  grant); `company_assigned_by` kept by a **normalising BEFORE trigger, not a CHECK**; `email_domain()`,
+  `company_for_domain()` (skips deactivated), `company_domains_lock_key()`; `provision_member()` under the shared lock,
+  its placement inside its own exception block; the revoke and `members.test.ts:75-81`'s ledger line are the lead's.
+- **Q1** yes — removal by hand = company null, source `'admin'`; no sweep re-places. Source is null only when nobody
+  has ever placed the member. **Q2** `'admin'`. **Q3** a deactivated company places nobody. **Q4** yes, `'domain'` at
+  insert. **Q5** reactivation does not sweep. **Q6** deactivated members are counted and moved. **Q7** ruling 7's set
+  (no company, or by domain elsewhere; never `'admin'`). **Q8** `tests/components/admin/members-company*` and
+  `tests/unit/members-profile*` added to my list.
+- §9.1 «PR C» was a slip for B; §9.2's feed gate and the two scoring nags are removed **by the lead, as custodian, in
+  this tree** — I do not touch `feed/**`, `feed.ts` or `scoring/**`. §9.3 recorded as measured.
+- ★ **`save_company()`'s dry run returns the counts and the destination company's NAME only — never member names.**
+- ★ **The token test is explicit**: a member arrives between the dry run and the confirm → `changed`, nothing
+  written, the new numbers returned (in `company-sweep.test.ts`).
+- **Order**: my `SCR-021` change does not depend on the feed change. `profile-read.tsx` stops reading
+  `app.home.companyMissing`; the feed keeps reading it until the lead removes its banner. Neither breaks the other,
+  and the key itself (`app.json`, the lead's) can go with the lead's commit.
+
+### 0 · The job, one line per surface
+
+- **`SCR-048`** — an admin opens a company, types its domains one per line, presses «حفظ»; if anybody would move, a
+  confirmation says **«ينتقل N عضوًا إلى ‹الشركة›» and «يبقى M لأن مشرفًا وضعهم يدويًا»**, and «انقل واحفظ» does exactly
+  that. If nobody moves, it saves without asking.
+- **`SCR-049`** — ⋯ on a member → «غيّر الشركة» → pick a company or «بلا شركة» → confirm. Audited, and no domain edit ever
+  undoes it.
+- **`SCR-021`** — the profile **shows** the company (or «بلا شركة») and offers no control; a save never sends the column.
+
+### 1 · Measured — the company form and its DAL today
+
+| What | Evidence |
+|---|---|
+| The page: `?new=1` / `?edit=<id>` LINKS open `EditorSurface` holding `CompanyForm`, bound to `saveCompany(locale, id\|null)` | `admin/companies/page.tsx:51-55` |
+| The form: `ListEditorForm` (useActionToast; the close and the toast come from the action's result, `noValidate`, a `FormSummary`) with two fields — `name` (`Field`+`Input`) and `teamColour` (`RadioGroup` of seven named swatches + «بلا لون») | `company-form.tsx:31-74`, `components/admin/list-editor-form.tsx:20-67` |
+| Fields are declared once: `COMPANY_FIELDS = ["name","teamColour"]` | `companies/state.ts:9` |
+| The action: Zod `companyInput` (name 1–120, strict), the colour checked against a closed enum and mapped to hex, then `updateCompany` / `createCompany` | `companies/actions.ts:27-45`, `admin-lists.ts:143` |
+| The write: **plain** `insert` / `update` through `p2_admin_insert` / `p2_admin_update` (0004), answered by «exactly one row came back» | `admin-lists.ts:151-162`, `:59-61` |
+| The audit: the database's trigger `managed_list_audit('company')` — `company.created` (with `team_color`), `company.changed` (name), `.deactivated` / `.reactivated`; `company.team_color_changed` is 0161's | `0181_console_audit.sql:37-80` |
+| **How the team colour was added in wave 15 — the pattern to follow**: one field in the existing form, posting a **closed value** checked in the action and **again by the database** (`0160`'s check), a swatch AND the value in words, the audit row from a definer trigger proven as a member | `actions.ts:12-19`, `company-form.tsx:55-71`, `tests/rls/team-colour-audit.test.ts` |
+| **The comments say «no domain» on purpose** (`DEC-231` §6.1: «drawn, not built») — `DEC-254` reverses it; the three comments are rewritten | `state.ts:7`, `company-form.tsx:16`, `companies-table.tsx:17` |
+| ★ **The artboard draws a column «النطاق»** — `الشركة · النطاق · الأعضاء · النشطون · الربع · ⋯`, one LTR domain per row, ellipsised — and `M11b.md:18` says the edit sheet holds «name, domains, colour, logo» | `AdminCompanies.dc.html:57-64`, `M11b.md:17-18` |
+| **The domains list is entered and validated nowhere** — no table, no field. The org's own list is the model: `org_domains.domain` is `citext`, normalised by a trigger (`lower(ltrim(btrim(d),'@'))`) and checked by `^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$` | `0004_tenancy.sql:72-91` |
+
+### 2 · What I build on `SCR-048` (no new primitive)
+
+1. **The field**: `Field` + `Textarea` (`dir="ltr"`, `spellCheck={false}`, `autoComplete="off"`), **one domain per line**
+   — exactly how `SCR-049`'s add sheet takes a list of addresses (`members/add-member.tsx:69-71`). `COMPANY_FIELDS`
+   gains `"domains"`. Its error names the domain in `<bdi dir="ltr">` and the reason: `domainMalformed` · `domainTaken`
+   («<bdi dir=ltr>pp.sa</bdi> على شركة ‹صنف›») · `domainsTooMany` (a cap, proposed **20**, so the textarea cannot post a
+   thousand lines).
+2. **The column «النطاق»**, in the artboard's place (second), each domain `<bdi dir="ltr">`, comma-joined, the first
+   one and «+N» on the phone card (`onCard: true`). ★ **This is drawn on the board** — building it is the artboard, not a
+   redesign; `companies-table.test.tsx`'s header assertions become ledger lines if they move.
+3. **The confirmation**: `components/admin/confirm-dialog.tsx` (`ConfirmDialog`, tone `primary`) opened **from the
+   action's returned state** (the deactivation dialog's pattern, `member-row-menu.tsx:46-55`), never from an effect. Its
+   confirm re-submits the same form with two hidden fields, `confirm=1` and the `token` (§3.1). Title names the company;
+   body is the two numbers. ★ Six ICU forms on both counts.
+4. Primitives used, all existing: `Field`, `Textarea`, `FormSummary` (via `ListEditorForm`), `ConfirmDialog` (over
+   `ui/dialog`), `DataTable` (+ its card stack), `Menu`, `Select`, `Badge`. **No new primitive; `data-table` unedited.**
+
+### 3 · The functions I propose (`supabase/proposed/console/companies_by_domain.sql`, functions only)
+
+★ **Tables, columns, indexes, policies and grants are the lead's** — I name them in §5. Every function below is
+`security definer set search_path = ''`, `revoke … from public, anon; grant … to authenticated`, and opens with
+`assert_fresh_admin()` (role re-read against `claims_version`, `0005:62-72`).
+
+#### 3.1 `save_company(p_company uuid, p_name text, p_team_color text, p_domains text[], p_confirm boolean default false, p_expected text default null) returns jsonb` — the ONE function, two modes
+
+★ **Why one function for the whole company and not a domains-only one:** a **new** company with domains would otherwise
+be two RPCs — the insert, then the domains — and a refused second call leaves a company without its domains. One call
+is one transaction. The name and colour still land as the same `insert`/`update` on `companies`, so **`0181`'s trigger
+and `0161`'s still write `company.created` / `.changed` / `.team_color_changed`** — nothing about those rows moves.
+`createCompany` / `updateCompany` stay (add-only rule) but the form stops calling them. *(Alternative if the lead
+prefers: `save_company_domains(p_company, p_domains, p_confirm, p_expected)` with the company written first; I flag the
+partial-save it allows.)*
+
+Steps:
+1. `actor := assert_fresh_admin()`. `p_company` null = create; otherwise the company must be `actor.org_id`'s, else
+   `42501 company_not_found`.
+2. **Normalise** the list: `lower(ltrim(btrim(d), '@'))`, drop empties, de-duplicate, cap at 20.
+3. **Validate before writing anything** (`DEC-043` — after the first write, return an envelope, never raise): each
+   domain against `org_domains`' regex → `malformed`; each against `company_domains` of **another** company of this org
+   → `taken` with that company's name. Any failure returns `{status:'invalid', errors:[{domain, reason, company?}]}`
+   and writes nothing. ★ The lead's unique index on `(org_id, domain)` stays **the boundary**; this pass exists only to
+   say *which* domain and *why*.
+4. `pg_advisory_xact_lock(<org key>)` — **the same key** `set_member_company()`, `add_member()` and (shared mode)
+   `provision_member()` take (§5.4). From here the population cannot change under us.
+5. **Derive** against the **new** domain set (the whole set, not only the added ones — a re-derive, ruling 7):
+   - **moving** = members `m` of the org, `public.email_domain(m.email) = any(new_set)`, `m.company_id is distinct from
+     p_company`, and `m.company_assigned_by is distinct from 'admin'` — i.e. **no company**, or **placed by domain into
+     another company** (possible only if that domain was removed from the other company earlier, since ruling 3 makes a
+     domain belong to one company);
+   - **held** = the same match, `company_id is distinct from p_company`, **`company_assigned_by = 'admin'`**;
+   - members already in `p_company` are neither; **a domain removed unplaces nobody** — no step ever writes
+     `company_id = null` here.
+   - the **token** = `md5(sorted moving ids || '|' || sorted held ids)`.
+6. `p_confirm = false` → return `{status:'preview', moving, held, token}` and write nothing.
+7. `p_confirm = true`:
+   - `moving > 0 and p_expected is distinct from token` → `{status:'changed', moving, held, token}`, **nothing
+     written** — the dialog re-asks with the new numbers. ★ **This is how «the numbers shown equal what the save does»
+     is guaranteed**: the lock fixes the population, the token proves it is the one the admin saw.
+   - else write: the company row (insert or update — triggers audit it); `delete` the removed domains, `insert` the
+     added ones; then `update members set company_id = p_company, company_assigned_by = 'domain' where id = any(moving)`.
+     Return `{status:'saved', company_id, moved, held}`.
+8. The action calls step 6 first; **if `moving = 0` it confirms at once with the token** — so a save that moves nobody
+   saves without asking, and if somebody arrived in between, the confirm answers `changed` and the dialog appears.
+
+**Audit** (`REQ-ADM-023`, one line per mutation, all written **by this function** because it is the only writer of
+`company_domains` — see §5.2; no DAL writes `audit_log`):
+
+| Mutation | Action | subject | before | after |
+|---|---|---|---|---|
+| company created / renamed / recoloured | `company.created` · `company.changed` · `company.team_color_changed` | `company` | as today (`0181`, `0161`) | as today |
+| a domain added | **`company.domain_added`** | `company`, id | — | `{domain}` |
+| a domain removed | **`company.domain_removed`** | `company`, id | `{domain}` | — |
+| each member moved | **`member.company_changed`** | `member`, id | `{company_id, company_assigned_by}` | `{company_id, company_assigned_by:'domain', domain}` |
+
+#### 3.2 The retroactive sweep
+
+It **is** step 5–7: adding a domain is what sweeps. A member's address never changes after provisioning (Google owns
+it), and `provision_member()` places new arrivals, so **no standalone sweep function is needed**. The derivation lives
+in one internal, ungranted helper — `company_domain_moves(p_org, p_company, p_domains) returns table(member_id,
+company_id, assigned_by)` — read by both modes, so preview and save cannot diverge. *(If the lead wants a sweep on
+**reactivating** a company, it is this helper called from `managed_list_audit`'s side — a question, §8 Q5.)*
+
+#### 3.3 `set_member_company(p_member uuid, p_company uuid) returns jsonb` — the one writer after creation (`REQ-PRF-013`)
+
+- `actor := assert_fresh_admin()`; the member must be the actor's org's (`42501 member_not_found`); a company of
+  another org raises `23503` from `members_company_same_org` (`0004:281-292`), unchanged; a **deactivated** company is
+  refused `22023 company_deactivated`.
+- Takes the org lock (so a hand placement between a preview and its confirm changes the token → `changed`).
+- Writes `company_id = p_company, company_assigned_by = 'admin'`. ★ **`p_company` null = «remove from the company» —
+  see §8 Q1**: under the lead's «null with a null company» it would write `assigned_by = null`, and the next domain save
+  would **re-place** the member, which `REQ-PRF-013` forbids («no later change … moves or unplaces that member»).
+- Same company and already `'admin'` → `{status:'unchanged'}`, no audit. Same company by `'domain'` → it becomes
+  `'admin'` (pinned) and is audited.
+- Audit: **`member.company_changed`**, before `{company_id, company_assigned_by}`, after `{company_id,
+  company_assigned_by:'admin'}`, actor and role the admin's.
+- DAL: `setMemberCompany(locale, {memberId, companyId|null})` in `admin-members.ts` (add-only), Zod first. UI:
+  `member-row-menu.tsx` gains «غيّر الشركة» (in the active group), opening a `Dialog` with a `Select` of the org's
+  **active** companies + «بلا شركة» and a submit — the toast and the close from the result.
+
+#### 3.4 `add_member()` / `add_members()` (`0197:126-217`) — `create or replace`, same signatures
+
+- `p_company` not null → insert with `company_assigned_by = 'admin'` (ruling 6). `member.added`'s `after` gains
+  `company_assigned_by`.
+- ★ `p_company` **null** and the address's domain matches an active company → today the row is inserted with **no
+  company** (`0197:155-160`) and stays so until a sweep. **Proposed:** place it by domain at insert (`'domain'`, via
+  the lead's `company_for_domain()`), under the org lock — so the admin's list is right the moment they add someone, and
+  binding (which only fills a null) changes nothing. §8 Q4.
+- `add_members()` calls `add_member(p_email =>, p_company =>, p_role =>)` by name (`0197:198`), so it inherits both.
+- Same signature, same grants, same refusals (`role_not_allowed`, `already_a_member`, `not_an_address`) — **`DEC-254`
+  §7 / `DEC-244` §11 untouched: `admin` stays refused.**
+
+### 4 · `SCR-021` — the picker leaves (`STORY-PRF-007`)
+
+**Every file that renders or submits the company today:**
+
+| File:line | What it does | After |
+|---|---|---|
+| `src/components/me/profile-edit.tsx:68,83,89,97,143,182-190` | the `Select name="companyId"`, its state and «changed» count | **removed**; the prop `companies` goes |
+| `src/app/[locale]/app/me/state.ts:15` | `PROFILE_FIELDS` includes `"companyId"` | `["displayName","jobTitle","bio"]` |
+| `src/app/[locale]/app/me/actions.ts:29-30,46` | parses `companyId` and maps `companyInvalid` | removed |
+| `src/lib/dal/members.ts:93-96` | `profileInput.companyId: z.uuid().nullable()` | **removed, and the schema made `.strict()`** so a crafted `companyId` is a Zod refusal |
+| `src/lib/dal/members.ts:113-118` | `update({ …, company_id: input.companyId, … })` | **the key is gone** — PostgREST's `UPDATE` names only the payload's columns |
+| `src/components/me/profile-read.tsx:43-58` | no company → a link «اختر شركتك» into edit mode | plain text **«بلا شركة»**, muted; with one → the name and its dot, unchanged |
+| `src/components/me/profile-read.tsx:83-89` and `me/page.tsx:75` | the `companyMissing` banner («اختر شركتك قبل حجز مقعد…», `app.json:43`) | **removed** — the prop goes; it asks for something the member can no longer do |
+| `src/messages/*/profile.json:6,32,47` | `companyNone`, `errors.companyInvalid`, `read.chooseCompany` | deleted; `read.noCompany` «بلا شركة» added (ar first) |
+
+★ **A latent defect this closes**: today `saveProfile` posts `companyId: was(state,"companyId") || null`
+(`actions.ts:46`) — a form that did not render the select would **null the member's company** on every save. Removing
+the key from the payload is what makes «the member never sets it» true **and** keeps a domain placement from being
+wiped by a profile edit.
+
+**Other places a member's own client writes `company_id`** — grep of `.update(` across `src/lib/dal/` (`members.ts:113`,
+`:131`, and three unrelated tables): **`updateMyProfile` is the only one.** `sessions.ts:1523` is a **venue's**
+`company_id`. SQL that writes a member's company: `anonymise_members()` (`0158:200`, live as `0162:74`, `company_id =
+null`) and `add_member()` — both definer.
+
+**The profile saves on both sides of the revoke** (`0004:310` grants `update (display_name, company_id, job_title, bio,
+leaderboard_opt_out)`; no later migration re-grants — grep of `grant … on public.members`):
+- **Before**: the new payload names `display_name, job_title, bio` — all granted → saves, as today.
+- **After** the lead's `revoke update (company_id) … from authenticated`: the same payload → saves; a crafted
+  `update members set company_id = …` → `42501`. ★ `main`'s **current** payload names `company_id` and would be refused
+  **whole** — which is why the revoke follows B's merge (`DEC-254` §8.4).
+- Proven in `tests/rls/member-company-self.test.ts`: in one transaction, as the member, the DAL's exact column set
+  succeeds; then (as owner) the revoke statement the lead will ship is applied inside the transaction; the same update
+  succeeds again and the crafted one is `42501`.
+
+### 5 · What I need from the lead (contracts 1 and 3)
+
+1. **`company_domains`** — `id`, `org_id` (FK, cascade), `company_id` (FK → `companies`, cascade), `domain citext`,
+   `created_at`; unique `(org_id, domain)`; **`org_domains`' normaliser and regex** (`0004:76,84-91`), so a domain is the
+   same shape in both lists; RLS on; **select for the org's admins only** (the screen reads it with the session client;
+   members never need it); ★ **no client insert/update/delete grant** — `save_company()` is the one writer, which is why
+   it writes the audit rows itself and why no trigger needs `0008`'s cascade guard (an `after delete` trigger on a
+   table that cascades from `orgs` would; `0069:631-661` explains). The fixture row for the isolation sweep.
+2. **`members.company_assigned_by`** — enum `company_assignment ('domain','admin')`, null with a null company.
+   ★★ **Not a `CHECK` that refuses — a `BEFORE INSERT OR UPDATE` normaliser** (§8 Q2), because three existing writers
+   do not name the column and a check would break them:
+   - `anonymise_members()` sets `company_id = null` and leaves the source (`0158:200`) — the nightly job would fail;
+   - **`tests/rls/fixture.ts:65` inserts every fixture member with a company** — every RLS test would fail; and
+     `tests/e2e/wave7-sessions-profile.spec.ts:79`, `wave19-scoring-profile.spec.ts:78` and ~40 other files write
+     `members.company_id` as the owner;
+   - **`main`'s profile save** in the gap between B's migration and B's code changes a member's company.
+   Proposed rule: company becomes null → source null (unless the writer set `'admin'`, §8 Q1); a company arrives with no
+   source → **`'admin'`** (conservative: a sweep never moves a row whose source nobody named). Backfill: existing rows
+   with a company → `'admin'` by the same rule (production has **none**, `DEC-254` §1.6).
+3. **The helper** (contract 3): `public.email_domain(p_email text) returns text language sql immutable` —
+   **exactly** `split_part(lower(p_email), '@', 2)`, which is what `provision_member()` computes today (`0197:369`), so
+   org admission and company placement read one expression; and `public.company_for_domain(p_org uuid, p_domain text)
+   returns uuid language sql stable` — the company of that domain in that org **whose `deactivated_at is null`** (§8 Q3),
+   or null. Both ungranted to clients except as the definer functions use them. Optional: an expression index on
+   `members (org_id, public.email_domain(email::text))` for the sweep — the lead's call; orgs are small.
+4. **`provision_member()`**: at **first insert** and at **binding**, `company_id := company_for_domain(org,
+   email_domain(email))`, `company_assigned_by := 'domain'` when found — and at binding **only if `company_id` is null**
+   (an admin's `p_company` survives, `REQ-PRF-013`'s third acceptance line). Not on the «already a member» branch
+   (`0197:310-319`) — the sweep owns existing members. ★ **The race**: provision reads the domains, my save commits a
+   domain and sweeps, provision's insert commits with null → a member missed silently. Fix: provision takes
+   **`pg_advisory_xact_lock_shared(<org key>)`** before its lookup; my writers take the exclusive form. It waits at most
+   one save's duration; wrapped in provision's own exception handling so **it never raises and never blocks sign-in**
+   (contract 3). The key: `hashtextextended('company_domains:' || org_id::text, 0)` — written once in the lead's
+   migration as `public.company_domains_lock_key(uuid)` so nobody types it twice.
+5. The **revoke** of `company_id` from `0004:310`'s grant, after B merges — and its ledger line for
+   `tests/rls/members.test.ts:75-81` («a company from another org is rejected by **the trigger**», `23503`), which
+   becomes `42501` from the grant. That file is not in my list.
+
+### 6 · `REQ-PRF-001`'s withdrawn gate — ★ **the code contradicts `DEC-254` §1.12**
+
+`DEC-254` §1.12 says «no reader of a null `company_id` gates anything in `src/`». **One does**, and four places nag:
+
+| File:line | What it does | Owner |
+|---|---|---|
+| ★ **`src/components/feed/session-post.tsx:200-202`** | **a gate**: with no company, a feed post's «احجز» / waitlist control becomes `{kind:"none", reason: «اختر شركتك أولًا لتحجز مقعدًا»}` (`feed.json:47`) — the member **cannot reserve from the home feed** | `content` (lead custodian) |
+| `src/lib/dal/feed.ts:120` | computes `viewer.hasCompany` feeding it | `content` |
+| `src/components/feed/feed.tsx:47-56` | a banner «اختر شركتك قبل حجز مقعد أو اقتراح جلسة.» + «أكمل ملفك» → `/app/me` | `content` |
+| `src/components/me/profile-read.tsx:83-89` | the same banner on `SCR-021` | **mine this wave** — removed (§4) |
+| `src/components/scoring/company-race-card.tsx:61-65` | «اختر شركتك لتدخل السباق» → `/app/me` | `scoring` |
+| `src/components/scoring/company-points-breakdown.tsx:28` | `EmptyState` «اختر شركتك…» with action «اختر شركتك» → `/app/me?edit` | `scoring` |
+
+The server does not gate: `lib/dal/rsvp.ts` and `proposals.ts` read no member company for a decision (grep). So
+reserving works from the event page and is refused only on the feed's card. **Request to the lead, as custodian**:
+remove the gate and the feed banner (and their cases — `tests/components/feed/{feed,session-post}.test.tsx`,
+`tests/e2e/wave18-content-home.spec.ts:92,210`), and turn the two scoring nags into a plain statement with no link to a
+control that no longer exists. **Not mine to edit; I pick no side on wording.**
+
+### 7 · What the boards show the moment members move (read, not edited)
+
+- **The company race is a snapshot** (`leaderboards.ts:160-190` reads `leaderboard_entries` of the latest company
+  snapshot). Nothing changes on screen until the next `snapshot_leaderboards` run.
+- ★ **Surprising, and worth the owner's eye**: at that next run the **current period's** non-final snapshot is deleted
+  and rebuilt (`0197:523-528`), and member points are summed by the member's **current** `company_id` over the **whole
+  period** (`0197:584-591`). So a member swept in mid-quarter brings **all their points earned earlier in the quarter**
+  to the new company, and a member moved from A to B takes theirs out of A. Final snapshots never move. This is
+  `REQ-PRF-003` («future snapshots only») read literally, but **`DEC-254` §2's «counts for it from that moment» is
+  looser than the code**: it counts for it **for the whole open period**.
+- **`company_points_ledger` does not move**: hosting, attendance-percentage and presenter company points are written at
+  completion from the member's company **at that moment** (`0197:611-700`, e.g. `:650-658`), keyed and frozen.
+- **`company_min_active_members`** (`0176`, `0197:572-582`): «active» = active, bound, in that company — so a sweep can
+  lift a company over the minimum (or drop one under it) **at the next snapshot**, re-ordering the eligible block.
+- Member boards decorate each row with the member's **live** company (`leaderboards.ts:101-114,136-139`) — the chip
+  changes at once. The company-board moment compares the seen `companyId` (`:417,:421`), so a moved member gets **no**
+  rank animation on their first view — it is treated as a different board, not a fall.
+- For production today all of this is moot: 4 members, none with a company, no company snapshot carrying them.
+
+### 8 · Decisions I need (each with my recommendation)
+
+- **Q1 — «remove from a company» by hand.** `REQ-PRF-013` lets an admin remove a member from one and says no later
+  change «moves or unplaces» them. With «source null with a null company» (`DEC-254` §2.6, contract 1) the next domain
+  save re-places them. **Recommend** allowing `(company_id null, company_assigned_by 'admin')` = «an admin said: no
+  company». Else the menu offers only «move», never «remove».
+- **Q2 — a normalising trigger, not a `CHECK`** (§5.2), and «unnamed source → `'admin'`». The alternative `'domain'`
+  lets a later sweep move fixture/main-gap rows; production is unaffected either way.
+- **Q3 — a deactivated company places nobody** (sweep, provision, add, hand). Recommend yes; its domains stay listed.
+- **Q4 — `add_member()` without a company places by domain at once** (§3.4). Recommend yes.
+- **Q5 — reactivating a company does not sweep** (it would move people without the dialog). Recommend no sweep; an admin
+  re-saves the domains to get the dialog.
+- **Q6 — deactivated members are counted and moved** (they keep a company today; anonymised ones never match —
+  `anon+<id>@invalid.local`, `0158:194`). Recommend yes, so the number is the truth of the table.
+- **Q7 — `REQ-PRF-012`'s acceptance says «places every matching member who has none»**; the agent file and ruling 7 say
+  the save also moves a member **already placed by domain elsewhere**. The two agree in practice (that state only
+  exists after a domain moved companies) — I build ruling 7's and ask that the requirement read so.
+- **Q8 — test names outside my list**: `tests/components/admin/members-company*.test.tsx` and
+  `tests/unit/members-profile*.test.ts` (the DAL payload). Please add them, or tell me where they go.
+
+### 9 · Contradictions found (written, no side picked)
+
+1. **`DEC-254` §2.5**: «the revoke lands in a migration pushed after **PR C**'s code is on `main`». §8.4, the map and
+   `STATUS.md` row 9 say **after B merges**. §2 is PR B — I read «C» as a slip.
+2. **`DEC-254` §1.12** «no such gate exists in the tree» — `session-post.tsx:202` is one (§6).
+3. **`DEC-254` §2** «counts for it from that moment» vs the snapshot's whole-period re-attribution (§7).
+4. **Contract 1 / §2.6** «null while `company_id` is null» vs `REQ-PRF-013`'s «or remove them from one» (Q1), and vs
+   `anonymise_members()` + `fixture.ts:65` if built as a `CHECK` (§5.2).
+5. **`DEC-231` §6.1** («a company has no domain») is superseded by `DEC-254` — three code comments still cite it (§1).
+
+### 10 · What `main`'s app and worker do on the new schema, before B's code
+
+- `company_domains` is empty and no screen on `main` can fill it → `provision_member()`'s new lookup finds nothing; no
+  member is placed; sign-in unchanged.
+- `main`'s `add_member()` call (`admin-members.ts:260-264`) hits my `create or replace` with the same named arguments →
+  same refusals, same `member.added`, plus `company_assigned_by` written.
+- `main`'s profile save still sends `company_id` — allowed (the grant is intact until after merge); with §5.2's
+  normaliser a picked company lands as `'admin'`; with a `CHECK` it would be **refused whole** for any change of company.
+- The worker: `anonymise_members()` keeps working **only** with the normaliser (§5.2). Snapshots and company points read
+  `company_id` as before.
+
+### 11 · Tests (new files, mine) and the evidence suites
+
+| File | Proves |
+|---|---|
+| `tests/rls/company-sweep.test.ts` (`applyProposed('console/companies_by_domain.sql')`, **as an admin member, never the owner**) | preview counts; confirm moves exactly them with `'domain'`; held = admin-placed, untouched; ★ **a member inserted between preview and confirm → `changed`, nothing written, the new numbers returned**; a save that moves nobody saves; removing a domain unplaces nobody; malformed / taken refused with the domain and reason, nothing written; the same domain allowed on another org's company; a moderator and a member `42501`; a stale-claims admin `42501`; a deactivated company places nobody; each audit row of §3.1's table, one per mutation, and none twice |
+| `tests/rls/member-company.test.ts` | `set_member_company` writes `'admin'` and `member.company_changed` with old/new; a later `save_company` leaves that member (held); remove-by-hand per Q1; another org's company `23503`; moderator/member `42501`; `add_member` with a company → `'admin'`; without, matching domain → `'domain'` (Q4); `add_members` inherits; `role_not_allowed` still refused |
+| `tests/rls/member-company-self.test.ts` | the profile's column set saves before and after the revoke (applied in-transaction); a crafted `company_id` update `42501` after it |
+| `tests/unit/admin-lists-domains.test.ts` | the action: normalisation, the confirm round-trip, `changed` re-asks, `invalid` maps to the field error |
+| `tests/unit/admin-members-company.test.ts` | `setMemberCompany`'s Zod and error mapping |
+| `tests/components/admin/companies-domains.test.tsx` | the field (`dir="ltr"`), each domain `<bdi dir="ltr">` in the table and in errors, the confirm dialog's two numbers in all six plural forms, no dialog when nobody moves, axe-clean |
+| `tests/components/me/profile-company.test.tsx` | read shows the company or «بلا شركة», no link, no banner; edit renders no company control and posts no `companyId` |
+| `tests/e2e/wave27-console-companies-by-domain.spec.ts` | an admin adds `pp.sa` to a company → the dialog reads «ينتقل 2 … يبقى 1» → confirm → `SCR-049` shows the two in it and the one where the admin put them; ⋯ «غيّر الشركة» on a member; the member's `/app/me` shows the company and no control; `/app/admin/audit` lists `company.domain_added` and `member.company_changed`. Locators from `#main`; dialogs by role; toasts `{ exact: true }`; captures `wave27-console-{companies,members,me}-<state>-{1280,390}.png` |
+
+**Evidence suites that move (ledger lines in `wave-27-ledger-b.md`):** `tests/components/me/profile-wave20.test.tsx:98-…`
+(«no company: says what it blocks…») and `:147` («keeps the chosen company in the select») · `tests/e2e/wave20-content-hub.spec.ts:134-137`
+(the banner) and `:151` (selects a company) · `tests/components/admin/companies-table.test.tsx` if its headers are
+asserted · `tests/rls/add-a-member.test.ts:85-95` only if a `toEqual` over the row breaks on the new column.
+**Untouched and expected green:** `team-colour*.test.ts`, `admin-export-slice`, every `scoring-*` RLS file, `members.test.ts`
+until the lead's revoke, `console-register.test.ts` (no animation added).
+
+### 12 · Strings (ar first, `admin.json` companies/members keys, `profile.json`)
+
+`admin.companies.domainsLabel` «النطاقات» · `domainsHint` «نطاق في كل سطر» · `columnDomain` «النطاق» ·
+`errors.domainMalformed` «‹{domain}› ليس نطاقًا» · `errors.domainTaken` «‹{domain}› على شركة ‹{company}›» ·
+`moveConfirmTitle` «حفظ نطاقات ‹{name}›؟» · `moveCount` «{count, plural, zero {لا ينتقل أحد} one {ينتقل عضو واحد}
+two {ينتقل عضوان} few {ينتقل {value} أعضاء} many {ينتقل {value} عضوًا} other {ينتقل {value} عضو}} إلى ‹{name}›» ·
+`heldCount` (the same six forms, «يبقى … لأن مشرفًا وضعهم يدويًا») · `moveConfirm` «انقل واحفظ» · `changedAgain`
+«تغيّر العدد — راجِع» · `admin.members.changeCompany` «غيّر الشركة» · `companyChanged` «نُقل» · `profile.read.noCompany`
+«بلا شركة». Every `{value}` is a Western numeral in `<bdi>`.
+
+---
+
 ## ★★ Wave 23 — PR A plan (`wave-23a/templates-and-certificates`, draft #52) — `055` both tabs and `045`
 
 > Planning only. Written at `52bd5cc0` after reading the agent file's list, `DEC-235` … `DEC-237`, `DEC-177`, `DEC-178`,

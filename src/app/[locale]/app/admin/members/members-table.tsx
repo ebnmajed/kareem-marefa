@@ -106,7 +106,7 @@ export function MembersTable({ data, query, selfId, timeZone, locale }: { data: 
         m.id === selfId ? (
           <span className="text-fg-muted">{t("noValue")}</span>
         ) : (
-          <MemberRowMenu member={m} locale={locale as Locale} lastAdmin={m.role === "admin" && m.status === "active" && data.activeAdmins <= 1} />
+          <MemberRowMenu member={m} locale={locale as Locale} lastAdmin={m.role === "admin" && m.status === "active" && data.activeAdmins <= 1} companies={data.companies} />
         ),
     },
   ];

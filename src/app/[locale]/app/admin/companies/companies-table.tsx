@@ -11,10 +11,11 @@ import type { Locale } from "@/i18n/routing";
 import { setCompanyActiveAction } from "./actions";
 import { teamColourNameOf } from "./team-colours";
 
-// SCR-048's table, written for wave 22 from `AdminCompanies.dc.html` (`DEC-208`: deleted first): الشركة · الأعضاء ·
-// النشطون · الربع · ⋯. ★ The company's colour is a swatch AND its name in words (`REQ-UIX-095`, `DEC-232`'s D6 ruling);
+// SCR-048's table, written for wave 22 from `AdminCompanies.dc.html` (`DEC-208`: deleted first): الشركة · النطاق ·
+// الأعضاء · النشطون · الربع · ⋯. ★ The company's colour is a swatch AND its name in words (`REQ-UIX-095`, `DEC-232`'s D6 ruling);
 // none says «بلا لون». The quarter's points are READ — the quarter's company snapshot — and «—» before one exists.
-// ★ No domain column and no logo (`DEC-231` §6.1, `DEC-195` §4): the artboard draws both; nothing stores either.
+// ★ No logo (`DEC-195` §4). ★ wave 27 (`DEC-254` §2, `REQ-ADM-024`): the artboard's النطاق column, built now that a
+// company carries its domains — each one LTR text in an RTL row, `<bdi dir="ltr">`; «—» for a company with none.
 
 export interface CompanyRow extends AdminCompany {
   /** The quarter's company points, read from its snapshot; null before one exists or for a company not in it. */
@@ -45,6 +46,23 @@ export function CompaniesTable({ companies, locale }: { companies: CompanyRow[];
           </span>
         );
       },
+    },
+    {
+      key: "domains",
+      header: t("columnDomain"),
+      onCard: true,
+      cell: (c) =>
+        c.domains.length > 0 ? (
+          <span className="inline-flex flex-wrap gap-x-2 gap-y-0.5">
+            {c.domains.map((d) => (
+              <bdi key={d} dir="ltr">
+                {d}
+              </bdi>
+            ))}
+          </span>
+        ) : (
+          <span className="text-fg-muted">{t("noValue")}</span>
+        ),
     },
     { key: "members", header: t("memberCountColumn"), onCard: true, cell: (c) => num(c.memberCount) },
     { key: "active", header: t("columnActive"), onCard: true, cell: (c) => num(c.activeMemberCount) },

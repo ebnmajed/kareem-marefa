@@ -58,11 +58,6 @@ export async function CompanyRaceCard({ locale, leaders = 2, className = "" }: {
           />
         ))}
       </ul>
-      {race.ownCompanyId === null ? (
-        <Link href="/app/me" className="text-caption text-fg-muted">
-          {t("race.noCompany")}
-        </Link>
-      ) : null}
       <Link href="/app/leaderboards?board=companies" quiet className="text-caption text-fg-muted">
         {t.rich("race.full", { metric, bdi: (chunks) => <bdi>{chunks}</bdi> })}
       </Link>

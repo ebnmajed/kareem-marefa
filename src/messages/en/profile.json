@@ -3,7 +3,6 @@
     "title": "My profile",
     "displayName": "Name",
     "company": "Company",
-    "companyNone": "— choose your company —",
     "jobTitle": "Job title",
     "bio": "Bio",
     "save": "Save",
@@ -29,7 +28,6 @@
       "summaryTitle": "Please fix the following:",
       "displayNameRequired": "Enter your name",
       "displayNameTooLong": "Name is too long — shorten it a little",
-      "companyInvalid": "Choose a company from the list",
       "jobTitleTooLong": "Job title is too long — shorten it a little",
       "bioTooLong": "Bio is too long — shorten it a little",
       "failed": "Could not save your profile — try again. Your data is still in the form."
@@ -44,7 +42,7 @@
     "interests": "Interests",
     "read": {
       "edit": "Edit your profile",
-      "chooseCompany": "Choose your company"
+      "noCompany": "No company"
     },
     "edit": {
       "title": "Editing my profile",

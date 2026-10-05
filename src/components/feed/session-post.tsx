@@ -49,7 +49,7 @@ function presenterLine(post: SessionPostData) {
   return lead;
 }
 
-export async function SessionPost({ post, locale, today, noCompany }: { post: SessionPostData; locale: string; today: string; noCompany: boolean }) {
+export async function SessionPost({ post, locale, today }: { post: SessionPostData; locale: string; today: string }) {
   const [t, tDays, tEvent, tBrowse] = await Promise.all([getTranslations("feed"), getTranslations("sessions.days"), getTranslations("sessions.event"), getTranslations("browse")]);
   const lead = presenterLine(post);
   const live = post.phase === "live";
@@ -83,7 +83,7 @@ export async function SessionPost({ post, locale, today, noCompany }: { post: Se
       : null;
   const attendedNow = live && post.attendedCount !== null ? t("post.attendedLive", { count: post.attendedCount, value: formatNumber(post.attendedCount) }) : null;
   const shareUrl = cancelled ? null : `${siteOrigin()}${publicCardPath(locale, post.id)}`;
-  const cta = cancelled ? null : action(post, t, points, noCompany);
+  const cta = cancelled ? null : action(post, t, points);
   const company = lead?.company ?? null;
   const dot = company ? teamColorOrNull(company.teamColor) : null;
 
@@ -196,10 +196,8 @@ export async function SessionPost({ post, locale, today, noCompany }: { post: Se
 type T = Awaited<ReturnType<typeof getTranslations>>;
 
 /** The post's last row, from `sessions'` action — always a link. */
-function action(post: SessionPostData, t: T, points: string | null, noCompany: boolean): SessionCtaProps | null {
+function action(post: SessionPostData, t: T, points: string | null): SessionCtaProps | null {
   const a = post.action;
-  // REQ-UIX-055: with no company set, a post's control states the reason instead of leading to a refusal.
-  if (noCompany && (a.kind === "reserve" || a.kind === "waitlist")) return { state: { kind: "none", reason: t("post.action.noCompany") }, label: t("post.action.reserve") };
   switch (a.kind) {
     case "reserve":
       return { state: { kind: "reserve", act: { href: a.href } }, label: t("post.action.reserve"), chip: points ?? undefined };

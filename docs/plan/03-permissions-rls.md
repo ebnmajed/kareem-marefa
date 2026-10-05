@@ -159,6 +159,7 @@ apart, and a change to what counts as a check-in changes all four at the same in
 |---|---|---|---|---|---|---|
 | `orgs` (own) | read | read | read | read + update | create, suspend | — |
 | `org_domains` | — | — | — | ✅ | ✅ | — |
+| `company_domains` | — | — | — | read; write `S` | — | — |
 | `org_settings` | read | read | read | ✅ | — | — |
 | `companies`, `categories`, `venues`, `tags` | read | read | read | ✅ | — | — |
 | `members` | read (tier) | read (tier) | read (tier) | ✅ | — | — |
@@ -313,6 +314,7 @@ Legend: pattern per action, `—` = no policy and no grant.
 |---|---|---|---|---|---|
 | `orgs` | §5.1a | — | §5.1a | — | Own org only. Creation is a super-admin RPC. |
 | `org_domains` | P2-read | P2 | P2 | P2 | Admin-only, including read — the domain list is a membership control. |
+| `company_domains` | P2-read | — | — | — | ★ `0203`, `REQ-PRF-012` — admin-only read, **no client write at all**: `save_company()` (definer) is the one writer, so the confirmation's numbers are the save's. `create policy "company_domains_read_admin" on company_domains for select to authenticated; grant select on company_domains to authenticated;` |
 | `org_settings` | P1 | — | P2 | — | Exactly one row per org; no insert or delete path. |
 | `companies` | P1 | P2 | P2 | — | `REQ-ADM-006`: deactivate, never delete. |
 | `categories` | P1 | P2 | P2 | — | Same. |
@@ -1303,6 +1305,25 @@ generated suite is the highest-value test in the product.
 | `POL-orgs.select.member` | A member of org A reading org B's row gets nothing. |
 | `POL-orgs.update.admin` | A member cannot update the org; an admin can; **neither can delete it**. |
 | `POL-org_domains.select.member` | A non-admin member reading the domain list gets nothing. |
+| `POL-company_domains.read_admin` | ★ `0203` — an admin reads their org's rows; a moderator, a member and another org's admin read none. |
+| `POL-company_domains.no_client_write` | No client role inserts, updates or deletes a row: `42501`. |
+| `CHK-company_domains.one_company_per_domain` | The same domain on two companies of one org is `23505`; on companies of two orgs it is accepted. |
+| `CHK-company_domains.lowercase` | A mixed-case domain with a leading `@` is stored lowercase without it; a malformed one is `23514`. |
+| `TRG-company_domains.same_org` | A row naming a company of another org is `23503`. |
+| `TRG-members.company_source` | A company written with no source named is `'admin'`; one written under `kareem.company_source = 'domain'` is `'domain'`; a member never placed has null. |
+| `RPC-provision_member.places_by_domain` | A first sign-in from a company's domain lands in that company with source `'domain'`; no match leaves both null; a deactivated company places nobody. |
+| `RPC-provision_member.binding_keeps_admin_choice` | A member added with a company keeps it at first sign-in whatever their domain; one added with none is placed by domain. |
+| `RPC-provision_member.company_never_blocks` | ★ With the company lookup made to raise, the sign-in still provisions, with no company — the lookup never blocks sign-in. |
+| `RPC-save_company.admin_only` | A moderator and a member are refused `42501`; another org's company is `company_not_found`. |
+| `RPC-save_company.dry_run_writes_nothing` | The dry run returns the two counts and the destination's NAME — never a member's — and writes no row. |
+| `RPC-save_company.moves_exactly_the_preview` | The confirm moves exactly the members counted, with source 'domain'; the admin-placed are left. |
+| `RPC-save_company.token` | A member who arrives between the dry run and the confirm makes the confirm answer `changed` with the new numbers, writing nothing. |
+| `RPC-save_company.removal_unplaces_nobody` | Removing a domain leaves every member it placed where they are. |
+| `RPC-save_company.refusals_name_the_domain` | A malformed domain and one on another company of the org come back per domain with their reason; nothing is written. |
+| `RPC-save_company.deactivated_places_nobody` | Domains saved on a deactivated company move nobody (DEC-255 §4, Q3). |
+| `RPC-save_company.audit` | `company.domain_added` / `company.domain_removed` per domain, `member.company_changed` per member moved; `company.created` / `.changed` / `.team_color_changed` still from their triggers. |
+| `RPC-set_member_company.by_hand` | An admin's placement or removal is source 'admin', audited with the old and the new, and no later save moves it. |
+| `RPC-add_member.company_source` | A company given while adding is 'admin'; none given and a matching domain is 'domain'; none at all is null. |
 | `POL-org_settings.update.admin` | A moderator updating settings is rejected (`REQ-ADM-020`). |
 | `POL-members.select.member` | Selecting `email` on another member **errors on the column grant**, not returns null. |
 | `POL-members.update.self` | A member updating their own `org_role` is rejected; the column is not granted. |

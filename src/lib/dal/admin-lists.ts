@@ -35,6 +35,9 @@ export interface AdminCompany {
    *  REQ-PRF-009). Set on this screen; no migration ever writes one
    *  (DEC-183 §4.11). */
   teamColor: string | null;
+  /** ★ wave 27 (`REQ-ADM-024`): the company's email domains, lowercase, sorted — read from `company_domains`, which
+   *  only an admin may read (0203). LTR text: every rendering wraps each in `<bdi dir="ltr">`. */
+  domains: string[];
 }
 
 /** What a write did — never success for a write that matched no row (`DEC-232` §3.1). */
@@ -127,6 +130,9 @@ export async function listCompaniesForAdmin(locale: string): Promise<AdminCompan
   );
   const members = countBy(memberRows, (m) => m.company_id as string | null);
   const active = countBy(memberRows, (m) => (m.status === "active" ? (m.company_id as string) : null));
+  const domainRows = await readAll("company_domains", (from, to) => supabase.from("company_domains").select("id, company_id, domain").order("id").range(from, to));
+  const domains = new Map<string, string[]>();
+  for (const d of domainRows) domains.set(d.company_id as string, [...(domains.get(d.company_id as string) ?? []), d.domain as string]);
 
   return rows
     .map((c) => ({
@@ -136,6 +142,7 @@ export async function listCompaniesForAdmin(locale: string): Promise<AdminCompan
       memberCount: members.get(c.id as string) ?? 0,
       activeMemberCount: active.get(c.id as string) ?? 0,
       teamColor: c.team_color as string | null,
+      domains: (domains.get(c.id as string) ?? []).sort(),
     }))
     .sort((a, b) => Number(a.deactivatedAt !== null) - Number(b.deactivatedAt !== null) || a.name.localeCompare(b.name, "ar"));
 }
@@ -180,4 +187,51 @@ export async function setCompanyActive(locale: string, companyId: string, active
 export async function setCompanyTeamColor(locale: string, companyId: string, teamColorHex: string | null): Promise<ListWrite> {
   const { supabase } = await sessionClient(locale);
   return wrote(await supabase.from("companies").update({ team_color: teamColorHex }).eq("id", companyId).select("id"));
+}
+
+// ★ wave 27 — a company carries its domains, and the save asks before it moves anyone (`REQ-ADM-024`, `REQ-PRF-012`,
+// `DEC-254` §2.7, `DEC-255` §4). One definer function, `save_company()` (`supabase/proposed/console/`), writes the
+// company, its domains and the members they place, in one transaction: a dry run first, then the confirm with the
+// token the dry run returned. The audit rows are the function's and the companies table's triggers' — never this file's.
+
+export const companyDomainsInput = z.array(z.string().max(253)).max(200);
+
+export type CompanyDomainError = { domain: string | null; reason: "malformed" | "taken" | "too_many"; company?: string };
+
+export type CompanySave =
+  | { status: "invalid"; errors: CompanyDomainError[] }
+  /** `moving` and `held` are counts and `companyName` is the DESTINATION's — no member's name is ever returned. */
+  | { status: "preview" | "changed"; moving: number; held: number; token: string; companyName: string }
+  | { status: "saved"; companyId: string; moved: number; held: number }
+  | { status: "failed" };
+
+export async function saveCompanyWithDomains(
+  locale: string,
+  input: { companyId: string | null; name: string; teamColorHex: string | null; domains: string[]; confirm: boolean; expected: string | null },
+): Promise<CompanySave> {
+  if (input.companyId !== null && !z.uuid().safeParse(input.companyId).success) return { status: "failed" };
+  if (!companyDomainsInput.safeParse(input.domains).success) return { status: "invalid", errors: [{ domain: null, reason: "too_many" }] };
+  const client = await requireAdmin(locale);
+  if (!client) return { status: "failed" };
+  const { data, error } = await client.supabase.rpc("save_company", {
+    p_company: input.companyId,
+    p_name: input.name,
+    p_team_color: input.teamColorHex,
+    p_domains: input.domains,
+    p_confirm: input.confirm,
+    p_expected: input.expected,
+  });
+  if (error || !data) return { status: "failed" };
+  const r = data as { status: string; errors?: CompanyDomainError[]; moving?: number; held?: number; moved?: number; token?: string; company_name?: string; company_id?: string };
+  switch (r.status) {
+    case "invalid":
+      return { status: "invalid", errors: r.errors ?? [] };
+    case "preview":
+    case "changed":
+      return { status: r.status, moving: r.moving ?? 0, held: r.held ?? 0, token: r.token ?? "", companyName: r.company_name ?? "" };
+    case "saved":
+      return { status: "saved", companyId: r.company_id ?? "", moved: r.moved ?? 0, held: r.held ?? 0 };
+    default:
+      return { status: "failed" };
+  }
 }

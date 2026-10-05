@@ -2,6 +2,8 @@
 // while the company is added — the seven names and «بلا لون», a swatch and the
 // name in words, never a hex field; the insert carries it. And no logo (§4).
 // ★ wave 22: the same form creates and edits (`saveCompany`, `?new=1` / `?edit=<id>`).
+// ★ wave 27 (DEC-254 §2.7; ledger B): the save is ONE call, `saveCompanyWithDomains()` → `save_company()`, carrying the
+// name, the colour and the domains — the colour's expectations are unchanged, only the function they reach moved.
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,16 +14,16 @@ import uiAr from "@/messages/ar/ui.json";
 const ar = adminAr;
 const messages = { ...adminAr, ...uiAr };
 
-const createCompany = vi.fn(async () => ({ ok: true }));
+const createCompany = vi.fn(async (..._args: unknown[]) => ({ status: "saved" as const, companyId: "c1", moved: 0, held: 0 }));
 vi.mock("@/lib/dal/admin-lists", async () => {
   const { z } = await import("zod");
   return {
     companyInput: z.object({ name: z.string().trim().min(1).max(120) }).strict(),
-    createCompany,
-    updateCompany: vi.fn(),
+    saveCompanyWithDomains: createCompany,
     setCompanyActive: vi.fn(),
   };
 });
+const inserted = (hex: string | null) => expect.objectContaining({ companyId: null, name: "مواهب", teamColorHex: hex });
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/navigation")>()),
@@ -74,17 +76,17 @@ describe("the add form — the team colour, chosen while adding", () => {
 describe("saveCompany — the insert carries the colour", () => {
   it("a named colour becomes its #rrggbb", async () => {
     await saveCompany("ar", null, emptyCompanyState, form({ name: "مواهب", teamColour: "cyan" }));
-    expect(createCompany).toHaveBeenCalledWith("ar", { name: "مواهب" }, "#35d0ff");
+    expect(createCompany).toHaveBeenCalledWith("ar", inserted("#35d0ff"));
   });
 
   it("«بلا لون» inserts null", async () => {
     await saveCompany("ar", null, emptyCompanyState, form({ name: "مواهب", teamColour: "none" }));
-    expect(createCompany).toHaveBeenCalledWith("ar", { name: "مواهب" }, null);
+    expect(createCompany).toHaveBeenCalledWith("ar", inserted(null));
   });
 
   it("a form that posts no colour — an older page across a deploy — inserts null", async () => {
     await saveCompany("ar", null, emptyCompanyState, form({ name: "مواهب" }));
-    expect(createCompany).toHaveBeenCalledWith("ar", { name: "مواهب" }, null);
+    expect(createCompany).toHaveBeenCalledWith("ar", inserted(null));
   });
 
   it("★ a hex or an unknown name is refused at the field and nothing is written", async () => {

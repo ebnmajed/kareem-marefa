@@ -320,7 +320,11 @@
         "nameRequired": "A company name is required.",
         "nameTooLong": "The name is too long.",
         "failed": "That could not be saved — try again.",
-        "teamColourInvalid": "Choose a colour from the list."
+        "teamColourInvalid": "Choose a colour from the list.",
+        "domainsInvalid": "A domain was not accepted.",
+        "domainMalformed": "<d>{domain}</d> is not a domain.",
+        "domainTaken": "<d>{domain}</d> is on “<t>{company}</t>”.",
+        "domainsTooMany": "Twenty domains at most."
       },
       "teamColourLabel": "Team colour",
       "newCompany": "New company",
@@ -337,7 +341,15 @@
       "saving": "Saving…",
       "saved": "Company saved.",
       "closeEditor": "Close",
-      "notWritten": "Not saved — try again."
+      "notWritten": "Not saved — try again.",
+      "domainsLabel": "Domains",
+      "domainsHint": "One domain per line",
+      "columnDomain": "Domain",
+      "moveTitle": "Save the domains of “<t>{name}</t>”?",
+      "moveCount": "{count, plural, =0 {Nobody moves to “<t>{name}</t>”} one {One member moves to “<t>{name}</t>”} other {<bdi>{value}</bdi> members move to “<t>{name}</t>”}}",
+      "heldCount": "{count, plural, =0 {Nobody stays behind} one {One member stays where an admin placed them} other {<bdi>{value}</bdi> members stay where an admin placed them}}",
+      "moveChanged": "The count changed since you pressed “Save”.",
+      "moveConfirm": "Move and save"
     },
     "members": {
       "title": "Members",
@@ -383,7 +395,8 @@
         "role_not_allowed": "An organisation admin cannot be added by email — add them as a member, then change their role once they have signed in.",
         "already_signed_in": "They have signed in — deactivate with a reason instead of removing.",
         "no_addresses": "Enter at least one email address.",
-        "company_other_org": "That company does not belong to your organisation."
+        "company_other_org": "That company does not belong to your organisation.",
+        "company_deactivated": "This company is deactivated."
       },
       "columnLevel": "Level",
       "columnPoints": "Points",
@@ -436,7 +449,11 @@
       "remove": "Remove",
       "removeDone": "Removed from the organisation.",
       "removeConfirmTitle": "Remove <t>{name}</t> from the organisation?",
-      "removeConfirmBody": "They have not signed in, so they hold nothing here. Once they have signed in, deactivation is the only way out."
+      "removeConfirmBody": "They have not signed in, so they hold nothing here. Once they have signed in, deactivation is the only way out.",
+      "changeCompany": "Change company",
+      "companyTitle": "Company of “<t>{name}</t>”",
+      "companySave": "Save",
+      "companyChanged": "Company saved."
     },
     "exports": {
       "title": "Exports",
@@ -563,7 +580,9 @@
           "created": "Company created",
           "changed": "Company changed",
           "deactivated": "Company deactivated",
-          "reactivated": "Company reactivated"
+          "reactivated": "Company reactivated",
+          "domain_added": "Domain added to a company",
+          "domain_removed": "Domain removed from a company"
         },
         "design": {
           "export_requested": "Design export requested",
@@ -604,7 +623,8 @@
           "added": "Member added",
           "add_undone": "Added member removed before signing in",
           "invite_resent": "Member invitation resent",
-          "claimed": "Added member signed in for the first time"
+          "claimed": "Added member signed in for the first time",
+          "company_changed": "Member's company changed"
         },
         "org": {
           "created": "Organisation created",

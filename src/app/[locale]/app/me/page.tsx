@@ -25,6 +25,9 @@ import type { Locale } from "@/i18n/routing";
 // ★ THE SETTINGS GLYPH IS NAMED BY WHERE IT GOES (DEC-218 §4.5): it opens `/app/me/settings` and says «الإعدادات»
 // (PR B; in PR A, before the route existed, it opened privacy under privacy's name).
 //
+// ★ wave 27 (`DEC-254` §2.5, `REQ-PRF-012`): the company is SHOWN, never chosen — no picker in edit mode, no
+// «choose one» banner in read mode. `companies` is read for the name and the dot only.
+//
 // ★ The auth boundary is the DAL's (`sessionClient` → `requireSession`); the self tier is `me()`'s (REQ-PRF-004).
 export default async function MePage({
   params,
@@ -38,11 +41,10 @@ export default async function MePage({
   const query = ((await searchParams) ?? {}) as { edit?: string | string[] };
   const editing = query.edit !== undefined;
 
-  const [t, tShell, tMembers, tHome, me, companies, interests] = await Promise.all([
+  const [t, tShell, tMembers, me, companies, interests] = await Promise.all([
     getTranslations("profile"),
     getTranslations("app.shell"),
     getTranslations("members.profile"),
-    getTranslations("app.home"),
     getMe(locale),
     listCompanies(locale),
     getMyInterests(locale),
@@ -70,9 +72,9 @@ export default async function MePage({
       </Suspense>
       <HubStrip />
       {editing ? (
-        <ProfileEdit locale={locale as Locale} me={me} companies={companies} interests={interests} />
+        <ProfileEdit locale={locale as Locale} me={me} interests={interests} />
       ) : (
-        <ProfileRead me={me} companyName={company?.name ?? null} companyTeamColor={company?.teamColor ?? null} interests={interests.chosen} t={t} noBio={tMembers("noBio")} companyMissing={tHome("companyMissing")} />
+        <ProfileRead me={me} companyName={company?.name ?? null} companyTeamColor={company?.teamColor ?? null} interests={interests.chosen} t={t} noBio={tMembers("noBio")} />
       )}
     </div>
   );

@@ -39,8 +39,6 @@
     "home": {
       "welcome": "Welcome, <name>{value}</name>",
       "welcomeAnon": "Welcome",
-      "completeProfile": "Complete your profile",
-      "companyMissing": "Choose your company before reserving a seat or proposing a session.",
       "org": "Your organisation: <org>{value}</org>",
       "pointsStrip": "My points"
     },
