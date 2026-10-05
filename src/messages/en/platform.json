@@ -115,7 +115,6 @@
       "promotedBadge": "Promoted",
       "isDefault": "Default",
       "retired": "Retired",
-      "versions": "{count, plural, =0 {No versions} one {One version} other {{value} versions}}",
       "setDefault": "Make it the default",
       "defaultSet": "{name} is now its family's default.",
       "retire": "Retire",

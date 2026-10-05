@@ -823,6 +823,18 @@ test.describe("wave 26 — the six screens beside their artboards", () => {
     await page.goto("/ar/app/platform/orgs");
     await expect(page.getByRole("heading", { level: 1, name: /^المؤسسات/ })).toBeVisible();
     await capture(page, "orgs", "default");
+    // Suspend: the dialog naming the org, with its mandatory reason.
+    await orgAct(page, b, "أوقف");
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await capture(page, "orgs", "suspend-confirm");
+    await page.getByRole("dialog").getByRole("textbox", { name: /^سبب الإيقاف/ }).fill("تصوير حالة الإيقاف");
+    await page.getByRole("dialog").getByRole("button", { name: /^أوقف/ }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    // Reactivate: the suspended row offers it in place of «أوقف»; then put b back as it was.
+    await expect(main(page).getByRole("button", { name: `أعد التفعيل — ${b.name}` })).toBeVisible();
+    await capture(page, "orgs", "suspended-row");
+    await orgAct(page, b, "أعد التفعيل");
+    await expect.poll(async () => (await db.query<{ status: string }>(`select status from public.orgs where id = $1`, [b.id])).rows[0].status).toBe("active");
     await orgAct(page, a, "احذف");
     await page.getByRole("dialog").getByRole("textbox", { name: /^معرّف المؤسسة/ }).fill("not-the-slug");
     await page.getByRole("dialog").getByRole("button", { name: /احذف نهائيًا/ }).click();
@@ -842,6 +854,11 @@ test.describe("wave 26 — the six screens beside their artboards", () => {
     await page.goto(`/ar/app/platform/orgs/${a.id}/domains`);
     await expect(page.getByRole("heading", { level: 1, name: /^النطاقات · / })).toBeVisible();
     await capture(page, "domains", "default");
+    // Removal: the confirm naming the domain, saying nobody loses access — cancelled, nothing removed.
+    await main(page).getByRole("button", { name: `أزل ${a.domain}` }).click();
+    await expect(page.getByRole("dialog")).toContainText("لا يفقد أحد وصوله");
+    await capture(page, "domains", "remove-confirm");
+    await page.keyboard.press("Escape");
 
     await page.goto("/ar/app/platform/templates");
     await expect(page.getByRole("heading", { level: 1, name: "مكتبة القوالب" })).toBeVisible();
@@ -854,6 +871,11 @@ test.describe("wave 26 — the six screens beside their artboards", () => {
     await page.goto("/ar/app/platform/impersonate");
     await expect(main(page).getByRole("button", { name: /^ادخل/ })).toBeVisible();
     await capture(page, "impersonate", "form");
+    // The form filled: an org, the mandatory reason, a duration chip — before «ادخل».
+    await main(page).getByRole("combobox", { name: /^المؤسسة/ }).selectOption(b.id);
+    await main(page).getByRole("textbox", { name: /^السبب/ }).fill("تذكرة 418 — صفحة الحضور لا تفتح للمشرف");
+    await main(page).locator("label").filter({ hasText: /^30 دقيقة$/ }).click();
+    await capture(page, "impersonate", "filled");
     await startFromForm(page, b.id, "تصوير الشاشة بعد إعادة بنائها");
     await capture(page, "impersonate", "active");
     await page.getByRole("region", { name: /جلسة مفتوحة/ }).getByRole("button", { name: /أنهِ الجلسة/ }).click();

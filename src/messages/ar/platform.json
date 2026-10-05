@@ -115,7 +115,6 @@
       "promotedBadge": "مرقّى",
       "isDefault": "الافتراضي",
       "retired": "متقاعد",
-      "versions": "{count, plural, zero {بلا نسخ} one {نسخة واحدة} two {نسختان} few {{value} نسخ} many {{value} نسخة} other {{value} نسخة}}",
       "setDefault": "اجعله الافتراضي",
       "defaultSet": "صار {name} القالب الافتراضي لعائلته.",
       "retire": "أحِله إلى التقاعد",

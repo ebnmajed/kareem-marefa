@@ -79,7 +79,7 @@ export function DomainsTable({ domains, remove }: { domains: string[]; remove?: 
       key: "domain",
       header: t("domainColumn"),
       cell: (row) => (
-        <span dir="ltr" className="font-mono text-fg-heading">
+        <span dir="ltr" className="text-fg-heading">
           <bdi>{row.domain}</bdi>
         </span>
       ),

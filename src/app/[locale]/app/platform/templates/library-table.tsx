@@ -13,7 +13,6 @@ import { Menu } from "@/components/ui/menu";
 import type { MenuItem } from "@/components/ui";
 import { TagChip } from "@/components/ui/tag-chip";
 import { useToast } from "@/components/ui/toast";
-import { formatNumber } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
 import type { PlatformTemplate } from "@/lib/dal/platform-templates";
 import { retireAction, setDefaultAction } from "./actions";
@@ -102,38 +101,35 @@ function TemplateCard({ template, locale }: { template: PlatformTemplate; locale
   const t = useTranslations("platform.templates");
   const tFamily = useTranslations("templates.family");
   const family = tFamily(template.family);
-  const chips = [
-    ...(family === template.name ? [] : [family]),
-    template.purpose === "poster" ? t("purposePosterOne") : t("purposeCertificateOne"),
-    ...(template.orientation ? [t(template.orientation)] : []),
-  ];
+  // The board's two rows under the swatch: the name, the purpose chip and «⋯»; then the composition's chips —
+  // the family where the name does not already say it, a certificate's orientation — and the state badges.
+  const chips = [...(family === template.name ? [] : [family]), ...(template.orientation ? [t(template.orientation)] : [])];
 
   return (
     <Card density="grid" className="h-full">
       <div className="p-2.5 pb-0">
-        <CardMedia
-          aspect={template.purpose === "poster" ? "4/5" : template.orientation === "portrait" ? "210/297" : "297/210"}
-          placeholderFrom={template.name}
-          placeholderTone="dark"
-          dimmed={template.retiredAt !== null}
-          className="rounded-lg"
-        />
+        {/* One short, even swatch per card, as the board draws its thumbnails — the family's generated placeholder,
+            never a render (DEC-251, Q6). A purpose's own aspect would make a poster card twice a certificate's. */}
+        <CardMedia aspect="16/9" placeholderFrom={template.name} placeholderTone="dark" dimmed={template.retiredAt !== null} className="rounded-lg" />
       </div>
       <CardBody>
         <div className="flex items-center gap-1.5">
           <h3 className="min-w-0 flex-1 text-label text-fg-heading">
             <bdi>{template.name}</bdi>
           </h3>
+          <TagChip label={template.purpose === "poster" ? t("purposePosterOne") : t("purposeCertificateOne")} />
           <TemplateActions template={template} locale={locale} />
         </div>
-        <ul aria-label={t("chipsLabel")} className="flex flex-wrap gap-1">
-          {chips.map((chip) => (
-            <li key={chip}>
-              <TagChip label={chip} />
-            </li>
-          ))}
-        </ul>
         <div className="flex flex-wrap items-center gap-1.5">
+          {chips.length ? (
+            <ul aria-label={t("chipsLabel")} className="flex flex-wrap gap-1.5">
+              {chips.map((chip) => (
+                <li key={chip}>
+                  <TagChip label={chip} />
+                </li>
+              ))}
+            </ul>
+          ) : null}
           {template.isBaseline ? <Badge size="sm">{t("baseline")}</Badge> : <Badge size="sm" tone="info">{t("promotedBadge")}</Badge>}
           {template.isDefault && template.retiredAt === null ? (
             <Badge size="sm" tone="success">
@@ -145,9 +141,6 @@ function TemplateCard({ template, locale }: { template: PlatformTemplate; locale
               {t("retired")}
             </Badge>
           ) : null}
-          <span className="text-caption text-fg-muted">
-            <bdi>{t("versions", { count: template.versions, value: formatNumber(template.versions) })}</bdi>
-          </span>
         </div>
       </CardBody>
     </Card>

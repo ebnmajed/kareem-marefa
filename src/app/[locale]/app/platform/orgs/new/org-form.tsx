@@ -45,7 +45,7 @@ export function NewOrgForm({ action }: { action: (prev: NewOrgState, formData: F
   const seeded = hasAttempted(state) ? wasList(state, "seedCategories").length > 0 : true;
 
   return (
-    <form action={formAction} noValidate className="max-w-xl space-y-5">
+    <form action={formAction} noValidate className="max-w-md space-y-4">
       {hasAttempted(state) && summary.length > 0 ? <FormSummary key={state.attempt} title={t("errorSummaryTitle")} errors={summary} /> : null}
       {state.formError ? (
         <Panel tone="error">
@@ -98,7 +98,7 @@ export function NewOrgForm({ action }: { action: (prev: NewOrgState, formData: F
         <SubmitButton size="md" pending={pending}>
           {t("submit")}
         </SubmitButton>
-        <ButtonLink href="/app/platform/orgs" variant="ghost" size="md">
+        <ButtonLink href="/app/platform/orgs" variant="quiet" size="md">
           {t("cancel")}
         </ButtonLink>
       </div>

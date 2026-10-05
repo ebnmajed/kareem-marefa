@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
@@ -34,7 +33,7 @@ export default async function OrgDomainsPage({ params }: { params: Promise<{ loc
   const org = await getOrgDetail(locale, id);
   if (!org) notFound();
 
-  const [t, tOrgs] = await Promise.all([getTranslations("platform.domains"), getTranslations("platform.orgs")]);
+  const t = await getTranslations("platform.domains");
   const loc = locale as Locale;
   const editable = !org.deletionPending;
 
@@ -43,24 +42,6 @@ export default async function OrgDomainsPage({ params }: { params: Promise<{ loc
       <PageHeader
         inlineActions
         title={t("titleFor", { org: isolate(org.name) })}
-        meta={
-          <span className="flex flex-wrap items-center gap-2">
-            <Badge tone="neutral" outline className="font-mono">
-              <bdi dir="ltr">{org.slug}</bdi>
-            </Badge>
-            {org.deletionPending ? (
-              <Badge tone="error" outline>
-                {tOrgs("statusDeleting")}
-              </Badge>
-            ) : org.status === "active" ? (
-              <Badge tone="success">{tOrgs("statusActive")}</Badge>
-            ) : (
-              <Badge tone="neutral" outline>
-                {tOrgs("statusSuspended")}
-              </Badge>
-            )}
-          </span>
-        }
         actions={
           editable ? (
             <ButtonLink href="#add-domain" size="md">
@@ -87,7 +68,7 @@ export default async function OrgDomainsPage({ params }: { params: Promise<{ loc
         </Panel>
       ) : null}
 
-      <div className="mt-6 max-w-3xl">
+      <div className="mt-6">
         <DomainsTable domains={org.domains} remove={editable ? removeDomainAction.bind(null, loc, org.id) : undefined} />
         {/* The removal line, beside the list and never in a tooltip: an operator who thinks removal revokes access has
             removed the wrong thing (REQ-TEN-007). */}
