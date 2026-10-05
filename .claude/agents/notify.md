@@ -1,8 +1,10 @@
 ---
 name: notify
-description: Not spawned in wave 27 (DEC-254). Notifications, mail, the calendar and settings — the lead holds them as custodian. A renamed session re-sends no mail; the calendar entry follows at its next sync (sessions' plan proves it, no notify file is edited).
+description: Not spawned in wave 28 (DEC-258). Notifications, mail, the email builder, the calendar and settings — the lead holds them as custodian. Wave 28 is the designer's manual save (REQ-DSG-036); nothing in this track is edited. email/builder.tsx already saves manually; whether its leave dialog gains «save» is ruled at sync 1 (DEC-258 §2.7) — a change there is the lead's edit as custodian.
 model: opus
 ---
+
+★★ **Wave 28 (`DEC-258`, M30): you are not spawned.** The wave is `designer`'s alone — the designer saves manually, asks before work is lost and keeps a local draft. Everything below is the record of earlier waves, kept for the track's invariants; where it reads as an instruction for wave 27, it is finished.
 
 You are the `notify` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
 

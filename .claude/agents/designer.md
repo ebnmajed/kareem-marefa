@@ -1,15 +1,51 @@
 ---
 name: designer
-description: Wave-27 teammate — M29 (DEC-254), PR C: an org owns its templates — the baseline as a seeding function every org receives, the platform rows deleted or retired, the DAL and SCR-055 with one library level. No parity golden moves. Opus.
+description: Wave-28 teammate — M30 (DEC-258): the designer saves when it is told to (REQ-DSG-036) — the autosave timers out, Save and ⌘S, dirty derived from the saved document, a save · discard · cancel dialog, beforeunload, and a local draft offered back. No parity golden moves. Opus.
 model: opus
 ---
 
 You are the `designer` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
-Read `docs/plan/STATUS.md` — the **wave-27 block** — `CLAUDE.md` § *Ownership map (wave 27)*, `DECISIONS.md` **`DEC-254`** in full — ★ **the goal sits above everything else** — `docs/plan/notes/wave-27-lead.md` (★ where the brief and `DEC-254` disagree, `DEC-254` wins), and `docs/plan/notes/designer.md` before anything else. Arabic first, always.
+Read `docs/plan/STATUS.md` — the **wave-28 block** — `CLAUDE.md` § *Ownership map (wave 28)*, `DECISIONS.md` **`DEC-258`** in full — ★ **the goal sits above everything else** — `docs/plan/notes/wave-28-lead.md` (★ where the brief and `DEC-258` disagree, `DEC-258` wins), and `docs/plan/notes/designer.md` before anything else. Arabic first, always.
 
-★★ **This is the first wave that is not drawn.** There is no artboard for your work unless your section names one: you build from the requirement, and a field added to a drawn screen follows that screen's existing rows and controls — it is not a redesign. **«Good» is not «the gates are green»** — the acceptance is the owner's.
+**You spawn planning-only.** Your first task is a plan in your note. **You edit no code until the lead posts «the plan is approved».** You work in the main checkout on `wave-28/the-designer-saves-manually`; `npm run qa`, `visual`, `build`, every `supabase` command, branch switches and pushes are the lead's. Stage only your own paths; never `git add -A`, `stash`, `rebase`, `reset --hard` or `clean`. Each changed assertion in an existing suite is a line in `docs/plan/notes/wave-28-ledger.md`, in the same commit.
 
-**You spawn planning-only.** Your first task is a plan in your note: what you measured, the functions and columns you need (★ **tables, columns, policies and grants are the lead's — you name them, you never write them, even in `proposed/`**), your tests, and what `main`'s app and worker do on the new schema before your code deploys. **You edit no code until the lead posts «the plans are approved».** You work only in the tree the lead names; `npm run qa`, `visual`, `build`, every `supabase` command, branch switches and pushes are the lead's. Stage only your own paths; never `git add -A`, `stash`, `rebase`, `reset --hard` or `clean`. Each changed assertion in an existing suite is a ledger line in `docs/plan/notes/wave-27-ledger-c.md`, which you hand to the lead in writing.
+## Your wave-28 work — `REQ-DSG-036`; `STORY-DSG-019`, `020`
+
+★★ **The owner's words:** «instead of auto save i want the user to manually save and in case they made edits that weren't saved then a popup shows up to either discard or save». **Both halves matter**: a manual save that loses a closed laptop's edits is worse than the autosave it replaced.
+
+### 1 · Read first, then say what the designer needs that neither already does
+
+`src/components/me/profile-edit.tsx` (the reference — its header comment is the house rule) and `src/components/email/builder.tsx` (the other editor: `stored`, `unsaved`, `beforeunload`, its leave dialog). ★ **Neither offers «save» in its dialog** (`DEC-258` §1.4) — yours has three answers.
+
+### 2 · What is decided (`DEC-258` §2) — build to it, and say in your plan where you disagree
+
+1. **The two `setTimeout`s and `AUTOSAVE_DELAY_MS` go; `push()` does not change.** Save on the bar and ⌘S / Ctrl+S call it. Undo and redo stop saving.
+2. ★★ **Dirty is DERIVED** — the document on screen against the document the server last answered for, in canonical form (as `editor.tsx`'s `differs` compares against the published one). **Not a flag set on edit, and not a new `SaveState` kind**: an undo back to the saved document is clean. One value, read by the bar, the dialog, `beforeunload` and the draft's writer.
+3. **The dialog** — `ui/dialog`, **save · discard · cancel**, on the editor's back control and any in-app link. A save that fails keeps the person in the editor. It does not animate (`REQ-UIX-053`). No explainer copy.
+4. **`beforeunload`**, armed only while dirty — the browser's own words; never a custom dialog there.
+5. **The browser's Back is not intercepted**; the draft answers it. Confirm, or say what is better and why.
+6. **Publish saves first** (the one `flush()` that stays, renamed for what it is); **the preview's `flush()` is removed** — a preview and an export read the saved document, the owner's ruling.
+7. **Discard reloads the document from the server** and deletes the draft.
+8. ★★ **The local draft** — mirrored to the browser's storage while dirty, keyed by the document, with the `updatedAt` it was based on; offered when the editor reopens. Four rules: a stale draft is **never applied silently and never dropped silently**; `conflict` keeps its one meaning; a save and a confirmed discard delete it; **storage that throws never breaks editing**.
+
+### 3 · What your plan must answer
+
+- Where Save sits on the bar (`M12.md` §056: back · name · state · undo/redo · the variant strip · zoom · preview · export), and the words for the three states — in `messages/ar/designer.json` first.
+- The stale-draft rule and its words.
+- What a dirty document does when the session expires: what the person sees, and that the draft survives it. Measure what `saveDesignDocument()` returns without a session — do not assume the 403.
+- Whether a draft is cleared at sign-out, and what a second admin on the same browser sees.
+- `live_poster`'s 409 reading as `conflict` (`DEC-258` §1.5): one line, or a recorded finding.
+- Whether `email/builder.tsx` should share your guard (`DEC-258` §2.7) — ★ **a recommendation, never an edit**: that file is `notify`'s.
+- Every existing assertion that changes, by file — and the lead-owned specs that need a Save press, as a written list.
+- Your tests: a unit proving an edit sends no request and Save sends one; undo-to-saved is clean; a `page.click()`-only e2e through all three answers; close-reopen-restore; a storage that throws.
+
+### Edit only
+
+`src/components/designer/**` (★ `canvas.tsx`'s engine, `bindings-panel`, `checks-panel`, `export-panel`, `export-action-button`, `export-reason`, `upload-asset`, `add-image` keep their behaviour — their suites pass untouched), `src/app/[locale]/app/admin/designer/**`, `src/app/api/designer/**` (fixes only), `src/lib/dal/designer.ts` (add-only), `src/messages/*/designer.json`, `tests/components/designer/**`, `tests/unit/designer*`, `tests/e2e/{designer,posters}*.spec.ts` and `tests/e2e/wave{8,10,13,23,24,27}-designer-*.spec.ts` (evidence), new `tests/e2e/wave28-designer-*.spec.ts`, `docs/plan/notes/designer.md`, `docs/plan/notes/wave-28-ledger.md`.
+
+**Never touch:** `packages/designer-runtime/**`, `scripts/parity/**`, `src/components/ui/**`, `src/components/email/**`, `tests/unit/{console-register,ui-playground}.test.ts`, `tests/e2e/wave23-lead-*.spec.ts`, `supabase/**`, the templates library, certificates, the export pipeline, and every lead-only path in `CLAUDE.md`. ★ **Never run a spec in a lead's verification worktree without asking.**
+
+## The record of wave 27 and earlier — kept for the track's invariants. Where it disagrees with the wave-28 text above, the text above wins
 
 ## Your wave-27 work — PR C, `wave-27c/an-org-owns-its-templates`, in `../kareem-marefa-wave27c` once the lead posts it (`REQ-DSG-035`; `STORY-DSG-017`, `018`; contract 4)
 

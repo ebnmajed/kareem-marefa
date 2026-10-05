@@ -977,6 +977,22 @@ nobody; ★ an admin renames a session and the audit log says from what to what,
 keeps its title; ★ with rotation off the host view shows one code all day, no countdown, and the code is refused after
 the ceiling. **The acceptance is the owner's.**
 
+## M30 — the designer saves when it is told to · wave 28 · `DEC-258`
+
+The owner's ask: no autosave in the designer; a manual save; a question before unsaved work is lost. One requirement,
+one PR, one teammate, no migration, no primitive, no golden. ★ **The risk is the second half**: a manual save that
+loses a closed laptop's edits is worse than the autosave it replaced, so the local draft ships with it.
+
+| Work | Requirements | Track | PR |
+|---|---|---|---|
+| The timers out; Save and its shortcut; the bar's state derived from the saved document; the three-answer dialog; `beforeunload` | `REQ-DSG-036` | `designer` | one |
+| The local draft: mirrored while dirty, offered on reopen, deleted by a save or a discard | `REQ-DSG-036` | `designer` | one |
+| The plan documents, the gates, the lead's own specs that edited and waited for «محفوظ» | `REQ-DSG-036` | lead | one |
+
+**Demonstrable:** ★★ an admin moves a layer and the network is silent until they press «احفظ»; ★★ they press the back
+control with changes and choose each of the three answers in turn; ★ they close the tab without saving, reopen the
+document and are offered their edits; ★ no parity golden moved. **The acceptance is the owner's.**
+
 ## 3. Dependencies
 
 ```mermaid
@@ -1030,6 +1046,7 @@ graph LR
 | **M26** | A poster and a certificate printed from the rebuilt baseline, beside one issued before the wave that still renders as it did |
 | **M27** | An admin adds a personal-domain address, assigns them as a presenter before they have signed in, and then they sign in and are already on the session |
 | **M29** | A colleague signs in and is already in their company; a new org issues a certificate with no setup; the code on the wall stays the same all day |
+| **M30** | An admin arranges a poster, nothing is written until they press «احفظ», and a closed tab offers the work back |
 
 ---
 

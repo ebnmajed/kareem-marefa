@@ -325,9 +325,57 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
+### Ownership map (wave 28 — M30, the designer saves when it is told to — DEC-258)
+
+**The owner's ask** (milestone **M30**): ★★ **«instead of auto save i want the user to manually save and in case they
+made edits that weren't saved then a popup shows up to either discard or save».** Specified by `DEC-258` and the brief
+(`docs/plan/notes/wave-28-lead.md`) — ★ **where the two disagree, `DEC-258` wins**: the brief's «dirty tracking already
+exists» is not so (`DEC-258` §1.2), autosave is a requirement the entry amends (§1.1), and publish is ruled in §2.4.
+★★ **NO new primitive** — `ui/` stays **71 files**, `tests/unit/ui-playground.test.ts` untouched. ★★ **No migration is
+expected** (the next is `0211`, the lead's). ★★ **No parity golden moves.**
+
+★★ **THE GOAL, above the process:** an admin decides when their work becomes the document — **and never loses work
+because they decided late.** A manual save that loses a closed laptop's edits is worse than the autosave it replaced,
+so the local draft ships with it. ★ **A local draft is not autosave**: it never becomes the document, and nothing but
+the editor that wrote it reads it. **«Good» is not «the gates are green».**
+
+★★ **One PR, `wave-28/the-designer-saves-manually`, against `main` from its first push, built in the main checkout.**
+
+| Teammate | Model | Delivers | Edits only |
+|---|---|---|---|
+| **lead** | — | `DEC-258`, this map, the agent files, `01`/`06`/`09`/`14`/`15`, `STATUS` · sync 1 · its own specs that edit and wait for «محفوظ» (ledger lines) · the gates, the PR · ★ as `notify`'s custodian, whatever sync 1 rules for `email/builder.tsx` (`DEC-258` §2.7) | the lead-only paths below, `docs/plan/**`, `tests/e2e/wave23-lead-*.spec.ts`, new `tests/e2e/wave28-{demo,lead}-*.spec.ts`. **Custodian** of every file of a track not spawned — all nine others |
+| `designer` | opus | ★★ **`REQ-DSG-036`, whole** (`STORY-DSG-019`, `020`): the two timers and `AUTOSAVE_DELAY_MS` out; Save on the bar and ⌘S / Ctrl+S calling the unchanged `push()`; ★ **dirty DERIVED from the saved document, never a flag** (`DEC-258` §1.2); the bar's three states; the `ui/dialog` with **save · discard · cancel** on the back control and every in-app link; `beforeunload` armed only while dirty; publish saving first and the preview's `flush()` removed (§2.4 – §2.5); discard reloading from the server · ★★ **the local draft** under §2.3's four rules · ★ a `page.click()`-only spec for the three answers and one for close-reopen-restore | `src/components/designer/**` — ★ **`canvas.tsx`'s engine, `bindings-panel`, `checks-panel`, `export-panel`, `export-action-button`, `export-reason`, `upload-asset` and `add-image` keep their behaviour and their suites pass untouched** — `src/app/[locale]/app/admin/designer/**`, `src/app/api/designer/**` (fixes only), `src/lib/dal/designer.ts` (add-only), `src/messages/*/designer.json`, `tests/components/designer/**`, `tests/unit/designer*`, `tests/e2e/{designer,posters}*.spec.ts` and `tests/e2e/wave{8,10,13,23,24,27}-designer-*.spec.ts` (evidence — each changed assertion a ledger line), new `tests/e2e/wave28-designer-*.spec.ts`, `docs/plan/notes/designer.md`. **Nothing else** — `packages/designer-runtime/**`, `scripts/parity/**`, `ui/**`, `src/components/email/**`, the templates library, certificates and the export pipeline are frozen |
+
+**Wave-28 contracts.**
+
+1. **`push()` is the write, unchanged** — the Route Handler, `saveDesignDocument()`, `baseUpdatedAt` and the 409 are as
+   they stand. The wave changes **who calls it**: the person, and publish.
+2. **Dirty is one derivation, read everywhere** — the bar, the dialog's arming, `beforeunload` and the draft's writer
+   all read the same value. `SaveState` reports the last save attempt and gains no kind for it.
+3. **The draft's four rules** (`DEC-258` §2.3): never applied or dropped silently when stale; `conflict` keeps one
+   meaning; deleted by a save and by a confirmed discard; storage failing never breaks editing.
+4. **`designer` → lead — the ledger.** `docs/plan/notes/wave-28-ledger.md`, one line per changed assertion, in the same
+   commit; and a written list of any lead-owned spec that must gain a Save press.
+
+**Wave-28 rules.**
+
+- ★★ **No server autosave under any name**, and no silent save on preview or export (`DEC-258` §2.5).
+- ★★ **`beforeunload` shows the browser's words.** Nobody attempts a custom dialog there.
+- ★★ **The studio is not the party** (`REQ-UIX-053`): the dialog does not animate; `console-register.test.ts` untouched.
+- ★★ **`registrations` is never touched; the five public routes do not move.**
+- ★ **Arabic first**; `<bdi>` on every interpolated value; Western numerals (`DEC-124`); logical properties — except
+  `DEC-096`'s overlay. ★ **No explainer copy** (`DEC-NEXT-25`): the dialog is a title and three buttons.
+- ★ **No new dependency.** The designer is desktop-only (`06` §2).
+- **`designer` spawns planning-only**; nobody edits code before the lead posts «the plan is approved».
+- **Captures land at `.qa-shots/rtl/wave28-designer-<state>-1280.png`** from a production build the row names by commit.
+- **Not this wave:** collaborative editing, a version history, a server-side draft; ★ the last-org lockout
+  (`DEC-253` §7.1), reversing `DEC-255` §1 or `DEC-254` §7 — **each awaits the owner and is not scope until ruled**.
+- **`npm run qa`, `npm run visual` and `npm run build` stay lead-only**; so do `supabase db reset`, `start`, `stop`,
+  branch switches, worktrees, pushes and the PR.
+
 ### Ownership map (wave 27 — M29, the owner's list: companies by domain, templates an org owns, held certificates, a session renamed, a code that stays — DEC-254) — ★ THE RECORD OF A FINISHED WAVE
 
-> Wave 27 merged as PRs #79 – #82 (`main` `46f6c1f5`, production `0210`, closed by `DEC-257`). Its map is kept as the record. **No wave is open**: the next lead writes a new map before spawning anyone.
+> Wave 27 merged as PRs #79 – #82 (`main` `46f6c1f5`, production `0210`, closed by `DEC-257`). Its map is kept as the record; **wave 28's map is directly above** (`DEC-258`).
 
 **The first wave that is not drawn** (milestone **M29**). Every screen in `09` has a design and is built (`DEC-253`);
 this wave is the owner's own list of five changes to how the product behaves, specified by `DEC-254` and the brief
@@ -2265,7 +2313,7 @@ the sessions timeline (`DEC-112`), which is no longer a page composed of other t
 **Inside `src/components/ui/` ownership is per FILE, not per directory** — a glob with four writers
 is the exact failure `TEAM.md` exists to prevent. The four literal file lists — the lead's fifteen,
 `sessions'` eight, `console'`s six, `content'`s nine — are in each `.claude/agents/*.md`, and they are
-unchanged since wave 5 apart from naming `submit-button.tsx`, which is the lead's, and ★ **`reorderable-list.tsx`, which the lead adds in wave 10** (`DEC-160` §5 — the survey's questions and the email studio's blocks both reorder through it). ★ **Wave 15 adds ten files, each with one owner** (`DEC-183`): `sticker`, `poster`, `reaction-bar`, `progress-bar` and `story-ring` are `content`'s; `session-cta` and `code-input` are `sessions'`; `rank-row`, `race-bar` and `level-card` are `scoring`'s — its first primitives. ★ **Wave 16 adds none** (`DEC-195`): the moments compose the primitives that exist, and a moment's own component lives with its screen, not in `ui/`. ★ **Wave 18 adds four** (`DEC-206`): `week-hud` is `scoring`'s, `feed-item` and `attendee-stack` are `content`'s, `action-bar` is `sessions'` — 53 files. ★ **Wave 19 adds four** (`DEC-213`): `page-viewer` is `content`'s, `star-input` `event`'s — its first — `stepper` `sessions'`, `badge-medallion` `scoring`'s — 57 files. ★ **Wave 20 adds three** (`DEC-216` §2.1): `podium` and `ledger-row` are `scoring`'s, `settings-group` `notify`'s — its first — 60 files; `status-mark` is withdrawn. ★ **Wave 21 adds three** (`DEC-225` §2, `DEC-227` §2): `admin-rail` is the lead's — and `src/components/admin/admin-rail.tsx` is deleted, so there is one — `split-view` and `kv-card` `sessions'` — 63 files. ★ **Wave 22 adds none** (`DEC-230`): the three `data-table` cells are stories on `console`'s file — 63 files, the floor unmoved. ★ **Wave 23 adds six** (`DEC-235`, `DEC-237`): `editor-rail` and `floating-toolbar` are the lead's — both editors share them — `canvas-stage` and `layer-list` `designer`'s (and `src/components/designer/layer-list.tsx` is deleted, so there is one), `block-canvas` and `block-library` `notify`'s — 69 files. ★ **Wave 24 adds none** (`DEC-242`): the wave changes documents and constants, not screens — the floor stays **69**. ★ **Wave 26 adds two** (`DEC-245`, `DEC-248`): `story-viewer` and `story-capture` are `content`'s — 71 files, and `story-ring`, built inert in wave 15 and kept inert since wave 18, opens at last. ★ **Wave 27 adds none** (`DEC-254`) — 71 files, the floor unmoved. ★ **Wave 17 adds none** (`DEC-199`) — and from it **the directory is the list**: `tests/unit/ui-playground.test.ts` fails on a file in `ui/` with no playground treatment, no test inside the scope or no gallery entry, so a primitive can no longer be absent from a plan unnoticed. **Ownership lives in those never-touch paragraphs or
+unchanged since wave 5 apart from naming `submit-button.tsx`, which is the lead's, and ★ **`reorderable-list.tsx`, which the lead adds in wave 10** (`DEC-160` §5 — the survey's questions and the email studio's blocks both reorder through it). ★ **Wave 15 adds ten files, each with one owner** (`DEC-183`): `sticker`, `poster`, `reaction-bar`, `progress-bar` and `story-ring` are `content`'s; `session-cta` and `code-input` are `sessions'`; `rank-row`, `race-bar` and `level-card` are `scoring`'s — its first primitives. ★ **Wave 16 adds none** (`DEC-195`): the moments compose the primitives that exist, and a moment's own component lives with its screen, not in `ui/`. ★ **Wave 18 adds four** (`DEC-206`): `week-hud` is `scoring`'s, `feed-item` and `attendee-stack` are `content`'s, `action-bar` is `sessions'` — 53 files. ★ **Wave 19 adds four** (`DEC-213`): `page-viewer` is `content`'s, `star-input` `event`'s — its first — `stepper` `sessions'`, `badge-medallion` `scoring`'s — 57 files. ★ **Wave 20 adds three** (`DEC-216` §2.1): `podium` and `ledger-row` are `scoring`'s, `settings-group` `notify`'s — its first — 60 files; `status-mark` is withdrawn. ★ **Wave 21 adds three** (`DEC-225` §2, `DEC-227` §2): `admin-rail` is the lead's — and `src/components/admin/admin-rail.tsx` is deleted, so there is one — `split-view` and `kv-card` `sessions'` — 63 files. ★ **Wave 22 adds none** (`DEC-230`): the three `data-table` cells are stories on `console`'s file — 63 files, the floor unmoved. ★ **Wave 23 adds six** (`DEC-235`, `DEC-237`): `editor-rail` and `floating-toolbar` are the lead's — both editors share them — `canvas-stage` and `layer-list` `designer`'s (and `src/components/designer/layer-list.tsx` is deleted, so there is one), `block-canvas` and `block-library` `notify`'s — 69 files. ★ **Wave 24 adds none** (`DEC-242`): the wave changes documents and constants, not screens — the floor stays **69**. ★ **Wave 26 adds two** (`DEC-245`, `DEC-248`): `story-viewer` and `story-capture` are `content`'s — 71 files, and `story-ring`, built inert in wave 15 and kept inert since wave 18, opens at last. ★ **Wave 27 adds none** (`DEC-254`) — 71 files, the floor unmoved. ★ **Wave 28 adds none** (`DEC-258`) — 71 files. ★ **Wave 17 adds none** (`DEC-199`) — and from it **the directory is the list**: `tests/unit/ui-playground.test.ts` fails on a file in `ui/` with no playground treatment, no test inside the scope or no gallery entry, so a primitive can no longer be absent from a plan unnoticed. **Ownership lives in those never-touch paragraphs or
 it does not exist**, which is why all ten were regenerated in the same commit as this list.
 
 `src/components/ui/index.ts` exports **types only**; implementations are imported **by path**. A

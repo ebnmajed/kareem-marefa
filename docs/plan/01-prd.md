@@ -1976,6 +1976,7 @@ templates».
 
 #### REQ-DSG-022 — Designer feature set
 **Serves:** A31
+★★ **Amended by `DEC-258` (`REQ-DSG-036`): the designer does not autosave.** «autosave» below and the first acceptance line are withdrawn; their intent — never more than a few seconds of work lost — is kept by `REQ-DSG-036`'s local draft.
 Layers with alignment guides and snapping; brand kit injection; safe-area and bleed overlays;
 undo/redo; autosave; admin-locked regions; live preview of every variant; dynamic-field preview
 with real data; image upload with **focal-point cropping**; QR layer; export queue with status.
@@ -2160,6 +2161,26 @@ way to publish an org's template to other orgs. An improvement to the baseline r
   (`REQ-CRT-014`); such a version is retired, never deleted.
 - The platform console has no template screen, and no function promotes a template across orgs.
 - An org's last live published template of a family that issuance or a poster falls back on cannot be retired; the refusal says why (`DEC-255` §5).
+
+#### REQ-DSG-036 — The designer saves when it is told to, and asks before work is lost
+**Serves:** owner 2026-10-05 · `DEC-258` · amends `REQ-DSG-022` · `REQ-DSG-005`
+The designer writes a document to the server only when the admin saves it — by the Save control, its keyboard
+shortcut, or by publishing. The bar says whether the document on screen has unsaved changes. Leaving the editor with
+unsaved changes asks: **save, discard, or stay**. A reload or a closed tab gets the browser's own question. Unsaved
+changes are mirrored to the browser's own storage as a local draft and offered back when the editor reopens; a local
+draft is never the document, and nobody else, no preview and no export reads it.
+**Acceptance:**
+- An edit, an undo or a redo sends nothing to the server; Save sends one write, and the bar then says saved.
+- An undo back to the saved document is not an unsaved change.
+- A press on the editor's back control or any in-app link with unsaved changes opens a dialog with three answers;
+  «save» leaves only after the save succeeded, «discard» leaves with the server's document unchanged.
+- A reload or a tab close with unsaved changes gets the browser's question, and with none it does not.
+- An editor closed without saving — a crash, a closed laptop, the browser's Back — offers its edits back on reopening;
+  restored, they are unsaved changes, and discarded, they are gone.
+- A draft based on a version the server has since replaced is neither applied nor dropped without the admin being told.
+- A save, and a confirmed discard, delete the draft; storage that is full or blocked never stops editing.
+- A preview and an export render the saved document (`DEC-258` §2.5); publishing saves first (§2.4).
+- No parity golden moves: the change is when a document is written, never what it renders.
 
 ---
 
