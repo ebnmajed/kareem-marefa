@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { PlayWordmark } from "@/components/brand/wordmark";
+import { HomeMark } from "@/components/shell/home-mark";
 import { NotificationBell } from "@/components/notifications/bell";
 import { getSessionState } from "@/lib/dal/session";
 import { getMe } from "@/lib/dal/members";
@@ -118,7 +118,7 @@ export default async function AppLayout({
               aria-label={t("brand")}
               className="inline-flex items-center text-accent lg:w-[196px] focus-visible:outline-[length:var(--focus-width)] focus-visible:outline-offset-4 focus-visible:outline-[var(--ring)]"
             >
-              <PlayWordmark height={34} label={null} />
+              <HomeMark height={34} />
             </Link>
 
             {isMember ? <SearchEntry locale={locale} /> : null}

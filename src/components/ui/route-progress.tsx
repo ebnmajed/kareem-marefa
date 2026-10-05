@@ -72,6 +72,25 @@ export function LinkPendingReporter({ quiet = false }: { quiet?: boolean }) {
   );
 }
 
+/**
+ * True once a navigation has been pending for MORE THAN `delayMs` — and false again the moment it lands.
+ * Add-only (wave 26, REQ-UIX-119): the shell's mark breathes on it, past 400 ms. It reads the same store the
+ * bar reads, so the two can never disagree about whether the app is waiting.
+ */
+export function usePendingLongerThan(delayMs: number): boolean {
+  const active = useSyncExternalStore(subscribe, pendingLinkCount, () => 0) > 0;
+  const [elapsed, setElapsed] = useState(false);
+  useEffect(() => {
+    if (!active) return;
+    const timer = setTimeout(() => setElapsed(true), delayMs);
+    return () => {
+      clearTimeout(timer);
+      setElapsed(false);
+    };
+  }, [active, delayMs]);
+  return active && elapsed;
+}
+
 export function RouteProgress({ delayMs = 150 }: RouteProgressProps) {
   const count = useSyncExternalStore(subscribe, pendingLinkCount, () => 0);
   const active = count > 0;

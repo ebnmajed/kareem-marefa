@@ -1,13 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- Favicon placeholder: minimal dot-network glyph. The sanctioned
-       exception to the "no invented icon" rule — replaced when the real
-       logo lands. -->
-  <rect width="32" height="32" rx="7" fill="#0B1220"/>
-  <g stroke="#A8B3C4" stroke-width="1" opacity="0.7">
-    <line x1="10" y1="21" x2="16" y2="12"/>
-    <line x1="16" y1="12" x2="23" y2="18"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 420">
+  <!-- The app icon: the mark at 70 % on an ink rounded square (docs/design/assets/brand/logo/README.md, REQ-UIX-120). -->
+  <rect width="420" height="420" rx="92.4" fill="#0B0C12"/>
+  <g transform="translate(102.12 63.00) scale(0.9999)">
+<defs><clipPath id="km-clip-a"><path d="M124.1,31.04c0,50.39-41.3,91.16-92.35,91.16L124.1,31.04Z"/></clipPath><clipPath id="km-clip-b"><path d="M118.47,26.68c0,50.39-41.3,91.16-92.35,91.16L118.47,26.68Z"/></clipPath></defs><g id="Layer_1-2" data-name="Layer 1"> <path d="M52.52,193.11c40.42,5.32,69.11,40.13,64.15,77.83" fill="none" stroke="#ff4d2d" stroke-width="37.83" stroke-linecap="round" pathLength="1"/> <path d="M46.9,197.29c40.42,5.32,69.11,40.13,64.15,77.83" fill="none" stroke="#ff6e4f" stroke-width="37.83" stroke-linecap="round" pathLength="1"/> <path d="M196.47,26.85c0,94.55-76.23,171.06-170.44,171.06" fill="none" stroke="#8eff3d" stroke-width="38.63" stroke-linecap="round" pathLength="1"/> <path d="M189.76,19.32c0,94.55-76.23,171.06-170.44,171.06" fill="none" stroke="#c6ff3d" stroke-width="38.63" stroke-linecap="round" pathLength="1"/> <path d="M25.22,123.17c83.56-6.87,157.01,58.54,164.22,146.25" fill="none" stroke="#9b61ff" stroke-width="38.63" stroke-linecap="round" pathLength="1"/> <path d="M30.7,118.59c83.56-6.87,157.01,58.54,164.22,146.25" fill="none" stroke="#9b7cff" stroke-width="38.63" stroke-linecap="round" pathLength="1"/> <g> <g clip-path="url(#km-clip-a)"> <path d="M124.1,31.04c0,50.39-41.3,91.16-92.35,91.16" fill="none" stroke="#d48300" stroke-width="23" stroke-linecap="round" pathLength="1"/> </g> <path d="M124.1,31.04c0,50.39-41.3,91.16-92.35,91.16" fill="none" stroke="#d48300" stroke-width="38.63" stroke-linecap="round" pathLength="1"/> </g> <g> <g clip-path="url(#km-clip-b)"> <path d="M118.47,26.68c0,50.39-41.3,91.16-92.35,91.16" fill="none" stroke="#ff9a2e" stroke-width="23" stroke-linecap="round" pathLength="1"/> </g> <path d="M118.47,26.68c0,50.39-41.3,91.16-92.35,91.16" fill="none" stroke="#ff9a2e" stroke-width="38.63" stroke-linecap="round" pathLength="1"/> </g> </g>
   </g>
-  <circle cx="10" cy="21" r="2.2" fill="#C9CED6"/>
-  <circle cx="16" cy="12" r="3" fill="#FFFFFF"/>
-  <circle cx="23" cy="18" r="2" fill="#C9CED6"/>
 </svg>

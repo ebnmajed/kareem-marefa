@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "@/i18n/navigation";
-import { PlayWordmark } from "@/components/brand/wordmark";
+import { Logo, type LogoMotion } from "@/components/brand/logo";
 
 // The door's frame — what `SCR-002`, `SCR-003` and `SCR-004` share in their
 // artboards (`docs/design/screens/m10a/{Main,ChooseOrg,NoAccess}.dc.html`,
@@ -12,8 +12,12 @@ import { PlayWordmark } from "@/components/brand/wordmark";
 // this door does not know the org — it is resolved from the address after Google
 // answers — and `SCR-004` «names no org» (`09` §3, DEC-206 §4.37).
 
-/** The wordmark. Outside the platform it leads to the public site (REQ-UIX-027). */
-export function DoorLockup({ size, label }: { size: "lg" | "md"; label: string }) {
+/**
+ * The mark. Outside the platform it leads to the public site (REQ-UIX-027, REQ-UIX-120).
+ * ★ `motion` is sign-in's alone: the reveal plays there, once, on a page load (REQ-UIX-119) — the other two
+ * doors are reached by a redirect in the middle of signing in, and a mark that drew itself again would be noise.
+ */
+export function DoorLockup({ size, label, motion = "none" }: { size: "lg" | "md"; label: string; motion?: LogoMotion }) {
   return (
     <div className={`flex justify-center ${size === "lg" ? "pt-[72px]" : "pt-12"}`}>
       <Link
@@ -21,7 +25,7 @@ export function DoorLockup({ size, label }: { size: "lg" | "md"; label: string }
         aria-label={label}
         className="inline-flex text-accent focus-visible:outline-[length:var(--focus-width)] focus-visible:outline-offset-4 focus-visible:outline-[var(--ring)]"
       >
-        <PlayWordmark height={size === "lg" ? 62 : 48} label={null} />
+        <Logo height={size === "lg" ? 96 : 72} label={null} motion={motion} />
       </Link>
     </div>
   );

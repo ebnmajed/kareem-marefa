@@ -7,7 +7,7 @@ import { StarObject } from "@/components/ui/objects/star";
 import { TicketObject } from "@/components/ui/objects/ticket";
 import { PageHeader } from "@/components/ui/page-header";
 import { PlayScope } from "@/components/ui/scope";
-import { PlayWordmark } from "@/components/brand/wordmark";
+import { Logo } from "@/components/brand/logo";
 import { ActionBarDemo } from "./demos/action-bar";
 import { AttendeeStackDemo } from "./demos/attendee-stack";
 import { AvatarDemo } from "./demos/avatar";
@@ -262,12 +262,14 @@ function Objects() {
   );
 }
 
-function Wordmarks() {
+function Marks() {
+  // The mark at two sizes, still; and breathing, as it does while the app waits (REQ-UIX-119). The reveal is a
+  // page-load move and is not shown here: a gallery that redrew it on every visit would teach the wrong thing.
   return (
-    <div className="flex flex-col items-start gap-4">
-      <PlayWordmark height={28} className="text-accent" />
-      <PlayWordmark height={28} className="text-fg-heading" label={null} />
-      <PlayWordmark height={56} className="text-fg-heading" label={null} />
+    <div className="flex items-end gap-6">
+      <Logo height={36} />
+      <Logo height={72} label={null} />
+      <Logo height={72} label={null} motion="loading" />
     </div>
   );
 }
@@ -305,8 +307,8 @@ function Ground({ light }: { light?: boolean }) {
       <Block title="القيم">
         <Tokens />
       </Block>
-      <Block title="الشعار" file="brand/wordmark">
-        <Wordmarks />
+      <Block title="الشعار" file="brand/logo">
+        <Marks />
       </Block>
       <Block title="الأشكال الستة" file="objects">
         <Objects />

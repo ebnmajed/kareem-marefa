@@ -6,11 +6,10 @@
 // name of the role it plays (`STATUS.md`, «C4's mapping»). This holds the count
 // at zero.
 //
-// Three things it does NOT cover, each on purpose:
+// Two things it does NOT cover, each on purpose:
 //   · `src/components/ui/` — a primitive keeps its old class beside its `pg:`
 //     form until the public site's wave deletes both (`tokens-only.test.ts` and
 //     `ui-playground.test.ts` are its gates);
-//   · the old wordmark — it keeps its classes until the mark replaces it (wave 26, PR E);
 //   · a STATUS class (`text-error`, `bg-success-bg`): those names take DEC-073's
 //     on-dark forms inside the scope, once, in `globals.css`.
 //
@@ -35,9 +34,7 @@ const code = (source: string) => source.replace(/(^|[^:"'`])\/\/.*$/gm, "$1").re
 
 const EXEMPT = [
   "components/ui/",
-  // ★ Wave 26 (DEC-247, DEC-252): the public site is rebuilt on the playground and is no longer exempt. What is
-  // left is the old wordmark, until the mark replaces it everywhere (PR E).
-  "components/wordmark.tsx",
+  // ★ Wave 26 (DEC-247, DEC-252): the public site is rebuilt on the playground and is no longer exempt.
   // The renderer's and the mail's own drawings are artifacts, not the app (DEC-199, rule 10).
   "components/email/blocks/",
 ];

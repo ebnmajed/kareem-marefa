@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { PlayWordmark } from "@/components/brand/wordmark";
+import { Logo } from "@/components/brand/logo";
 import { Link } from "@/i18n/navigation";
 
 // The public card's frame — SCR-007's brand row and legal footer
@@ -24,7 +24,7 @@ export function PublicCardHeader({ homeLabel, aside }: { homeLabel: string; asid
         aria-label={homeLabel}
         className="inline-flex text-accent focus-visible:outline-[length:var(--focus-width)] focus-visible:outline-offset-4 focus-visible:outline-[var(--ring)]"
       >
-        <PlayWordmark height={24} label={null} />
+        <Logo height={30} label={null} />
       </Link>
       {aside ? <p className="text-caption text-fg-muted">{aside}</p> : null}
     </header>

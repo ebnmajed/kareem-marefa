@@ -49,9 +49,8 @@ const ROOT_LAYOUTS = [
 // The gallery shows both of the scope's grounds, so it renders two scopes side by side.
 const GALLERY = "app/[locale]/(dev)/ui/playground.tsx";
 
-// What is still outside: the locale's own layout, which every surface shares and which renders no scope, and
-// the old wordmark, which keeps its old classes until the mark replaces it everywhere (wave 26, PR E).
-const PUBLIC = ["app/[locale]/layout.tsx", "components/wordmark.tsx"];
+// What is still outside: the locale's own layout, which every surface shares and which renders no scope.
+const PUBLIC = ["app/[locale]/layout.tsx"];
 const isPublic = (file: string) => PUBLIC.some((p) => file === p || (p.endsWith("/") && file.startsWith(p)));
 
 describe("the scope is rendered by a layout, and by nothing else", () => {
@@ -75,7 +74,7 @@ describe("the scope is rendered by a layout, and by nothing else", () => {
     expect(all.filter((path) => readFileSync(path, "utf8").includes("theme-play")).map(rel)).toEqual(["components/ui/scope.tsx"]);
   });
 
-  it("neither file left outside renders or imports it", () => {
+  it("the one file left outside neither renders nor imports it", () => {
     for (const file of all.map(rel).filter(isPublic)) {
       const source = readFileSync(join(SRC, file), "utf8");
       expect(/ui\/scope["']/.test(source), `${file} imports the scope`).toBe(false);

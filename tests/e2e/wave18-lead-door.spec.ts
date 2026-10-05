@@ -27,6 +27,9 @@ const SHOTS = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl
 async function shot(page: Page, name: string, width: 390 | 1280) {
   mkdirSync(SHOTS, { recursive: true });
   await page.evaluate(() => document.fonts.ready);
+  // ★ wave 26 (ledger E5): sign-in's mark draws itself in on load (REQ-UIX-119) — the picture is of the door at
+  // rest, so it waits for the reveal to finish.
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"));
   await page.screenshot({ path: join(SHOTS, `wave18-lead-door-${name}-${width}.png`), fullPage: true });
 }
 

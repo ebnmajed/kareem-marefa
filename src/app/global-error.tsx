@@ -1,5 +1,7 @@
 "use client";
 
+import { Logo } from "@/components/brand/logo";
+
 // ★★ THE ONE FILE IN THE PRODUCT THAT MAY HARD-CODE ARABIC AND dir="rtl".
 // `16` §7.4, REQ-UIX-016, DEC-091.
 //
@@ -32,6 +34,10 @@
 // headline. `route-coverage --kind=error` asserts this file exists, contains
 // `dir="rtl"`, and does NOT reference next-intl.
 
+// ★ Wave 26 (REQ-UIX-120): it wears the mark and the product's ink ground. The root layout — and with it the
+// stylesheet and the scope — is what this file replaced, so the colours are written here as values, the mark is
+// the component (it imports nothing but React), and it is still: its keyframes live in the stylesheet that is gone.
+
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <html lang="ar" dir="rtl">
@@ -42,8 +48,8 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
           display: "grid",
           placeItems: "center",
           padding: "1.5rem",
-          background: "#ffffff",
-          color: "#33415c",
+          background: "#0b0c12",
+          color: "#a7abbe",
           // The font stack, not the variable: `next/font` sets its custom
           // property on the root layout's <html>, and this file replaced it.
           fontFamily: "'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif",
@@ -52,7 +58,8 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
         }}
       >
         <main style={{ maxWidth: "32rem" }}>
-          <h1 style={{ margin: "0 0 0.75rem", fontSize: "1.75rem", lineHeight: 1.4, color: "#0b1220", fontWeight: 600 }}>
+          <Logo height={56} style={{ marginBottom: "1.5rem" }} />
+          <h1 style={{ margin: "0 0 0.75rem", fontSize: "1.75rem", lineHeight: 1.4, color: "#f4f1ea", fontWeight: 700 }}>
             حدث خطأ غير متوقع
           </h1>
           <p style={{ margin: "0 0 1.5rem" }}>
@@ -65,10 +72,11 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
               style={{
                 minHeight: "44px",
                 padding: "0 1.75rem",
-                borderRadius: "6px",
+                borderRadius: "999px",
                 border: "none",
-                background: "#0b1220",
-                color: "#ffffff",
+                background: "#c6ff3d",
+                color: "#0b0c12",
+                fontWeight: 700,
                 font: "inherit",
                 cursor: "pointer",
               }}
@@ -92,9 +100,9 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
                 display: "inline-flex",
                 alignItems: "center",
                 padding: "0 1.75rem",
-                borderRadius: "6px",
-                border: "1px solid #c9ced6",
-                color: "#0b1220",
+                borderRadius: "999px",
+                border: "1px solid #6b7088",
+                color: "#f4f1ea",
                 textDecoration: "none",
               }}
             >
@@ -102,7 +110,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             </a>
           </p>
           {error.digest ? (
-            <p style={{ marginTop: "2rem", fontSize: "0.9375rem", color: "#5b6780" }}>
+            <p style={{ marginTop: "2rem", fontSize: "0.9375rem", color: "#a7abbe" }}>
               رمز الخطأ: <bdi>{error.digest}</bdi>
             </p>
           ) : null}

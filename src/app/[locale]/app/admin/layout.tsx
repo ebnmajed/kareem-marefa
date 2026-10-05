@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { PlayWordmark } from "@/components/brand/wordmark";
+import { Logo } from "@/components/brand/logo";
 import { formatNumber } from "@/components/sessions/numerals";
 import { AccountMenu } from "@/components/shell/account-menu";
 import { adminRailGroups, type AdminNavCounts, type AdminRole } from "@/components/shell/admin-nav";
@@ -70,7 +70,8 @@ export default async function AdminLayout({ children, params }: { children: Reac
       brand={
         // Inside the platform the mark leads home, not to the public site (REQ-UIX-027).
         <Link href="/app" aria-label={tShell("brand")} className="inline-flex items-center text-accent">
-          <PlayWordmark height={26} label={null} />
+          {/* Still: a console bar's mark never moves (REQ-UIX-053, REQ-UIX-119). */}
+          <Logo height={28} label={null} motion="none" />
         </Link>
       }
       toApp={

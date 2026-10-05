@@ -1,0 +1,9 @@
+# Wave 26 · PR E — the untouched-suite ledger
+
+| # | File | Moved | Why |
+|---|---|---|---|
+| E1 | `tests/e2e/shell-disclosures.spec.ts` — every case opens the account menu from the shell's header | **selector (the route)**, stale since wave 20 | `/ar/app/leaderboards` → `/ar/app`. The boards draw their own phone top row since wave 20 (`DEC-217`), so on the phone project the shell's header — and the menu in it — was not displayed there and the cases timed out. CI runs only the unconfigured e2e, which is why it went unseen. What each case asserts about the menu is unchanged |
+| E2 | `tests/e2e/wave18-lead-shell.spec.ts:129` and `:185` — the phone's top row, and the staff case's account menu on the phone | **selector (the route)**, stale since wave 20 | the same cause: the header is read on `/ar/app`; the tab bar is still read on the boards. The link's name «كريم معرفة» and its `href` are unchanged — the mark wears the name the wordmark wore |
+| E3 | `tests/components/shell/wordmark.test.tsx` | **deleted with its subject** (`REQ-UIX-120`) | both wordmark components are gone. What it held — the mark leads to `/app` inside the platform and to `/` outside it — is held by `wave18-lead-shell` (inside), `wave18-lead-door` and `qa:appearance` (outside) |
+| E4 | `tests/unit/objects.test.ts` — «the playground's wordmark» | **rewritten for the mark** | the block's four cases about an outlined wordmark become five about the mark: a drawing a component inlines, named in Arabic, still by default, no wordmark file or import left, and the list of the only four files that may move it |
+| E5 | `tests/e2e/wave18-lead-door.spec.ts` — the capture helper | **a wait added, no assertion moved** | sign-in's mark reveals on load; the capture waits for it to finish, or it is a picture of one arc |
