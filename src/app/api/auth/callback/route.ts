@@ -32,14 +32,19 @@ export async function GET(request: NextRequest) {
   }
 
   const envelope = await provision(supabase);
-  if (envelope.status === "no_match") {
-    // ★ A platform admin belongs to no org, so `no_match` is their ordinary answer — and with no org
-    // left at all it is everyone's (DEC-253 §7.1, DEC-261). Their session is kept and they land on the
-    // console; the table is the answer, never the claim (`assert_platform_admin` raises 42501 otherwise).
+  const destination = destinationFor(envelope, next);
+  // ★ A platform admin never ends at /no-access (DEC-253 §7.1, DEC-261, DEC-263): whether no org matches their
+  // address, or the org it matches is suspended, or their row in it is deactivated, their session is kept and they
+  // land on the console — which is where an org is created or reinstated. The table is the answer, never the claim
+  // (`assert_platform_admin` raises 42501 otherwise).
+  if (destination.startsWith(`/${PLATFORM_LOCALE}/no-access`)) {
     const { error: notPlatformAdmin } = await supabase.rpc("assert_platform_admin");
     if (!notPlatformAdmin) {
+      if (envelope.status === "provisioned") await supabase.auth.refreshSession();
       return NextResponse.redirect(new URL(`/${PLATFORM_LOCALE}/app/platform`, request.url), 303);
     }
+  }
+  if (envelope.status === "no_match") {
     // Defence in depth behind the before-user-created hook: no session is
     // kept for an account the platform does not recognise.
     await supabase.auth.signOut();
@@ -48,5 +53,5 @@ export async function GET(request: NextRequest) {
     // on the next issue.
     await supabase.auth.refreshSession();
   }
-  return NextResponse.redirect(new URL(destinationFor(envelope, next), request.url), 303);
+  return NextResponse.redirect(new URL(destination, request.url), 303);
 }

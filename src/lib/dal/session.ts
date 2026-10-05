@@ -27,8 +27,8 @@ export interface Session {
 export type SessionState =
   | { kind: "none" }
   | { kind: "no_org"; userId: string; platformAdmin: boolean }
-  | { kind: "suspended"; userId: string }
-  | { kind: "deactivated"; userId: string }
+  | { kind: "suspended"; userId: string; platformAdmin: boolean }
+  | { kind: "deactivated"; userId: string; platformAdmin: boolean }
   | { kind: "member"; session: Session };
 
 type AppMetadata = {
@@ -60,8 +60,10 @@ export const getSessionState = cache(async (): Promise<SessionState> => {
   if (!app.org_id || !app.member_id) {
     return { kind: "no_org", userId: claims.sub, platformAdmin: app.platform_admin === true };
   }
-  if (app.org_status === "suspended") return { kind: "suspended", userId: claims.sub };
-  if (app.status === "deactivated") return { kind: "deactivated", userId: claims.sub };
+  // ★ A platform admin who is also a member of a suspended org (or deactivated in one) keeps their door to the
+  // console — it is where an org is reinstated (DEC-263).
+  if (app.org_status === "suspended") return { kind: "suspended", userId: claims.sub, platformAdmin: app.platform_admin === true };
+  if (app.status === "deactivated") return { kind: "deactivated", userId: claims.sub, platformAdmin: app.platform_admin === true };
   return {
     kind: "member",
     session: {

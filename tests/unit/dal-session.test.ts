@@ -54,9 +54,9 @@ describe("getSessionState", () => {
 
   it("a suspended org and a deactivated member are their own states", async () => {
     getClaims.mockResolvedValue(member({ org_status: "suspended" }));
-    expect(await getSessionState()).toEqual({ kind: "suspended", userId: "u1" });
+    expect(await getSessionState()).toEqual({ kind: "suspended", userId: "u1", platformAdmin: false });
     getClaims.mockResolvedValue(member({ status: "deactivated" }));
-    expect(await getSessionState()).toEqual({ kind: "deactivated", userId: "u1" });
+    expect(await getSessionState()).toEqual({ kind: "deactivated", userId: "u1", platformAdmin: false });
   });
 
   it("a member gets a DTO, never the raw claims", async () => {
@@ -76,8 +76,8 @@ describe("requireSession", () => {
 
   it("routes each non-member state to its explanation", () => {
     expect(pathForState({ kind: "no_org", userId: "u", platformAdmin: false }, "ar")).toBe("/ar/no-access");
-    expect(pathForState({ kind: "suspended", userId: "u" }, "ar")).toBe("/ar/no-access?reason=suspended");
-    expect(pathForState({ kind: "deactivated", userId: "u" }, "ar")).toBe("/ar/no-access?reason=deactivated");
+    expect(pathForState({ kind: "suspended", userId: "u", platformAdmin: false }, "ar")).toBe("/ar/no-access?reason=suspended");
+    expect(pathForState({ kind: "deactivated", userId: "u", platformAdmin: false }, "ar")).toBe("/ar/no-access?reason=deactivated");
   });
 
   it("returns the session for a member", async () => {

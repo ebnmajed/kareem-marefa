@@ -10296,3 +10296,17 @@ Measured live on 2026-10-05: with the only org deleted, `provision_member()` ans
 - ★ **Not proven end to end**: the callback's path runs behind Google's OAuth, which no local spec drives. The unit test mocks the client. **The owner's check after the merge is the real one**: sign in as the super admin and land on the console.
 
 - **Documents changed:** `01-prd.md` (`REQ-TEN-009`), `03-permissions-rls.md` §8.2, `STATUS.md`, `notes/wave-28-ledger.md`
+
+---
+
+## DEC-263 — A platform admin never ends at the no-access screen: the lockout's fix reaches a suspended org and a deactivated row too
+
+- **Date:** 2026-10-05 · **Decided by:** the lead, on the owner's report from production · **Extends:** `DEC-261` §1 · `REQ-AUT-006`, `REQ-ADM-002`
+
+**What happened.** After #85 the owner signed in as `y•••@pp.sa` and met «هذه المؤسسة موقوفة حاليًا». `DEC-261` §1 fixed `no_match`; here the address **matched** an org, the org was suspended, and `provision_member()` answered `member` — a path the first fix never touched. The lead had fixed the case that was measured on 2026-10-05 and not asked what else sends a platform admin to `/no-access`.
+
+**What is decided.** In the callback, **any** outcome whose destination is `/no-access` — no match, a suspended org, a deactivated row — first asks `assert_platform_admin()` (the table, never the claim); a platform admin keeps the session and lands on `/app/platform`, which is where an org is created or reinstated. `getSessionState()`'s `suspended` and `deactivated` kinds now carry `platformAdmin`, and the no-access screen shows «لوحة المنصة» to such a session beside the true explanation. An ordinary member of a suspended org sees exactly what they saw. No policy changes; no super-admin disjunct (invariant 8); no migration.
+
+**Evidence.** The callback's unit test, five cases; `dal-session`'s four lines follow the type. **Not proven end to end** — the path runs behind Google's OAuth; the owner's sign-in on production after the deploy is the proof.
+
+- **Documents changed:** none beyond this entry

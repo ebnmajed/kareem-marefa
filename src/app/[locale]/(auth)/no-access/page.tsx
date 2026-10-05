@@ -40,6 +40,9 @@ export default async function NoAccessPage({
   // «contact your organisation's administrator» is wrong for them; their door
   // is the console, and they are told so.
   const platformAdmin = state.kind === "no_org" && state.platformAdmin && reason !== "suspended" && reason !== "deactivated";
+  // ★ The console stays one press away for a platform admin whose own org is suspended, or who is deactivated in it:
+  // the explanation is still the true one for that org, and the console is where it is reinstated (DEC-263).
+  const consoleDoor = (state.kind === "suspended" || state.kind === "deactivated") && state.platformAdmin;
   const noMatch = !platformAdmin && reason !== "suspended" && reason !== "deactivated";
 
   const [title, body] =
@@ -83,7 +86,7 @@ export default async function NoAccessPage({
           </p>
         ) : null}
 
-        {platformAdmin ? (
+        {platformAdmin || consoleDoor ? (
           <ButtonLink href="/app/platform" variant="primary" size="lg" className="w-full">
             {t("platformConsole")}
           </ButtonLink>
