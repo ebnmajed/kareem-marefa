@@ -599,8 +599,8 @@ test("★ REQ-ADM-019: a break-glass session lands in the ORG's own audit log, w
   const orgPage = await orgContext.newPage();
   await signInMember(orgContext, a.adminEmail);
   await orgPage.goto("/ar/app/admin/audit");
-  const auditText = await orgPage.locator("body").innerText();
-  expect(auditText).toContain("تحقيق في بلاغ من مشرف المؤسسة");
+  // A retrying read: `innerText()` once, straight after `goto`, read the frame before the log had streamed in.
+  await expect(orgPage.locator("body")).toContainText("تحقيق في بلاغ من مشرف المؤسسة");
   await orgContext.close();
 
   // And it ends when the super admin says so. Scoped to the page's own panel:
@@ -649,6 +649,8 @@ test("REQ-ADM-002: a session cannot be silently extended — four hours is the c
   // Five presets, the last the table's own ceiling: the form cannot ask for more
   // than four hours, and the table refuses more whatever arrives (the RLS suite).
   const group = page.getByRole("radiogroup", { name: "المدة" });
+  // Wait for the form: `evaluateAll` does not retry, and read an empty list before the radios had rendered.
+  await expect(group.getByRole("radio")).toHaveCount(5);
   const values = await group.getByRole("radio").evaluateAll((els) => els.map((el) => Number((el as HTMLInputElement).value)));
   expect(values).toEqual([15, 30, 60, 120, 240]);
   await expect(group.getByRole("radio", { name: "ساعة واحدة" })).toBeChecked();
