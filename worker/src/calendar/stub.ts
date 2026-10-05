@@ -25,9 +25,11 @@ export class StubCalendarApi implements CalendarApi {
     if (mode === "error") throw new Error("stub: calendar unavailable");
   }
 
-  async createEvent(_accessToken: string, event: CalendarEventBody) {
+  /** A client id is honoured as Google honours it: the same id twice updates the one event
+   *  rather than adding a second (the 409 path of `GoogleCalendarApi.createEvent`). */
+  async createEvent(_accessToken: string, event: CalendarEventBody, eventId?: string) {
     this.maybeFail();
-    const id = `stub_event_${++this.counter}`;
+    const id = eventId ? `stub_event_${eventId}` : `stub_event_${++this.counter}`;
     this.events.set(id, event);
     return { id };
   }

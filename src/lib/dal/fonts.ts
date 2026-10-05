@@ -72,9 +72,8 @@ export async function getFontBinary(locale: string, sha256: string): Promise<Fon
   return fromPackage(sha256);
 }
 
-/** The faces the editor should declare, as the manifest lists them. Reads
- *  `ENT-fonts` first — it is the manifest by requirement — and falls back to
- *  the repository's own for the platform set before the bucket is seeded. */
+/** The faces the editor should declare: the platform set from the package's
+ *  manifest, and every materialised font from `ENT-fonts` that passed parity. */
 export interface ManifestFace {
   family: string;
   weight: number;
@@ -94,11 +93,15 @@ export async function listEditorFaces(locale: string): Promise<ManifestFace[]> {
   // listed to the admin with its status, never loaded into a canvas that an
   // export is supposed to match.
   const rows = (data ?? []).filter((f) => f.parity_status === "passed");
-  if (rows.length) {
-    return rows.map((f) => ({ family: f.family as string, weight: f.weight as number, style: f.style as string, sha256: f.sha256 as string }));
-  }
-
-  return readPackageManifest();
+  // ★ The platform set is the package's and is never seeded into `fonts`, which holds only what an org
+  // materialised (0064). So the materialised faces are ADDED to the platform's — returning them alone dropped all
+  // of the platform's families from every org's editor the first time anyone materialised one font.
+  const platform = await readPackageManifest();
+  const seen = new Set(platform.map((f) => f.sha256));
+  const materialised = rows
+    .map((f) => ({ family: f.family as string, weight: f.weight as number, style: f.style as string, sha256: f.sha256 as string }))
+    .filter((f) => !seen.has(f.sha256) && seen.add(f.sha256));
+  return [...platform, ...materialised];
 }
 
 type PackageFace = { family: string; weight: number; style: string; sha256: string; script?: string };

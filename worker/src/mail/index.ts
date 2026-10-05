@@ -10,7 +10,7 @@ export { MemoryTransport } from "./memory.js";
 export { ResendTransport } from "./resend.js";
 export { SmtpSinkTransport, SmtpError } from "./smtp.js";
 export { buildMime, encodeHeaderValue, formatAddress } from "./mime.js";
-export { selectTransportName, fromAddress, DEFAULT_FROM_ADDRESS } from "./transport.js";
+export { selectTransportName, fromAddress, DEFAULT_FROM_ADDRESS, PermanentMailError } from "./transport.js";
 export type { MailMessage, MailTransport, SentMail, TransportEnv } from "./transport.js";
 
 /**

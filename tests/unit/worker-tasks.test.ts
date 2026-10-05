@@ -55,7 +55,8 @@ vi.mock("../../worker/src/content/pdf", async (importOriginal) => {
   };
 });
 
-function fakeHelpers() {
+// `job` defaults to the LAST attempt, which is when a failure is final; a test of an earlier attempt passes its own.
+function fakeHelpers(job: { attempts: number; max_attempts: number } = { attempts: 3, max_attempts: 3 }) {
   const calls: { sql: string; params: unknown[] }[] = [];
   const query = vi.fn(async (sql: string, params: unknown[] = []) => {
     calls.push({ sql, params });
@@ -65,7 +66,7 @@ function fakeHelpers() {
     return { rows: [] };
   });
   const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
-  return { query, logger, calls, setRow: (row: unknown) => ((query as unknown as { __row: unknown[] }).__row = [row]) };
+  return { query, logger, job, calls, setRow: (row: unknown) => ((query as unknown as { __row: unknown[] }).__row = [row]) };
 }
 
 const ORG = "11111111-1111-1111-1111-111111111111";
@@ -145,7 +146,17 @@ describe("convert_document", () => {
     expect(pdf.inspect).not.toHaveBeenCalled();
   });
 
-  it("★ a poppler failure marks the material failed (record_material_conversion with failed=true) and rethrows for graphile-worker's own retry", async () => {
+  it("a failure on an attempt that will be retried rethrows and marks nothing failed — the viewer never shows «failed» during the backoff", async () => {
+    pdf.inspect.mockRejectedValueOnce(new Error("content/pdf: pdfinfo failed: Syntax Error"));
+    const { convert_document } = await import("../../worker/src/tasks/convert_document");
+    const helpers = fakeHelpers({ attempts: 1, max_attempts: 3 });
+    helpers.setRow(ROW);
+
+    await expect(convert_document({ version_id: VERSION, material_id: MATERIAL }, helpers as never)).rejects.toThrow(/pdfinfo/);
+    expect(helpers.calls.find((c) => c.sql.includes("record_material_conversion"))).toBeUndefined();
+  });
+
+  it("★ a poppler failure on the LAST attempt marks the material failed (record_material_conversion with failed=true) and rethrows", async () => {
     pdf.inspect.mockRejectedValueOnce(new Error("content/pdf: pdfinfo failed: Syntax Error"));
     const { convert_document } = await import("../../worker/src/tasks/convert_document");
     const helpers = fakeHelpers();
@@ -213,7 +224,17 @@ describe("render_pages", () => {
     expect(storage.uploadObject).toHaveBeenCalledTimes(2);
   });
 
-  it("a poppler failure marks the material failed and rethrows", async () => {
+  it("a failure on an attempt that will be retried rethrows and marks nothing failed", async () => {
+    pdf.render.mockRejectedValueOnce(new Error("content/pdf: pdftoppm failed"));
+    const { render_pages } = await import("../../worker/src/tasks/render_pages");
+    const helpers = fakeHelpers({ attempts: 1, max_attempts: 3 });
+    helpers.setRow(ROW);
+
+    await expect(render_pages({ version_id: VERSION, material_id: MATERIAL, page_count: 1 }, helpers as never)).rejects.toThrow(/pdftoppm/);
+    expect(helpers.calls.find((c) => c.sql.includes("record_material_conversion"))).toBeUndefined();
+  });
+
+  it("a poppler failure on the LAST attempt marks the material failed and rethrows", async () => {
     pdf.render.mockRejectedValueOnce(new Error("content/pdf: pdftoppm failed"));
     const { render_pages } = await import("../../worker/src/tasks/render_pages");
     const helpers = fakeHelpers();

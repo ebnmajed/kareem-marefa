@@ -159,6 +159,9 @@ export const send_test_email: Task = async (rawPayload, helpers) => {
       subject: `[اختبار] ${rendered.subject}`,
       html: rendered.html,
       text: rendered.text,
+      // The job's id is the same on every retry of this job, so a send Resend accepted whose
+      // answer was lost is not delivered twice.
+      ...(helpers.job?.id ? { idempotencyKey: `test-email:${helpers.job.id}` } : {}),
     });
     await helpers.query(`select public.update_email_delivery($1::uuid, 'sent'::public.delivery_status, $2::text, null)`, [deliveryId, sent.providerMessageId]);
     // A count, never a payload (contract 7).

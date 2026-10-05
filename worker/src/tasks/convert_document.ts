@@ -67,7 +67,11 @@ export const convert_document: Task = async (payload, helpers) => {
     await helpers.query(`select public.record_material_conversion($1, $2, $3, false)`, [payload.version_id, substituted, pages]);
     helpers.logger.info(`convert_document: ${payload.version_id} → ${pages} page(s), ${substituted.length} non-embedded font(s)`);
   } catch (e) {
-    await helpers.query(`select public.record_material_conversion($1, '{}', null, true)`, [payload.version_id]);
+    // The material says `failed` only when no retry is left, so the viewer never shows «failed»
+    // during the backoff before a retry that may well succeed (as zip_session_photos does).
+    if (helpers.job.attempts >= helpers.job.max_attempts) {
+      await helpers.query(`select public.record_material_conversion($1, '{}', null, true)`, [payload.version_id]);
+    }
     throw e; // graphile-worker retries per 11 §2.4 (3 × 60 s)
   }
 };

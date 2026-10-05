@@ -1,6 +1,6 @@
 import type { Task } from "graphile-worker";
 import { createHash } from "node:crypto";
-import { downloadObject, uploadObject, deleteObject } from "../content/storage.js";
+import { downloadObject, uploadObject, deleteObject, isNotFound } from "../content/storage.js";
 import { sniffImageKind, stripImageMetadata, type ImageKind } from "../content/exif.js";
 import { photoStoryPath } from "@kareem/storage-paths";
 import { renderStoryDerivative } from "../content/story-derivative.js";
@@ -71,6 +71,9 @@ export const process_photo: Task = async (payload, helpers) => {
   try {
     raw = await downloadObject("photos", payload.storage_path);
   } catch (e) {
+    // Only a missing object is terminal. Anything else — Storage down, a timeout, a 5xx — is
+    // rethrown so graphile-worker retries it; returning would drop a real photo silently.
+    if (!isNotFound(e)) throw e;
     // The object is gone (expired signed-upload token never used, a retry
     // after a prior successful run already deleted it, …) — nothing to
     // process, and nothing to retry either.

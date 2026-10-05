@@ -130,11 +130,21 @@ export async function inlineFaces(rows: readonly ManifestRow[]): Promise<WorkerF
  * this is the worker's single copy of that rule.
  */
 export async function renderFaces(dbRows: readonly ManifestRow[]): Promise<ManifestRow[]> {
-  // A materialised font is the org's own choice and supersedes nothing —
-  // but if the table has any passed row, it is the authoritative set the
-  // editor showed, so the export matches the preview.
-  if (dbRows.length) return [...dbRows];
-  return readPackageManifest();
+  // A materialised font is the org's own choice and supersedes nothing: the
+  // platform set is ALWAYS pinned, and a materialised row is added beside it.
+  // Returning only the table's rows once it held any dropped the platform
+  // faces for every org the moment one admin materialised one font. A row
+  // whose bytes are already a platform face (same SHA-256) adds nothing.
+  // With no materialised rows the result is the manifest, unchanged.
+  const platform = await readPackageManifest();
+  const seen = new Set(platform.map((row) => row.sha256));
+  const out = [...platform];
+  for (const row of dbRows) {
+    if (seen.has(row.sha256)) continue;
+    seen.add(row.sha256);
+    out.push(row);
+  }
+  return out;
 }
 
 type PackageFace = { family: string; weight: number; style: string; sha256: string; script?: string };

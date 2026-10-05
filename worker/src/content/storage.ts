@@ -21,16 +21,55 @@ function requireEnv(): { url: string; key: string } {
   return { url, key };
 }
 
+/** Outbound timeouts — a hung socket would otherwise hold a job (and its lock) forever. A whole
+ *  object moves in one request, so a transfer gets far longer than a listing or a delete. */
+export const STORAGE_TIMEOUT_MS = 30_000;
+export const STORAGE_TRANSFER_TIMEOUT_MS = 120_000;
+
+/** A Storage request that answered with a non-2xx — the status kept so a caller can tell a
+ *  missing object (terminal) from an outage (retried). */
+export class StorageError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly body: string,
+  ) {
+    super(message);
+    this.name = "StorageError";
+  }
+}
+
+/** True when Storage said the object does not exist. Storage answers a missing object with a
+ *  404, or — on the versions this project has run — a 400 whose body says `not_found` /
+ *  «Object not found»; any other 400 is not a missing object. */
+export function isNotFound(e: unknown): boolean {
+  if (!(e instanceof StorageError)) return false;
+  if (e.status === 404) return true;
+  return e.status === 400 && /not[_ ]found/i.test(e.body);
+}
+
+/** `a/b c/d?.pdf` → `a/b%20c/d%3F.pdf`: each segment encoded, the separators kept, so a name
+ *  holding `?`, `#`, `%` or a space addresses the object rather than a query or a fragment. */
+export function encodeObjectPath(path: string): string {
+  return path.split("/").map(encodeURIComponent).join("/");
+}
+
+async function fail(op: string, bucket: string, path: string, res: Response): Promise<never> {
+  const body = await res.text();
+  throw new StorageError(`content/storage: ${op} ${bucket}/${path} failed: ${res.status} ${body}`, res.status, body);
+}
+
 /** The raw object's bytes — the one read `photos_storage_read` (03 §6) denies to every
  *  RLS-bound client until a `public.photos` row exists (docs/plan/notes/content.md §1.6),
  *  which is exactly why this has to be the worker and not the Route Handler (CLAUDE.md
  *  invariant 7: `service_role` is never on Vercel). */
 export async function downloadObject(bucket: string, path: string): Promise<Uint8Array> {
   const { url, key } = requireEnv();
-  const res = await fetch(`${url}/storage/v1/object/${bucket}/${path}`, {
+  const res = await fetch(`${url}/storage/v1/object/${bucket}/${encodeObjectPath(path)}`, {
     headers: { authorization: `Bearer ${key}`, apikey: key },
+    signal: AbortSignal.timeout(STORAGE_TRANSFER_TIMEOUT_MS),
   });
-  if (!res.ok) throw new Error(`content/storage: download ${bucket}/${path} failed: ${res.status} ${await res.text()}`);
+  if (!res.ok) await fail("download", bucket, path, res);
   return new Uint8Array(await res.arrayBuffer());
 }
 
@@ -38,7 +77,7 @@ export async function downloadObject(bucket: string, path: string): Promise<Uint
  *  the stripped bytes back to the exact path the browser's raw upload used. */
 export async function uploadObject(bucket: string, path: string, bytes: Uint8Array, contentType: string): Promise<void> {
   const { url, key } = requireEnv();
-  const res = await fetch(`${url}/storage/v1/object/${bucket}/${path}`, {
+  const res = await fetch(`${url}/storage/v1/object/${bucket}/${encodeObjectPath(path)}`, {
     method: "POST",
     headers: { authorization: `Bearer ${key}`, apikey: key, "content-type": contentType, "x-upsert": "true" },
     // Node's fetch accepts a Buffer body at runtime; the cast is only for the
@@ -46,8 +85,9 @@ export async function uploadObject(bucket: string, path: string, bytes: Uint8Arr
     // broader `tsc --noEmit` walks this file, not worker's own NodeNext
     // build) resolves `BodyInit` to a narrower union that excludes it.
     body: Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength) as unknown as BodyInit,
+    signal: AbortSignal.timeout(STORAGE_TRANSFER_TIMEOUT_MS),
   });
-  if (!res.ok) throw new Error(`content/storage: upload ${bucket}/${path} failed: ${res.status} ${await res.text()}`);
+  if (!res.ok) await fail("upload", bucket, path, res);
 }
 
 /** Deletes an object outright — process_photo.ts's DEC-009 path, when a photo's raw bytes sniff
@@ -55,11 +95,12 @@ export async function uploadObject(bucket: string, path: string, bytes: Uint8Arr
  *  Storage forever with no `photos` row ever pointing at it. */
 export async function deleteObject(bucket: string, path: string): Promise<void> {
   const { url, key } = requireEnv();
-  const res = await fetch(`${url}/storage/v1/object/${bucket}/${path}`, {
+  const res = await fetch(`${url}/storage/v1/object/${bucket}/${encodeObjectPath(path)}`, {
     method: "DELETE",
     headers: { authorization: `Bearer ${key}`, apikey: key },
+    signal: AbortSignal.timeout(STORAGE_TIMEOUT_MS),
   });
-  if (!res.ok) throw new Error(`content/storage: delete ${bucket}/${path} failed: ${res.status} ${await res.text()}`);
+  if (!res.ok) await fail("delete", bucket, path, res);
 }
 
 interface ListEntry {
@@ -79,6 +120,7 @@ export async function listObjects(bucket: string, prefix: string, depth = 2): Pr
       method: "POST",
       headers: { authorization: `Bearer ${key}`, apikey: key, "content-type": "application/json" },
       body: JSON.stringify({ prefix, limit: PAGE, offset, sortBy: { column: "name", order: "asc" } }),
+      signal: AbortSignal.timeout(STORAGE_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`content/storage: list ${bucket}/${prefix} failed: ${res.status} ${await res.text()}`);
     const entries = (await res.json()) as ListEntry[];

@@ -22,6 +22,10 @@ function requireEnv(): { url: string; key: string } {
 
 type ListEntry = { name: string; id: string | null };
 
+// Paths travel in the JSON body here, never in the URL, so unlike `content/storage.ts` there is
+// nothing to percent-encode; only the timeout is shared.
+const STORAGE_TIMEOUT_MS = 30_000;
+
 /**
  * Every object path under `prefix`, recursively.
  *
@@ -45,6 +49,7 @@ export async function listObjects(bucket: string, prefix = "", depth = 0): Promi
       method: "POST",
       headers: { authorization: `Bearer ${key}`, apikey: key, "content-type": "application/json" },
       body: JSON.stringify({ prefix, limit: PAGE, offset, sortBy: { column: "name", order: "asc" } }),
+      signal: AbortSignal.timeout(STORAGE_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`platform/storage: list ${bucket}/${prefix} failed: ${res.status} ${await res.text()}`);
     const entries = (await res.json()) as ListEntry[];
@@ -72,6 +77,7 @@ export async function deleteObjects(bucket: string, paths: string[]): Promise<nu
       method: "DELETE",
       headers: { authorization: `Bearer ${key}`, apikey: key, "content-type": "application/json" },
       body: JSON.stringify({ prefixes: slice }),
+      signal: AbortSignal.timeout(STORAGE_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`platform/storage: delete ${bucket} failed: ${res.status} ${await res.text()}`);
     removed += slice.length;

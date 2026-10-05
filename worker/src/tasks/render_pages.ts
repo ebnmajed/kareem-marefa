@@ -74,7 +74,11 @@ export const render_pages: Task = async (payload, helpers) => {
     await helpers.query(`select public.record_material_pages($1, $2::jsonb)`, [payload.version_id, JSON.stringify(pageRows)]);
     helpers.logger.info(`render_pages: ${payload.version_id} — ${pageRows.length} page(s) rendered`);
   } catch (e) {
-    await helpers.query(`select public.record_material_conversion($1, '{}', null, true)`, [payload.version_id]);
+    // The material says `failed` only when no retry is left, so the viewer never shows «failed»
+    // during the backoff before a retry that may well succeed (as zip_session_photos does).
+    if (helpers.job.attempts >= helpers.job.max_attempts) {
+      await helpers.query(`select public.record_material_conversion($1, '{}', null, true)`, [payload.version_id]);
+    }
     throw e;
   }
 };
