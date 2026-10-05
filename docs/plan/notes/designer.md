@@ -5,6 +5,515 @@ found. `docs/plan/` is otherwise the lead's; this file is mine.
 
 ---
 
+## Wave 28 — plan (`REQ-DSG-036`; `STORY-DSG-019`, `020`; `DEC-258`)
+
+Planning only. I measured this in the main checkout on `wave-28/the-designer-saves-manually` at `51017969`. Nothing
+below is written yet. **V** means I verified it by reading the file or running it, and the line says which. **I**
+means I inferred it and have not run it yet.
+
+### 0 · The goal, restated so the plan can be held to it
+
+The document on the server changes only when the person says so: «احفظ», ⌘S, «احفظ وغادر», or «انشر». Work is never
+lost because they said it late. A link asks first. A reload or a closed tab gets the browser's question. Back, a
+crash, a closed laptop or an expired session all leave a local draft, and the editor offers that draft back. The
+draft never reaches the server unless the person restores it **and** presses Save. No golden moves.
+
+### 1 · What the designer needs that neither precedent already has
+
+| | `profile-edit.tsx` | `email/builder.tsx` | the designer |
+|---|---|---|---|
+| dirty | field-by-field compare with `initial` (:94-101) | `json !== stored.doc` (:156), with the snapshot moved only on the server's answer (:151-155) | ★ the builder's shape: a snapshot that moves on the server's answer, compared in **canonical** form (§2) |
+| links | capture-phase `click` on `document` (:113-135) | **its own back button only** (:298). Other links are not asked about | the profile's capture listener, with **three exclusions** and **one form** it does not catch today (§4.2) |
+| dialog | leave · stay | `ConfirmDialog` leave · stay (:478-490) | ★ **save · discard · cancel**: three answers, and «save» can fail (§4.3) |
+| `beforeunload` | while dirty | while unsaved | the same (§4.4) |
+| draft | none | none | ★ **new** (§5) |
+
+### 2 · Dirty, derived (contract 2)
+
+- **What is compared.** The document on screen against `savedDocument`, the document the server last answered `200`
+  for. The comparison uses `fingerprintSource`'s canonical form, exactly as `differs` does (`editor.tsx:156-161`, V).
+  `savedDocument` is state inside `editor-state.ts`. It starts as `props.initialDocument`, and only a successful save
+  moves it, to **the document that save sent**. So an edit made while a save is in flight stays dirty after that save
+  lands.
+- **How a save's outcome is seen without changing `push()`.** `push()` returns `void` and records success in one
+  place only: `baseUpdatedAt.current = body.updatedAt` (`editor-state.ts:171-172`, V). The new `save()` works like
+  this:
+  1. read the base;
+  2. `await push(sent)`;
+  3. compare the base again. If it moved, the save landed: set `savedDocument = sent`, delete the draft, and resolve
+     `true`. Any other outcome resolves `false`, and `push()` has already set the failure state as it does today.
+
+  `push()`, the route, the DAL and `SaveState` are untouched, and `SaveState` gains no kind.
+- **The cost.** It is computed in a `useMemo` keyed on `document` and `savedDocument`, so it runs **once per edit**,
+  never once per render. A drag commits once, at `pointerup` (`canvas.tsx:400-403`, V). Two fast paths come first:
+  - **Identity.** Undo pops the very object that was pushed (`editor-state.ts:238-244`, V), so an undo back to the
+    saved document is clean by `===`, without canonicalising anything.
+  - **Saved canonical form, memoised.** The saved document's canonical string is memoised once per save.
+
+  Measured in Node on the baseline `talk` poster (9 layers, 2,829 bytes): microseconds. On an artificial document of
+  2,700 layers and 803 KB, `canonical` took **12.9 ms**, `JSON.stringify` 2.5 ms and `validateDocument` 0.2 ms (V, a
+  scratch script, deleted). The editor already runs two `JSON.stringify` calls per commit (`:305`, `:315`), so the
+  compare roughly triples a cost that is already paid. It is invisible at any real poster's size.
+- **One value, read everywhere.** The state returns `dirty` (only when `canEdit`). The badge, the Save button, the
+  link guard, `beforeunload` and the draft writer all read it.
+- ★ **A precision on `DEC-258` §1.2.** `SaveState` does not only report «the last save attempt». `mutate()` sets
+  `invalid` (`:213`) and five edit paths set `locked` (`:272`, `:297`, `:324`, `:357`, `:371`, …) **without a
+  request** (V). The badge rule below reads `dirty` first so a refused edit cannot read as «محفوظ».
+
+### 3 · The bar (`STORY-DSG-019`)
+
+- **Where Save sits.** Immediately after the state badge and before undo/redo: back · name · **state · «احفظ»** ·
+  undo/redo · strip · zoom · preview · publish · export. The word and the act that changes it sit together, which is
+  `M12.md` §056's order with one control added.
+  - From `xl` it is shown whenever `canEdit`, like undo/redo.
+  - Below `xl` («view and approve», `editor.tsx:41-42`) it is shown **only while dirty**, so a window narrowed
+    mid-edit never strands work.
+- **When it is enabled.** `canEdit && dirty && save.kind !== "saving"`. It is `pending` while saving.
+  - **A double press is never two requests.** `push()` aborts the previous request (`:159`), but an abort does not
+    un-write a request the server already applied, and the second request would then carry a stale base and get a
+    false `409`. That hazard predates this wave, and autosave could reach it. Disabling Save while a save is in
+    flight removes it.
+  - `aria-keyshortcuts="Meta+S Control+S"`.
+- **The shortcut.** ⌘S / Ctrl+S, without Shift and without `repeat`.
+  - It **always calls `preventDefault()`** while the editor is mounted. The browser's «Save page as» is never wanted
+    here, read-only included.
+  - It saves only when Save is enabled. Otherwise it does nothing.
+  - ★ **In a text field it saves what is typed.** Every inspector field commits on `change`, not on `blur`
+    (`inspector.tsx:157-160`, `:214`, `:223`, V). The canvas has no inline editing (no `contentEditable`, V), so the
+    document never holds less than the screen shows. The listener sits on `window`, beside the ⌘Z one (`:252-260`).
+- **The three state words** (`designer.save`; the first is new, the other two exist at `ar/designer.json`):
+
+  | state | ar | en | tone |
+  |---|---|---|---|
+  | dirty | **غير محفوظ** | **Unsaved** | `neutral`, outline |
+  | saving | يُحفَظ… (kept) | Saving… (kept) | `neutral`, outline (kept) |
+  | clean | محفوظ (kept) | Saved (kept) | `success` ✓ (kept) |
+
+  The badge rule, in order: `saving` → «يُحفَظ…». Dirty and the last attempt failed (`error`, `conflict` or
+  `forbidden`) → «لم يُحفظ» (kept, error tone). Dirty → «غير محفوظ». Otherwise → «محفوظ». **Read-only shows no
+  badge.** ★ **One change the person will notice: a freshly opened document now says «محفوظ».** Today it shows
+  nothing until the first save (`:196-209`, V), and with derived dirty, «محفوظ» is simply true.
+- **The button's label.** «احفظ» / «Save».
+
+### 4 · Asking (`STORY-DSG-019`)
+
+**4.1 · The dialog.** `ui/dialog`, composed in a new `src/components/designer/leave-dialog.tsx`. No class from `ui/`
+is overridden, and nothing in the file animates (`console-register` scans `components/designer/**`, V at :18 and
+:139-143).
+
+| | ar | en |
+|---|---|---|
+| title | **لم تُحفظ تعديلاتك** | **Your edits aren't saved** |
+| primary | **احفظ وغادر** | **Save and leave** |
+| secondary | **تجاهلها وغادر** | **Discard and leave** |
+| tertiary | **ابقَ** | **Stay** |
+
+There is no body text. «×» is `ui.dialog.close` and means «ابقَ».
+
+**4.2 · What it catches.** It uses the profile's **capture-phase `click` on `document`**, verbatim in its filters:
+- unmodified primary button only;
+- not `_blank` and not `download`;
+- same origin only.
+
+It is armed only while `dirty && save.kind !== "saving"`.
+
+**Why this mechanism.** The links that leave are **rendered by the server page, not by the editor**: the back link is
+in `barStart` (`page.tsx:118-125`, V) and the scheme links are in `barEnd` (:166-176, V). A wrapper on each would mean
+threading a callback through server-rendered `ReactNode`s. Capture on `document` runs before React's root listener,
+and so before `<Link>`'s own `onClick`. The profile has proved that in production since wave 22.
+
+★ **Three exclusions, each measured:**
+1. **`/api/*` hrefs.** The export panel's downloads are plain `<a href="/api/designer/downloads/…">` with no
+   `download` attribute (`export-panel.tsx:85`, V). The profile's filter would ask before a download, which leaves
+   nothing.
+2. **The same pathname.** The scheme links (`?scheme=light|dark`) re-render the same document. Next keys a page
+   segment's **state without its search params**, `createRouterCacheKey(segment, true) // no search params`
+   (`next/dist/client/components/layout-router.js:549`, V). So the editor stays mounted and keeps the unsaved
+   document on screen. With Cache Components off, the router's bfcache holds one entry
+   (`bfcache-state-manager.js:13`, V). Leaving, therefore, always unmounts. The preview selects use the same
+   mechanism (`router.push("?…")`, `editor.tsx:176-183`).
+3. Modified clicks, middle clicks and new tabs lose nothing.
+
+★ **One exit the listener cannot see.** «الاتجاه الآخر» (the certificate's other orientation) is a `<form action>`
+calling a Server Action that **redirects to another document** (`page.tsx:157-163`, `actions.ts:67-72`, V). It is not
+a link. Today it leaves a dirty document unasked.
+- **The fix:** the page marks that form `data-designer-leaves`, and the guard also listens for `submit` in the capture
+  phase on such forms. The continuation is `form.requestSubmit()` after the guard is disarmed.
+- `DEC-258` §2.2 says «the back control and any in-app link»; this form is the one exit that is neither.
+
+**4.3 · What each answer does.**
+- **«احفظ وغادر».** `await save()`. If it resolves `true`, continue: `router.push(target)`, or the form's submit. If it
+  resolves `false`, **close the dialog and stay**, and the failure is shown as it is today:
+  - `error`, `conflict` and `forbidden` get the error badge and the toast (`:196-203`);
+  - `locked` and `invalid` get the alert panel (`:185-194`).
+
+  Focus goes to the bar's «احفظ», so a retry is one key. The draft is untouched, because the document is still dirty.
+- **«تجاهلها وغادر».** Set a `leaving` ref so the unmount write (§5.3) does not resurrect the draft. Delete the draft.
+  Then continue.
+- **«ابقَ»** and «×» close the dialog.
+- **Focus.**
+  - **On open:** «احفظ وغادر», through `onOpenAutoFocus` → `preventDefault()` plus a ref. Radix would otherwise focus
+    «×», the first tabbable element in the header.
+  - **On close by «ابقَ»:** the link that was pressed, through `onCloseAutoFocus`. Safari never focuses a clicked link,
+    so Radix's restore would land on `body`.
+  - **On close after a failed save:** the bar's «احفظ».
+- **Pending.** While the dialog's save is in flight, all three buttons are `disabled` and «احفظ وغادر» is `pending`.
+
+**4.4 · `beforeunload`.** It is armed only while `dirty`, using the profile's handler (`preventDefault()` +
+`returnValue = ""`). The browser shows its own words. A custom message is ignored by Chrome and Safari, and the event
+fires only after a user interaction. **That is a browser limit; nobody attempts a custom dialog there.** It is
+disarmed by the `leaving` ref.
+
+**4.5 · The browser's Back is not intercepted. Confirmed, with the reason.**
+- **The App Router has no supported veto.** A `popstate` trap fires after the URL has already changed. It must push a
+  history entry back, which breaks Back and Forward for everyone and leaves the stack wrong when the dialog is
+  dismissed.
+- **The draft answers Back.** Leaving by Back is a client-side navigation, so **the editor unmounts**, and the
+  unmount writes the draft synchronously (§5.3). The edits are offered again on reopen, whether by Forward, a link
+  or the history.
+- ★ **Better than the profile's reason.** The profile relies on edit mode living in the URL (`:41-42`). The designer
+  has no read mode to return to, so the draft is the only honest answer, and the unmount write makes it independent
+  of timing.
+
+**4.6 · Publish, then the preview.**
+- **Publish** (the one save that stays, `DEC-258` §2.4):
+  1. `onPublish` = `if (dirty && !(await save())) return;`, then `props.publish()`.
+  2. Then `setPublished(savedDocument)`, not the document on screen.
+  3. «انشر» is `disabled` while a save is in flight.
+- ★ **Two defects today that this fixes:**
+  - `flush()` swallows a failed save (`push()` never throws, `:184-187`). So publish goes on and publishes **the older
+    saved draft**, while `setPublished(document)` (`editor.tsx:168`) records the on-screen document as published. The
+    badge then lies.
+  - `flush()` saves only when the timer is pending (`:544`), so an undo made after a save was never published.
+- **The preview:** `choosePreview`'s `await s.flush()` goes. `flush` is deleted, and nothing else calls it (V).
+
+### 5 · The local draft (`STORY-DSG-020`) — not autosave
+
+**It never reaches the server, and nothing but this editor reads it.** The document still changes at exactly one
+moment, and it is the one the person chooses.
+
+**5.1 · Storage.** `window.localStorage`, through a new pure module, `src/components/designer/draft.ts`.
+- **Every access is wrapped in `try/catch`**, the getter included, because a blocked origin throws on
+  `window.localStorage` itself.
+- **Why not IndexedDB.** Async writes cannot be finished at `pagehide` or at unmount, which are the two writes that
+  matter most.
+- **Why not `sessionStorage`.** It dies with the tab, and a closed tab is the case this exists for.
+
+**5.2 · Key and value.**
+- **Key:** `kareem.designer.draft.v1:<memberId>:<documentId>`.
+- **Value:**
+  ```
+  { v: 1, documentId, memberId, baseUpdatedAt, writtenAt, document }
+  ```
+  - `baseUpdatedAt` is `baseUpdatedAt.current` at write time: the version the edits sit on.
+  - `document` is the document on screen.
+- **Nothing else is stored:** no selection, no undo stack, no bindings, no session.
+- **Where `memberId` comes from.** The page reads it from `requireSession(locale)`, which is memoised by `cache()` on
+  `getSessionState()`, so it costs no second query. The page passes it as a new prop, `draftOwner`.
+- **A second admin on the same browser** has a different `memberId`. They never see, overwrite or delete the first
+  admin's draft.
+
+**5.3 · When it is written.** It is written only while `dirty`, and the item is removed the moment the document reads
+clean again, including an undo back to the saved document. There are four writes:
+1. **On every change of `document`, coalesced to the next idle moment.** It uses `requestIdleCallback` with
+   `{ timeout: 1000 }`, and `setTimeout(…, 0)` where it is missing (Safari). A pending write is cancelled by the next
+   one, so a held arrow key (`mutate` per repeat) costs one write per idle gap, not one per keystroke.
+   - ★ **This is local and it never touches the server**, so it is not autosave under another name: no request, no
+     `updated_at`, nothing an export or another admin sees.
+   - **There is no fixed delay to argue about.** Idle-or-1 s is the bound on what a crash or a killed renderer can
+     lose, against autosave's 1.2 s.
+2. **Synchronously on `pagehide`** and on **`visibilitychange` → `hidden`**. These cover a closed tab, a closed
+   laptop lid and a switched app.
+3. **Synchronously in the hook's unmount cleanup.** This covers Back and every client-side navigation. It is skipped
+   when the `leaving` ref says the person discarded or saved.
+4. **Never while a restore offer is unanswered** (§5.4). The old draft must not be overwritten before the person
+   decides about it.
+
+Write cost at a real poster's size is microseconds. At the 803 KB artefact it is about 2.5 ms of `stringify` plus
+`setItem`, at most once per idle gap (V for the `stringify`, I for `setItem`).
+
+**5.4 · The offer on reopen.**
+- **When it is read.** On mount, when `canEdit` and a draft exists under this member's key. It is read in an effect,
+  never during render, because the server HTML has no storage.
+- **What it looks like.** A `Panel` (tone `info`) in the editor, **above the canvas, beside `props.notice`**
+  (`editor.tsx:553`). It is non-modal, so the person can see the server's document while deciding, and nothing
+  steals focus on load.
+- **Words — fresh** (`draft.baseUpdatedAt === props.initialUpdatedAt`):
+
+  | | ar | en |
+  |---|---|---|
+  | line | **لم تُحفظ تعديلاتك في المرة السابقة.** | **Your last edits weren't saved.** |
+  | buttons | **استعِدها** · **احذفها** | **Restore them** · **Delete them** |
+
+- **What «استعِدها» does:** `mutate(draft.document)`. It is validated, and it is **one undo step**, so undo returns to
+  the server's document and reads clean. It does not save. The badge says «غير محفوظ» until the person saves, and the
+  draft writer resumes.
+- **What «احذفها» does:** it deletes the draft. The server's document stays on screen.
+- **While unanswered:**
+  - The draft writer is paused (§5.3.4).
+  - **Saving does not delete the old draft.** A save made before answering is about the server's lineage, not the
+    draft's. After such a save, the old draft's base no longer matches, so the panel's words switch to the stale form
+    below.
+  - Edits made meanwhile are protected by the dialog and `beforeunload`, but not against a crash (recorded).
+
+**5.5 · ★ The stale-draft rule.** A draft is **stale** when `draft.baseUpdatedAt !== props.initialUpdatedAt`: the
+server's document moved after the edits were made, through another admin or this admin in another tab.
+- **It is never applied silently and never dropped silently.** It is offered with words that say what restoring
+  means:
+
+  | | ar | en |
+  |---|---|---|
+  | line | **لم تُحفظ تعديلاتك في المرة السابقة، وحُفظت بعدها نسخة أحدث من هذا المستند.** | **Your last edits weren't saved, and a newer version of this document was saved since.** |
+  | consequence | **إن استعدتها وحفظتها حلّت محلّ النسخة الأحدث.** | **If you restore and save them, they replace the newer version.** |
+  | buttons | استعِدها · احذفها | Restore them · Delete them |
+
+  I propose the consequence line as the one sentence this wave writes. It passes `DEC-NEXT-25`'s test: it changes
+  what the person does next.
+- **Restoring sits the edits on the server's current version.** `baseUpdatedAt` was read at mount, so the next save is
+  the person's chosen overwrite and not a `409`.
+- ★ **`conflict` keeps its one meaning.** It is still and only the server refusing a `PUT` with `409`. Staleness is
+  the draft's own state, decided on reopen, in its own words.
+
+**5.6 · Failure.**
+- **Storage full, blocked or absent.** Every read, write and remove is caught. The draft is a best effort, and the
+  editor works the same without it.
+- **I propose no copy for a failed write.** «غير محفوظ» on the bar already says the one true thing. I ask the lead
+  (Q5).
+- **An unparseable draft** (bad JSON, `v !== 1`, `validateDocument` refuses it) is removed on read. It cannot be
+  applied, so offering it is not possible. I ask the lead whether that counts as «dropped silently» (Q6).
+
+**5.7 · When a draft is deleted.**
+- A successful `save()`.
+- «تجاهلها وغادر» in the dialog.
+- «احذفها» on the offer.
+- The document reading clean again.
+- An unparseable draft, on read.
+
+**It survives:** a failed save, an expired session, Back, a reload, a closed tab and a crash.
+
+**5.8 · Sign-out and other admins.**
+- **The editor route is bare** (the studio frame), so the shell's sign-out is **not reachable from a dirty editor**
+  without passing the dialog (V: the editor renders its own bar; the route has no shell).
+- **I recommend not sweeping drafts at sign-out.** A deliberate sign-out after a Back or a crash would otherwise
+  throw away exactly the work the draft exists to keep. The same member signing in again gets the offer.
+- **Another member never sees a draft**, because of the key.
+- The content is org-internal design text, not personal data.
+- **The sign-out route is the lead's file.** I ask the lead (Q2).
+
+### 6 · Discard — ★ `DEC-258` §2.6 is not needed as written
+
+There is **no in-place discard** in this plan. Discard exists only as «تجاهلها وغادر», which leaves the page, and the
+destination loads fresh. So there is nothing to reload.
+
+Two measured facts matter if an in-place «discard all» is wanted later:
+- **`router.refresh()` does not reset the editor.** The page segment's state key excludes search params, and a
+  refresh keeps client state. So `useState(props.initialDocument)` would keep the edited document (V, by reading the
+  router; I, not run).
+- **A `key` on the editor would reset it, but it costs undo history.** For example `key={updatedAt}`: export's
+  `revalidatePath` (`actions.ts:51`) would then remount the editor and **throw away the undo history** on every export
+  request.
+
+**The right in-place discard** is `setDocument(savedDocument)` with both stacks cleared. `savedDocument` is exactly
+what the server last answered for. If the server has moved since, the next save gets an honest `409`.
+
+### 7 · ★ A dirty document when the session expires — measured, and it is not a `403`
+
+**How I ran it.** The existing production build (`.next/BUILD_ID` of 17:43) on a spare port, `3197`, started and
+stopped by me. I sent a `PUT` with no cookies and a valid document (the baseline poster).
+
+**What happens:**
+1. **The order of the checks.** `saveDesignDocument()` **validates the document before it reads the session**
+   (`designer.ts:530-533`), so an invalid body gets `422` even without a session.
+2. **`307` to `/ar/sign-in`.** With a valid body, `sessionClient()` → `requireSession()` → `redirect()`, which a
+   Route Handler turns into **`307 Temporary Redirect`, `location: /ar/sign-in`**. The locale defaults to `ar`
+   because `push()` sends no `x-locale`.
+3. **`200 text/html`.** `fetch` follows redirects by default, and a `307` **re-sends the `PUT` and its body**. So the
+   browser receives **`200 OK` with the sign-in page's HTML**.
+4. **What `push()` does with it.** `response.ok` is `true`. `response.json()` throws `SyntaxError`, which is caught
+   and is not an `AbortError`, so `push()` sets **`error`** (`editor-state.ts:170`, `:184-187`).
+
+**What the person sees:**
+- the error badge «لم يُحفظ»;
+- the toast «تعذّر الحفظ. تعديلاتك ما زالت أمامك؛ أعِد المحاولة.»;
+- every retry fails the same way;
+- nothing says to sign in.
+
+**The draft survives.** The document stays dirty, and only a successful save deletes it. They reload (`beforeunload`
+asks), the page redirects to sign-in, they sign in, reopen, and get the **fresh** offer: the base did not move.
+
+★ **The one trap.** Choosing «تجاهلها وغادر» because Save keeps failing is a confirmed discard, and it deletes the
+draft. That is consistent with §2.3, but it is the likeliest way to lose work in this case.
+
+**Two ways to say «sign in» instead of «try again»:**
+- a route-level session check returning `401`;
+- `redirect: "manual"` in `push()`.
+
+Both need a new mapping in `push()` or a new `SaveState` kind, which this wave freezes. I recommend accepting the
+generic error and relying on the draft, and I ask the lead (Q3).
+
+**A note on frequency (I, not run).** The proxy does not run on `/api/*` (`proxy.ts:198`), but the route's own server
+client refreshes an expired access token from the refresh token. A real «expired» is a revoked or expired refresh
+token, which is rare mid-edit.
+
+### 8 · `live_poster`'s `409` reads as `conflict` — a recorded finding, not fixed
+
+**What happens.** The route sends `live_poster` as `409` (`route.ts:62-64`, V), and `push()` maps every `409` that is
+not `locked_region` to `conflict` (`:176-177`, V).
+
+**Why not one line.** The one-line fix is a branch in `push()` plus a `SaveState` kind, and both are frozen.
+Remapping the status in the route to `403` would say «التصميم من صلاحيات مشرف المؤسسة», which is just as wrong.
+
+**Why it can stay.** It is reachable only when a poster turns **live in another tab** while this one is open: the
+page sets `canEdit = false` behind the live gate (`page.tsx:115`, `:242`), so Save and ⌘S are inert here. The
+conflict toast's advice, «أعِد تحميل الصفحة», is the right act anyway, because the reload shows the live gate. Its
+attribution («another admin saved») is wrong. **Recorded; I recommend no fix this wave.**
+
+### 9 · `email/builder.tsx` — a recommendation, never an edit (`DEC-258` §2.7)
+
+**Do not share a module now.** The two editors differ in the one place that matters:
+- The builder saves through a `<form action>` and `useActionToast` (`:141-147`), and it has no `push()`-like promise
+  to wait on for «احفظ وغادر».
+- Retrofitting one is a rewrite of `notify`'s save path, not adoption.
+
+**I build the designer's guard as a self-contained hook in `components/designer/`, with a narrow interface** (`dirty`,
+`onSave(): Promise<boolean>`, `onDiscard()`). Lifting it later is a move, not a rewrite.
+
+**One gap in the builder is worth a written request now (to `notify`'s custodian).** Its dialog is wired to **its own
+back button only** (`:298`), with no capture listener, so any other same-origin link leaves unasked. Adopting the
+profile's capture listener there is a few lines and keeps the house rule whole.
+
+**Whether it gains «احفظ وغادر»** is the owner's parity question, not a defect. I would not do it unasked.
+
+### 10 · Every existing assertion that changes (item 9)
+
+**Mine.** Each one is a ledger line in `notes/wave-28-ledger.md`, in the same commit.
+
+| File | Line(s) | Change | Kind |
+|---|---|---|---|
+| `tests/components/designer/editor-state.test.tsx` | :7 | the header says «autosave … 1200 ms» → manual save | comment |
+| same | :15 | the import of `AUTOSAVE_DELAY_MS` goes (the constant is deleted) | selector |
+| same | :87-92 | `settle()` advances `AUTOSAVE_DELAY_MS + 10` → `save()` inside `act` | trigger |
+| same | :146-165 | «one PUT after 1200 ms of quiet» → «an edit sends nothing, however long it waits; Save sends one PUT carrying the base it read; the next carries the base it was answered». The URL, method, body and base assertions are kept | **expectation** |
+| same | :167-181 | the refusal table: the same five answers → the same five states and toast counts, triggered by `save()` instead of the timer | trigger |
+| `tests/e2e/wave8-designer-editor.spec.ts` | :214 `saved()` | **helper only**: it returns a thenable that, when awaited, clicks «احفظ» and waits for the `200` `PUT`. Its 8 call sites (:276-331) are unchanged | trigger |
+| `tests/e2e/wave13-designer-studio-drag.spec.ts` | :160 `saved()` | the same; 4 call sites (:235-272) unchanged | trigger |
+| `tests/e2e/wave13-designer-studio-taps.spec.ts` | :172 `saved()` | the same; 13 call sites unchanged. **`click()`, never ⌘S**, because `designer-taps-guard` forbids `keyboard.` (`tests/unit/designer-taps-guard.test.ts:7`, V) | trigger |
+| `tests/e2e/wave23-designer-taps.spec.ts` | :170 `saved()` | the same; 7 call sites unchanged; `click()` | trigger |
+| `tests/unit/designer-taps-guard.test.ts` | :6 `SPECS` | **gains** `tests/e2e/wave28-designer-save.spec.ts` (the three answers, click only) | addition |
+
+Read by grep and found **not** to edit-and-wait, so **unchanged** (I, until run):
+- `wave8-designer-templates`, `wave8-designer-posters` (its `PUT` is `page.request.put`, direct);
+- `wave10-designer-reissue-and-days`, `wave13-designer-upload-render`, `wave13-designer-certificates-download`;
+- `wave23-designer-certificate` (its «معاينة بعضو» no longer saves, and it never edited);
+- `wave23-designer-four-formats`, `wave27-designer-library`.
+
+**The lead's: none needs a Save press.** ★ This disagrees with `DEC-258` §1.6:
+- **`wave23-lead-certificate-walk`.** It opens a fresh template in the studio (:138-140) and **edits nothing**. The
+  next step publishes by SQL (:144) and leaves by `page.goto` (V).
+- **`wave11-lead-a11y-sweep`.** It scans the designer (:229) and does not edit.
+- **`wave13-demo-download`** never opens the designer (:231).
+
+**The one risk for any spec, mine included.** Leaving a **dirty** editor by `goto`, `reload` or `close` now meets
+`beforeunload`, after a trusted click has given the page activation. Every changed helper leaves the editor clean.
+My own specs that reload on purpose accept the dialog.
+
+### 11 · My tests and my files (item 10)
+
+**Unit and component** (`npm test`):
+- `editor-state.test.tsx`, rewritten block «manual save — the person decides» (the rows of §10), plus:
+  - «undo and redo send nothing»;
+  - ★ «dirty is derived: an edit is dirty, an undo back to the saved document is clean (no request), a redo is dirty,
+    a save makes it clean, an edit during an in-flight save stays dirty»;
+  - «a second Save while one is in flight sends nothing»;
+  - «`save()` resolves `true` only when the server answered, `false` for each refusal».
+- New `tests/components/designer/draft.test.ts`:
+  - write, read and remove under the member and document key;
+  - a second member reads nothing;
+  - a stale draft is classified stale;
+  - an unparseable draft is removed;
+  - ★ **storage that throws**: `setItem` throws `QuotaExceededError`, `getItem` throws `SecurityError`, and the
+    `localStorage` getter throws. None of it reaches the caller.
+- New `tests/components/designer/leave-guard.test.tsx`:
+  - a same-origin link while dirty opens the dialog;
+  - `/api/*`, the same pathname with a new query, modified clicks, `_blank` and `download` do not;
+  - a `form[data-designer-leaves]` submit is caught;
+  - `beforeunload` is armed only while dirty;
+  - each of the three answers does what §4.3 says, «احفظ وغادر» failing included.
+
+**End to end**, new and at 1280 (the designer is desktop-only):
+- `tests/e2e/wave28-designer-save.spec.ts`, **`click()` only**, added to the taps guard:
+  - an edit sends no `PUT` for 3 s;
+  - «غير محفوظ» → «احفظ» → one `PUT` → «محفوظ»;
+  - undo back to saved reads «محفوظ» with no request;
+  - the back link → **«ابقَ»** stays;
+  - **«تجاهلها وغادر»** leaves; the database is unchanged, and there is no offer on reopen;
+  - **«احفظ وغادر»** leaves; the database holds the edit;
+  - a failed save (`page.route` → `500`) → «احفظ وغادر» stays, with «لم يُحفظ»;
+  - the scheme link and a download link do not ask;
+  - «معاينة بجلسة» sends no `PUT`, and the edit stays on screen, dirty;
+  - publish on a template draft saves, then publishes the edit.
+- `tests/e2e/wave28-designer-draft.spec.ts`:
+  - **close-reopen-restore**: edit, `reload` (dialog accepted), the fresh offer, «استعِدها», the edit back and dirty,
+    save;
+  - **Back**: edit, `goBack`, `goForward`, offer;
+  - **stale**: edit, leave, bump `updated_at` by SQL, reopen, the stale words, restore, save replaces;
+  - **another member** on the same browser sees no offer;
+  - **storage that throws** (an `addInitScript` making `setItem` throw): edit and save still work, with no error on
+    screen.
+- ⌘S is proven in the draft spec (a keyboard press is allowed there), including inside an inspector text field.
+
+**Captures** at `.qa-shots/rtl/wave28-designer-<state>-1280.png`, for these states: `unsaved`, `saved`,
+`leave-dialog`, `save-failed`, `draft-offer`, `draft-offer-stale`.
+
+**Files:**
+- **I create:** `src/components/designer/{draft.ts,leave-guard.ts,leave-dialog.tsx,draft-offer.tsx}` and the five
+  test files above.
+- **I change:**
+  - `editor-state.ts`: timers, `AUTOSAVE_DELAY_MS` and `flush` out; `savedDocument`, `dirty` and `save()` in. Its
+    header changes from «MOVED VERBATIM» to say what wave 28 changed.
+  - `editor.tsx`: badge, Save, ⌘S, the guard, the offer, publish and preview.
+  - `admin/designer/[documentId]/page.tsx`: `draftOwner`, and `data-designer-leaves` on the sibling form.
+  - `src/messages/{ar,en}/designer.json`, in `ar` first.
+- **Untouched:** `push()`, `route.ts` (its «autosave» comments stay stale; it is fixes-only and none is needed), the
+  DAL, the model, `canvas.tsx`, `packages/designer-runtime/**` and `ui/**`.
+
+### 12 · Where I disagree with `DEC-258`, or it is imprecise (item 11)
+
+1. **§2.6, «discard reloads the document from the server».** There is nothing to reload: the only discard leaves the
+   page. And `router.refresh()` would **not** reset the editor (§6).
+2. **§1.6, «`wave23-lead-certificate-walk` among them».** It edits nothing in the studio, and no lead spec needs a Save
+   press (§10).
+3. **§2.2, «the back control and any in-app link».** One more exit must be caught: the sibling-orientation form, a
+   Server Action that redirects. And two kinds of in-app link must **not** ask: the scheme links (the same document,
+   still mounted) and the `/api/` download links (§4.2).
+4. **§1.2, «`SaveState` reports what the last save attempt did».** It also reports refused **edits** (`locked`,
+   `invalid`) that sent no request. That does not change the decision; it changes the badge rule (§2, §3).
+5. **The bar's word.** `M12.md` §056 draws «مسودة» / «محفوظ». «مسودة» collides with the «مسودة قالب» badge on the same
+   bar (`ar/designer.json:37`) and with the local draft this wave adds. I propose **«غير محفوظ»** (Q1). The email
+   builder's «مسودة» (`notifications.json:372`) means the same thing there, but has neither collision.
+6. **§3, «the dialog does not animate».** `ui/dialog`'s overlay has `motion-safe:animate-[fade-in_150ms_ease-out]`
+   (`dialog.tsx`, V). The studio's delete dialog already wears it, and `console-register` scans only the staff
+   directories, so it passes. If «does not animate» is literal, the change is in `ui/`, which is the lead's.
+7. **§2.4.** Publish-saves-first, as written, would still publish a failed save's older draft if built as `flush()` is
+   today. The plan makes it «publish only after a save that landed» (§4.6).
+
+### 13 · Questions for the lead or the owner
+
+- **Q1** (owner, or the lead) — The bar's word for dirty: **«غير محفوظ»** (recommended) or the artboard's «مسودة».
+- **Q2** (lead, file owner) — Sweep designer drafts at sign-out? **Recommend no** (§5.8).
+- **Q3** (lead) — The expired session says «تعذّر الحفظ … أعِد المحاولة» rather than «sign in». Accept it
+  (recommended), or allow a `401` from the route plus a `push()` mapping, which unfreezes `push()` and `SaveState`?
+- **Q4** (lead) — Save's variant: `primary` (recommended; it is now the act that matters) beside «صدّر», which is also
+  `primary`, or `secondary`?
+- **Q5** (lead) — A draft write that fails says nothing (recommended)?
+- **Q6** (lead) — Is removing an **unparseable** draft on read «dropped silently» under §2.3? I propose it is not,
+  because it cannot be offered.
+- **Q7** (lead → `notify`'s custodian) — Take the builder's link-capture gap as a written request (§9)?
+- **Q8** (owner, already flagged) — Publish saves first (`DEC-258` §2.4), or «انشر» refused while dirty. The plan
+  builds the former.
+
+---
+
 ## Wave 27 — plan, PR C `wave-27c/an-org-owns-its-templates` (`REQ-DSG-035`; `STORY-DSG-017`, `018`; contract 4)
 
 Planning only. Measured in `../kareem-marefa-wave27c` at `50b534fa`. Nothing below is written yet. Every SQL object

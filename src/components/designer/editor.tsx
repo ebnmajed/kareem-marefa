@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { BRAND_COLOUR_TOKENS, DESIGN_COLOUR_NAMES, fieldsFor, fingerprintSource, paintOrder, PRESETS, resolveColour, toPhysical, type DesignDocument, type FocalPoint, type Layer, type PresetName } from "@kareem/designer-runtime";
@@ -12,6 +12,10 @@ import { ChecksPanel, checkRowCount } from "@/components/designer/checks-panel";
 import { LayersPanel } from "@/components/designer/layers-panel";
 import { BrandPanel, ElementsPanel, FieldsPanel, UploadsPanel, type PanelAsset } from "@/components/designer/panels";
 import { BindingsPanel } from "@/components/designer/bindings-panel";
+import { useDraftMirror, useDraftOffer } from "@/components/designer/draft";
+import { DraftOffer } from "@/components/designer/draft-offer";
+import { LeaveDialog } from "@/components/designer/leave-dialog";
+import { useLeaveGuard } from "@/components/designer/leave-guard";
 import { formatNumber } from "@/components/sessions/numerals";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,6 +44,13 @@ import { useToast } from "@/components/ui/toast";
 //
 // MOBILE IS VIEW AND APPROVE (`09` SCR-057, D-8): below `xl` the canvas, every variant, the checks, the bindings and
 // «صدّر» — a layer editor at 390 px is a bad tool pretending to be a feature.
+//
+// ★ THE PERSON SAVES (wave 28, REQ-DSG-036, DEC-258, DEC-259). «احفظ» beside the state on the bar, and ⌘S / Ctrl+S,
+// call the state's `saveDocument()`; nothing else writes but publish, which saves first and publishes only after a save that
+// landed. The bar says one of three things — «غير محفوظ», «يُحفَظ…», «محفوظ». Leaving by a link asks (save · discard ·
+// stay, `leave-dialog.tsx`); a reload or a closed tab gets the browser's question; the browser's Back and a crash are
+// answered by the local draft (`draft.ts`), offered back when the editor reopens — and until that offer is answered,
+// nothing is edited. A preview and an export read the SAVED document; neither saves (the owner's ruling).
 
 export interface DesignerEditorProps {
   documentId: string;
@@ -83,6 +94,9 @@ export interface DesignerEditorProps {
   /** C5: «معاينة بعضو»'s members (names only) and the one on screen — a certificate template's. */
   previewMembers?: { id: string; name: string }[];
   previewMemberId?: string | null;
+  /* ── wave 28 ── */
+  /** The signed-in member, whose local draft this editor keeps (DEC-259 §2.2). Absent, no draft. */
+  draftOwner?: string | null;
 }
 
 type RailKey = "elements" | "fields" | "uploads" | "brand" | "layers" | "checks" | "layer";
@@ -113,7 +127,11 @@ export function DesignerEditor(props: DesignerEditorProps) {
     setRail("layer");
     setLayerTab(null);
   }, []);
-  const s = useDesignerEditorState(props, { onRevealLayer: revealLayer });
+  // ★ The draft's offer is read before the state is built, so the editor is read-only from the render that shows it.
+  const draftOffer = useDraftOffer({ owner: props.draftOwner ?? null, documentId: props.documentId, enabled: props.canEdit, serverUpdatedAt: props.initialUpdatedAt });
+  /** Editable now: the page's authority, and no draft waiting for an answer (DEC-259 §2.6). */
+  const canEdit = props.canEdit && !draftOffer.pending;
+  const s = useDesignerEditorState(props, { onRevealLayer: revealLayer, editable: !draftOffer.pending });
   const {
     document,
     selectedLayerIds,
@@ -133,7 +151,56 @@ export function DesignerEditor(props: DesignerEditorProps) {
     findings,
     onSource,
     sourcePreset,
+    dirty,
   } = s;
+
+  const mirror = useDraftMirror({ owner: props.draftOwner ?? null, documentId: props.documentId, active: draftOffer.mirror, document, dirty, baseOf: s.baseOf });
+  const restoreDraft = () => {
+    const restored = draftOffer.answer(true);
+    if (restored) s.restore(restored);
+  };
+
+  const saveButton = useRef<HTMLButtonElement>(null);
+  const isSaving = save.kind === "saving";
+  const canSave = canEdit && dirty && !isSaving;
+
+  // ⌘S / Ctrl+S — always the editor's, never the browser's «Save page as», read-only included. Inside a text field it
+  // saves what is typed: every inspector field commits on change, so the document never holds less than the screen.
+  const saveDocument = s.saveDocument;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== "s") return;
+      e.preventDefault();
+      if (e.repeat || !canSave) return;
+      void saveDocument();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [canSave, saveDocument]);
+
+  // ★ LEAVING ASKS — armed only while there is something to lose and no save is in flight.
+  const leave = useLeaveGuard(dirty && !isSaving);
+  const [leaveSaving, setLeaveSaving] = useState(false);
+  /** Where focus goes when the dialog closes: the link pressed, or — after a failed save — the bar's «احفظ». */
+  const [returnFocus, setReturnFocus] = useState<HTMLElement | null>(null);
+  const goTo = useCallback((href: string) => router.push(href), [router]);
+  const leaveAndSave = async () => {
+    setLeaveSaving(true);
+    const landed = await s.saveDocument();
+    setLeaveSaving(false);
+    if (landed) {
+      mirror.discard();
+      leave.proceed(goTo);
+      return;
+    }
+    // A save that fails keeps the person here; the bar and the toast say why, and «احفظ» is one key away.
+    setReturnFocus(saveButton.current);
+    leave.stay();
+  };
+  const leaveAndDiscard = () => {
+    mirror.discard();
+    leave.proceed(goTo);
+  };
 
   const [zoom, setZoom] = useState<Zoom>("fit");
   const [scale, setScale] = useState(0.4);
@@ -160,21 +227,24 @@ export function DesignerEditor(props: DesignerEditorProps) {
     return canon(published) !== canon(document);
   }, [document, published, props.publish]);
 
+  // ★ Publish saves first, and publishes only after a save that landed (DEC-259 §1.4): it is the person saying «this is
+  // the document every session uses», so it must never publish an older saved draft than the one on screen. What is
+  // recorded as published is what was SAVED.
   const onPublish = () =>
     startPublish(async () => {
-      await s.flush();
+      if (dirty && !(await s.saveDocument())) return;
       const result = await props.publish!();
       if (result.status === "ok") {
-        setPublished(document);
+        setPublished(s.savedDocument);
         toast.show({ tone: "success", title: st("bar.published") });
       } else {
         toast.show({ tone: "error", title: st("bar.publishFailed") });
       }
     });
 
-  /** A preview is URL state, rendered by the server through the one renderer's bindings — saved first (flush). */
-  const choosePreview = async (key: "session" | "member", id: string) => {
-    await s.flush();
+  /** A preview is URL state, rendered by the server through the one renderer's bindings. It does not save — the owner's
+   *  ruling (DEC-258 §2.5) — and the editor stays mounted, so the document on screen stays on screen. */
+  const choosePreview = (key: "session" | "member", id: string) => {
     const params = new URLSearchParams(window.location.search);
     if (id) params.set(key, id);
     else params.delete(key);
@@ -193,20 +263,26 @@ export function DesignerEditor(props: DesignerEditorProps) {
     }
   })();
 
-  const saveBadge =
-    save.kind === "saving" ? (
-      <Badge tone="neutral" outline>
-        {ts("saving")}
-      </Badge>
-    ) : save.kind === "saved" ? (
-      <Badge tone="success" icon={<CheckIcon />}>
-        {ts("saved")}
-      </Badge>
-    ) : save.kind === "conflict" || save.kind === "forbidden" || save.kind === "error" ? (
-      <Badge tone="error" icon={<AlertTriangleIcon />}>
-        {ts("failedBadge")}
-      </Badge>
-    ) : null;
+  // ★ THREE WORDS, read from the derived `dirty` first — a refused edit (`locked`, `invalid`) sends nothing and must not
+  // read as «محفوظ». A failed save keeps its own badge while the document is still unsaved. Read-only shows none.
+  const failed = save.kind === "conflict" || save.kind === "forbidden" || save.kind === "error";
+  const saveBadge = !props.canEdit ? null : isSaving ? (
+    <Badge tone="neutral" outline>
+      {ts("saving")}
+    </Badge>
+  ) : dirty && failed ? (
+    <Badge tone="error" icon={<AlertTriangleIcon />}>
+      {ts("failedBadge")}
+    </Badge>
+  ) : dirty ? (
+    <Badge tone="neutral" outline>
+      {ts("unsaved")}
+    </Badge>
+  ) : (
+    <Badge tone="success" icon={<CheckIcon />}>
+      {ts("saved")}
+    </Badge>
+  );
 
   const canvasAt = (scaleNow: number, selectable = true) => (
     <DesignerCanvas
@@ -225,8 +301,8 @@ export function DesignerEditor(props: DesignerEditorProps) {
       onSelect={s.selectOnCanvas}
       lockedLayerIds={lockedIds}
       placeholderLabel={s.placeholderLabel}
-      {...(props.canEdit ? { onFocal: (layerId: string, point: FocalPoint) => s.focal(layerId, point, onSource ? undefined : preset) } : {})}
-      {...(props.canEdit && onSource
+      {...(canEdit ? { onFocal: (layerId: string, point: FocalPoint) => s.focal(layerId, point, onSource ? undefined : preset) } : {})}
+      {...(canEdit && onSource
         ? {
             source: document,
             multi,
@@ -244,7 +320,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
   );
 
   /* ── the floating toolbar — the five things touched most, on one selected layer ── */
-  const toolbarLayer = selected && props.canEdit && !gesturing && !s.isLocked(selected.id) ? s.shown.layers.find((l) => l.id === selected.id) : undefined;
+  const toolbarLayer = selected && canEdit && !gesturing && !s.isLocked(selected.id) ? s.shown.layers.find((l) => l.id === selected.id) : undefined;
   const toolbar = toolbarLayer ? (
     <FloatingToolbar label={st("toolbar.label")} anchor={boundingBox(toolbarLayer, s.shown, scale)} offset={TOOLBAR_OFFSET}>
       <LayerToolbar
@@ -343,6 +419,25 @@ export function DesignerEditor(props: DesignerEditorProps) {
       {props.barStart}
       {saveBadge}
       {props.canEdit ? (
+        // From xl with every editable document; below it (view and approve) only while dirty, so a window narrowed
+        // mid-edit never strands work.
+        <span className={dirty ? "contents" : "hidden xl:contents"}>
+          <Button
+            ref={saveButton}
+            type="button"
+            variant="secondary"
+            size="sm"
+            pending={isSaving}
+            disabled={!canSave}
+            aria-keyshortcuts="Meta+S Control+S"
+            onClick={() => void s.saveDocument()}
+            className="shrink-0"
+          >
+            {ts("action")}
+          </Button>
+        </span>
+      ) : null}
+      {canEdit ? (
         // Below xl the page is view and approve: nothing to undo, so the name keeps the room.
         <span className="hidden shrink-0 gap-1 xl:flex">
           <IconButton size="sm" variant="secondary" label={t("undo")} onClick={() => s.step("undo")} disabled={depth.past === 0}>
@@ -361,7 +456,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
       <span className="hidden shrink-0 xl:block">{zoomControl}</span>
       {props.barEnd}
       {props.previewSessions ? (
-        <Select aria-label={st("bar.previewSession")} value={props.previewSessionId ?? ""} onChange={(e) => void choosePreview("session", e.target.value)} className="hidden w-48! shrink-0 xl:block">
+        <Select aria-label={st("bar.previewSession")} value={props.previewSessionId ?? ""} onChange={(e) => choosePreview("session", e.target.value)} className="hidden w-48! shrink-0 xl:block">
           <option value="">{st("bar.previewSession")}</option>
           {props.previewSessions.map((session) => (
             <option key={session.id} value={session.id}>
@@ -371,7 +466,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
         </Select>
       ) : null}
       {props.previewMembers ? (
-        <Select aria-label={st("bar.previewMember")} value={props.previewMemberId ?? ""} onChange={(e) => void choosePreview("member", e.target.value)} className="hidden w-48! shrink-0 xl:block">
+        <Select aria-label={st("bar.previewMember")} value={props.previewMemberId ?? ""} onChange={(e) => choosePreview("member", e.target.value)} className="hidden w-48! shrink-0 xl:block">
           <option value="">{st("bar.previewMember")}</option>
           {props.previewMembers.map((member) => (
             <option key={member.id} value={member.id}>
@@ -380,8 +475,8 @@ export function DesignerEditor(props: DesignerEditorProps) {
           ))}
         </Select>
       ) : null}
-      {props.publish && differs && props.canEdit ? (
-        <Button type="button" variant="secondary" size="sm" pending={publishing} onClick={onPublish} className="shrink-0">
+      {props.publish && differs && canEdit ? (
+        <Button type="button" variant="secondary" size="sm" pending={publishing} disabled={isSaving} onClick={onPublish} className="shrink-0">
           {st("bar.publish")}
         </Button>
       ) : null}
@@ -428,7 +523,8 @@ export function DesignerEditor(props: DesignerEditorProps) {
     </Dialog>
   );
 
-  const addDisabled = !props.canEdit || !onSource;
+  const addDisabled = !canEdit || !onSource;
+  // The rail keeps its items while a draft's offer waits — its panels are disabled, not removed.
   const railItems = [
     ...(props.canEdit
       ? [
@@ -491,7 +587,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
             onToggleHidden={s.toggleHidden}
             onReorder={s.reorder}
             lockedLayerIds={lockedIds}
-            canEdit={props.canEdit}
+            canEdit={canEdit}
             multi={multi}
             onToggleMulti={() => setMulti((v) => !v)}
             onSelectKind={s.selectKind}
@@ -507,7 +603,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
               document={document}
               layer={selected}
               locked={selected ? s.isLocked(selected.id) : false}
-              canEdit={props.canEdit}
+              canEdit={canEdit}
               fontFamilies={s.fontFamilies}
               onPatchLayer={s.patchLayer}
               onArrange={s.arrange}
@@ -523,7 +619,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
               bindingChoices={{ ...bindingChoices, ...qrNames }}
               {...(layerTab && layerTab.id === (selected?.id ?? null) ? { tab: layerTab.tab } : {})}
               onTabChange={(tab) => setLayerTab({ id: selected?.id ?? null, tab })}
-              {...(props.canEdit ? { onDuplicate: s.duplicate, onDelete: s.askDelete } : {})}
+              {...(canEdit ? { onDuplicate: s.duplicate, onDelete: s.askDelete } : {})}
             />
           </section>
         );
@@ -539,6 +635,17 @@ export function DesignerEditor(props: DesignerEditorProps) {
   return (
     <div className="flex min-h-dvh flex-col bg-canvas xl:h-dvh xl:overflow-hidden">
       {deleteDialog}
+      <LeaveDialog
+        open={leave.target !== null}
+        pending={leaveSaving}
+        onSave={() => void leaveAndSave()}
+        onDiscard={leaveAndDiscard}
+        onStay={() => {
+          setReturnFocus(leave.target?.from ?? null);
+          leave.stay();
+        }}
+        returnFocus={returnFocus}
+      />
       {/* Generated by the runtime's own fontFaceCss() from the manifest; no user input reaches it. */}
       <style dangerouslySetInnerHTML={{ __html: s.faceCss }} />
 
@@ -551,6 +658,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
       ) : null}
 
       {props.notice}
+      {draftOffer.offer ? <DraftOffer offer={draftOffer.offer} onRestore={restoreDraft} onDelete={() => draftOffer.answer(false)} /> : null}
       {alert ? (
         <Panel tone="error" className="m-4">
           <p role="alert" className="text-body-sm text-fg-heading">
@@ -610,7 +718,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
           <h2 id="dr-canvas" className="sr-only">
             {t("previewHeading")}
           </h2>
-          {props.canEdit && !onSource ? (
+          {canEdit && !onSource ? (
             <div className="flex flex-wrap items-center gap-3 border-b border-edge px-4 py-2">
               <p className="text-body-sm text-fg-muted">{tcv("derivedNote")}</p>
               <Button type="button" variant="secondary" size="sm" onClick={() => s.choosePreset(sourcePreset)}>

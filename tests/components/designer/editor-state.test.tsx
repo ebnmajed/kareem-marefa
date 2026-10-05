@@ -4,15 +4,17 @@
 // pins the machine itself, so the chrome can be rebuilt over it and the same
 // cases run before and after: fifty document-level steps (06 §10), a gesture or
 // a burst of arrow presses is ONE entry (W13.1 R5), a no-op is not an entry, a
-// new edit ends the redo branch, the autosave is one PUT after 1200 ms of quiet
-// carrying `baseUpdatedAt`, every refusal maps to its state, and a locked layer
-// is refused a move, a hide or a delete but not its focal point (REQ-DSG-024).
+// new edit ends the redo branch, the person's save is one PUT carrying
+// `baseUpdatedAt` (wave 28, REQ-DSG-036 — an edit sends nothing, however long
+// it waits), every refusal maps to its state, dirty is DERIVED from the saved
+// document, and a locked layer is refused a move, a hide or a delete but not
+// its focal point (REQ-DSG-024).
 import type React from "react";
 import { act, renderHook } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DesignDocument, Layer } from "@kareem/designer-runtime";
-import { AUTOSAVE_DELAY_MS, UNDO_STEPS, useDesignerEditorState } from "@/components/designer/editor-state";
+import { UNDO_STEPS, useDesignerEditorState } from "@/components/designer/editor-state";
 import type { DesignerEditorProps } from "@/components/designer/editor";
 import arDesigner from "@/messages/ar/designer.json";
 import arUi from "@/messages/ar/ui.json";
@@ -58,9 +60,9 @@ const Wrap = ({ children }: { children: React.ReactNode }) => (
   </NextIntlClientProvider>
 );
 
-function mount(document: DesignDocument, extra: Partial<DesignerEditorProps> = {}) {
+function mount(document: DesignDocument, extra: Partial<DesignerEditorProps> = {}, editable = true) {
   const onRevealLayer = vi.fn();
-  const hook = renderHook(() => useDesignerEditorState(props(document, extra), { onRevealLayer }), { wrapper: Wrap });
+  const hook = renderHook(() => useDesignerEditorState(props(document, extra), { onRevealLayer, editable }), { wrapper: Wrap });
   return { ...hook, onRevealLayer };
 }
 
@@ -85,9 +87,19 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function settle() {
+/** The person presses «احفظ» (wave 28): the state's own save, awaited inside `act`. */
+async function save(result: { current: ReturnType<typeof useDesignerEditorState> }): Promise<boolean> {
+  let landed = false;
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS + 10);
+    landed = await result.current.saveDocument();
+  });
+  return landed;
+}
+
+/** Long past the old autosave's 1200 ms — a timer that still fired would be seen. */
+async function wait() {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60_000);
   });
 }
 
@@ -143,13 +155,14 @@ describe("one entry per gesture or burst (W13.1 R5)", () => {
   });
 });
 
-describe("the autosave — a Route Handler, after 1200 ms of quiet", () => {
-  it("is one PUT for a run of edits, carrying the base it read, and the next carries the base it was answered", async () => {
+describe("the save — the person's, through the Route Handler (REQ-DSG-036)", () => {
+  it("an edit sends nothing, however long it waits; Save is one PUT carrying the base it read, and the next carries the base it was answered", async () => {
     const { result } = mount(poster([shape("a")]));
     act(() => result.current.transform("a", { kind: "rotate", degrees: 15, mode: "by" }));
     act(() => result.current.transform("a", { kind: "rotate", degrees: 15, mode: "by" }));
+    await wait();
     expect(fetchMock).not.toHaveBeenCalled();
-    await settle();
+    expect(await save(result)).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0]!;
     expect(url).toBe("/api/designer/doc-1");
@@ -160,8 +173,17 @@ describe("the autosave — a Route Handler, after 1200 ms of quiet", () => {
     expect(result.current.save.kind).toBe("saved");
 
     act(() => result.current.transform("a", { kind: "rotate", degrees: 0, mode: "to" }));
-    await settle();
+    await save(result);
     expect(JSON.parse(String(fetchMock.mock.calls[1]![1]?.body)).baseUpdatedAt).toBe("2026-10-03T10:00:05.000Z");
+  });
+
+  it("undo and redo send nothing", async () => {
+    const { result } = mount(poster([shape("a")]));
+    act(() => result.current.transform("a", { kind: "rotate", degrees: 15, mode: "by" }));
+    act(() => result.current.step("undo"));
+    act(() => result.current.step("redo"));
+    await wait();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -170,13 +192,116 @@ describe("the autosave — a Route Handler, after 1200 ms of quiet", () => {
     [{ status: 403, body: {} }, "forbidden", true],
     [{ status: 422, body: { issues: [{ path: "layers.0", code: "bad" }] } }, "invalid", false],
     [{ status: 500, body: {} }, "error", true],
-  ] as const)("a %o answer is the state %s, toasted only for the three failures", async (reply, kind, toasted) => {
+  ] as const)("a %o answer is the state %s, toasted only for the three failures — and the save did not land", async (reply, kind, toasted) => {
     const { result } = mount(poster([shape("a")]));
     replies = [reply];
     act(() => result.current.transform("a", { kind: "rotate", degrees: 15, mode: "by" }));
-    await settle();
+    expect(await save(result)).toBe(false);
     expect(result.current.save.kind).toBe(kind);
     expect(show).toHaveBeenCalledTimes(toasted ? 1 : 0);
+    expect(result.current.dirty).toBe(true);
+  });
+
+  it("a second Save while one is in flight sends nothing", async () => {
+    const { result } = mount(poster([shape("a")]));
+    act(() => result.current.transform("a", { kind: "rotate", degrees: 15, mode: "by" }));
+    let first: Promise<boolean> | undefined;
+    let second: Promise<boolean> | undefined;
+    await act(async () => {
+      first = result.current.saveDocument();
+      second = result.current.saveDocument();
+      await Promise.all([first, second]);
+    });
+    expect(await second).toBe(false);
+    expect(await first).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("a clean document's save sends nothing and says it is saved", async () => {
+    const { result } = mount(poster([shape("a")]));
+    expect(await save(result)).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("dirty is derived from the saved document, never flagged (DEC-258 §1.2)", () => {
+  it("an edit is dirty; an undo back to the saved document is clean, with no request; a redo is dirty again", async () => {
+    const { result } = mount(poster([shape("a")]));
+    expect(result.current.dirty).toBe(false);
+    act(() => result.current.transform("a", { kind: "rotate", degrees: 15, mode: "by" }));
+    expect(result.current.dirty).toBe(true);
+    act(() => result.current.step("undo"));
+    expect(result.current.dirty).toBe(false);
+    act(() => result.current.step("redo"));
+    expect(result.current.dirty).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("a document equal to the saved one in content, built in another key order, is clean", () => {
+    const saved = poster([shape("a")]);
+    const { result } = mount(saved);
+    const reversed = (value: unknown): unknown =>
+      Array.isArray(value) ? value.map(reversed) : value && typeof value === "object" ? Object.fromEntries(Object.entries(value).reverse().map(([k, v]) => [k, reversed(v)])) : value;
+    act(() => result.current.restore(reversed(saved) as DesignDocument));
+    expect(result.current.document).not.toBe(saved);
+    expect(result.current.dirty).toBe(false);
+  });
+
+  it("a save that lands makes the document clean, and an undo after it is dirty against the NEW saved document", async () => {
+    const { result } = mount(poster([shape("a")]));
+    act(() => result.current.transform("a", { kind: "rotate", degrees: 15, mode: "by" }));
+    await save(result);
+    expect(result.current.dirty).toBe(false);
+    act(() => result.current.step("undo"));
+    expect(result.current.dirty).toBe(true);
+  });
+
+  it("an edit made while a save is in flight stays dirty after that save lands", async () => {
+    let release: (() => void) | undefined;
+    fetchMock.mockImplementationOnce(async () => {
+      await new Promise<void>((resolve) => (release = resolve));
+      return { ok: true, status: 200, json: async () => ({ status: "saved", updatedAt: "2026-10-03T10:00:05.000Z" }) } as Response;
+    });
+    const { result } = mount(poster([shape("a")]));
+    act(() => result.current.transform("a", { kind: "rotate", degrees: 15, mode: "by" }));
+    let pending: Promise<boolean> | undefined;
+    act(() => {
+      pending = result.current.saveDocument();
+    });
+    act(() => result.current.transform("a", { kind: "rotate", degrees: 15, mode: "by" }));
+    await act(async () => {
+      release?.();
+      await pending;
+    });
+    expect(result.current.save.kind).toBe("saved");
+    expect(result.current.dirty).toBe(true);
+    expect((result.current.savedDocument.layers[0] as Layer).frame.rotation).toBe(15);
+  });
+});
+
+describe("while a draft's offer is unanswered, nothing is edited (DEC-259 §2.6)", () => {
+  it("an edit, an undo and a save change nothing and send nothing; the restore is the one change", async () => {
+    const { result } = mount(poster([shape("a")]), {}, false);
+    act(() => result.current.transform("a", { kind: "rotate", degrees: 15, mode: "by" }));
+    act(() => result.current.add("shape"));
+    act(() => result.current.step("undo"));
+    expect(result.current.document.layers).toHaveLength(1);
+    expect(result.current.document.layers[0]?.frame.rotation ?? 0).toBe(0);
+    expect(result.current.dirty).toBe(false);
+    expect(await save(result)).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    act(() => result.current.restore(poster([shape("a", { frame: { x: 1, y: 2, w: 200, h: 100 } })])));
+    expect(result.current.document.layers[0]?.frame.x).toBe(1);
+    expect(result.current.dirty).toBe(true);
+  });
+
+  it("a restore is one undo step: undo returns to the server's document, clean", () => {
+    const { result } = mount(poster([shape("a")]));
+    act(() => result.current.restore(poster([shape("a", { frame: { x: 1, y: 2, w: 200, h: 100 } })])));
+    expect(result.current.dirty).toBe(true);
+    act(() => result.current.step("undo"));
+    expect(result.current.dirty).toBe(false);
   });
 });
 

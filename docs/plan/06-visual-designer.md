@@ -560,7 +560,7 @@ A31, `REQ-DSG-022`. What the editor ships with, and the notes that matter:
 | Brand kit injection | `{{brand.*}}` resolved live; changing a colour updates the canvas |
 | Safe-area and bleed overlays | Per preset, toggleable, on by default for print presets |
 | Undo/redo | Document-level, 50 steps |
-| Autosave | **Route Handler**, not an action — layer trees exceed the 1 MB action cap |
+| ~~Autosave~~ **Manual save** (`DEC-258`, `REQ-DSG-036`) | The same **Route Handler**, not an action — layer trees exceed the 1 MB action cap. Written only when the admin saves or publishes; unsaved changes ask before leaving and are kept as a local draft |
 | Admin-locked regions | §3.4 |
 | Live preview of every variant | All seven poster presets, rendered from the same document |
 | Dynamic-field preview with real data | §2.4 — never lorem ipsum |

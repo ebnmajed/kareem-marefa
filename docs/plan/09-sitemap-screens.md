@@ -628,6 +628,8 @@ produces templates that are LTR-first with an RTL toggle (`06` §10).
 **Note:** autosave is a **Route Handler**, not an action — layer trees exceed the 1 MB action cap
 (`04` §4.2).
 
+★ **Wave 28 (`DEC-258`) — `REQ-DSG-036`:** the editor no longer autosaves. **States:** editing with unsaved changes · saving · saved · a failed save; leaving with unsaved changes asks save · discard · cancel; a local draft is offered on reopening. The write is the same Route Handler.
+
 ★ **Wave 23 (`DEC-235` §4, `DEC-237`, `REQ-UIX-107`, `110`, `111`):** **the panels above are superseded** by `M12.md`'s one sidebar model — no right panel. Rebuilt from `AdminDesigner.dc.html`, `AdminDesignerElements.dc.html` and, for a certificate, `AdminCertDesigner.dc.html`: the studio frame takes the viewport; a 68 px icon rail (العناصر · الحقول · الملفات · الهوية · الطبقات · الفحوصات with a count · الطبقة) and a 300 px panel that swaps; the canvas on `canvas-stage`; a floating toolbar on the selection; the variant strip on the bar. **Desktop-only** (`06` §2). `SCR-055` (the library, both tabs, three defaults — `REQ-UIX-108`) and `SCR-058` (the gallery and the block builder — `REQ-UIX-112`, `REQ-NTF-015`) are rebuilt in the same wave.
 
 ### SCR-059 · `/app/admin/branding` · SCR-061 · `/app/admin/exports` · SCR-062 · `/app/admin/audit`

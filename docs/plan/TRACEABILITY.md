@@ -8,9 +8,9 @@
 
 | Artifact | Count |
 |---|---|
-| Requirements (`REQ-*`) | **453** |
+| Requirements (`REQ-*`) | **454** |
 | Entities (`ENT-*`) | **90** |
-| Stories (`STORY-*`) | **278** |
+| Stories (`STORY-*`) | **280** |
 | Screens cited (`SCR-*`) | 60 |
 | Jobs cited (`JOB-*`) | 44 |
 | Messages cited (`MSG-*`) | 24 |
@@ -216,6 +216,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-DSG-033` | — | — | `SCR-055` | — | — | `STORY-DSG-015` | M26 |
 | `REQ-DSG-034` | — | — | `SCR-055` `SCR-083` | — | — | `STORY-DSG-016` | M26 |
 | `REQ-DSG-035` | `ENT-sessions` | — | `SCR-045` `SCR-055` `SCR-083` | — | — | `STORY-DSG-017` `STORY-DSG-018` | M29 |
+| `REQ-DSG-036` | — | — | `SCR-055` `SCR-057` `SCR-058` | — | — | `STORY-DSG-019` `STORY-DSG-020` | M30 |
 
 ### EVT
 

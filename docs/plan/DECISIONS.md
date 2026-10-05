@@ -10134,3 +10134,125 @@ cases stale since waves 21, 24 and 26, passing by accident or never run, because
 | 7 | Standing: the last-org lockout (`DEC-253` §7.1, deferred by the owner); impersonation's durations (`DEC-248` §7.9); `DEC-194`'s two gates; `DEC-186` §4; `DEC-204`; `DEC-215`'s four; the `railway.json` migration due **2026-12-01** | as recorded |
 
 - **Documents changed:** `STATUS.md`, `CLAUDE.md`
+
+---
+
+## DEC-258 — Wave 28 opens: the designer saves when it is told to, asks before work is lost, and keeps a local draft; `REQ-DSG-022`'s autosave is withdrawn
+
+- **Date:** 2026-10-05 · **Decided by:** the owner (the ask, and the preview ruling); the lead (everything measured below) · **Amends:** `REQ-DSG-022` · **Defines:** `REQ-DSG-036` · milestone **M30** · **Brief:** `docs/plan/notes/wave-28-lead.md` — ★ where the brief and this entry disagree, this entry wins
+
+### 0 · The goal, in the owner's words
+
+★★ **«instead of auto save i want the user to manually save and in case they made edits that weren't saved then a popup shows up to either discard or save».** The designer is the one surface that writes to the server without being told to. An admin decides when their work becomes the document — and never loses work because they decided late. **Both halves matter.** «Good» is not «the gates are green».
+
+### 1 · What Step 0 measured that the brief does not say
+
+| # | Finding | Evidence | Consequence |
+|---|---|---|---|
+| 1 | ★★ **Autosave is a requirement, not only an implementation.** `REQ-DSG-022` lists «autosave» and its first acceptance line is «Autosave never loses more than the last few seconds of work» | `01-prd.md`, `REQ-DSG-022` | Removing the timers reverses a requirement: this entry amends it, and `REQ-DSG-036` replaces it. ★ **The acceptance line's intent — a few seconds of work, never more — survives, and the local draft (§2.3) is what keeps it.** That is why §1.3 of the brief is not optional polish |
+| 2 | ★★ **There is no dirty state.** The brief's «dirty tracking already exists» is not so: `SaveState` is `clean · saving · saved · error · conflict · forbidden · locked · invalid`, and between an edit and the timer firing the state does not move at all — «محفوظ» stays on the bar over an unsaved document for 1.2 s. With the timer gone that would be forever | `editor-state.ts:48-56`, `:228-229`; `editor.tsx:196-208` | Dirty is **derived**: the document on screen compared with the document the server last answered for, in canonical form — as `editor.tsx`'s `differs` already compares against the published one, and as `email/builder.tsx:157` compares against `stored`. **Not a new flag set on edit**: an undo back to the saved document is clean again. `SaveState` keeps reporting what the last save attempt did, and gains nothing |
+| 3 | ★★ **Two call sites save without being asked, beyond the timers**: `flush()` before **publish** (`editor.tsx:165`) and before a **preview** (`:177`) | `editor-state.ts:542-548` | The preview's is removed (§2.5, the owner's ruling). **Publish is not in the brief and is ruled in §2.4** |
+| 4 | ★ **None of the seven precedents offers «save».** Every one is a two-way dialog — leave, or stay — and the email builder's is `admin/confirm-dialog` | `profile-edit.tsx`, `brand-kit-edit.tsx:311-332`, `email/builder.tsx:478-490` | The owner asked for «discard or save». The designer's dialog has three answers, and that is the one thing it needs that no precedent has |
+| 5 | A `live_poster` refusal (409) is read by `push()` as `conflict`, and the person is told another admin saved | `route.ts:62-64`; `editor-state.ts:176-177` | Pre-existing and reachable only past the live gate. Named in `designer`'s plan; fixed if it is one line, recorded if it is not |
+| 6 | The existing evidence that will change: `tests/components/designer/editor-state.test.tsx`'s autosave block, and every e2e spec that edits and waits for «محفوظ» — `wave8-designer-editor`, `wave13-designer-studio-{drag,taps}`, `wave23-designer-taps`, and the lead's `wave23-lead-certificate-walk` among them | grep, 2026-10-05 | Each changed assertion is a ledger line in `docs/plan/notes/wave-28-ledger.md`, in the same commit |
+| 7 | `main` is `5f495453`, CI run `37345474319` concluded `success` on all eleven jobs; production is at `0210` | `gh run view`, read at its conclusion (`DEC-192`) | The wave starts from green |
+
+### 2 · What is decided
+
+1. **Manual save.** Both `setTimeout`s and `AUTOSAVE_DELAY_MS` go. `push()`, the Route Handler, `saveDesignDocument()`, the document model and the engine do not change. A Save control on the bar and **⌘S / Ctrl+S** call `push()`. Undo and redo stop saving: they change the document on screen, like any edit. The bar says one of three things about the document — unsaved changes, saving, saved — and a failed save keeps its badge and its toast.
+2. **Asking, three exits** (the brief's §1.2, adopted):
+   - the editor's back control and any in-app link — a `ui/dialog` with **save · discard · cancel**. Save that fails keeps the person in the editor with the failure shown; it never leaves on a failed save.
+   - reload and tab close — `beforeunload`, armed only while dirty. ★ **The browser shows its own words and nobody tries a custom dialog there**: Chrome and Safari ignore a custom message, and the event fires only after an interaction. A browser limit, recorded so it is not attempted again.
+   - the browser's Back — **not intercepted**. The App Router gives no supported way to veto a history navigation, and a `popstate` trap breaks the Back it is guarding. The local draft is the answer to Back: the edits are offered again when the editor reopens. `designer`'s plan confirms this or says what is better, with the reason.
+3. ★★ **A local draft — and it is not autosave.** While the document is dirty, it is mirrored to the browser's own storage, keyed by the document, with the `updatedAt` it was based on. Autosave wrote to the **server**, which is what exports, previews, publishing and other people read; a local draft never becomes the document. **The document still changes at exactly one moment, and it is the one the person chooses.** Opening the editor with a draft present offers it back: restore, or discard. Four rules bind the plan:
+   - a draft whose base is no longer the server's `updatedAt` is **never applied silently and never dropped silently** — the plan writes the rule and the words;
+   - `conflict` keeps its one meaning (the server refused a save with 409); the draft's staleness is not a second meaning of it;
+   - a successful save, and a confirmed discard, delete the draft;
+   - storage that is full, blocked or absent never breaks editing: the draft is a best effort and the editor works without it.
+4. **Publish saves first, and that is not autosave.** «انشر» is the person saying *this is the document every session uses*; publishing the last saved version while showing another on screen would publish something they are not looking at, and `setPublished(document)` would then record the wrong one. So publish = save, then publish, as today — the one `flush()` that stays, renamed for what it now is. ★ **Flagged to the owner**; the alternative is «انشر» refused while dirty.
+5. **Preview and export read the saved document — ruled by the owner, «totally not needed».** `choosePreview`'s `flush()` is removed. No save-first flow, no silent save. Revisit only if it confuses people in use.
+6. **Discard reloads the document from the server** — no snapshot, no undo stack — and deletes the draft.
+7. **`email/builder.tsx` is not changed in this wave's first plan.** It already saves manually and asks leave-or-stay. Whether it gains «save» in its dialog, and whether both editors share one guard, is ruled at sync 1 from `designer`'s plan; a change there is `notify`'s file, held by the lead as custodian, on a written request.
+
+### 3 · The wave
+
+**One PR, `wave-28/the-designer-saves-manually`, against `main` from its first push. One teammate, `designer`.** No migration is expected (next is `0211`). **No new primitive — `ui/` stays 71 files** and `tests/unit/ui-playground.test.ts` is untouched. **No parity golden moves** (`DEC-176`): the wave changes when a document is written, never what it renders. The studio is the sober register (`REQ-UIX-053`): the dialog does not animate, and `console-register.test.ts` is green and untouched. The designer is desktop-only (`06` §2).
+
+`REQ-DSG-036` · `STORY-DSG-019` (manual save, and asking) · `STORY-DSG-020` (the local draft) · **M30**.
+
+### 4 · Not this wave
+
+Collaborative editing; a version history; a server-side draft; a server autosave under any name; `canvas.tsx`'s engine, the goldens, the export pipeline. ★ **Awaiting the owner, and not scope until ruled:** the last-org lockout (`DEC-253` §7.1; the brief's §2 holds the measurement and two candidate fixes); reversing `DEC-255` §1 (rename only until published) or `DEC-254` §7 (no admin by email). Carried as recorded: `DEC-257`'s table.
+
+- **Documents changed:** `01-prd.md` (`REQ-DSG-022` amended, `REQ-DSG-036`), `06-visual-designer.md` §10, `09-sitemap-screens.md` (`SCR-057`), `14-roadmap.md` (M30), `15-backlog.md` (`STORY-DSG-019`, `020`), `CLAUDE.md` (the wave-28 map), `.claude/agents/*.md`, `STATUS.md`, `notes/wave-28-lead.md`
+
+---
+
+## DEC-259 — Wave 28, sync 1: the plan is approved; discard leaves rather than reloads; nothing is edited while a draft's offer is unanswered; and what the plan measured that `DEC-258` got wrong
+
+- **Date:** 2026-10-05 · **Decided by:** the lead · **Refines:** `DEC-258` · `REQ-DSG-036` · **Plan:** `docs/plan/notes/designer.md`, «Wave 28 — plan» (`f85c0f8d`)
+
+### 1 · What the plan measured that `DEC-258` got wrong or left imprecise
+
+| # | `DEC-258` said | Measured | Ruling |
+|---|---|---|---|
+| 1 | §2.6 — discard reloads the document from the server | The only discard is the dialog's, and it leaves the page; the destination loads fresh. `router.refresh()` would not reset the editor anyway: the page segment's state survives it | **§2.6 is withdrawn.** There is no in-place discard this wave. `REQ-DSG-036`'s line — «discard leaves with the server's document unchanged» — already says the right thing |
+| 2 | §1.6 — the lead's `wave23-lead-certificate-walk` will change | It opens the studio and edits nothing | No lead spec changes. Four designer helpers gain a Save click; their call sites do not move |
+| 3 | §2.2 — «the back control and any in-app link» | One exit more: the sibling-orientation `<form>`, a Server Action that redirects to another document. Two kinds of link that must **not** ask: `/api/` downloads, and the scheme links, which keep the editor mounted | Adopted as the plan writes it |
+| 4 | §2.4 — publish saves first | Today's `flush()` publishes even when its save failed, then records the on-screen document as published | **Publish runs only after a save that landed.** A pre-existing defect, fixed here |
+| 5 | §3 — «the dialog does not animate» | `ui/dialog`'s overlay has a 150 ms `motion-safe` fade, already worn by the studio's delete dialog; `console-register` passes with it | The rule means **nothing new animates**. `ui/dialog` is not edited |
+| 6 | — | ★ **An expired session is not a 403.** `requireSession()` redirects inside the Route Handler; `fetch` follows the 307, receives the sign-in page as `200 text/html`, and `push()` reads it as `error` — «تعذّر الحفظ… أعِد المحاولة», every time, with nothing saying to sign in | **Accepted and recorded**, because `push()` is frozen this wave and the draft survives it: a reload leads to sign-in and the reopened editor offers the work back. Rare — it needs the refresh token itself to have expired. A `401` from the route with its own words is a follow-up the owner may want |
+| 7 | §1.5 — `live_poster` reading as `conflict` | Reachable only when a poster turns live in another tab; the toast's advice (reload) is right, its attribution is not | Recorded, not fixed |
+
+### 2 · Rulings on the plan's questions
+
+1. **The bar's word for unsaved changes is «غير محفوظ»**, not the artboard's «مسودة», which already means an unpublished template on the same bar and would now also mean the local draft. The owner sees it at acceptance.
+2. **Drafts are not swept at sign-out.** They are keyed by member and document, so another admin on the same browser never sees one; sweeping would throw away exactly the work a draft exists to keep.
+3. **Save is `secondary`.** The bar keeps one primary, «صدّر», as drawn; «غير محفوظ» beside Save carries the signal.
+4. **A draft write that fails says nothing.** The bar's «غير محفوظ» is already the one true thing.
+5. **Removing a draft that cannot be parsed or validated is not «dropped silently»** under `DEC-258` §2.3: it cannot be offered. The rule protects a draft that could be restored.
+6. ★★ **Nothing is edited while a draft's offer is unanswered** — the lead's change to the plan. The plan paused the draft writer during the offer and left edits made meanwhile unprotected against Back and a crash, which is the exact loss the draft exists to prevent. The editor is read-only until the person answers «استعِدها» or «احذفها»; the mechanism is `designer`'s.
+7. **`email/builder.tsx`**: no shared module, and it does not gain «save» unasked. ★ **One gap is taken**: its leave dialog is wired to its own back button only, so any other in-app link leaves unasked. The lead closes it as `notify`'s custodian with the house's capture listener, in this PR, with a spec.
+8. The draft is written at the next idle moment, on `pagehide`, on the tab going hidden and at unmount — local only. **That is not autosave** (`DEC-258` §2.3): no request, no `updated_at`, nothing another reader sees.
+
+### 3 · Still the owner's
+
+`DEC-258` §2.4 — publish saving first, against «انشر» refused while there are unsaved changes. Built as the former.
+
+- **Documents changed:** `STATUS.md`
+
+---
+
+## DEC-260 — Wave 28 is built and waiting for the owner: the designer saves when it is told to, asks before work is lost, and offers a local draft back
+
+- **Date:** 2026-10-05 · **Decided by:** the lead; the acceptance is the owner's · **Closes:** `DEC-258`, `DEC-259` · `REQ-DSG-036` · milestone **M30** · PR #84
+
+### 1 · What is built, on `8f3e1a15`
+
+| What | Where |
+|---|---|
+| The two autosave timers and `AUTOSAVE_DELAY_MS` are gone. «احفظ» on the bar and ⌘S / Ctrl+S call the unchanged `push()`. The bar says «غير محفوظ», «يُحفَظ…» or «محفوظ», read from a comparison with the saved document | `editor-state.ts`, `editor.tsx` |
+| Leaving by any in-app link or the orientation switch asks «لم تُحفظ تعديلاتك»: «احفظ وغادر» · «تجاهلها وغادر» · «ابقَ». A save that fails keeps the person in the editor. A reload gets the browser's question | `leave-guard.ts`, `leave-dialog.tsx` |
+| A local draft, per member and document, written while there are unsaved changes and at unmount, tab-hide and `pagehide`; offered on reopening; read-only until answered; a stale one says so | `draft.ts`, `draft-offer.tsx` |
+| ★ **The owner ruled on 2026-10-05: «انشر» saves first** — and it publishes only after a save that landed. A preview and an export save nothing | `editor.tsx` |
+| The email builder asks on every in-app link, not only its own back button | `email/builder.tsx` (the lead, as `notify`'s custodian) |
+
+### 2 · The evidence
+
+- Production build of the branch; `wave28-designer-save` and `wave28-designer-draft` 11 of 11 on the desktop project; the four studio specs whose `saved()` helper now presses «احفظ» green in the first run (17 passed, 1 failed — the new Back case, whose own history was wrong; fixed in the spec and re-run).
+- Units 5,679 passed (`designer`'s run); the email suites 20 of 20; `tsc` clean; lint 0 errors; `ui-lint` strict green; trace 454 / 280.
+- `qa` 57 of 57. Parity holds at 21 of 28 locally, the count wave 27 saw; **no golden, no file under `packages/` and no file under `ui/` differs from `main`**. `console-register` and `ui-playground` pass untouched.
+- The ledger: eleven lines, one changed expectation (D-5 — «one PUT after 1.2 s» became «nothing after 60 s, one PUT on Save»).
+- **Not run:** the phone project for the new specs (the designer is desktop-only); the full e2e suite; CI on the final head, read when it concludes.
+
+### 3 · For the owner at acceptance
+
+| # | What | |
+|---|---|---|
+| 1 | «غير محفوظ», not the artboard's «مسودة»; Save is a secondary button; a freshly opened document says «محفوظ» | `DEC-259` §2 |
+| 2 | With Save and the state on the bar, the format strip scrolls sideways sooner — at 1440 px «طباعة A3» sits past the edge | as built; a layout pass if it bothers |
+| 3 | An expired session fails a save with «تعذّر الحفظ… أعِد المحاولة» and never says to sign in; the draft survives it | `DEC-259` §1.6 — a follow-up if wanted |
+| 4 | The email builder's dialog is still leave-or-stay; it did not gain «save» | not asked |
+| 5 | Still awaiting rulings, none of them scope: the last-org lockout (`DEC-253` §7.1); `DEC-255` §1; `DEC-254` §7 | the brief's §2 – §3 |
+
+- **Documents changed:** `STATUS.md`

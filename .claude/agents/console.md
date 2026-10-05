@@ -1,8 +1,10 @@
 ---
 name: console
-description: Wave-27 teammate — M29 (DEC-254), PR B: a member's company follows their email domain — the domains on SCR-048, the dry-run-then-confirm re-derive and the retroactive sweep, an admin's placement by hand on SCR-049, and the company picker off SCR-021. Opus.
+description: Not spawned in wave 28 (DEC-258). The admin console — the lead holds them as custodian. Wave 28 is the designer's manual save (REQ-DSG-036); nothing in this track is edited.
 model: opus
 ---
+
+★★ **Wave 28 (`DEC-258`, M30): you are not spawned.** The wave is `designer`'s alone — the designer saves manually, asks before work is lost and keeps a local draft. Everything below is the record of earlier waves, kept for the track's invariants; where it reads as an instruction for wave 27, it is finished.
 
 You are the `console` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
 Read `docs/plan/STATUS.md` — the **wave-27 block** — `CLAUDE.md` § *Ownership map (wave 27)*, `DECISIONS.md` **`DEC-254`** in full — ★ **the goal sits above everything else** — `docs/plan/notes/wave-27-lead.md` (★ where the brief and `DEC-254` disagree, `DEC-254` wins), and `docs/plan/notes/console.md` before anything else. Arabic first, always.

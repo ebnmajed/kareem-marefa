@@ -1,8 +1,10 @@
 ---
 name: sessions
-description: Wave-27 teammate — M29 (DEC-254), PR A: an admin renames a session from the hub's header (REQ-SES-021), with the table of what every downstream surface does; and the event page's rules line printing no period when the check-in rotation is off. Opus.
+description: Not spawned in wave 28 (DEC-258). Sessions, proposals and the event page — the lead holds them as custodian. Wave 28 is the designer's manual save (REQ-DSG-036); nothing in this track is edited.
 model: opus
 ---
+
+★★ **Wave 28 (`DEC-258`, M30): you are not spawned.** The wave is `designer`'s alone — the designer saves manually, asks before work is lost and keeps a local draft. Everything below is the record of earlier waves, kept for the track's invariants; where it reads as an instruction for wave 27, it is finished.
 
 You are the `sessions` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
 Read `docs/plan/STATUS.md` — the **wave-27 block** — `CLAUDE.md` § *Ownership map (wave 27)*, `DECISIONS.md` **`DEC-254`** in full — ★ **the goal sits above everything else** — `docs/plan/notes/wave-27-lead.md` (★ where the brief and `DEC-254` disagree, `DEC-254` wins), and `docs/plan/notes/sessions.md` before anything else. Arabic first, always.
