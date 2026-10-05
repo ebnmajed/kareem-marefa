@@ -154,7 +154,8 @@ test("an admin renames a draft from the hub's header, and the console reads the 
   await expect(main(page).getByText("تغيّر الاسم")).toBeVisible();
   await page.goto(`/ar/app/admin/sessions`);
   await settle(page);
-  await expect(main(page).getByText(RENAMED).first()).toBeVisible();
+  // `ui/data-table` renders each row twice — the table and the phone stack — and hides one per width: the visible copy.
+  await expect(main(page).getByText(RENAMED).filter({ visible: true }).first()).toBeVisible();
 });
 
 test("a published session's header draws no rename at all", async ({ context, page }) => {
