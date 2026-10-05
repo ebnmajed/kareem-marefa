@@ -247,7 +247,8 @@ const main = (page: Page) => page.locator("#main");
 const designPanel = (page: Page, kind: "attendance" | "presenter") => page.locator(`section[aria-labelledby="cert-template-${kind}-heading"]`);
 
 async function templateId(name: string): Promise<string> {
-  const { rows } = await db.query<{ id: string }>(`select id from public.design_templates where scope = 'platform' and purpose = 'certificate' and name = $1`, [name]);
+  // ★ LEDGER (wave 27, DEC-254 §3): the org's own seeded composition — SCR-045 offers no platform template.
+  const { rows } = await db.query<{ id: string }>(`select id from public.design_templates where org_id = $1 and purpose = 'certificate' and name = $2`, [orgId, name]);
   return rows[0]!.id;
 }
 
