@@ -15,6 +15,8 @@ Read `docs/plan/STATUS.md` — the **wave-27 block** — `CLAUDE.md` § *Ownersh
 
 ### 1 · The rename (`DEC-254` §5)
 
+★★ **`DEC-255` §1 – §2 OVERRIDE this section where they differ: the name is editable ONLY UNTIL THE SESSION IS PUBLISHED** (the owner's rule), refused by the database after; the control is «عدّل الاسم» in `_hub/hub-header.tsx`'s actions, opening a dialog; no calendar sync and no certificate question arise. Your edit list is the map's.
+
 An admin changes a session's title **in the hub's header on `SCR-043`**, beside the `h1` it changes, in any state. The
 write goes through the column grant that has existed since `0010:469` and the policy `sessions_update_admin`
 (`0010:459-461`) — **no new function is needed for the write**. The audit row `session.renamed`, with the old and the

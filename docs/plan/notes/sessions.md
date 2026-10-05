@@ -5,6 +5,230 @@ this file only records how I am building it and what I found. Append as I go.
 
 ---
 
+## Wave 27 — plan (PR A, `wave-27a/the-small-items`; `REQ-SES-021`, `STORY-SES-014`; contract 2) — planning only, 2026-10-05
+
+Measured on `50b534fa`. Every line below is from the code, cited by file and line; nothing is from memory.
+**No code is edited until the lead posts «the plans are approved».**
+
+### W27.0 — Contradictions and gaps found (lead, please read first; I pick no side)
+
+| # | What the brief / `DEC-254` says | What the code says | Evidence |
+|---|---|---|---|
+| C1 | «A moderator **and a member** are refused by the database» (`REQ-SES-021`); «nothing writes it» (`DEC-254` §1.11) | A **member who is a presenter** may update `title` while the session is `draft`…`published` — a second policy, and the same column grant. `0063`'s poster hook says so in its own comment («a presenter's own title edit included»). No screen writes it today, but the database permits it | `0010:462-465` (`sessions_update_presenter`), `0010:469`, `0063:190-193` |
+| C2 | The title is written «through the column grant … no new function is needed» | The policy's check is `is_org_admin()` = the **claim** alone (`0003`), not `03` §1.3's fresh re-read: an admin demoted within the JWT's 900 s can still rename. Every other privileged session write goes through `assert_fresh_admin()` | `0003_platform_foundation.sql` `is_org_admin()`; `_hub/actions.ts:9-11` |
+| C3 | «An issued certificate: **nothing moves** (`REQ-CRT-014`) — prove where the snapshot lives» | **`certificates` has no title snapshot** — only `recipient_name_snapshot`. The title is read **live** from `sessions.title` by `certificate_render_context()` and `verify_certificate()`. What does not move is the **rendered PDF** and its `export_artifacts.render_context` (the bindings the render used). What **does** move: the public verification page `/verify/[code]` prints the new title beside a PDF printing the old one; `/app/me/certificates` lists the new title; and any re-render of an existing certificate (a retried or re-enqueued `issue_certificates`, which returns the existing row and re-reads the context) prints the new title under a new fingerprint. `REQ-CRT-014` pins the **template version and the font hashes**, not the data | `0055` certificates table (no title column), `0055:431-445` (`verify_certificate` → `s.title`), `0099` `certificate_render_context` → `s.title`, `issue_certificates.ts:147-195`, `0127:26-35` (returns the existing row), `certificates.ts:98` |
+| C4 | The brief: «`sessions.ts:1331` and `:1784` … the **event page's** rules line» | Only `:1331` (`getEventFigures`) feeds the event page (`action-card.tsx:154-158`). `:1784` is `getScheduleRead()`, which feeds the **schedule tab's** read mode (`schedule/page.tsx:134`) — and the schedule tab is on my never-touch list this wave | `sessions.ts:1775-1808`, `schedule/page.tsx:134` |
+| C5 | My edit list: `[id]/{layout,page,loading,error}.tsx` and `src/components/{sessions,hub}/**` | The hub's header lives in **`[id]/_hub/hub-header.tsx`** (with `_hub/actions.ts`), which is in **no** list this wave. `src/components/hub/**` is `scoring`'s standing card (`band-moments`, `standing`, `displayed-only`), not the session hub. I cannot place the control without editing `_hub/hub-header.tsx` | `[id]/layout.tsx:5,24`, `ls src/components/hub` |
+| C6 | — | ★ **The lead's audit migration will turn `tests/unit/admin-audit-labels.test.ts` red** unless `admin.audit.actions.session.renamed` exists in `ar` and `en` `admin.json` **in the same commit**: the test reads every `'x.y'` literal in `supabase/migrations/` and fails on one without a label. `admin.json` is `console`'s (PR B's tree) | `tests/unit/admin-audit-labels.test.ts:36-60`, `audit-text.ts:14-16` |
+| C7 | «With it off the line prints no period» | Today the event page's line is gated on `figures.rotationSeconds` being **truthy**, so at null it prints **nothing — the points sentence included** (`rotationPoints`, «+N نقطة تصل عند انتهاء الجلسة.»), which is `REQ-CHK-018`'s truth, not the period's. Dropping the period must not drop the points | `action-card.tsx:154-158` |
+| C8 | `DEC-254` §1.10: «the rotation period is read in six places» | Also a seventh reader's fallback: `getEventFigures` already returns `null` on a **failed** read (`:1335`), so after the change null means both «off» and «not known». Harmless with the copy proposed in W27.6 (it states nothing false either way) — written down so nobody relies on the distinction | `sessions.ts:1327-1336` |
+
+### W27.1 — Where the rename sits, and what it is
+
+- **File:** `src/app/[locale]/app/admin/sessions/[id]/_hub/hub-header.tsx` (C5 — the lead grants it or tells me where), the
+  `HubHeader` server component. It already reads `header.title` and `header.viewerRole` (`hub-header.tsx:25-27`,
+  `sessions.ts:1715-1748`), so **the header's DAL read does not change**.
+- **What:** for `viewerRole === "admin"` only, a `quiet` `md` button «عدّل الاسم» placed **first** in `PageHeader`'s
+  `actions` (before the status badge, `hub-header.tsx:44-58`). `PageHeader.title` is a `string` (`ui/index.ts:177-178`) and
+  there is no slot literally adjacent to the `h1` but `actions` (the h1's row from `sm`) and `meta` (under it). ★ **Decision
+  D1 for the lead:** (a) the first item in `actions` — no primitive change; or (b) an add-only `titleAction` prop on
+  `ui/page-header` (the lead's file). I recommend **(a)**.
+- The button opens a **`Dialog`** (the lead's `ui/dialog`, exactly as `CancelAction` does, `lifecycle.tsx:52-88`) holding
+  one `Field` + `Input name="title"`, `defaultValue` the server's title, `maxLength={PROPOSAL_LIMITS.titleMax}`,
+  «احفظ» (`Button type="submit" pending`) and «إلغاء» (`DialogClose`). The dialog closes **by the result**, never on click
+  (`lifecycle.tsx:56-61`'s race); `noValidate` on the form.
+- **The saved state is the server's answer:** the DAL returns the row's `title` from `.update(…).select("id, title")`;
+  the action returns `{ done: "renamed", title }`; the toast «حُفظ الاسم» fires **inside the action wrapper**
+  (`lifecycle.tsx:18-31`'s rule); `revalidatePath(…/admin/sessions/[id], "layout")` re-renders the header's `h1` from the
+  database. No optimistic text. Sober register (`REQ-UIX-053`): no motion, no explainer.
+- **New component:** `src/components/sessions/session-rename.tsx` (`"use client"`, `RenameAction`), bound action only —
+  no closure crosses the boundary (`DEC-159`). Its state type in `src/components/sessions/session-rename-state.ts`
+  (not in the `"use server"` module).
+- **Strings** (`sessions.json`, `sessions.hub.rename.*`, ar first): `open` «عدّل الاسم» · `dialogTitle` «اسم الجلسة» ·
+  `label` «الاسم» · `save` «احفظ» · `keep` «إلغاء» · `close` · `pending` «يُحفظ…» · `saved` «حُفظ الاسم» ·
+  `tooShort` «الاسم قصير جدًا» · `tooLong` «الاسم أطول من اللازم» · `failed` «تعذّر الحفظ — حاول مرة أخرى.»
+  The dialog's title carries the current name in `<bdi>`.
+
+### W27.2 — The DAL and the action
+
+```ts
+// src/lib/dal/sessions.ts — add-only
+export const sessionRenameInput = z.object({ title: z.string().trim().min(PROPOSAL_LIMITS.titleMin).max(PROPOSAL_LIMITS.titleMax) }).strict();
+export type RenameResult = { ok: true; title: string } | { ok: false; reason: "refused" | "failed" };
+export async function renameSession(locale: string, sessionId: string, title: string): Promise<RenameResult>;
+//  requireSession → uuid check → parse → session.role === "admin" (defence in depth only)
+//  → supabase.from("sessions").update({ title }).eq("id", sessionId).select("id, title")
+//  → error: "failed"; ZERO rows: "refused" (RLS answers a USING miss with no row, not 42501); one row: its title.
+```
+
+```ts
+// [id]/_hub/actions.ts (C5) — "use server"
+export async function renameFromHub(locale: Locale, sessionId: string, prev: RenameState, formData: FormData): Promise<RenameState>
+//  Zod: z.object({ sessionId: z.uuid(), title: <the same schema> }) — too_small → "tooShort", too_big → "tooLong";
+//  the typed title handed back so a refusal keeps it (React resets the form, DEC-149 §1).
+//  revalidates: the hub layout, /app/sessions/[id], /app/sessions, /app, /s/[id].
+```
+
+### W27.3 — The validation: the proposal's bounds, found
+
+- Proposal title: `PROPOSAL_LIMITS.titleMin = 3`, `titleMax = 150` (`proposal-rules.ts:22-23`, checked at `:81-82`);
+  `proposalInput.title = z.string().trim().min(3).max(150)` (`proposals.ts:84`); `directSessionInput` the same
+  (`sessions.ts:235`); the database `check (char_length(btrim(title)) between 3 and 150)` on both `proposals`
+  (`0010:34`) and **`sessions`** (`0010:72`). I import `PROPOSAL_LIMITS` — one source.
+- Refused at the field (`Field error`), with what was typed kept. A title the database still refuses (JS `trim` vs
+  `btrim`, which trims spaces only) arrives as `23514` → «failed», never a crash.
+
+### W27.4 — ★ What each downstream surface does after a rename
+
+| Surface | What it reads | When | After a rename | Test |
+|---|---|---|---|---|
+| The hub's `h1` | `getSessionHubHeader()` → `sessions.title` | per request | the new title, from the server's answer | e2e `wave27-sessions-rename` |
+| The event page `/app/sessions/[id]` | `getSessionForEvent()` → `sessions.title` | per request | new | e2e |
+| The feed `/app` | `search.ts:323,383` `TIMELINE_SESSION_COLUMNS` | per request | new | e2e |
+| Browse `/app/sessions` and search | the same rows; `search_vector` is `generated always … stored` over `title` (`0037:239-245`), the trigram index over `ar_normalize(title)` | per request; the vector recomputes on the update | new; the new words match, the old do not | RLS: `search_vector @@` the new word after the update |
+| The public card `/s/[id]` | `session_public_card()` (`sessions.ts:1654-1660`) | per request | the text is new; its `og:image` is the poster's `og_path` (`:1689`), which follows the poster row below. Link previews already cached by WhatsApp etc. are outside us | e2e |
+| ★ The calendar entry (Google/Outlook sync) | `calendar_upsert` → `calendar_sync_target()` → `summary: target.session.title` (`calendar_upsert.ts:145-150`) | **only when a job is enqueued** — on RSVP, and on a **time or venue** change (`0111` arm 4) | ★ **NOTHING re-syncs.** `sessions_notify()` returns at «a title edit is not something to mail a room full of people about» before it enqueues `calendar_upsert` (`0111`, the `jsonb_array_length(changes) = 0` arm). A synced event keeps the old title until the next reschedule or RSVP. **Decision D2** | RLS: no `calendar_upsert` job after a title-only update (today's behaviour) — or the opposite if D2 says re-sync |
+| The ICS download | `api/sessions/[id]/ics/route.ts:61,78` → `session.title`, `no-store` | per download | a new download is new; a file already on a device is not | none needed (live read, `no-store`) |
+| Mail and inbox already sent | `notifications.payload.title`, a copy written at notify time (`0111` `'title', new.title`); the inbox reads `payload.title` (`inbox-item.tsx:22`) | written once | **old** — sent mail and its inbox row are history | RLS: an existing notification's payload unchanged |
+| Reminders not yet sent | `send_reminder_notification()` reads `s.title` **at fire time** (`0110` line 46 of the function) | when the job runs | **new** | RLS: call the function after a rename, the new notification's payload carries the new title |
+| A rename itself | `sessions_notify()` | on update | **no mail, no notification** (C1's early return) | RLS: notifications count unchanged |
+| An exported poster | `poster_render_context()` reads `title`; the bindings are frozen into `export_artifacts.render_context` and the PDF/PNG bytes | `sessions_poster_hook` enqueues `regenerate_poster` **iff** `new.title is distinct from old.title` and the state is `published`/`in_progress` (`0063:209-221`) | published/in progress, **live** binding: re-rendered with the new title; the menu serves the newest **ready** fingerprint and shows «updating» meanwhile (`posters.ts:489-506`). **Detached**: never re-rendered, marked `stale_since` (`regenerate_poster.ts:89-94`). Draft: no poster yet. **Completed/archived/cancelled: nothing re-renders — the exported poster keeps the old title** | RLS: one `regenerate_poster` job (key `poster:<id>`) for published; none for completed |
+| A story frame | `story_frames` has **no title column** (`0198`); the story feed reads `sessions.title` live (`stories.ts:214`) | per request | new, on every frame, including ones already written | RLS: no title column on `story_frames` (structural); e2e optional |
+| The audit log's earlier rows | `audit_log` is append-only (invariant 9) | — | the rows do not change; ★ but `SCR-062` **labels** a session subject with its **current** title (`admin-audit.ts:345`), so earlier rows display the new name. The new `session.renamed` row carries both | RLS: the row's `before`/`after` |
+| The schedule tab's log | `getSessionLog()` whitelists actions (`sessions.ts:1821-1834`) | — | `session.renamed` is **not shown** there unless added; the tab is frozen for me. **Decision D3** | — |
+| ★ An issued certificate | the PDF and `export_artifacts.render_context` hold the title printed | at issue | **the PDF does not move.** But see **C3**: `/verify/[code]` and `/app/me/certificates` show the **new** title; a re-render of an existing certificate prints the new one | RLS: `render_context->'bindings'` of an issued certificate's artifact keeps the old title after the rename; `verify_certificate()` returns the new one (documenting C3, whichever way the lead rules) |
+| `updated_at` | `sessions_updated_at` (`0010:110`) | before update | moves; nothing in `src/lib/dal/` orders sessions by it (measured: only proposals at `sessions.ts:197`) | — |
+
+### W27.5 — Every trigger on `public.sessions`, and what a title-only update fires
+
+Scanned every `create trigger … on public.sessions` in `supabase/migrations/` (none dropped):
+
+| Trigger | Timing / columns | Fires on title-only? | Does |
+|---|---|---|---|
+| `sessions_updated_at` (`0010:110`) | before update | yes | sets `updated_at` |
+| `sessions_guard_transition` (`0024:78`) | before update **of state** | no | — |
+| `sessions_completion_fanout` (`0031:98`) | after update **of state** | no | — |
+| `sessions_notify` (`0036:165`, body `0111`) | after update (all) | yes | returns early — no change of time or venue, so no notice, no `calendar_upsert`, no reminder move |
+| `sessions_carry_over_proposal_materials` (`0053:158`) | after insert | no | — |
+| `sessions_poster_hook` (`0063:225`) | after update (all) | yes | `regenerate_poster` when published/in progress (W27.4) |
+| `sessions_certificate_hook` (`0065:84`) | after update (all) | yes | nothing — edge into `completed` only |
+| `sessions_host_company_same_org` (`0081:102`) | before insert or update **of host_company_id** | no | — |
+| `sessions_00_sync_single_day` (`0100`) | after insert or update of starts_at, ends_at, venue… | no | — |
+| `sessions_days_consistent` (`0100`, deferred constraint) | after update of state, starts_at, … | no | — |
+| `sessions_01_check_in_open_to_days` (`0104:128`) | after update **of check_in_open** | no | — |
+| `sessions_story_frames` (`0199:824`) | after update **of state** | no | — |
+
+No existing audit trigger on `sessions`; `0181`'s pattern (definer, `write_audit()`) is the shape to follow.
+
+### W27.6 — What the lead's audit trigger needs to be, from my side
+
+- `after update of title on public.sessions for each row when (old.title is distinct from new.title)` — so a save of the
+  same name writes nothing, and `0181`'s «`updated_at` alone writes nothing» holds.
+- `security definer set search_path = ''`, calling `public.write_audit(new.org_id, 'session.renamed', 'session', new.id,
+  jsonb_build_object('title', old.title), jsonb_build_object('title', new.title))` — `0181`'s before/after shape, so
+  `SCR-062` renders it as it renders `venue.changed`.
+- The actor is `auth_member_id()` / `auth_org_role()` (`0005` `write_audit`), so a presenter's edit (C1) records the
+  presenter, and the owner's scoped statement records `system`.
+- Same commit: `admin.audit.actions.session.renamed` in ar/en (C6) — «تغيير اسم جلسة» beside `org.renamed`'s
+  «تغيير اسم المؤسسة» (`admin.json:616`).
+- **What `main` does on the new schema before my code deploys:** `main`'s app writes `sessions.title` nowhere (no
+  `.update(` on `sessions` in `src/lib/dal/`; `DEC-254` §1.11), so the trigger fires only on a direct API write by an
+  admin or a presenter (C1), and adds a row to `audit_log` that `main`'s `SCR-062` already lists (its label falls back
+  to the key until the label lands). Nothing else moves.
+- **The nullable rotation column on `main`** (checkin's and the lead's, for completeness of my rows): `main`'s event page
+  already hides the line at null (`action-card.tsx:154`), so it prints nothing — the points sentence included (C7) —
+  until my code lands.
+
+### W27.7 — The rules line (contract 2)
+
+- **The one place the event page prints the period:** `src/components/sessions/action-card.tsx:154-158`, key
+  `sessions.event.rotation` («الرمز يُعرض في القاعة ويتغيّر كل N دقائق.») followed by `rotationPoints`. The figure comes
+  from `getEventFigures()` (`sessions.ts:1327-1336`), already typed `number | null` (`:1322`); `page.tsx:105` passes it.
+- **At null (off)**, proposal: print the first clause alone, as a new key `sessions.event.rotationFixed` «الرمز يُعرض في
+  القاعة.», **then `rotationPoints` exactly as today** — so the period is gone and the points stay (C7). This is the
+  existing sentence minus its period, not a sentence explaining the absence. **Decision D4** if the lead prefers the
+  points sentence alone.
+- `:1784` (`getScheduleRead`) keeps its type `number | null`; its renderer `schedule/page.tsx:134` already prints nothing
+  at null (truthy gate), and the schedule tab is frozen (C4). `schedule.json` already has a `zero {رمز ثابت}` form that
+  would read «off» if anyone ever wanted the tab to say it — not this wave.
+- The check-in page (`check-in/page.tsx:93-97`) and the host view are `checkin`'s.
+- Pre-existing and not touched: `Math.round(s / 60)` prints 90 s as «كل دقيقتين» (`action-card.tsx:156`).
+- I follow `checkin`'s published contract (`checkin.md` W27-8: `rotationSeconds: number | null`, null = off **or
+  unread**, matching C8). ★ Its row for the event page says «already nothing at null — no change needed (`sessions`
+  confirms)». **I do not confirm it**: «nothing» also drops the points sentence (C7). The lead rules (D4).
+
+### W27.8 — Tests (new files only) and the evidence
+
+**New:**
+- `tests/rls/session-rename.test.ts` — an admin renames (one row, the new title); a moderator and a plain member update
+  **zero rows** and the title is unchanged; another org's admin zero rows; a presenter in `published` — **asserts
+  today's behaviour per D5** (C1); `session.renamed` with `before.title`/`after.title` and the actor (once the lead's
+  migration is on disk); a same-title save writes no audit row; no notification and no `calendar_upsert` job on a
+  title-only update (D2); one `regenerate_poster` job for a published session, none for a completed one;
+  `search_vector` matches the new word; an existing notification's payload unchanged and a reminder fired after the
+  rename carries the new title; an issued certificate's artifact `render_context` keeps the old title (C3).
+- `tests/components/sessions/rename-action.test.tsx` — rendered for an admin only; the bounds refused at the field
+  (2 and 151 characters), what was typed kept on refusal; the dialog closes on the result; the toast from the result.
+- `tests/components/sessions/rename-rules-line.test.tsx` — the action card at `rotationSeconds: 600` prints «كل 10
+  دقائق»; at `null` prints no period **and still prints the points**.
+- `tests/e2e/wave27-sessions-rename.spec.ts` — `page.click()` and typing only: rename on the hub at 1280 and 390, the
+  `h1` changes, then the event page, the feed, browse and `/s/[id]` show the new title; captures
+  `.qa-shots/rtl/wave27-sessions-hub-rename-{open,saved}-{1280,390}.png`.
+
+**Evidence, unedited:** `tests/e2e/wave18-sessions-event.spec.ts:57,217` (rotation 600 → «يتغيّر كل 10 دقائق» — must
+stay green), `tests/e2e/wave21-sessions-queues.spec.ts` and `wave13-sessions-hub.spec.ts` (the header), every
+`tests/components/sessions/*` suite, `tests/rls/sessions*.test.ts`, `tests/unit/admin-audit-labels.test.ts` (C6).
+No changed assertion is expected; any that changes is a line in `wave-27-ledger-a.md`.
+
+### W27.9 — Decisions I need from the lead
+
+- **D0 (C5):** grant `src/app/[locale]/app/admin/sessions/[id]/_hub/{hub-header.tsx,actions.ts}` and a new
+  `_hub/rename-state.ts` (or say where the control mounts instead).
+- **D1:** the control in `actions` (my recommendation) or a `titleAction` prop on `ui/page-header`.
+- **D2:** a title-only rename re-syncs the calendar entry (a `calendar_upsert` per confirmed RSVP, the lead's trigger) —
+  or stays as today, the old title until the next reschedule.
+- **D3:** `session.renamed` in the schedule tab's log (`SESSION_LOG_ACTIONS` + a `schedule.json` key) or not — the tab is
+  frozen.
+- **D4:** the rules line at null — «الرمز يُعرض في القاعة.» + the points, or the points alone.
+- **D5 (C1, C2):** the presenter's title write and the claim-only admin check stand as they are, or the rename moves to
+  a definer RPC with `assert_fresh_admin()` (which `DEC-254` §5 says is not needed) and/or the presenter's grant narrows.
+- **C3 and C6** are the lead's to record: the certificate's title is not a snapshot; the audit label must ship with the
+  migration.
+
+### W27.10 — The lead's rulings (2026-10-05), and what I build from them
+
+- **D0** granted: `[id]/_hub/{hub-header.tsx,actions.ts}` + one new state file beside them (`_hub/rename-state.ts`);
+  `src/components/hub/**` is off my list. **D1** the quiet «عدّل الاسم» first in `actions`, a Dialog on `CancelAction`'s
+  pattern; `ui/page-header` untouched. **D3** `session.renamed` added (add-only) to `SESSION_LOG_ACTIONS`
+  (`sessions.ts:1821`) and one key in `schedule.json`. **D4** at null: «الرمز يُعرض في القاعة.» + `rotationPoints`
+  unchanged, with a test that the points sentence survives a null **and** a failed read. **D5** both stand; the presenter's
+  retitle is audited by the lead's trigger. **C3** is with the owner — the rename carries **no state restriction**.
+- ★ **D2 — the exact enqueue to copy** (`0111_day_change_notice.sql:306-323`, `sessions_notify()`'s arm 4; the same
+  call at `:157-181` in `session_days_changed()`):
+
+  ```sql
+  for r in
+    select rs.member_id, rs.id as rsvp_id, rs.status from public.rsvps rs
+     where rs.session_id = new.id and rs.status in ('confirmed', 'waitlisted')
+  loop
+    -- (notify(...) here in 0111 — NOT copied: a rename sends no notification)
+    if r.status = 'confirmed' then
+      perform public.enqueue_job(
+        'calendar_upsert', jsonb_build_object('rsvp_id', r.rsvp_id), 'cal:' || r.rsvp_id::text, null, null, 8);
+    end if;
+  end loop;
+  ```
+
+  Only `confirmed` RSVPs have a calendar entry, so the loop can select `status = 'confirmed'` directly. Two things in
+  arm 4 the lead may want to mirror: it runs only for `new.state in ('published', 'in_progress')` (`:277-279`) — a
+  cancelled session's entries were already deleted by arm 2 (`caldel:`), so a rename of a cancelled session must not
+  re-create them through `cal:`; and the job is `security definer`-only (`enqueue_job` is not granted to clients,
+  `0025`), so the trigger is definer like `0181`'s. The key `cal:<rsvp>` coalesces with a pending reschedule's job.
+  My RLS case then asserts **one** `calendar_upsert` per confirmed RSVP and **no** notification after a title-only
+  update (W27.8's D2 row flips to this).
+
+---
+
 ## 0. Two discrepancies found on day one (lead, please read)
 
 **0.1 — My screen numbers do not match `09`.** My agent definition says "screens SCR-008 … SCR-012

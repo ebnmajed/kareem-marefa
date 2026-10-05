@@ -1,5 +1,315 @@
 # checkin — working notes
 
+## Wave 27 — plan (`REQ-CHK-019`, `STORY-CHK-009`, `DEC-254` §6 · PR A, `wave-27a/the-small-items`)
+
+Planning only. Measured on `wave-27a/the-small-items` at `50b534fa`. **No code is edited until «the plans are
+approved».** Tables, columns, constraints, policies and grants are named here for the lead, never written by me.
+
+### W27-1 · The live definitions, and what each does at null today
+
+| Function | Live text | Reads the rotation? | What it does if `check_in_rotation_seconds` were null **today** |
+|---|---|---|---|
+| `_issue_check_in_code(p_session, p_day)` | `0105:107-170` (nothing later re-creates it; `0105:668` revokes it from every client role and `service_role`) | yes, `0105:134-135` | ★★ **breaks.** `make_interval(secs => null)` is null, so `cur.valid_from > now() - null` (`0105:145`) is null → never «current» → it mints on every call; the insert computes `valid_until = now() + null` (`0105:159`) → **`23502`, `valid_until` is `not null`** (`0010:211`). Every caller raises. |
+| `ensure_check_in_code(p_session, p_day)` | `0105:173-205` | no — gates, then calls the core | raises the core's `23502`; `getHostView()` turns any non-`not_open` error into a throw (`checkin.ts:133`) → **the host view and `SCR-044`'s code card error out** |
+| `rotate_check_in_code(p_session, p_day)` | `0105:215-218`, `language sql`, a hard catalogue dependency on the core | no | the job raises and graphile retries it |
+| `revoke_check_in_code(p_session, p_day)` | `0105:223-261` | no — revokes, then calls the core for the replacement | the revoke rolls back with the core's error |
+| `check_in(p_session, p_code, p_day)` (the verify path) | `0120:68-213` | **no** — it matches `session_day_id = d.id and code = … and revoked_at is null and now() between valid_from and valid_until` (`0120`, the `select * into c` block) and gates on `check_in_ceiling()` | unaffected; it only reads what was issued |
+
+★ **Only the core changes.** `ensure`, `rotate`, `revoke` and `check_in()` are not re-created. Because the core keeps
+its exact signature and return type, it is `create or replace` — **no drop**, so `rotate_check_in_code()`'s sql-body
+dependency and `0105:668`'s revoke both survive untouched (the file still re-states the revoke, belt and braces).
+
+### W27-2 · The proposed core — `supabase/proposed/checkin/01_rotation_off.sql` (functions only)
+
+The rotating branch is **`0105`'s text verbatim** — an org with a period behaves byte for byte as today. The new branch
+runs only when the period is null.
+
+```sql
+create or replace function public._issue_check_in_code(p_session uuid, p_day uuid default null) returns public.check_in_codes
+language plpgsql security definer set search_path = '' as $$
+declare
+  s public.sessions; d public.session_days;
+  rotation_s int; grace_s int;
+  cur public.check_in_codes; prev public.check_in_codes;
+  v_ceiling timestamptz; v_until timestamptz;
+  v_code text; i int;
+  alphabet constant text := 'ACDEFGHJKMNPQRTUVWXY34679';
+begin
+  -- the session lock and the day's resolution: 0105:121-132, verbatim
+  select check_in_rotation_seconds, check_in_grace_seconds into rotation_s, grace_s
+    from public.org_settings where org_id = s.org_id;
+  v_ceiling := public.check_in_ceiling(d.id);
+
+  if rotation_s is null then
+    -- REQ-CHK-019: one code for the day, valid to the day's ceiling. The day's NEWEST code, revoked or not —
+    -- a revoked code is followed by a fresh one, never by an older code still inside its grace.
+    select * into cur from public.check_in_codes
+     where session_day_id = d.id
+     order by valid_from desc, (revoked_at is null) desc       -- a revoke and its replacement can share now()
+     limit 1;
+    if found and cur.revoked_at is null and cur.valid_until > now() then
+      -- Switched off while this code was current: it BECOMES the day's code (REQ-CHK-019, «keeps that code»).
+      if cur.valid_until < v_ceiling then
+        update public.check_in_codes set valid_until = v_ceiling where id = cur.id returning * into cur;
+      end if;
+      return cur;
+    end if;
+    if now() >= v_ceiling then
+      return null;              -- no code past the ceiling; `check (valid_until > valid_from)` would refuse it anyway
+    end if;
+    v_until := v_ceiling;
+  else
+    -- 0105:139-147 verbatim: the newest non-revoked code, current while younger than a period
+    select * into cur from public.check_in_codes
+     where session_day_id = d.id and revoked_at is null order by valid_from desc limit 1;
+    if found and cur.valid_from > now() - make_interval(secs => rotation_s) then
+      return cur;
+    end if;
+    prev := cur;                -- null when there was none
+    v_until := now() + make_interval(secs => rotation_s + grace_s);
+  end if;
+
+  loop
+    -- 0105:150-166 verbatim, with `v_until` for the computed `valid_until`
+  end loop;
+
+  -- Switched ON while a whole-day code was current (REQ-CHK-019, «resumes from the current code»): that code is now
+  -- the previous one, and keeps exactly the grace every previous code keeps (REQ-CHK-002: «at most one other is
+  -- within its grace period»). Only a whole-day code is touched — a rotating predecessor never reaches the ceiling
+  -- (its successor is minted before it), so an org that never switched keeps every row byte-identical.
+  if prev.id is not null and prev.valid_until >= v_ceiling then
+    update public.check_in_codes
+       set valid_until = least(prev.valid_until, now() + make_interval(secs => grace_s))
+     where id = prev.id;
+  end if;
+  return cur;
+end $$;
+revoke execute on function public._issue_check_in_code(uuid, uuid) from public, anon, authenticated, service_role;
+```
+
+★ **`valid_until`, `check_in_ceiling()` and `check (valid_until > valid_from)` are not touched** (`0010:205-217`): the
+column is still written on every row and `check_in()` still enforces it; the function only chooses which instant it
+writes. The ceiling is **called, never copied** (`0101:125`). The extension's new value is always `> valid_from`
+(the code is current, so `valid_from ≤ now() < v_ceiling`); the clamp's is `≥ now() > valid_from`.
+
+### W27-3 · `worker/src/tasks/rotate_codes.ts` — unchanged
+
+Its query (`rotate_codes.ts:31-40`) selects the days taking attendance and calls `rotate_check_in_code($1, $2)` per day;
+it never reads the period. With rotation off the first call mints the day's code with `valid_until = ceiling`; a
+second call finds the day's newest code unrevoked with `valid_until > now()` and returns it — **current until the
+ceiling**, after which the query no longer selects the day. No file under `worker/` changes.
+
+★ **Measured, and a correction to the brief** (`wave-27-lead.md:45`: «`rotate_codes` issues the next code»): **it does
+not rotate anything on a schedule.** `rotate_codes` is not in the worker's crontab (`worker/src/index.ts:119`); it is
+enqueued **once per session**, by `start_session` under the key `code:<session>:first` (`start_session.ts:25`). Every
+later rotation — and every day after the first — is issued by `ensure_check_in_code()` when the host view or
+`SCR-044` renders, which `HostClock` re-reads at the rotation instant. This changes nothing in `DEC-254` §6 (whose
+sentence is correct), but it decides **when** a switch takes effect: on the next read of the host view or the code
+card, not on a tick (W27-4).
+
+### W27-4 · A code that was rotating when the setting changes
+
+**Off, while a code is current.** The code on the wall (`valid_from` 10:55, `valid_until` 11:07 at 600 + 120) stays.
+The next issuing call — the host view's own refresh at `rotatesAt`, which comes **before** `valid_until` whenever the
+grace is above 0 — finds it current and **extends its `valid_until` to the day's ceiling**: the code on the wall is
+the day's code from then on (`REQ-CHK-019`'s «keeps that code»; nothing is shortened, so `REQ-CHK-002`'s last line
+holds). The code that was in its grace keeps its own `valid_until` and expires as it would have. ★ If **nobody**
+renders the host view or the code card before the current code's `valid_until`, it expires as it does today and the
+next render mints a fresh whole-day code — the same thing that happens to a rotating org whose host screen is closed.
+★ **Alternative, not recommended:** a trigger on `org_settings` that extends every current code of the org at the
+moment of the save, so the switch does not wait for a render. It is a table-side trigger (the lead's) and costs a
+second writer of `valid_until`; I propose the lazy form above unless the lead prefers the eager one.
+
+**On again.** The whole-day code stays current while it is younger than one period — exactly the rotating branch's
+rule, unchanged. Once older (in practice at once, since it has usually stood for hours), the next issuing call mints a
+successor and **clamps the whole-day code to `now() + grace`**: it becomes the previous code with the ordinary grace,
+and rotation resumes from it. ★ **Decision wanted (D1):** without the clamp the whole-day code keeps working until the
+ceiling beside every new rotating code — up to three valid codes at once, against `REQ-CHK-002`'s «exactly one
+current; at most one other within its grace», and defeating the reason an admin turned rotation back on. I read the
+clamp as «resumes from the current code», not as invalidating it; if the lead reads `REQ-CHK-002`'s last line as
+forbidding any shortening, the clamp goes and the gap is recorded.
+
+### W27-5 · The grace with one code
+
+`check_in_grace_seconds` means **nothing** while rotation is off: there is no successor, so there is never a previous
+code in grace. It matters at exactly two instants: switching off (the code already in grace keeps its own expiry) and
+switching on (the whole-day code becomes the previous code, with that grace — W27-4). A revoke is unchanged in both
+modes: a revoked code is refused at once (`revoked_at is null` in `check_in()`), never «in grace», and its replacement
+is a fresh whole-day code. The stored value is untouched and is used again when rotation is on.
+
+### W27-6 · Multi-day: one code per day, and a day's code never works for another
+
+Three independent reasons, each already in the schema or the verify path:
+1. **The verify path matches the day.** `check_in()` looks the code up with `session_day_id = d.id` (`0120`), and its
+   day-from-code shortcut accepts a code only while **that** code's day is taking attendance
+   (`now() >= d2.starts_at and now() < check_in_ceiling(d2.id)`).
+2. **The whole-day code expires at its day's ceiling**, and `check_in_ceiling()` is
+   `least(ends_at + 2 h, the next day's start)` (`0101:125-137`) — day N's code is dead before day N+1 begins.
+3. **`unique (session_id, code)`** (`0010:216`) — two days of one session can never carry the same six characters.
+
+The issuing query is scoped to `session_day_id = d.id`, so day N+1's first read finds no code of its own and mints one.
+
+### W27-7 · Every surface that prints the period or a countdown — what each renders at null
+
+| Surface | File | Today | At null (rotation off) |
+|---|---|---|---|
+| Host view, `SCR-016` — the countdown and the grace | `host/page.tsx:152` → `HostClock` | «يتغيّر بعد m:ss · الرمز السابق يُقبل لـ…» | **nothing**: `rotatesAt` is null, so `HostClock` returns null (`host-clock.tsx:124`) — the grace sentence goes with it. Its listening, its visibility refresh and its `nextChangeAt` refresh stay (they are hooks above the return). |
+| Host view — the refresh instant | `host/page.tsx:88` | `rotatesAt`, else the pre-flight day start | ★ adds a last fallback: **`view.validUntil`** while a code is out — the instant the whole-day code stops, so the wall refreshes to «انتهى» at the ceiling instead of showing a dead code until someone reloads. |
+| Check-in, `SCR-014` — the rules line | `check-in/page.tsx:93-97`, `:162-165` | «الرمز يتغيّر كل N دقائق، ويُقبل أثناء الجلسة فقط.» then «rules.walkIns» | **no rotation sentence**; the walk-in sentence alone when walk-ins are allowed; the `<p>` is not rendered when neither applies. ★ **D2:** the dropped sentence also carried «ويُقبل أثناء الجلسة فقط». I propose nothing in its place (`DEC-NEXT-25`, and `REQ-CHK-019`: «no sentence in their place»); a separate sentence would be a new string and is the lead's call. |
+| `SCR-044`'s code card — the countdown | `code-card.tsx:93-102` | sr-only «يتغيّر بعد» + `HostClock` `console` (`m:ss`) | **nothing**: the sr-only label is gated on `view.rotatesAt` (today it would be read aloud before an empty clock), `HostClock` renders null. |
+| `SCR-044` — the refresh instant | `code-card.tsx:82` | `rotatesAt`, else the day start | the same `validUntil` fallback as the host view |
+| Event page `SCR-012`, «الرمز يُعرض في القاعة ويتغيّر كل…» | `action-card.tsx:154-156` (`sessions'`) | gated on `figures.rotationSeconds` truthy — which also hides `REQ-CHK-018`'s points sentence | ★ **changes at null (the lead, 2026-10-05):** `sessions` renders «الرمز يُعرض في القاعة.» and the points sentence. `sessions'` file, not mine |
+| Schedule read, «رمز يتغيّر كل…» | `admin/sessions/[id]/schedule/page.tsx:134` (`sessions'`) | gated on `read.rotationSeconds` truthy | **already nothing at null** |
+| Settings `SCR-063` read mode, «يتغيّر كل … · يُقبل السابق …» | `admin/settings/page.tsx:149-153` (the lead's) | `duration(view.checkInRotationSeconds)` | needs the off value — W27-9 |
+
+Messages: **no string of mine changes and none is added.** `checkin.host.rotation.*`, `checkin.attendance.code.rotatesIn`
+and `checkin.rules.rotationMinutes|Seconds` are simply not rendered. (The `zero` forms of `rules.rotation*` — «الرمز
+يتغيّر باستمرار» — and `sessions.json:118` / `schedule.json:219` are unreachable today and stay so.)
+
+### W27-8 · ★ Contract 2 — `rotationSeconds: number | null` (published here, day one)
+
+**`null` means «لا يتغيّر» — and also «could not be read»: every surface renders nothing for both.** A failed read no
+longer becomes 600: a guessed period printed beside a fixed code is a false sentence, and a missing sentence is not.
+
+| DTO · field | Where | Today | After |
+|---|---|---|---|
+| `HostViewData.rotationSeconds` | `checkin.ts:67`, set `:136` | `number`, `?? 600` | `number \| null`; `settingsRes.error ? null : value` |
+| `HostViewData.rotatesAt` | `checkin.ts:86-87`, set `:159` | `valid_from + (rotation ?? 600)` | `null` when `rotationSeconds` is null; unchanged otherwise |
+| `HostViewData.validUntil` | `checkin.ts:64` | carried | unchanged — **the refresh fallback above reads it** |
+| `HostViewData.graceSeconds` | `checkin.ts:91`, `:156` | `number`, `?? 120` | unchanged (meaningless while off; the UI shows no grace without a countdown) |
+| `CheckInScreenData.rotationSeconds` | `checkin.ts:275`, set `:362` | `number`, failed read → 600 | `number \| null`; failed read → null |
+| `EventFigures.rotationSeconds` (`sessions`) | `sessions.ts:1322`, set `:1331-1335` | already `number \| null` | **follows this contract**: null = off or unread; nothing printed |
+| the schedule read's `rotationSeconds` (`sessions`) | `sessions.ts:1771`, set `:1784-1807` | already `number \| null` | the same |
+| `OrgSettingsView.checkInRotationSeconds` (the lead) | `admin-settings.ts:62` (the mapped type makes it `number`) | `number` | `number \| null` — W27-9 |
+
+Readers of the two `checkin.ts` DTOs: `host/page.tsx`, `check-in/page.tsx`, `attendance/page.tsx` → `code-card.tsx`.
+No other file in `src/` reads `HostViewData.rotationSeconds`. The widening is compatible with every existing fixture
+(`600` is a `number | null`).
+
+### W27-9 · ★ Written request to the lead — `SCR-063`'s option (custodian edit, PR A)
+
+1. **The column (a migration):** `alter table public.org_settings alter column check_in_rotation_seconds drop not null;`
+   **The check constraint needs no change**: `check (check_in_rotation_seconds between 60 and 3600)` (`0004:114`)
+   evaluates to unknown for null, which a check admits — so it already says «60 – 3600 for every other value», as
+   `DEC-254` §6 and `REQ-CHK-019`'s last line require. The default **stays 600** (`DEC-254` §6). If the lead prefers
+   the rule visible, `check (check_in_rotation_seconds is null or check_in_rotation_seconds between 60 and 3600)` is
+   equivalent. ★ **Ship it in the same migration as W27-2's core** (W27-11 says why).
+2. **`save_org_settings()` (`0187`) needs no change.** Measured: `(p_changes ->> 'check_in_rotation_seconds')::int`
+   (`0187:114`) turns a JSON `null` into SQL null; the stale test (`(v_row -> key) is distinct from (p_expected -> key)`)
+   compares JSON `null` with JSON `null` as equal; `org_settings_history()` (`0004:377-392`) records `'null'::jsonb` as
+   the new value. The column is already in the admin's update grant (`0004:146`) and the function is `security
+   invoker`.
+3. **What the form sends for «off»:** `checkInRotationSeconds: null`, which `saveOrgSettings()`' `toColumns`
+   (`admin-settings.ts:106`) sends as `"check_in_rotation_seconds": null` in `p_changes` — and the **expected** value as
+   JSON `null` too when the stored value is null (the view already carries it; never omit the key, or the save reads
+   stale).
+4. **The app side, all the lead's files:** `settingsFieldSchemas.checkInRotationSeconds` → `z.int().min(60).max(3600).nullable()`
+   (`admin-settings.ts:48`); `OrgSettingsView`'s type admits null; `actions.ts:57-66` posts a control for «لا يتغيّر»
+   in the check-in row (`settings-edit.tsx:287-292`, beside the two numbers, as that row's controls are drawn) and,
+   when it is on, sends `null` and skips the number's «required» and range (`BOUNDS` stays `[60, 3600]`); turning it
+   back on needs a number — prefilled with the column's default, 600, is my suggestion. Read mode
+   (`page.tsx:149-153`): with null, a value that says «لا يتغيّر» and nothing about the grace — a new key in
+   `settings.json` (e.g. `values.checkInFixed`), Arabic first, all six forms not needed (no count).
+
+### W27-10 · Not mine, named so it is not lost
+
+`02-domain-model.md` and `03` §8.2 move with the lead's migration. The rows the RLS file adds:
+| `RPC-_issue_check_in_code.rotation_off_one_code` | With rotation off, a day's code is issued once with `valid_until = check_in_ceiling(day)` and every later issuing call returns it. |
+| `RPC-_issue_check_in_code.off_keeps_current` | Switching off while a code is current extends that code to the ceiling; no new code is issued and none is shortened. |
+| `RPC-_issue_check_in_code.on_resumes` | Switching on while a whole-day code is current issues a successor and leaves the whole-day code valid for exactly the grace. |
+| `RPC-check_in.fixed_code_per_day` | With rotation off, day 1's code is refused on day 2 (`invalid_code`), and refused after day 1's ceiling. |
+
+### W27-11 · What `main`'s app and worker do on the new schema, before this code deploys
+
+**Nothing moves, provided the column change and the core ship in one migration.**
+- **No org holds null** after the migration (`drop not null` changes no row; the default stays 600), so every reader on
+  `main` — the two `checkin.ts` reads, the two `sessions.ts` reads, the settings page — reads the same number.
+- **The core's rotating branch is `0105`'s text verbatim**, so `main`'s worker (`rotate_codes`, unchanged) and
+  `main`'s `ensure` / `revoke` issue exactly what they issue today.
+- **Could an admin save null through `main`?** Not through the form: `main`'s action rejects an empty number as
+  «required» (`actions.ts:59-61`) and its schema is `z.int().min(60)` (`admin-settings.ts:48`). Only a hand-written
+  PostgREST `PATCH` by the org's own admin, using the column grant (`0004:146`), could — and then:
+  - with the new core in the same migration: **the database is right** (one code, to the ceiling); `main`'s host view
+    falls back to 600 and shows a false countdown that refreshes onto the same code; `main`'s check-in screen says
+    «يتغيّر كل 10 دقائق» — a false sentence, no wrong decision; `main`'s settings read mode prints whatever
+    `duration(null)` prints. Cosmetic, for one org that forged it, until the code deploys.
+  - ★ **with the column change shipped alone, `main` is broken** for that org: W27-1's `23502` on every issuing call,
+    so its host view errors. **That is why the two must be one migration** — and why the lead should not land
+    `drop not null` ahead of the function.
+
+### W27-12 · Tests
+
+**New files only.**
+- `tests/rls/checkin-rotation-off.test.ts` (`applyProposed()` of `01_rotation_off.sql`): the four §8.2 rows above,
+  plus: a revoke while off issues a **fresh** code, never an older one still in its grace; past the ceiling the core
+  issues nothing (returns null, writes nothing); a rotating org's rows are byte-identical to `0105`'s (same
+  `valid_until` arithmetic, no update on the predecessor); `RPC-_issue_check_in_code.not_callable` still holds.
+  ★ **It needs the column nullable to set null** — so either the lead lands W27-9.1 with the promotion and I run it
+  after, or (only if the lead approves) the test alters the column inside its own rolled-back transaction. My
+  preference: the former.
+- `tests/unit/checkin-rotation-off.test.ts`: `getHostView()` and `getCheckInScreenData()` with a null setting and
+  with a failed settings read → `rotationSeconds` null, `rotatesAt` null, `validUntil` carried.
+- `tests/components/checkin/rotation-off.test.tsx`: the host screen with `rotatesAt` null shows the code and no
+  `[data-host-clock]`, no grace text; the check-in screen with `rotationSeconds` null renders no rotation sentence,
+  the walk-in sentence when allowed and no empty `<p>` when not; the code card renders no «يتغيّر بعد» (sr-only
+  included); `HostClock` with `rotatesAt` null and `nextChangeAt = validUntil` refreshes once at it.
+- `tests/e2e/wave27-checkin-rotation-off.spec.ts`: an org set to null, a live session — the host view and `SCR-044`
+  show one code and no countdown; a member checks in with it; captures at
+  `.qa-shots/rtl/wave27-checkin-{host,check-in,attendance}-rotation-off-390.png` (and `-1280` for `SCR-044`). The
+  spec sets the org back to 600 in its teardown.
+
+**Evidence, passing untouched** (no ledger line expected in `wave-27-ledger-a.md`): `tests/rls/{checkin,checkin-days,
+checkin-window,checkin-manual-mark,checkin-removal,checkin-contract-5,checkin-early-completion,checkin-host-broadcast,
+checkin-late-job-hooks,checkin-walk-ins-publishing}.test.ts`, `tests/rls/award-points.test.ts` (`scoring`'s, calls
+`rotate_check_in_code()`), `tests/unit/{checkin-host-view-fields,checkin-screen-reads,checkin-rotate-codes-days,
+checkin-day-window}.test.ts`, `tests/components/checkin/{host-clock,host-clock-console,host-screen,check-in-screen,
+check-in-screen-rebuild,attendance-*}.test.tsx`, `tests/e2e/{checkin,checkin-gating}.spec.ts`. The lead's
+`tests/unit/notify-admin-settings-action.test.ts` and `tests/components/settings/admin-settings-edit.test.tsx` are the
+lead's to judge with `SCR-063`'s option.
+
+### W27-13 · Where `DEC-254` or the brief and the code disagree (written, not picked)
+
+1. **`wave-27-lead.md:45`** says `rotate_codes` «issues the next code». It runs **once per session**
+   (`start_session.ts:25`, not in `worker/src/index.ts:119`'s crontab); rotation is driven by `ensure_check_in_code()`
+   on a render (W27-3). `DEC-254` §6's own sentence is accurate.
+2. **`DEC-254` §6 / the agent file: «a changed function is dropped and re-created with the same name and arguments»**
+   — for the core, `create or replace` is the right tool and a drop is the wrong one: `rotate_check_in_code()` is
+   `language sql` with a hard dependency on it (`0105:215`), so a drop would have to cascade or fail. Same name, same
+   arguments, no drop.
+3. **`DEC-254` §6: «`valid_until` … not touched»** — the column, its constraint and the ceiling are untouched; the
+   proposal **does write** `valid_until` on an existing row in two cases (W27-4). If «not touched» was meant to forbid
+   updating an issued row, «keeps that code» (off) cannot be met — the current code would expire at its rotating
+   `valid_until` — and the lead must choose between the two sentences. (D3.)
+4. **`REQ-CHK-002`'s acceptance** («exactly one current; at most one other within its grace») versus its last line
+   («does not invalidate codes already issued») when rotation is switched **on** — D1.
+5. **`DEC-254` §1.10** counts the period as read in «six places outside the worker» including `0187:54,114`; measured,
+   `save_org_settings()` only passes it through and needs no change (W27-9.2).
+
+### Decisions wanted from the lead
+
+- **D1** — clamp the whole-day code to the grace when rotation is switched on (recommended), or leave it valid to the
+  ceiling.
+- **D2** — the check-in rules line at null: nothing (recommended), or a new sentence for «يُقبل أثناء الجلسة فقط».
+- **D3** — confirm that updating an issued code's `valid_until` (extend on off, clamp on on) is within «`valid_until`
+  is not touched».
+- **D4** — lazy switch on the next render (recommended) or an eager trigger on `org_settings` (the lead's file).
+- **D5** — the column change and the core in **one** migration (required for W27-11), and my RLS file run after it.
+- **D6** — a failed settings read reads as null (no sentence), not 600.
+
+### The lead's rulings (2026-10-05) — D1 – D6 accepted as proposed; no code before «the plans are approved»
+
+- **D1** the clamp to `now() + grace` on switching on · **D2** nothing in place of the rules line · **D4** the switch at
+  the next read, no trigger · **D5** one migration (the lead's) carrying `drop not null` and the core, promoted from
+  `01_rotation_off.sql`, `create or replace` · **D6** a failed read is null · the `validUntil` refresh fallback on the
+  host view and `SCR-044` — all accepted.
+- **D3, with a bound:** updating an issued code's `valid_until` is in scope, **never past the day's ceiling and never
+  before `now()`**. The core's comment states the bound; the RLS file asserts it on both writes (the extension equals
+  `check_in_ceiling(day)`; the clamp is `≥ now()` and `≤` the old value).
+- **Added to `tests/rls/checkin-rotation-off.test.ts`:** a multi-day session with rotation off — day 1's whole-day code
+  is refused on day 2 (`invalid_code`), and day 2 gets its own code.
+
+---
+
 Owner: `checkin` teammate, wave 1 (M2). Tracks: `REQ-RSV-001`…`011`, `REQ-CHK-001`…`014`, DEC-015.
 Backlog: `STORY-RSV-001`…`004`, `STORY-CHK-001`…`006` (`STORY-RSV-005` is M4 — perks don't exist yet,
 out of scope here).

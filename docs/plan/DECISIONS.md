@@ -9923,3 +9923,101 @@ re-seed or «reset to baseline» for an org's templates · a default rotation of
 `DEC-186` §4, `DEC-204`, `DEC-215`'s four, the `railway.json` migration (2026-12-01).
 
 - **Documents changed:** `01-prd.md`, `09-sitemap-screens.md`, `14-roadmap.md`, `15-backlog.md`, `CLAUDE.md`, the ten agent files, `STATUS.md`; `02` and `03` change with each migration, in its commit
+
+---
+
+## DEC-255 — Wave 27, sync 1: four plans approved; a session is renamed only until it is published; what the plans measured that `DEC-254` got wrong; and the two removals become their own pull request
+
+- **Date:** 2026-10-05 · **Decided by:** the owner (§1); the lead (§2 – §6), on the four plans in `docs/plan/notes/{sessions,checkin,console,designer}.md`
+- **Amends:** `DEC-254` §2 (five lines), §3 (six), §5 (the whole rule), §6 (two), §8 (a fourth PR) · `REQ-SES-021`, `REQ-PRF-012`, `REQ-CHK-019`, `REQ-DSG-035`
+- **Corrects:** `DEC-254` §2.5 — the revoke follows **PR B**, not «PR C» (the lead's slip)
+
+### 1 · ★★ The owner's ruling: a session's name is editable until it is published
+
+«Once the session is published the name is no longer editable, but right now the proposed name isn't editable at all.
+If the session was from a proposal but either way I want it to be editable.» Asked which he meant, the owner chose
+**until it is published**. So `DEC-254` §5's «in any state» is withdrawn:
+
+- The control is offered while the session is in a state before `published`, whether or not it came from a proposal.
+- ★ **The database refuses a title change from `published` on**, for an admin and for a presenter alike — a guard in
+  the lead's migration, beside the `session.renamed` audit trigger. A presenter could retitle through `published`
+  until now (`0010:462-465`); that last state goes.
+- **No calendar sync, no certificate snapshot, no poster re-render is needed**: nobody has reserved, nothing has been
+  issued and nothing is public before publication. `sessions'` finding that a certificate stores no title of its own
+  (`0055:431-445` reads it live) stands as measured and binds nothing now.
+- A proposal's own title does not change when the session made from it is renamed.
+
+### 2 · The rename, as planned (`sessions`)
+
+The hub header is `admin/sessions/[id]/_hub/hub-header.tsx` — granted to `sessions` with `_hub/actions.ts` and one new
+state file; `src/components/hub/**` was listed in error (it is `scoring`'s). The control is a quiet «عدّل الاسم» first
+in the header's actions, opening a dialog; `ui/page-header` is not changed. `session.renamed` shows in the schedule
+tab's log (one entry in `SESSION_LOG_ACTIONS`, one key in `schedule.json`, add-only). The audit label
+`admin.audit.actions.session.renamed` lands in the trigger's commit, the lead's edit as `console`'s custodian.
+
+### 3 · The rotation, as planned (`checkin`)
+
+- **One function changes** — `_issue_check_in_code()`, by `create or replace`, its rotating branch verbatim — and the
+  column drops `not null`; **both in one migration**, because `main`'s function fails `23502` for an org at null.
+  `save_org_settings()` needs nothing. `rotate_codes` is **not** on the crontab: `start_session` queues it once, and
+  every later rotation is issued when the host view or the code card is read. `DEC-254` §1.10's `0187` only passes the
+  value through.
+- **An issued code's `valid_until` may be updated**, never past the day's ceiling and never before now: extended to the
+  ceiling when rotation goes off, **cut back to now + grace when it comes on**, so `REQ-CHK-002`'s «at most one other
+  in grace» holds. The switch takes effect at the next read; there is no trigger on `org_settings`.
+- A failed settings read is «off», not 600. With rotation off the check-in screen's rules line shows nothing; ★ the
+  event page's line reads «الرمز يُعرض في القاعة.» and **keeps `REQ-CHK-018`'s points sentence**, which it was
+  hiding whenever the period was missing (`action-card.tsx:154-158`).
+
+### 4 · Companies by domain, as planned (`console`)
+
+- **`save_company()`** is the one writer of a company with its domains: a dry run returning the two counts, the
+  destination's name and a token; a confirmed save that re-derives under an org advisory lock and answers `changed`,
+  writing nothing, if the token no longer matches. The sweep is that derivation; there is no separate function.
+- ★ **Who moves** (correcting `REQ-PRF-012`, which said only members «who have none»): members with no company **and**
+  members placed by domain elsewhere. Members placed by an admin never move. Deactivated members are counted and
+  moved. A deactivated company places nobody; reactivating one sweeps nobody.
+- **`company_assigned_by` is kept by a normalising trigger, not a check**; a company written with no source named is
+  `'admin'`. ★ **An admin may remove a member from a company by hand** — null company, source `'admin'` — and no sweep
+  re-places them; `DEC-254` contract 1's «null with a null company» becomes «null only while nobody has ever placed
+  the member». `add_member()` with no company places by domain at insert.
+- `provision_member()` places at first insert and, at binding, only when the company is null, under the shared lock,
+  inside its own exception block: any failure leaves the company null and the sign-in proceeds.
+- ★★ **A gate on a null company DOES exist** — `DEC-254` §1.12 was wrong. The home feed replaces the reserve control
+  with «اختر شركتك أولًا لتحجز مقعدًا» (`feed/session-post.tsx:200-202`, `feed.ts:120`, a banner at
+  `feed.tsx:47-56`), and two company-race cards link to «choose your company». **All go in PR B**, the lead's edits as
+  custodian; without that, a member whose domain matches nothing could never reserve from the feed.
+- ★ **A move carries the open period's points** — `DEC-254` §2's «from that moment» was loose. The next snapshot
+  rebuilds the open period's company totals from each member's **current** company over the whole period
+  (`0197:523-528`, `:584-591`); `company_points_ledger` stays where it was paid; eligibility under
+  `company_min_active_members` can flip at that snapshot. Recorded as measured and told to the owner; no scoring file
+  changes.
+
+### 5 · Templates, as planned (`designer`)
+
+- **12 platform templates and 24 versions**, not «24 templates»; the live documents are `0196`'s. The seed is
+  `seed_org_templates(p_org)`: eleven org rows, each with one published version, idempotent by
+  `(purpose, family, orientation)`, never taking a default an org already has.
+- ★ **Seeded by an `after insert` trigger on `orgs`**, not by an edit of `create_org()` (`DEC-254` §3.1): orgs are
+  also born by direct insert — the fixtures, 161 e2e specs, and the hand-seeded production org.
+- **The removal migration (M2)** raises unless every org resolves **every** default it removes the fallback for —
+  attendance, presenter, achievement and poster talk — through one predicate function the guard below also calls. It
+  repoints unlocked `session_certificate_designs` rows (a third `on delete restrict` referent, `0099:63`, missed by
+  `DEC-254` §1.5) to the org's seeded counterpart, drops **all five** platform-library functions, replaces
+  `supersede_baseline_template` with a new `remove_platform_template`, and leaves a constraint that a platform row
+  exists only retired.
+- ★ **New, and protective: retiring an org's last live published template of one of those four families is refused**
+  by the database, with a reason the screen shows. After M2 there is no fallback, and with `review` the default every
+  completion would fail.
+- «قوالب المنصة» is a section on `SCR-055`, not a tab. `template-control.tsx` (`SCR-045`) is granted to `designer` for
+  the platform-scope change.
+
+### 6 · ★★ A fourth pull request: the two removals (`DEC-254` §8.4, made concrete)
+
+**D — `wave-27d/the-two-removals`**, the lead's, cut from `main` after B and C have merged: B's revoke of
+`company_id` from the member's grant, and C's M2 with the fixture and spec edits it forces. ★ **Neither file sits in a
+`supabase/migrations/` directory before then** — the owner pushes from a branch before its merge, and a file on that
+branch would be applied ahead of the code it depends on. In PR C, M2 lives under `supabase/proposed/designer/` and is
+proven with `applyProposed()`. **Order: push A's, B's and C's additive migrations → merge A, B, C → push D's → merge D.**
+
+- **Documents changed:** `01-prd.md`, `CLAUDE.md`, `STATUS.md`
