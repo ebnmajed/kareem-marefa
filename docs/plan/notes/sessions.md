@@ -7308,3 +7308,15 @@ moved: «شاهد القصة» opens the story, `REQ-STO-008`»).
 **Waiting on:**
 - `0198`, for `tests/rls/story-generator*.test.ts`
 - `content`'s `<StoryOpener>`, for «شاهد القصة»
+
+## W26.11 · Self-review of PR D's generated half — paused for the machine's sleep (2026-10-05)
+
+- **Reviewed:**
+  - The a11y sweep's aria-prohibited-attr finding, traced to `ui/split-view`'s detail section.
+  - My frame data and copy against `StoryLive`, `StoryPhoto` and `StoryRecap` and `05-stories.md`, as a desk review. No captures yet: the D tree's `.next` serves the sign-in page to e2e cookies.
+- **Fixed:**
+  - `a9f8fc44`: split-view names its detail only while an item is open. It is on `main` too; ledger D12.
+  - `d5427514`: «تبدأ قريبًا» replaces the untrue «تبدأ غدًا», and `wave26-sessions-story-frames.spec.ts` captures the ring row in each state and every generated frame kind.
+- **Next:**
+  - The lead runs `wave26-sessions-story{,-frames}.spec.ts` on a build of D's head.
+  - I open every capture at native size beside `m13/png/Story*.png` and fix any real deviation in my files, with ledger lines.
