@@ -140,11 +140,15 @@ test("SCR-059: the platform defaults, before any org has ever saved a kit", asyn
   // ★ DEC-145: locators under `/app` scope to `#main`, past the shell's own
   // forms and any orphaned streamed copy.
   const main = page.locator("#main");
-  await expect(main.getByLabel("الخلفية", { exact: true })).toHaveValue("#ffffff");
-  await expect(main.getByText("لا يوجد شعار مخصّص")).toBeVisible();
-
   const { rows } = await db.query(`select 1 from public.brand_kits where org_id = $1`, [orgId]);
   expect(rows).toEqual([]);
+
+  // ★ Wave 26 (REQ-UIX-116): SCR-059 opens READ, each colour a swatch with its value written. The default is read from
+  // `brand_kit()` rather than typed here — the literal `#ffffff` this line held went stale when `0192` moved the
+  // platform palette (wave 24).
+  const { rows: kit } = await db.query<{ brand_kit: { light: { canvas: string } } }>(`select public.brand_kit($1) as brand_kit`, [orgId]);
+  await expect(main.getByText(kit[0].brand_kit.light.canvas.toUpperCase()).first()).toBeVisible();
+  await expect(main.getByText("لا يوجد شعار مخصّص")).toBeVisible();
 
   await assertNoSidewaysScroll(page, "wave8-branding-defaults");
   await page.screenshot({ path: `${SHOTS}/wave8-branding-defaults.png`, fullPage: true });
@@ -154,7 +158,8 @@ test("★ DEC-127: an override saves, the poster-gradient preview shows it, and 
   test.skip(testInfo.project.name !== "phone", "one project writes this org's kit");
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
-  await goto(page, "/ar/app/admin/branding");
+  // ★ Wave 26: the form is edit mode (`?edit`); SCR-059 opens read.
+  await goto(page, "/ar/app/admin/branding?edit");
   const main = page.locator("#main");
 
   // `canvasRaise` — the gradient's second stop (DEC-127) — is the token the
@@ -166,7 +171,8 @@ test("★ DEC-127: an override saves, the poster-gradient preview shows it, and 
   // touching anything else.
   await main.getByRole("tab", { name: "الوضع الداكن" }).click();
   await main.getByLabel("خلفية التدرّج", { exact: true }).fill("#3388ff");
-  await main.getByRole("button", { name: "حفظ" }).click();
+  // ★ Wave 26: Save names the unsaved count, «حفظ (1)».
+  await main.getByRole("button", { name: /^حفظ/ }).click();
   // `ui/toast` (Radix) renders the same text TWICE: once in the visible
   // toast (portaled into the Viewport) and once in a visually-hidden
   // `role="status"` announcer Radix adds for screen readers, prefixed
@@ -187,10 +193,11 @@ test("REQ-UIX-010: a malformed hex shows an adjacent, icon-marked error at its o
   test.skip(testInfo.project.name !== "phone", "the 390 px review runs on the phone project");
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
-  await goto(page, "/ar/app/admin/branding");
+  await goto(page, "/ar/app/admin/branding?edit");
   const main = page.locator("#main");
 
-  const heading = main.getByLabel("لون العناوين", { exact: true });
+  // ★ Wave 26: not `exact` — a changed field adds «(معدّل)» to its accessible name (DEC-231 §3).
+  const heading = main.getByLabel("لون العناوين");
   await heading.fill("#zzzzzz");
   await expect(main.getByText("أدخل قيمة لون صالحة بصيغة #rrggbb.")).toBeVisible();
   // Nothing was submitted — REQ-UIX-011: the value typed survives, the
@@ -205,7 +212,7 @@ test("REQ-UIX-013: the reset dialog names the org's kit and states the consequen
   test.skip(testInfo.project.name !== "phone", "the 390 px review runs on the phone project");
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
-  await goto(page, "/ar/app/admin/branding");
+  await goto(page, "/ar/app/admin/branding?edit");
   const main = page.locator("#main");
 
   await main.getByRole("button", { name: "إعادة الضبط إلى هوية المنصة" }).click();

@@ -38,7 +38,7 @@ const org = (over: Partial<OrgSummary>): OrgSummary => ({
 });
 
 describe("OrgsTable", () => {
-  it("★ a pending-deletion org says why it has no acts, badged «قيد الحذف»; a live org keeps its menu", () => {
+  it("★ a pending-deletion org says why it has no acts, badged «قيد الحذف»; a live org keeps its acts", () => {
     render(
       <NextIntlClientProvider locale="ar" messages={{ ...arPlatform, ...arAdmin }}>
         <Direction.Provider dir="rtl">
@@ -55,7 +55,7 @@ describe("OrgsTable", () => {
     // jsdom has no media queries, so the table and the card list are both present.
     expect(screen.getAllByText("لا إجراء — الحذف قيد التنفيذ.").length).toBeGreaterThan(0);
     expect(screen.getAllByText("قيد الحذف").length).toBeGreaterThan(0);
-    expect(screen.queryAllByRole("button", { name: "إجراءات مؤسسة للحذف" })).toHaveLength(0);
-    expect(screen.getAllByRole("button", { name: "إجراءات مؤسسة قائمة" }).length).toBeGreaterThan(0);
+    expect(screen.queryAllByRole("button", { name: /— مؤسسة للحذف$/ })).toHaveLength(0);
+    expect(screen.getAllByRole("button", { name: "أوقف — مؤسسة قائمة" }).length).toBeGreaterThan(0);
   });
 });

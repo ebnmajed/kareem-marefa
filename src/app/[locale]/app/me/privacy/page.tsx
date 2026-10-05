@@ -1,121 +1,124 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Link } from "@/i18n/navigation";
-import { formatDateTime } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
 import { getOrgPrefs } from "@/lib/dal/proposals";
-import { getMyExportRequest } from "@/lib/dal/privacy";
-import { PageHeader } from "@/components/ui/page-header";
-import { SectionHeader } from "@/components/ui/section-header";
-import { Panel } from "@/components/ui/panel";
+import { countMyPhotoRemovalRequests, getMyExportRequest, type DataExportRequest } from "@/lib/dal/privacy";
+import { HubTopRow } from "@/components/shell/hub-top-row";
 import { buttonClass } from "@/components/ui/button";
-import { requestDeactivationAction, requestExportAction } from "./actions";
-import { DeactivationForm, RequestExportForm } from "./forms";
+import { SettingsGroup } from "@/components/ui/settings-group";
+import type { SettingsRow } from "@/components/ui";
+import { formatNumber } from "@/components/sessions/numerals";
 import { AvatarSection } from "@/components/privacy/avatar-section";
+import { DeactivateSheet } from "@/components/privacy/deactivate-sheet";
+import { ExportRequest } from "@/components/privacy/export-request";
+import { requestDeactivationAction, requestExportAction } from "./actions";
 
-// `/app/me/privacy` — REQ-PRF-006, REQ-PRF-007, REQ-NFR-013, 12 §5.4.
+// `/app/me/privacy` · «البيانات والخصوصية» — `Privacy.dc.html`, `M13.md`, REQ-UIX-117, REQ-PRF-006, REQ-PRF-007,
+// REQ-PRF-008, REQ-NFR-013, REQ-EVT-012, DEC-251 §3. Rebuilt from the artboard (DEC-208): the kept-behaviour table is
+// P1 – P22 and N9 – N13 in `docs/plan/notes/branding.md` W26.2.
 //
-// ★ SELF-SERVICE EXPORT: YES. SELF-SERVICE DELETION: NO — and this screen says
-// which, and why, in the member's own language. The alternative is a "delete
-// my account" button that quietly means "ask someone else to deactivate you in
-// twelve months", which is worse than a plain no: a person who acts on it
-// believes something that is not true.
-//
-// The reason is not a policy preference. A member's sessions, materials and
-// comments are content OTHER MEMBERS DEPEND ON — a pre-read someone is
-// preparing with, a comment that opened a thread — and a hard delete tears
-// holes in pages that are not only theirs. Anonymisation honours the erasure
-// interest without that, and the member is told which one they are getting.
-//
-// Unlike the rest of the console, this screen follows the ORG's numerals and
-// time zone: the reader here is a member of an org, not the platform's
-// operator (REQ-INT-006, REQ-TEN-008).
+// ★ A hub page behind settings, not a strip tab (DEC-NEXT-39): its own top row, back to `029`. The hub frame is the
+// lead's; this page renders its row and its content.
+// ★ THE EXPORT'S STATE IS READ, NEVER ASSUMED — `my_data_export()`'s latest row: never asked · طُلب (queued) · جارٍ
+// (building) · جاهز with its date and «نزّل» · انتهت صلاحيته (expired by `enforce_retention()`) · تعثّر (failed). The
+// archive is kept seven days (`retention_periods`, which a member cannot read, so the sentence is the literal it was —
+// DEC-251 §3.3). The 24-hour limit is said BEFORE the click (REQ-NFR-005); the RPC enforces it either way.
+// ★ «نزّل» is a plain `<a download>` to the Route Handler — it works without JavaScript.
+// ★ PHOTOGRAPHS ARE NOT TAGGED (DEC-011), so «الصور التي تظهر فيها» has no data: the row counts what exists — the
+// member's own removal requests — and offers no page-level «أزلني» (DEC-251 §3.1); a removal is asked for on the
+// photograph itself.
+// ★ The profile-picture answer is kept, after the legal links (REQ-PRF-008, DEC-182) — `AvatarSection`, untouched.
+// ★ Dates follow the ORG's time zone, in Western numerals (REQ-TEN-008, DEC-124).
 
 export default async function MyPrivacyPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [request, prefs, t] = await Promise.all([
+  const [request, removals, prefs, t, tSettings] = await Promise.all([
     getMyExportRequest(locale),
+    countMyPhotoRemovalRequests(locale),
     getOrgPrefs(locale),
     getTranslations("privacy.page"),
+    getTranslations("settings"),
   ]);
-  const when = (iso: string) => formatDateTime(iso, prefs.timeZone, locale);
+  const day = (iso: string) => new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { day: "numeric", month: "long", timeZone: prefs.timeZone }).format(new Date(iso));
 
-  const statusKey = request
-    ? ({ queued: "statusQueued", building: "statusBuilding", ready: "statusReady", failed: "statusFailed", expired: "statusExpired" } as const)[
-        request.status
-      ]
-    : null;
+  const exported = exportRow(request, t, day, locale as Locale);
+  const rows: SettingsRow[] = [
+    exported.row,
+    { kind: "action", id: "photos", label: t("photosTitle"), value: removals === null ? null : formatNumber(removals), control: null },
+  ];
+  const legal: SettingsRow[] = [
+    { kind: "link", id: "policy", label: t("policy"), href: "/legal/privacy" },
+    { kind: "link", id: "terms", label: t("terms"), href: "/legal/terms" },
+  ];
 
   return (
     <>
-      <PageHeader title={t("title")} description={t("intro")} />
-      <p className="mt-2">
-        <Link href="/legal/privacy" className="text-label text-fg-body underline underline-offset-4 hover:text-fg-heading">
-          {t("policyLink")}
-        </Link>
-      </p>
-
-      {/* REQ-PRF-008 (DEC-182): where «نستخدم صورتك من Google؟» is changed. */}
-      <AvatarSection locale={locale} />
-
-      <section aria-labelledby="export" className="mt-10 max-w-2xl">
-        <SectionHeader id="export" title={t("exportTitle")} description={t("exportIntro")} />
-        {/* REQ-PRF-006's second acceptance criterion, said to the person it
-            protects rather than only tested. */}
-        <p className="mt-2 text-body-sm text-fg-muted">{t("exportNote")}</p>
-
-        {request && statusKey ? (
-          <Panel className="mt-6 p-4">
-            <p className="text-body text-fg-heading">{t(statusKey)}</p>
-            <p className="mt-2 text-body-sm text-fg-muted">
-              {t("requestedAt")} {when(request.requestedAt)}
+      {/* The back control returns to settings and is named for it (`Privacy.dc.html:20`, «الإعدادات»). */}
+      <HubTopRow title={t("title")} backHref="/app/me/settings" backLabel={tSettings("title")} />
+      <div className="flex flex-col gap-4">
+        {/* The row reads as drawn — «تصدير بياناتي … جاهز · 5 أكتوبر [نزّل]»; the kept sentences sit UNDER the card, each a
+            caption line across its width: the archive's seven days and the 24-hour limit (P2, P6), and REQ-PRF-006's
+            promise that the file carries no other member's data, said to the person it protects. */}
+        <div className="flex flex-col gap-2">
+          <SettingsGroup title={t("groupData")} showTitle={false} rows={rows} />
+          {[...exported.captions, t("exportNote")].map((line) => (
+            <p key={line} className="px-1 text-caption text-fg-muted">
+              {line}
             </p>
-            {request.completedAt ? (
-              <p className="mt-1 text-body-sm text-fg-muted">
-                {t("readyAt")} {when(request.completedAt)}
-              </p>
-            ) : null}
-            {request.status === "ready" ? (
-              <>
-                {/* A plain link, not a fetch: the Route Handler answers with
-                    `content-disposition: attachment`, so the browser saves it
-                    without any JavaScript having to hold the bytes. */}
-                <p className="mt-4">
-                  {/* A plain `<a download>`, not `ui/button`'s `<button>` — the no-JS path this
-                      comment already calls out needs a real link. `buttonClass()` is the
-                      exported helper `ui/button.tsx` builds its own class string from, read
-                      here rather than duplicating `rounded-field border border-edge-strong…`. */}
-                  <a href="/api/me/export" className={buttonClass("secondary", "lg")} download>
-                    {t("exportDownload")}
-                  </a>
-                </p>
-                <p className="mt-3 text-body-sm text-fg-muted">{t("expiryNote")}</p>
-              </>
-            ) : null}
-          </Panel>
-        ) : null}
-
-        {/* REQ-NFR-005 said before the click, not after it. The RPC refuses a
-            second request inside the window whatever this renders; showing the
-            reason here is the difference between a rule and a rebuke. */}
-        {request && !request.canRequestAgain ? (
-          <p className="mt-6 text-body-sm text-fg-muted">{t("rateLimited")}</p>
-        ) : (
-          <RequestExportForm
-            label={request ? t("exportAgain") : t("exportRequest")}
-            action={requestExportAction.bind(null, locale as Locale)}
-          />
-        )}
-      </section>
-
-      <section aria-labelledby="deactivate" className="mt-12 max-w-2xl border-t border-edge pt-8">
-        <SectionHeader id="deactivate" title={t("deactivateTitle")} description={t("deactivateIntro")} />
-        {/* ★ The honest paragraph. It says no, and it says why, in the place
-            where someone is deciding — not in a policy page they may not open. */}
-        <p className="mt-3 text-body text-fg-body">{t("deactivateHonest")}</p>
-        <DeactivationForm action={requestDeactivationAction.bind(null, locale as Locale)} />
-      </section>
+          ))}
+        </div>
+        <SettingsGroup title={t("groupLegal")} showTitle={false} rows={legal} />
+        <AvatarSection locale={locale} />
+        <div className="flex flex-col">
+          <DeactivateSheet action={requestDeactivationAction.bind(null, locale as Locale)} />
+        </div>
+      </div>
     </>
   );
+}
+
+type T = Awaited<ReturnType<typeof getTranslations<"privacy.page">>>;
+
+/** The export row, and the caption lines that go under its card rather than crowd it. */
+function exportRow(request: DataExportRequest | null, t: T, day: (iso: string) => string, locale: Locale): { row: SettingsRow; captions: string[] } {
+  const base = { kind: "action" as const, id: "export", label: t("exportTitle") };
+  if (!request) return { row: { ...base, value: null, control: <ExportRequest label={t("exportRequest")} action={requestExportAction.bind(null, locale)} /> }, captions: [] };
+
+  // ★ P2 (REQ-NFR-005): inside the 24 hours the limit is SAID, in every state — requested, building, ready, expired or
+  // failed — and no request control is offered; outside it the control is offered wherever a new copy makes sense. The
+  // RPC refuses a second request whatever this renders; saying so before the click is the difference between a rule
+  // and a rebuke. (The first rebuild gave the line to expired and failed only — the wave-26 e2e found it missing on a
+  // ready export.)
+  const limited = !request.canRequestAgain;
+  const ask = limited ? null : <ExportRequest label={t("exportAgain")} action={requestExportAction.bind(null, locale)} />;
+  const limit = limited ? [t("rateLimited")] : [];
+
+  switch (request.status) {
+    case "queued":
+      return { row: { ...base, value: t("statusQueued", { date: day(request.requestedAt) }), control: null }, captions: limit };
+    case "building":
+      return { row: { ...base, value: t("statusBuilding"), control: null }, captions: limit };
+    case "ready":
+      return {
+        row: {
+          ...base,
+          value: t("statusReady", { date: day(request.completedAt ?? request.requestedAt) }),
+          // The old page offered a fresh copy beside a ready one once the 24 hours had passed; so does this row.
+          control: (
+            <span className="flex flex-wrap items-start justify-end gap-2">
+              <a href="/api/me/export" download className={buttonClass("primary", "sm")}>
+                {t("exportDownload")}
+              </a>
+              {ask}
+            </span>
+          ),
+        },
+        captions: [t("expiryNote"), ...limit],
+      };
+    case "expired":
+      return { row: { ...base, value: t("statusExpired"), control: ask }, captions: limit };
+    case "failed":
+      return { row: { ...base, value: t("statusFailed"), control: ask }, captions: limit };
+  }
 }

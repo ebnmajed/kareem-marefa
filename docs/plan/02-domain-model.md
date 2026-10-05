@@ -949,6 +949,32 @@ item of the feed on `SCR-010` is derived from rows that already exist. **It is n
 thread or a reaction target, and nothing here notifies. Expiry is a predicate of the read policy, not a deletion.
 `org_id` and `author_id` are never updatable. The worker never touches it.
 
+#### `ENT-story_frames`
+**Serves:** `REQ-STO-001` … `REQ-STO-004`, `REQ-STO-011` … `REQ-STO-018` · added by `DEC-245`, shaped by `DEC-248` §5 and `DEC-251` §5 (`0198`)
+★ **One frame of a session's story.** `id`, `org_id`, `session_id` (cascading), `session_day_id` (the day of a
+per-day frame, set null with the day), `kind` (`story_frame_kind`: `published` · `registration_opened` ·
+`registration_closed` · `starts_soon` · `live` · `photo` · `recap` · `materials` · `video`), `trigger_key` (unique with
+the session and the kind — **the idempotency**), `triggered_at` (the 24 hours run from here), `written_at`. An
+attendee's frame adds `author_id`; a `photo` frame names its album photograph in `photo_id` and **copies nothing from
+it**; a `video` frame carries `caption`, `source_path`, `video_path`, `poster_path`, `duration_ms`, `width`, `height`,
+`byte_size`, `sha256`, `state` (`story_frame_state`: `processing` · `visible` · `failed`) and `failure_reason`.
+Moderation as a photograph's: `hidden_at`, `hidden_reason`, `removed_at`, `removed_by`, `removal_reason`. **A frame
+stores no figure** — the live count, the recap's stats and a caption on a photograph are read when the frame is.
+**No client role writes it.**
+
+#### `ENT-story_views`
+**Serves:** `REQ-STO-006`, `REQ-STO-010` (`0198`)
+`org_id`, `member_id`, `frame_id`, `viewed_at`; primary key `(member_id, frame_id)`. A member's own, and nobody else's.
+
+#### `ENT-story_reactions`
+**Serves:** `REQ-STO-005` (`0198`)
+`org_id`, `frame_id`, `member_id`, `kind` (`story_reaction_kind`: `heart` · `fire` · `clap` · `idea`), `created_at`,
+`updated_at`; primary key `(frame_id, member_id)` — one per member per frame. It earns nothing.
+
+#### `ENT-story_frame_takedowns`
+**Serves:** `REQ-STO-014` (`0198`)
+`ENT-photo_takedowns`' shape with `frame_id`: «أزلني» on a video frame. Written only by definer functions.
+
 ### 4.12 Certificates
 
 **Amended under DEC-148 (wave 8):** `certificates.scheme brand_scheme not null default 'light'` pins the

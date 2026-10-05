@@ -2,6 +2,8 @@ import type { Task } from "graphile-worker";
 import { createHash } from "node:crypto";
 import { downloadObject, uploadObject, deleteObject } from "../content/storage.js";
 import { sniffImageKind, stripImageMetadata, type ImageKind } from "../content/exif.js";
+import { photoStoryPath } from "@kareem/storage-paths";
+import { renderStoryDerivative } from "../content/story-derivative.js";
 
 // JOB-process_photo (11 §2.4, 07 §9.2, REQ-EVT-011, DEC-047). Enqueued by
 // initiate_photo_processing() (supabase/proposed/content/0007) the moment
@@ -39,6 +41,10 @@ interface Payload {
   // such key, and is a malformed-payload rejection we can avoid — falling back to this task's own
   // clock below is exactly the SQL function's own default for an omitted argument.
   uploaded_at?: string;
+  // Wave 26 (REQ-STO-011, DEC-251 §4.2): the caption a story photograph was posted with, put in the payload by
+  // `initiate_story_photo()` (proposed/content/0002). Optional: an album upload has none, and a job enqueued by the
+  // OLD `initiate_photo_processing()` never had the key.
+  caption?: string | null;
 }
 
 function isPayload(p: unknown): p is Payload {
@@ -51,7 +57,8 @@ function isPayload(p: unknown): p is Payload {
     typeof v.uploader_id === "string" &&
     typeof v.storage_path === "string" &&
     (v.declared_kind === "jpeg" || v.declared_kind === "png" || v.declared_kind === "webp") &&
-    (v.uploaded_at === undefined || typeof v.uploaded_at === "string")
+    (v.uploaded_at === undefined || typeof v.uploaded_at === "string") &&
+    (v.caption === undefined || v.caption === null || typeof v.caption === "string")
   );
 }
 
@@ -84,6 +91,22 @@ export const process_photo: Task = async (payload, helpers) => {
   await uploadObject("photos", payload.storage_path, stripped, CONTENT_TYPE[sniffed]);
   const sha256 = createHash("sha256").update(stripped).digest("hex");
 
+  // Wave 26 (REQ-STO-012, `05-stories.md` «Data access»): the `story` derivative, 1080 px on the long side, WebP,
+  // made from the STRIPPED bytes and written under `photos/…/photos/story/{id}.webp` — read under exactly its
+  // photograph's visibility (packages/storage-paths `photoStoryPath`). A failure never blocks the album: the photo
+  // records with `story_derivative_ready = false` and its frame shows the original.
+  const storyPath = photoStoryPath(payload.org_id, payload.session_id, payload.photo_id);
+  const story = await renderStoryDerivative(stripped, sniffed, width, height);
+  let storyReady = false;
+  if (story) {
+    try {
+      await uploadObject("photos", storyPath, story, "image/webp");
+      storyReady = true;
+    } catch (e) {
+      helpers.logger.warn(`process_photo: ${payload.photo_id} — the story derivative was not stored: ${(e as Error).message}`);
+    }
+  }
+
   // A single `select fn(...) as envelope` — never `(fn(...)).*` — a composite/jsonb-returning
   // function called that way can be evaluated twice by Postgres (docs/plan/notes/content.md
   // §1.4a); record_photo_upload has side effects, so a double call would be a double insert
@@ -93,7 +116,7 @@ export const process_photo: Task = async (payload, helpers) => {
   // REQ-SES-018/DEC-121: the 10th argument — `uploaded_at ?? now()` mirrors the SQL function's own
   // default for a caller that omits it (proposed/content/0001).
   const { rows: outcomeRows } = await helpers.query<{ envelope: { status: string; limit_mb?: number } }>(
-    `select public.record_photo_upload($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) as envelope`,
+    `select public.record_photo_upload($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) as envelope`,
     [
       payload.photo_id,
       payload.org_id,
@@ -105,6 +128,9 @@ export const process_photo: Task = async (payload, helpers) => {
       width,
       height,
       payload.uploaded_at ?? new Date().toISOString(),
+      // Wave 26, trailing and defaulted in SQL (proposed/content/0002): the caption, and whether the derivative exists.
+      payload.caption ?? null,
+      storyReady,
     ],
   );
   const envelope = outcomeRows[0]?.envelope;
@@ -112,6 +138,7 @@ export const process_photo: Task = async (payload, helpers) => {
   if (envelope?.status === "file_too_large") {
     helpers.logger.warn(`process_photo: ${payload.photo_id} exceeds the org's ${envelope.limit_mb} MB image limit after stripping — deleting`);
     await deleteObject("photos", payload.storage_path);
+    if (storyReady) await deleteObject("photos", storyPath).catch(() => undefined);
     return;
   }
 

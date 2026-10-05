@@ -20,6 +20,7 @@ import { formatDate, formatNumber } from "@/components/sessions/numerals";
 import { myCertificateHref } from "@/components/sessions/outcome-card";
 import { publicCardPath, siteOrigin } from "@/components/sessions/public-card-metadata";
 import { ShareLink } from "@/components/sessions/share-link";
+import { StoryEntry } from "@/components/sessions/story-entry";
 import { isSectionShown, type EventSectionId, type SlotProps, type SlotSummary } from "@/components/sessions/slots";
 import { Tasks, tasksSummary } from "@/components/tasks/panel";
 import { AlertCircleIcon, InfoIcon } from "@/components/ui/icons";
@@ -33,6 +34,7 @@ import { isSessionBookmarked } from "@/lib/dal/bookmarks";
 import { getRatingEligibility } from "@/lib/dal/ratings";
 import { getRsvpPanelData } from "@/lib/dal/rsvp";
 import { getAttendanceRulePoints } from "@/lib/dal/search";
+import { getSessionStory } from "@/lib/dal/stories";
 import { requireSession } from "@/lib/dal/session";
 import { isCompanyAttendanceRuleEnabled } from "@/lib/dal/leaderboards";
 import { getEventAttendeeFaces, getEventFigures, getSessionForEvent, getViewerCompany, listSessionDays, type EventSession } from "@/lib/dal/sessions";
@@ -95,7 +97,7 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
   const counted = phase === "live" || phase === "ended";
   const facesPhase = phase === "open" || phase === "live" || phase === "ended" ? phase : null;
 
-  const [eligibility, certificateHref, bookmarked, rulePoints, figures, faces, team] = await Promise.all([
+  const [eligibility, certificateHref, bookmarked, rulePoints, figures, faces, team, story] = await Promise.all([
     endedAttendee ? getRatingEligibility(locale, id) : Promise.resolve(null),
     endedAttendee ? myCertificateHref(locale, id) : Promise.resolve(null),
     isSessionBookmarked(locale, id),
@@ -104,6 +106,8 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
     staffOrPresenter && facesPhase ? getEventAttendeeFaces(locale, id, facesPhase) : Promise.resolve([]),
     // «لفريقك» (DEC-210): the viewer's company, only when the org's company attendance rule is on — scoring's gate.
     phase === "open" || phase === "live" ? teamForRule(locale) : Promise.resolve(null),
+    // «شاهد القصة» (REQ-STO-008): only while live, and only for a story the feed returns — a frame I may see now.
+    phase === "live" ? getSessionStory(locale, id).catch(() => null) : Promise.resolve(null),
   ]);
   // «قيّم الجلسة» only to someone who may and has not yet (REQ-RAT-001, REQ-RAT-003).
   const canRate = rateAllowed(session, relation) && canGrantOn(session, "rate") && Boolean(eligibility?.eligible) && !eligibility?.existing;
@@ -234,7 +238,7 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
 
   return (
     <article className="mx-auto w-full max-w-6xl px-3 pb-12 lg:px-8">
-      <EventTopRow session={session} phase={phase} bookmark={bookmark("icon")} share={share("icon")} />
+      <EventTopRow session={session} phase={phase} bookmark={bookmark("icon")} share={share("icon")} story={story ? <StoryEntry story={story} /> : undefined} />
       <DesktopBreadcrumb session={session} />
       <Notices session={session} phase={phase} locale={locale} />
 
@@ -246,6 +250,7 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
         dayCount={days.length}
         points={points}
         locale={locale}
+        story={story ? <StoryEntry story={story} /> : undefined}
       />
 
       {/* The card first after the hero, in flow (DEC-045); from `lg` the full-width action row, sticky once

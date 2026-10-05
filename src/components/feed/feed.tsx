@@ -42,7 +42,7 @@ export async function Feed({ locale }: { locale: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <RingRow rings={feed.rings} today={feed.today} locale={locale} />
+      <RingRow />
 
       {/* REQ-PRF-001: a member with no company is asked for one before they can reserve. */}
       {!feed.viewer.hasCompany ? (

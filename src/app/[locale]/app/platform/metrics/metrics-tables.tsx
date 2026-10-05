@@ -9,16 +9,14 @@ import { describeAlert, durationLabel } from "@/components/platform/alert-copy";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { JobHealthRow, OrgSummary, PlatformAlert } from "@/lib/dal/platform";
 
-// SCR-084's three lists on `ui/data-table` — REQ-ADM-003, REQ-NFR-016, wave 8
-// (`docs/plan/notes/platform.md` W8.7).
+// SCR-084's three lists on `ui/data-table` — REQ-ADM-003, REQ-NFR-016, REQ-UIX-118. Rebuilt for wave 26 from
+// `PlatformMetrics.dc.html` (`DEC-208`): the per-org table is the board's, with the columns the console holds — org,
+// members, active, sessions, certificates — and not the board's attendance or exports, which no function counts
+// (DEC-251, Q5). The alerts and job health are not on the board and stay (`REQ-ADM-003`: «job health, error rates»).
 //
-// ★ Below `md` every one is a card list, which removes the one horizontal
-// scroller this track had: wave 4's capture found «أقدم منتظرة» scrolled off
-// the edge of a 390 px table, and on a card it is simply there.
-//
-// ★ AGGREGATE ONLY. An alert's reading is `0075`'s counts, ages, rates and
-// thresholds; a job row is a task identifier and three numbers; an org row is
-// the org's own name and three counts.
+// ★ Below `md` every one is a card list — never a sideways scroller (wave 4's «أقدم منتظرة» off the edge at 390 px).
+// ★ AGGREGATE ONLY. An alert's reading is `0075`'s counts, ages, rates and thresholds; a job row is a task
+// identifier and three numbers; an org row is the org's own name and four counts.
 
 export function AlertsTable({ alerts }: { alerts: PlatformAlert[] }) {
   const t = useTranslations("platform");
@@ -37,6 +35,8 @@ export function AlertsTable({ alerts }: { alerts: PlatformAlert[] }) {
 
   return (
     <DataTable
+      // The surface card at md+, as every console table since wave 21 draws it; the rows are cards below `md`.
+      className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
       label={t("metrics.alertsTitle")}
       columns={columns}
       rows={alerts}
@@ -58,7 +58,7 @@ export function JobsTable({ jobs }: { jobs: JobHealthRow[] }) {
       // A task identifier is snake_case Latin in an Arabic table: isolated, so
       // the underscores do not reorder.
       cell: (job) => (
-        <span dir="ltr" className="font-mono">
+        <span dir="ltr" className="font-mono [overflow-wrap:anywhere]">
           <bdi>{job.task}</bdi>
         </span>
       ),
@@ -72,6 +72,8 @@ export function JobsTable({ jobs }: { jobs: JobHealthRow[] }) {
 
   return (
     <DataTable
+      // The surface card at md+, as every console table since wave 21 draws it; the rows are cards below `md`.
+      className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
       label={t("metrics.jobsTitle")}
       columns={columns}
       rows={jobs}
@@ -87,13 +89,16 @@ export function OrgMetricsTable({ orgs }: { orgs: OrgSummary[] }) {
 
   const columns: DataTableColumn<OrgSummary>[] = [
     { key: "org", header: t("metrics.orgColumn"), cell: (org) => <bdi>{org.name}</bdi> },
-    { key: "activeMembers", header: t("metrics.activeMembers"), onCard: true, align: "end", cell: (org) => <bdi>{num(org.activeMembers)}</bdi> },
-    { key: "sessions", header: t("metrics.sessions"), onCard: true, align: "end", cell: (org) => <bdi>{num(org.sessions)}</bdi> },
-    { key: "certificates", header: t("metrics.certificates"), onCard: true, align: "end", cell: (org) => <bdi>{num(org.certificates)}</bdi> },
+    { key: "members", header: t("orgs.members"), onCard: true, align: "end", cell: (org) => <bdi>{num(org.members)}</bdi> },
+    { key: "activeMembers", header: t("orgs.activeMembers"), onCard: true, align: "end", cell: (org) => <bdi>{num(org.activeMembers)}</bdi> },
+    { key: "sessions", header: t("orgs.sessions"), onCard: true, align: "end", cell: (org) => <bdi>{num(org.sessions)}</bdi> },
+    { key: "certificates", header: t("orgs.certificates"), onCard: true, align: "end", cell: (org) => <bdi>{num(org.certificates)}</bdi> },
   ];
 
   return (
     <DataTable
+      // The surface card at md+, as every console table since wave 21 draws it; the rows are cards below `md`.
+      className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
       label={t("metrics.perOrgTitle")}
       columns={columns}
       rows={orgs}

@@ -26,6 +26,12 @@ import { Sheet } from "@/components/ui/sheet";
 // no sheet — and keeps `data-console`, so motion stays off and the display face stays the `h1`'s. Decided here from
 // `usePathname()`, which the server render knows too, so there is no flash; the layout is not re-rendered on a
 // client-side navigation and could not decide it (wave 7). No URL moved. The layout still never gates.
+//
+// ★★ THE PLATFORM CONSOLE (wave 26, REQ-UIX-118, DEC-NEXT-38, DEC-249). `/app/platform` is drawn on this same frame
+// with a second nav set (`components/platform/platform-nav.tsx`). Three props, all add-only and all absent for the org
+// console: `banner` — the break-glass banner, FIRST and in flow, never sticky (a second sticky layer is `16` §3.1's
+// focus hazard; `DEC-057` §7); `badge` — «لا بيانات مؤسسات هنا» in the bar; `contentId` — the skip link's target, which
+// the platform's existing suites know as `platform-content`.
 
 export interface ConsoleFrameProps {
   groups: AdminRailLink[][];
@@ -41,6 +47,12 @@ export interface ConsoleFrameProps {
   toApp: ReactNode;
   /** The account menu — drawn from `lg`, as the artboards draw it. */
   account: ReactNode;
+  /** Above the bar, in flow — the platform's break-glass banner. */
+  banner?: ReactNode;
+  /** In the bar, after the title — the platform's «لا بيانات مؤسسات هنا». */
+  badge?: ReactNode;
+  /** The skip link's target. */
+  contentId?: string;
   children: ReactNode;
 }
 
@@ -53,7 +65,21 @@ export function isStudioEditor(pathname: string): boolean {
   return path.startsWith("/app/admin/designer/") || /^\/app\/admin\/emails\/[^/]+$/.test(path);
 }
 
-export function ConsoleFrame({ groups, railLabel, openLabel, skipLabel, brand, title, orgName, toApp, account, children }: ConsoleFrameProps) {
+export function ConsoleFrame({
+  groups,
+  railLabel,
+  openLabel,
+  skipLabel,
+  brand,
+  title,
+  orgName,
+  toApp,
+  account,
+  banner,
+  badge,
+  contentId = "admin-content",
+  children,
+}: ConsoleFrameProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname() ?? "";
   const hasRail = groups.some((group) => group.length > 0);
@@ -70,9 +96,10 @@ export function ConsoleFrame({ groups, railLabel, openLabel, skipLabel, brand, t
 
   return (
     <div data-console="" className="min-h-dvh bg-canvas">
+      {banner}
       {/* ★ REQ-UIX-017 — a second skip link, past the rail. `tabIndex={-1}` on the target so focus really moves. */}
       {hasRail ? (
-        <a href="#admin-content" className="skip-link rounded-field bg-accent px-4 py-2 text-label text-on-accent">
+        <a href={`#${contentId}`} className="skip-link rounded-field bg-accent px-4 py-2 text-label text-on-accent">
           {skipLabel}
         </a>
       ) : null}
@@ -91,6 +118,7 @@ export function ConsoleFrame({ groups, railLabel, openLabel, skipLabel, brand, t
               <bdi>{orgName}</bdi>
             </p>
           ) : null}
+          {badge}
           <span aria-hidden className="flex-1" />
           {toApp}
           <div className="hidden lg:block">{account}</div>
@@ -102,12 +130,12 @@ export function ConsoleFrame({ groups, railLabel, openLabel, skipLabel, brand, t
           <aside className="hidden border-e border-edge p-2 lg:sticky lg:top-[var(--console-bar)] lg:block lg:h-[calc(100dvh-var(--console-bar))] lg:overflow-y-auto">
             <AdminRail groups={groups} label={railLabel} />
           </aside>
-          <div id="admin-content" tabIndex={-1} className="min-w-0 px-4 py-4 outline-none lg:p-6">
+          <div id={contentId} tabIndex={-1} className="min-w-0 px-4 py-4 outline-none lg:p-6">
             {children}
           </div>
         </div>
       ) : (
-        <div id="admin-content" tabIndex={-1} className="min-w-0 px-4 py-4 outline-none lg:p-6">
+        <div id={contentId} tabIndex={-1} className="min-w-0 px-4 py-4 outline-none lg:p-6">
           {children}
         </div>
       )}

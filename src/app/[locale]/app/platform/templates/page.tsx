@@ -1,29 +1,20 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { InfoIcon } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
-import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/ui/section-header";
 import type { Locale } from "@/i18n/routing";
 import { listPlatformTemplates, listPromotableVersions } from "@/lib/dal/platform-templates";
-import { LibraryTable } from "./library-table";
+import { LibraryGrid } from "./library-table";
 import { PromoteTable } from "./promote-table";
 
-// SCR-083 · /app/platform/templates — REQ-DSG-008, REQ-DSG-026, DEC-052,
-// onto the system for wave 8 with DEC-148's contract 3
-// (`docs/plan/notes/platform.md` W8.6, W8.10).
+// SCR-083 · /app/platform/templates — REQ-DSG-008, REQ-DSG-026, DEC-052, REQ-UIX-118. Written for wave 26 from
+// `PlatformTemplates.dc.html` (`DEC-208`: deleted first); what it kept is `docs/plan/notes/platform.md` W26.2.4.
 //
-// ★ MANAGED, NOT AUTHORED, and the screen says so rather than leaving an operator
-// hunting for an editor that does not exist here. A super admin has no org and
-// the designer's editor is org-scoped (SCR-057), so the two ways a platform
-// template comes into being are a migration and a promotion.
+// The board's `h1` and its one line — the library is read by every org and copied to be edited — then the grid, one
+// group per purpose, and below it the promotion list the board does not draw (`REQ-DSG-008`, DEC-251 Q6).
 //
-// ★ The baseline is present for every org from creation and depends on no org
-// publishing first (DEC-052): five poster families and three certificate
-// families in both orientations, each rendering light and dark (DEC-148). A
-// purpose never falls below one default; the tables do not offer the retirement
-// the floor would refuse.
-//
-// No preview, and no document anywhere on this page.
+// ★ MANAGED, NOT AUTHORED: there is no «قالب جديد». A super admin has no org and the editor is org-scoped (SCR-057),
+// so a platform template comes from a migration (the A27 baseline, present for every org from creation, `DEC-052`)
+// or a promotion. ★ No document and no preview anywhere on the page: the cards draw the family's swatch.
 
 export default async function PlatformTemplatesPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -38,40 +29,29 @@ export default async function PlatformTemplatesPage({ params }: { params: Promis
 
   return (
     <>
-      <PageHeader title={t("title")} description={t("intro")} />
-      <Panel tone="info" className="mt-6 max-w-3xl">
-        <ul className="space-y-2 text-body-sm text-fg-body">
-          {(["baselineNote", "schemesNote", "floorNote"] as const).map((key) => (
-            <li key={key} className="flex items-start gap-2">
-              <InfoIcon className="mt-1 text-fg-muted" />
-              <span>{t(key)}</span>
-            </li>
-          ))}
-        </ul>
-      </Panel>
+      <PageHeader inlineActions title={t("title")} />
+      <p className="mt-2 text-body-sm text-fg-muted">{t("readOnlyLine")}</p>
 
-      <section aria-labelledby="library" className="mt-10">
-        <SectionHeader as="h2" id="library" title={t("libraryTitle")} count={library.length} />
+      <div id="library" className="mt-6 space-y-8">
         {(["poster", "certificate"] as const).map((purpose) => {
           const rows = library.filter((tpl) => tpl.purpose === purpose);
           return (
-            <section key={purpose} aria-labelledby={`purpose-${purpose}`} className="mt-8">
+            <section key={purpose} aria-labelledby={`purpose-${purpose}`}>
               <SectionHeader
-                as="h3"
+                as="h2"
                 id={`purpose-${purpose}`}
                 title={purpose === "poster" ? t("purposePoster") : t("purposeCertificate")}
-                count={rows.length}
               />
               <div className="mt-3">
-                <LibraryTable purpose={purpose} templates={rows} locale={loc} />
+                <LibraryGrid purpose={purpose} templates={rows} locale={loc} />
               </div>
             </section>
           );
         })}
-      </section>
+      </div>
 
-      <section aria-labelledby="promote" className="mt-12 border-t border-edge pt-8">
-        <SectionHeader as="h2" id="promote" title={t("promoteTitle")} description={t("promoteNote")} count={candidates.length} />
+      <section id="promote" aria-labelledby="promote-title" className="mt-12 border-t border-edge pt-8">
+        <SectionHeader as="h2" id="promote-title" title={t("promoteTitle")} />
         <div className="mt-4">
           <PromoteTable candidates={candidates} locale={loc} />
         </div>

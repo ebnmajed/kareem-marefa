@@ -620,6 +620,10 @@
           "restored": "Photo restored",
           "downloaded": "Downloaded a photo"
         },
+        "story_frame": {
+          "removed": "Story frame removed",
+          "restored": "Story frame restored"
+        },
         "points": {
           "balance_divergence": "Points balance divergence",
           "manual_adjustment": "Points adjusted by hand"

@@ -588,6 +588,15 @@ html:has([data-play-root].theme-play-light) {
   50% { opacity: 1; }
   to { transform: translateX(calc(250% * var(--moment-dir))) rotate(20deg); opacity: 0; }
 }
+
+/* ★ wave 26 (DEC-251 §4.10, REQ-STO-007) — the story viewer's one keyframe: a frame arriving. Transform and opacity
+   only, a token's duration, applied by `story-viewer` under `motion-safe:` so reduced motion changes frames with no
+   slide at all. It is NOT a moment (there is no sixth), and under `[data-console]` motion is off regardless. */
+@keyframes story-frame-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
 /* ── The mark's three moves (REQ-UIX-119, DEC-247; `components/brand/logo.tsx`) ─────────────────────────────────
    Taken from `docs/design/prototypes/logo-motion.html`: the same curves, durations and delays, keyed on the
    component's `data-*` attributes and never on the prototype's class names. They are the MARK's, not a moment

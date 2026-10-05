@@ -1,14 +1,11 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
-import { IconButton } from "@/components/ui/icon-button";
-import { MoreIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
-import { Menu } from "@/components/ui/menu";
 import { Panel } from "@/components/ui/panel";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,40 +16,52 @@ import { hasFailed, was } from "@/lib/form-state";
 import { deleteOrgAction, reinstateOrgAction, suspendOrgAction } from "./actions";
 import { emptyDeleteState, emptySuspendState, type DeleteState, type SuspendState } from "./state";
 
-// SCR-080's per-row acts — REQ-TEN-006, REQ-NFR-014, REQ-UIX-013, wave 8
-// (`docs/plan/notes/platform.md` W8.3).
+// SCR-080's row acts, in the row as `PlatformOrgs.dc.html` draws them — «أوقف» or «أعد التفعيل», «النطاقات», «احذف»
+// — REQ-TEN-006, REQ-NFR-014, REQ-UIX-013. Kept (W26.2.1, O4 – O8):
 //
-// One `ui/menu` per row, and each destructive act confirms in `ui/dialog` NAMING
-// THE ORG with the consequence stated before the press — the members table's
-// Menu→Dialog shape, proven on a real build. The two dialogs are deliberately
-// not the same (`REQ-NFR-014`): suspension is reversible and asks for a
-// sentence the org's admins will read; deletion is not, and asks the operator
-// to type the slug back, compared ON THE SERVER.
+// · ★ Suspension confirms in `ui/dialog` NAMING THE ORG and asks for a reason the org's admins will read; deletion is
+//   irreversible and asks for the SLUG TYPED BACK, compared on the server (`delete_org()`'s `slug_mismatch`). The two
+//   dialogs are deliberately not the same (`REQ-NFR-014`). The board draws neither; both are requirements.
+// · Reinstating is one press and no confirm — restorative — and answers either way (wave 8 F4).
+// · Deletion is offered on an active org as well as a suspended one (DEC-251, Q9): `delete_org()` suspends first.
+// · ★ An org with a deletion requested is offered NOTHING (`0097`): the cell says so, to a reader, in one line.
+// · No effect drives a toast or a close: each form's action is wrapped here, so the dialog closes and the
+//   acknowledgement fires in the action's own path (wave 8 F2).
 //
-// ★ No effect drives a toast or a close. Each form's action is wrapped here, so
-// the dialog closes and the acknowledgement fires in the action's own path —
-// an effect keyed on state is the shape that silently never runs when the
-// component re-renders away (wave 6's «effect toasts in unmounting cards»,
-// notes W8.0 F2).
-//
-// Reinstating is one press and no confirm: it is restorative, the asymmetry
-// `DeactivateToggle` already records. It answers either way (F4).
-//
-// ★ An org with a deletion requested gets NO acts at all (sync 3's ruling,
-// `0010`): `reinstate_org()` refuses it, and suspending or deleting it again
-// changes nothing. Principle 7 — what cannot be done is not offered; the row's
-// status badge says why.
-//
-// A toast title is plain text, so an org's name inside it is isolated with
-// FSI/PDI — the character form of `<bdi>`.
+// Each act's accessible name carries the org — «أوقف — {org}» — because a column of «أوقف» is a column of the same
+// name. A toast title is plain text, so the org's name is isolated with FSI/PDI, the character form of `<bdi>`.
 
 const isolate = (value: string) => `⁨${value}⁩`;
+
+/**
+ * Coral text on a `ghost` act. A bare `text-error` loses to the variant's own `text-fg-heading` (same specificity, and
+ * the variant's utility sorts after it), so the act drew in the heading's bone. `pg-dark:` sorts after every base
+ * utility, which is how `danger` itself reaches DEC-073's on-dark error inside the scope; the platform is always
+ * inside it.
+ */
+const CORAL = "text-error pg-dark:text-error-on-dark";
+
+/**
+ * A 36 px pill with a 44 px hit area: the pseudo-element extends the target, not the drawing. A pill's word never
+ * wraps — «أعد التفعيل» broke into two lines inside its pill at 1280 (the lead's capture).
+ */
+const HIT = "relative whitespace-nowrap after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']";
 
 export function OrgActions({ org, locale }: { org: OrgSummary; locale: Locale }) {
   const t = useTranslations("platform.orgs");
   const tErr = useTranslations("platform.errors");
   const toast = useToast();
   const [dialog, setDialog] = useState<"suspend" | "delete" | null>(null);
+  // ★ Focus goes BACK to the act that opened the dialog when it closes — Escape, «تراجع» or a refusal kept open then
+  // dismissed. The dialog is opened by state, not by a Radix trigger, so Radix has no trigger to return to and focus
+  // fell to the top of the document (the frame's skip link, the lead's 390 capture). The opener is remembered from
+  // the press itself; a success that re-renders the row still finds the same button.
+  const opener = useRef<HTMLButtonElement | null>(null);
+  const returnFocus = (event: Event) => {
+    if (!opener.current?.isConnected) return;
+    event.preventDefault();
+    opener.current.focus();
+  };
   const [reinstating, startReinstate] = useTransition();
 
   const [suspendState, suspendAction, suspendPending] = useActionState(async (prev: SuspendState, formData: FormData) => {
@@ -73,35 +82,55 @@ export function OrgActions({ org, locale }: { org: OrgSummary; locale: Locale })
     return next;
   }, emptyDeleteState());
 
+  if (org.deletionPending) {
+    return (
+      <span className="text-caption text-fg-muted">
+        <span aria-hidden>—</span>
+        <span className="sr-only">{t("noActionsDeleting")}</span>
+      </span>
+    );
+  }
+
   const reinstate = () =>
     startReinstate(async () => {
       const { error } = await reinstateOrgAction(locale, org.id);
       toast.show(error ? { title: tErr(error), tone: "error" } : { title: t("reinstated", { org: isolate(org.name) }), tone: "success" });
     });
 
+  const named = (label: string) => `${label} — ${org.name}`;
   const orgTitle = (key: "suspendConfirmTitle" | "deleteConfirmTitle") => t.rich(key, { org: org.name, bdi: (c) => <bdi>{c}</bdi> });
-
-  if (org.deletionPending) return null;
 
   return (
     <Dialog open={dialog !== null} onOpenChange={(open) => setDialog(open ? dialog : null)}>
-      <Menu
-        align="end"
-        trigger={
-          <IconButton label={t("actionsFor", { org: org.name })} size="sm" pending={reinstating}>
-            <MoreIcon />
-          </IconButton>
-        }
-        items={[
-          org.status === "active"
-            ? { label: t("suspendTitle"), onSelect: () => setDialog("suspend") }
-            : { label: t("reinstate"), onSelect: reinstate },
-          { label: t("deleteTitle"), onSelect: () => setDialog("delete"), tone: "error", startsGroup: true },
-        ]}
-      />
+      {/* One line at a desk, as drawn: quiet pills for the reversible acts and the way to SCR-082, the destructive
+          act as coral TEXT. Each pill draws 36 px and is HIT at 44: its `after:` box reaches 4 px past it on both
+          sides (SC 2.5.8 asks 24; the console's floor is 44). */}
+      <div role="group" aria-label={org.name} className="flex flex-wrap items-center gap-1.5 md:flex-nowrap">
+        {org.status === "active" ? (
+          <Button type="button" variant="quiet" size="sm" className={HIT} aria-label={named(t("suspendShort"))} onClick={(event) => {
+              opener.current = event.currentTarget;
+              setDialog("suspend");
+            }}>
+            {t("suspendShort")}
+          </Button>
+        ) : (
+          <Button type="button" variant="quiet" size="sm" className={HIT} aria-label={named(t("reinstate"))} pending={reinstating} onClick={reinstate}>
+            {t("reinstate")}
+          </Button>
+        )}
+        <ButtonLink href={`/app/platform/orgs/${org.id}/domains`} variant="quiet" size="sm" className={HIT} aria-label={named(t("domainsLink"))}>
+          {t("domainsLink")}
+        </ButtonLink>
+        <Button type="button" variant="ghost" size="sm" className={`${HIT} ${CORAL}`} aria-label={named(t("deleteShort"))} onClick={(event) => {
+            opener.current = event.currentTarget;
+            setDialog("delete");
+          }}>
+          {t("deleteShort")}
+        </Button>
+      </div>
 
       {dialog === "suspend" ? (
-        <DialogContent title={orgTitle("suspendConfirmTitle")} description={t("suspendHint")} closeLabel={t("closeDialog")}>
+        <DialogContent title={orgTitle("suspendConfirmTitle")} description={t("suspendHint")} closeLabel={t("closeDialog")} onCloseAutoFocus={returnFocus}>
           <form action={suspendAction} noValidate className="space-y-5">
             {suspendState.formError ? <FormError message={tErr(suspendState.formError)} /> : null}
             <Field
@@ -128,12 +157,11 @@ export function OrgActions({ org, locale }: { org: OrgSummary; locale: Locale })
       ) : null}
 
       {dialog === "delete" ? (
-        <DialogContent title={orgTitle("deleteConfirmTitle")} description={t("deleteHint")} closeLabel={t("closeDialog")}>
+        <DialogContent title={orgTitle("deleteConfirmTitle")} description={t("deleteHint")} closeLabel={t("closeDialog")} onCloseAutoFocus={returnFocus}>
           <form action={deleteAction} noValidate className="space-y-5">
             {deleteState.formError ? <FormError message={tErr(deleteState.formError)} /> : null}
-            {/* The slug on its own line: inside the sentence it wrapped mid-slug at
-                390 px («… كما يظهر هنا: plat-a-» and the rest below, sync 4). A slug
-                is Latin and types left to right, in its own isolated box. */}
+            {/* The slug on its own line, Latin, left to right in its own isolated box: inside the sentence it wrapped
+                mid-slug at 390 px (wave 8, sync 4). */}
             <div className="space-y-2">
               <p className="text-body-sm text-fg-body">{t("deleteSlugIntro")}</p>
               <p>
@@ -148,8 +176,7 @@ export function OrgActions({ org, locale }: { org: OrgSummary; locale: Locale })
               required
               error={deleteState.errors.confirmSlug ? tErr(deleteState.errors.confirmSlug) : undefined}
             >
-              {/* autocomplete off: a browser offering a previously typed slug
-                  would undo the point of typing it. */}
+              {/* autocomplete off: a browser offering a previously typed slug would undo the point of typing it. */}
               <Input name="confirmSlug" dir="ltr" autoComplete="off" spellCheck={false} className="font-mono" defaultValue={was(deleteState, "confirmSlug")} />
             </Field>
             <div className="flex flex-wrap gap-3">

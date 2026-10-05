@@ -152,7 +152,13 @@ export function SplitView({ label, items, currentId, toolbar, empty, detail, det
             </ul>
           )}
         </div>
-        <section aria-labelledby={detailLabelledBy} className={`min-w-0 ${narrow === "list" ? "hidden lg:block" : ""}`}>
+        {/* ★ Named only while an item is open: with nothing open the detail draws no heading, and a section naming an id
+            that is not in the document has no name — a generic element carrying aria-labelledby (axe's
+            aria-prohibited-attr, the wave-26 sweep on an empty queue at 1280). */}
+        <section
+          aria-labelledby={currentId !== null ? detailLabelledBy : undefined}
+          className={`min-w-0 ${narrow === "list" ? "hidden lg:block" : ""}`}
+        >
           {back ? (
             <Link href={back.href} className="mb-3 inline-flex min-h-11 items-center text-label text-fg-heading underline underline-offset-4 lg:hidden">
               {back.label}

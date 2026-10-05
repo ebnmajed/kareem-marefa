@@ -74,6 +74,8 @@ import { FloatingToolbarDemo } from "./demos/floating-toolbar";
 import { CanvasStageDemo } from "./demos/canvas-stage";
 import { LayerListDemo } from "./demos/layer-list";
 import { BlockLibraryDemo } from "./demos/block-library";
+import { StoryCaptureDemo } from "./demos/story-capture";
+import { StoryViewerDemo } from "./demos/story-viewer";
 import { BlockCanvasDemo } from "./demos/block-canvas";
 import type { DemoGround } from "./ground";
 
@@ -172,6 +174,9 @@ const DEMOS: { file: string; title: string; node: (ground: DemoGround) => ReactN
   { file: "layer-list", title: "قائمة الطبقات", node: () => <LayerListDemo /> },
   // ── wave 23 (DEC-238 §4): the email builder's two, `notify`'s ──
   { file: "block-library", title: "مكتبة الكتل", node: () => <BlockLibraryDemo /> },
+  // wave 26 (DEC-251 §4) — session stories.
+  { file: "story-viewer", title: "عارض القصة", node: () => <StoryViewerDemo /> },
+  { file: "story-capture", title: "التقاط القصة", node: () => <StoryCaptureDemo /> },
   { file: "block-canvas", title: "لوحة الكتل", node: () => <BlockCanvasDemo /> },
   { file: "rank-row", title: "صفّ الترتيب", node: () => <RankRowDemo /> },
   { file: "race-bar", title: "سباق الشركات", node: () => <RaceBarDemo /> },

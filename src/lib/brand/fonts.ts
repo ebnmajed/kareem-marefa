@@ -20,10 +20,14 @@ import type { BrandFontRef } from "./schema";
 // an empty list, honestly, rather than a choice that cannot be saved.
 export async function listSelectableFonts(locale: string): Promise<BrandFontRef[]> {
   const { supabase } = await sessionClient(locale);
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("fonts")
     .select("id, family, weight, style, sha256")
     .eq("parity_status", "passed")
     .order("family");
+  // ★ wave 26: a failed read throws rather than answer «no fonts». An empty list disables both pickers, and a disabled
+  // `<select>` is not posted — so a transient error followed by a save would have reset the org's chosen faces to the
+  // platform default, silently.
+  if (error) throw error;
   return (data ?? []) as BrandFontRef[];
 }

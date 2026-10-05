@@ -47,6 +47,10 @@
     "console": {
       "title": "لوحة الإدارة",
       "toApp": "التطبيق",
+      "platform": {
+        "openRail": "افتح قائمة لوحة المنصة",
+        "noOrgData": "لا بيانات مؤسسات هنا"
+      },
       "badge": {
         "proposals": "{count, plural, zero {لا مقترحات} one {مقترح واحد بانتظار القرار} two {مقترحان بانتظار القرار} few {{value} مقترحات بانتظار القرار} many {{value} مقترحًا بانتظار القرار} other {{value} مقترح بانتظار القرار}}",
         "sessions": "{count, plural, zero {لا جلسات} one {جلسة واحدة لم تُجدول} two {جلستان لم تُجدولا} few {{value} جلسات لم تُجدول} many {{value} جلسة لم تُجدول} other {{value} جلسة لم تُجدول}}",

@@ -52,7 +52,8 @@ describe("ImpersonateForm", () => {
     const radios = within(group).getAllByRole("radio") as HTMLInputElement[];
     expect(radios.map((r) => r.value)).toEqual(["15", "30", "60", "120", "240"]);
     expect(within(group).getByRole("radio", { name: "ساعة واحدة" })).toBeChecked();
-    expect(group).toHaveTextContent("الحد الأعلى");
+    // Wave 26: the chips carry no hint, so the ceiling is said once under the row, inside the form.
+    expect(container.querySelector("form")).toHaveTextContent("الحد الأعلى");
     expect(group.textContent).not.toMatch(/[٠-٩۰-۹]/);
   });
 
@@ -67,7 +68,7 @@ describe("ImpersonateForm", () => {
     await userEvent.type(screen.getByLabelText(/^السبب/), "مراجعة بلاغ");
     await userEvent.click(screen.getByRole("radio", { name: "30 دقيقة" }));
     await act(async () => {
-      await userEvent.click(screen.getByRole("button", { name: /ابدأ الجلسة/ }));
+      await userEvent.click(screen.getByRole("button", { name: /^ادخل/ }));
     });
     await vi.waitFor(() => expect(refresh).toHaveBeenCalled());
     expect(calls).toEqual(["action", "refreshSession", "router.refresh"]);
@@ -89,7 +90,7 @@ describe("ImpersonateForm", () => {
     const { container } = renderForm(action);
     await userEvent.type(screen.getByLabelText(/^السبب/), "سبب مكتوب بعناية");
     await act(async () => {
-      await userEvent.click(screen.getByRole("button", { name: /ابدأ الجلسة/ }));
+      await userEvent.click(screen.getByRole("button", { name: /^ادخل/ }));
     });
     const summary = await screen.findByRole("alert");
     expect(summary).toHaveTextContent("المؤسسة");

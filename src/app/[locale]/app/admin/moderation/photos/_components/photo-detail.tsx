@@ -17,7 +17,7 @@ import { Decide } from "./decide";
 
 const TONE: Record<PhotoStatus, Tone> = { hidden: "info", visible: "neutral", removed: "ended" };
 
-function Who({ who, fallback }: { who: ModerationPerson | null; fallback: string }) {
+export function Who({ who, fallback }: { who: ModerationPerson | null; fallback: string }) {
   return (
     <span className="inline-flex items-center gap-2">
       {who ? <Avatar memberId={who.memberId} displayName={who.name} src={who.avatarUrl} teamColor={who.teamColor} size={24} decorative /> : null}
@@ -26,7 +26,7 @@ function Who({ who, fallback }: { who: ModerationPerson | null; fallback: string
   );
 }
 
-function Pair({ label, children }: { label: string; children: ReactNode }) {
+export function Pair({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <dt className="text-caption text-fg-muted">{label}</dt>

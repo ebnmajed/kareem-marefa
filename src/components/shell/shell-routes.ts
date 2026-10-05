@@ -37,11 +37,12 @@ export function isEventPage(pathname: string | null): boolean {
 }
 
 /** ★ wave 21 (DEC-225 §3, REQ-UIX-084): the org console draws its own frame — a 52 px bar and a rail of six ruled
- *  groups — so the member's header, tab bar and footer step aside under it, at every width. `/app/platform` is not
- *  this batch and keeps today's frame (`DEC-227`, the lead's plan, D3). */
+ *  groups — so the member's header, tab bar and footer step aside under it, at every width.
+ *  ★ wave 26 (REQ-UIX-118, DEC-NEXT-38): the platform console is drawn on the same frame with its own nav set, so
+ *  `/app/platform` steps the member's shell aside too. The name is kept — every caller means «a console frame». */
 export function isAdminConsole(pathname: string | null): boolean {
   if (!pathname) return false;
-  return /^\/app\/admin(\/|$)/.test(strip(pathname));
+  return /^\/app\/(admin|platform)(\/|$)/.test(strip(pathname));
 }
 
 export function isConsole(pathname: string | null): boolean {
@@ -68,8 +69,9 @@ const OWN_TOP_ROW_M10B = /^\/app\/(sessions\/[^/]+\/rate|propose(\/[^/]+(\/edit)
 
 /** ★ wave 20 (DEC-217, REQ-UIX-070): the hub, its pages and settings, and the two boards draw their own phone top row —
  *  a title in the display face, a back control on a sub-page, the settings link on `/app/me`, and no wordmark
- *  (`docs/design/screens/m10c/`). `/app/me/privacy` is not drawn in any batch (M13's) and keeps the shell's row. */
-const OWN_TOP_ROW_M10C = /^\/app\/(me(\/(points|certificates|bookmarks|calendar|notifications|settings))?|leaderboards(\/companies)?)$/;
+ *  (`docs/design/screens/m10c/`). ★ wave 26 (`DEC-251` §3.5): `/app/me/privacy` is drawn at last (`m13/Privacy.dc.html`)
+ *  and owns its row like the rest. */
+const OWN_TOP_ROW_M10C = /^\/app\/(me(\/(points|certificates|bookmarks|calendar|notifications|settings|privacy))?|leaderboards(\/companies)?)$/;
 
 export function ownsTopRow(pathname: string | null): boolean {
   if (!pathname) return false;

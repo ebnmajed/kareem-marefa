@@ -116,6 +116,10 @@ test("★ REQ-DSG-021/ADM-015: an admin uploads a real logo, saves a colour, and
   // forms and any orphaned streamed copy.
   const main = page.locator("#main");
 
+  // ★ Wave 26 (REQ-UIX-116, DEC-208): SCR-059 opens READ; «عدّل» enters edit mode, where the form lives.
+  await main.getByRole("link", { name: "عدّل" }).click();
+  await expect(main.getByRole("heading", { name: "تعديل الهوية" })).toBeVisible();
+
   // `ui/file-drop`'s own input carries no `aria-label` (the visible
   // affordance is the "اختر ملفات" button it wraps) — the picker only
   // REPORTS the file (`onFiles`); the round trip starts on the separate
@@ -136,7 +140,8 @@ test("★ REQ-DSG-021/ADM-015: an admin uploads a real logo, saves a colour, and
   const headingField = main.getByLabel("لون العناوين").first();
   await headingField.fill("#ff5500");
 
-  await main.getByRole("button", { name: "حفظ" }).click();
+  // ★ Wave 26: Save names the unsaved count — «حفظ (2)», the logo and the heading colour.
+  await main.getByRole("button", { name: /^حفظ/ }).click();
   // `ui/toast` (Radix) renders the outcome TWICE: the visible toast
   // (portaled into the Viewport, no explicit role) and a visually-hidden
   // `role="status"` announcer Radix adds for screen readers. Filtering on
@@ -164,7 +169,9 @@ test("★ REQ-DSG-021/ADM-015: an admin uploads a real logo, saves a colour, and
   // layout emitted `.brand-org{--fg-heading:#ff5500;…}` and this `<h1>` computed the org's colour;
   // inside the playground it computes the scope's heading colour, the bone, whatever the kit says,
   // and no `.brand-org` rule is in the document.
-  await page.reload();
+  // ★ Wave 26: the save returns to read mode, where the value is a swatch with its hex written; the form is `?edit`.
+  await expect(page.locator("#main").getByText("#FF5500").first()).toBeVisible();
+  await page.goto("/ar/app/admin/branding?edit");
   await expect(page.locator("#main").getByLabel("لون العناوين").first()).toHaveValue("#ff5500");
   await expect(page.getByRole("heading", { name: "هوية المؤسسة", level: 1 })).toHaveCSS("color", "rgb(244, 241, 234)");
   expect(await page.evaluate(() => document.querySelector(".brand-org") === null && ![...document.querySelectorAll("style")].some((s) => (s.textContent ?? "").includes(".brand-org")))).toBe(true);
@@ -172,7 +179,8 @@ test("★ REQ-DSG-021/ADM-015: an admin uploads a real logo, saves a colour, and
 
 test("resetting deletes the row — every consumer returns to the platform default", async ({ context, page }) => {
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/branding");
+  // ★ Wave 26: reset lives in edit mode (SCR-059 opens read).
+  await page.goto("/ar/app/admin/branding?edit");
 
   // The trigger opens `ui/dialog`; the confirm button of the SAME name
   // lives inside it (REQ-UIX-013 — names the object, states the

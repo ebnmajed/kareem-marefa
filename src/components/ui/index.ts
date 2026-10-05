@@ -52,7 +52,7 @@
 // `route-error` and `data-table`, which §4.2's table omits and §16.2's lists
 // name — so thirty-four files, and §16.2 is authoritative (DEC-102).
 
-import type { ComponentProps, DragEvent, ReactNode } from "react";
+import type { ComponentProps, DragEvent, ReactNode, RefObject } from "react";
 import type { SeatState, SessionPhase } from "@/lib/session-status";
 
 // Re-exported so a track gets the whole status vocabulary from one import.
@@ -1858,4 +1858,98 @@ export interface BlockCanvasProps extends Styleable {
   onDropAt?: (at: BlockCanvasPlace, event: DragEvent<HTMLElement>) => void;
   /** The frame. */
   children: ReactNode;
+}
+
+// ─── wave 26 (DEC-245, DEC-251 §4): session stories — `content`'s two, the floor 69 → 71 ────────────────────────────
+// Named in `content`'s plan (`notes/content.md` §2) and landed here as written. Strings arrive as props; neither
+// primitive reads the DAL, a session or a catalogue. Every gesture has a single-pointer control and a key (DEC-093).
+
+/** `content` · `story-viewer.tsx` — REQ-STO-007, REQ-STO-009, DEC-093. A dialog over a run of stories. */
+export interface StoryViewerStory {
+  id: string;
+  /** The header: session title, «presenter · company · age» as one pre-formatted line. */
+  title: string;
+  meta: string;
+  glyph: string;
+  teamColor?: TeamColor;
+  frames: StoryViewerFrame[];
+  /** Index of the first unseen frame — where the viewer opens on this story. */
+  startIndex: number;
+  /** «أضف» — present only when the server says the viewer may add (a hint; the server refuses anyway). */
+  onAdd?: () => void;
+}
+export interface StoryViewerFrame {
+  id: string;
+  /** The frame's body — rendered by the caller (`components/stories/frame-*.tsx`). */
+  content: ReactNode;
+  /** ms. Photo 5000, text 6000; a video passes its own length and drives the clock itself (`media`). */
+  durationMs: number;
+  /** The frame's own age — «قبل 12 دقيقة» — appended to the header's meta line. The frame's, not the story's. */
+  age?: string;
+  /** A video frame: the viewer reads currentTime/ended/pause from this element instead of its own clock. */
+  media?: RefObject<HTMLVideoElement | null>;
+  /** The one action — «افتح الجلسة» / «حمّل المواد». */
+  action?: { label: string; href: string };
+  reactions?: { label: string; items: ReactionBarItem[]; onToggle: (kind: string) => void; pending?: boolean };
+  /** Attendee frames: «أزلني» and «بلّغ», in a menu behind «المزيد». */
+  moderation?: { menuLabel: string; items: { label: string; onSelect: () => void }[] };
+}
+export interface StoryViewerProps {
+  open: boolean;
+  stories: StoryViewerStory[];
+  /** Which story opened (the ring tapped). */
+  storyIndex: number;
+  onClose: () => void;
+  /** Fires once per frame shown — the caller writes `story_views` (§3). */
+  onFrameShown?: (storyId: string, frameId: string) => void;
+  /** Focus returns here on close (the ring). */
+  returnFocusTo?: RefObject<HTMLElement | null>;
+  /** The caller holds the clock without pressing pause — a sheet it opened over the viewer (a report). */
+  paused?: boolean;
+  labels: {
+    dialog: string;            // «قصة الجلسة»
+    previous: string; next: string; pause: string; resume: string; close: string; add: string;
+    /** «الإطار 3 من 7» — pre-formatted per frame by the caller is not possible inside a primitive, so a template fn. */
+    position: (current: number, total: number) => string;
+    paused: string;            // «متوقفة» — the visible pill, the hold's state
+  };
+}
+
+/** `content` · `story-capture.tsx` — REQ-STO-011, DEC-093. Presentational: the camera lives in `components/stories/use-camera.ts`. */
+export type StoryCaptureMode = "photo" | "video";
+export type StoryCaptureState = "idle" | "denied" | "recording" | "review" | "uploading" | "processing" | "refused" | "error";
+export interface StoryCaptureProps {
+  open: boolean;
+  state: StoryCaptureState;
+  mode: StoryCaptureMode;
+  onModeChange: (mode: StoryCaptureMode) => void;
+  /** The live preview or the review — a <video>/<img> the caller owns. */
+  preview: ReactNode;
+  elapsedSeconds: number;
+  /** 15 — read from the caller's constant, drawn «0:07 / 0:15». */
+  limitSeconds: number;
+  /** Photo mode: tap. Video mode: tap toggles start/stop (DEC-093). */
+  onShutter: () => void;
+  /** Photo mode only — the gesture: a hold starts video, release stops. */
+  onHoldStart?: () => void;
+  onHoldEnd?: () => void;
+  /** Gallery: the caller's handler receives the chosen File; accept = jpeg/png/webp/mp4/quicktime/webm. */
+  onPick: (file: File) => void;
+  onFlip?: () => void;        // absent → no flip button (one camera)
+  caption: string;
+  onCaptionChange: (value: string) => void;
+  captionMaxLength: number;   // 100
+  onSubmit: () => void;
+  onRetake: () => void;
+  onClose: () => void;
+  /** The status line for the non-idle states — «جارٍ التجهيز», «أطول من 15 ثانية», «تعذّر». */
+  message?: string;
+  labels: {
+    dialog: string; close: string; photoMode: string; videoMode: string;
+    shutterPhoto: string; recordStart: string; recordStop: string;
+    gallery: string; flip: string; caption: string; submit: string; retake: string;
+    /** REQ-EVT-013: «تُشارَك مع الجميع في المؤسسة» — at the point of upload, never buried. */
+    notice: string;
+    elapsed: (seconds: number, limit: number) => string;
+  };
 }

@@ -77,7 +77,8 @@ export function StoryRing({ state, label, stateLabel, glyph, caption, teamColor,
     );
   }
   return (
-    <button type="button" aria-label={label} data-state={state} onClick={onOpen} style={style} className={box}>
+    // Wave 26 (REQ-STO-007), add-only: a ring opens the story viewer, a dialog — and says so.
+    <button type="button" aria-label={label} aria-haspopup="dialog" data-state={state} onClick={onOpen} style={style} className={box}>
       {drawing}
     </button>
   );

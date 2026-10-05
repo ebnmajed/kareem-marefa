@@ -1,79 +1,66 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
-// One brand colour token: a swatch, a hex input, both controlled and kept
-// in sync from the same piece of state (REQ-DSG-021, SCR-059). Fully
-// controlled rather than `defaultValue` — React re-asserts the DOM value on
-// every render, so a failed save action's native form reset (React 19) is
-// never visible here, and the live preview updates on every keystroke.
+// One brand colour token in SCR-059's edit mode — REQ-DSG-021, REQ-UIX-116 (B14, B16, B17 in `notes/branding.md`).
 //
-// `<Field>` is the one wrapper (`16` §8.2 item 1, REQ-UIX-001) — its
-// context wires `htmlFor`/`aria-describedby`/`aria-invalid` onto `Input`,
-// the REAL control; the native `<input type="color">` beside it is a
-// decorative quick-pick (`aria-hidden`, `tabIndex={-1}`), never the thing a
-// screen reader or a keyboard user is sent to. A malformed hex shows as an
-// adjacent, red, icon-marked error through `Field`'s own error slot
-// (REQ-UIX-010) rather than a colour with no visible feedback at all.
-//
-// ★ `t.rich`, not `t`: "#rrggbb" is an LTR token inside an RTL sentence —
-// the lead's own build caught the bidi bug this produces unisolated (the
-// "#" landing on the wrong side). `FieldProps.error` is `ReactNode` for
-// exactly this (`886260a`), so the message's own `<bdi>` tag renders as a
-// real, `dir="ltr"` isolate rather than a raw string.
+// ★ CONTROLLED, never `defaultValue`: React re-asserts the value on every render, so a refused save (React 19 resets a
+// `<form action>`) never loses what was typed, and the preview follows every keystroke.
+// ★ The hex `Input` inside `<Field>` is THE control; the native picker beside it is a decorative quick-pick
+// (`aria-hidden`, `tabIndex={-1}`). A malformed value shows its error at the field, `#rrggbb` isolated in
+// `<bdi dir="ltr">` (an LTR token in an RTL sentence).
+// ★ A changed field says so twice — the accent outline AND «(معدّل)» in its accessible name, never colour alone
+// (DEC-231 §3, SC 1.4.1).
+
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 export function ColourField({
+  id,
   name,
   label,
   value,
+  changed,
   onChange,
-  id,
-  hint,
 }: {
+  id: string;
   name: string;
   label: string;
   value: string;
+  changed: boolean;
   onChange: (next: string) => void;
-  id: string;
-  /** e.g. the light-scheme `canvasRaise` note: a token that reaches nothing
-   *  a generated poster paints today (DEC-125 — posters always render
-   *  dark). */
-  hint?: string;
 }) {
-  const t = useTranslations("branding.colours");
+  const t = useTranslations("branding");
   const valid = HEX_RE.test(value);
 
   return (
     <Field
       id={id}
-      label={label}
-      hint={hint}
-      error={valid ? undefined : t.rich("invalidHex", { bdi: (chunks) => <bdi dir="ltr">{chunks}</bdi> })}
+      label={
+        <>
+          {label}
+          {changed ? <span className="sr-only"> {t("editMode.changed")}</span> : null}
+        </>
+      }
+      error={valid ? undefined : t.rich("colours.invalidHex", { bdi: (chunks) => <bdi dir="ltr">{chunks}</bdi> })}
     >
-      <div className="flex items-center gap-3">
-        <input
-          type="color"
+      <div className={`flex items-center gap-3 ${changed ? "rounded-field outline-2 outline-accent" : ""}`}>
+        <span
           aria-hidden="true"
-          tabIndex={-1}
-          // The lead's build review: black (`#000000`) is a real colour, and
-          // filling it in for "invalid" made a malformed value look like a
-          // deliberate black swatch. Neutral grey instead, dimmed — reads as
-          // "no colour yet," not "black is chosen."
-          value={valid ? value : "#9ca3af"}
-          onChange={(e) => onChange(e.target.value)}
-          // ★ `rounded-full`, not `rounded-field` — this decorative swatch is
-          // not the real control (`aria-hidden`, `tabIndex={-1}`; `<Input>`
-          // beside it is what `<Field>` wires), so it never needs to look
-          // like one. `rounded-field border border-edge` is the house
-          // control's own class recipe (`ui/field.tsx`'s `controlClass()`);
-          // a swatch coincidentally re-typing it is exactly what `ui-lint`'s
-          // class-string rule exists to catch, and a round chip is the more
-          // legible shape for a colour preview anyway (`REQ-UIX-001`).
-          className={`h-11 w-11 shrink-0 cursor-pointer rounded-full border border-edge bg-transparent p-0.5 ${valid ? "" : "opacity-50"}`}
-        />
+          className={`relative inline-block size-11 shrink-0 overflow-clip rounded-full border border-edge ${valid ? "bg-team" : "opacity-50"}`}
+          style={valid ? ({ "--team": value } as CSSProperties) : undefined}
+        >
+          <input
+            type="color"
+            tabIndex={-1}
+            aria-hidden="true"
+            value={valid ? value.toLowerCase() : "#9ca3af"}
+            onChange={(e) => onChange(e.target.value)}
+            className="absolute inset-0 size-full cursor-pointer opacity-0"
+          />
+        </span>
         <Input name={name} type="text" dir="ltr" inputMode="text" maxLength={7} value={value} onChange={(e) => onChange(e.target.value)} className="flex-1" />
       </div>
     </Field>

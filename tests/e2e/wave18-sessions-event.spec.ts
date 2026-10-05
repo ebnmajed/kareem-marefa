@@ -7,7 +7,7 @@
 //     the reserve, never a literal (the fixture sets the rule to 35); the primary in the card AND the bar on the
 //     phone (DEC-209); the deadlines line for a member with no seat;
 //   · live — how many are here, as a count; «تسجيل الحضور» with «مقعدك محجوز»; the rotation read from the org;
-//     «شاهد القصة» that opens nothing; the sections in the live order (the photos and the discussion first);
+//     «شاهد القصة» that opens nothing — this session has no frame (wave 26: an entry is drawn only for a story); the sections in the live order (the photos and the discussion first);
 //   · ended, attended — the outcome with the amount, «قيّم الجلسة», the recap; the ribbon in DEC-073's words;
 //   · desktop — the shell's bar, the hero band, the full-width action row, the aside with the room.
 //
@@ -180,7 +180,7 @@ test("open, phone: the regions in the artboard's order, the rule's amount, and t
     const at = (sel: string) => all.indexOf(root.querySelector(sel) as Element);
     return [at('a[href$="/app/sessions"]'), at('[data-slot="poster-placeholder"], figure, img'), at("h1"), at('a[href*="/app/members/"]'), at("section#attend"), at('nav[aria-label="أقسام الجلسة"]'), at("section#about")];
   });
-  expect(order.every((n) => n >= 0)).toBe(true);
+  expect(order.every((n) => n >= 0), JSON.stringify(order)).toBe(true);
   expect([...order].sort((a, b) => a - b)).toEqual(order);
 
   // ★ The language before the action (REQ-SES-011).
@@ -206,7 +206,7 @@ test("open, phone: the regions in the artboard's order, the rule's amount, and t
   await capture(page, "open-390");
 });
 
-test("live, phone: a count, the check-in with «مقعدك محجوز», the rotation, and a story that opens nothing", async ({ context, page }, testInfo) => {
+test("live, phone: a count, the check-in with «مقعدك محجوز», the rotation, and — with no frame — a story that opens nothing", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "phone", "the phone's artboard");
   await signIn(context);
   await open(page, ids.live, false);
