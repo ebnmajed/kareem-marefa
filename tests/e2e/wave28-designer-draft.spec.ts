@@ -253,10 +253,13 @@ test("★ the browser's Back is not intercepted — the draft answers it", async
   await page.goBack();
   await expect(main(page).getByRole("heading", { name: SESSION_TITLE, level: 1 })).toBeVisible();
 
+  // History is now [about:blank, editor ←, schedule]: the in-app entry is AHEAD of the editor. The dirty editor is left
+  // by a history traversal the App Router serves itself — Forward to the schedule (popstate, no dialog, no
+  // `beforeunload`) — and Back returns to it, remounted: the draft written at unmount is offered.
   await addCircle(page);
-  await page.goBack();
-  await expect(page).toHaveURL(new RegExp(`/admin/sessions/${sessionId}/schedule`));
   await page.goForward();
+  await expect(page).toHaveURL(new RegExp(`/admin/sessions/${sessionId}/schedule`));
+  await page.goBack();
   await expect(main(page).getByRole("heading", { name: SESSION_TITLE, level: 1 })).toBeVisible();
   await expect(offer(page)).toBeVisible();
   await offer(page).getByRole("button", { name: "احذفها", exact: true }).click();
