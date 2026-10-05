@@ -207,10 +207,13 @@ async function waitForStreamsToSettle(page: Page) {
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
 }
 
-async function goToEvent(context: BrowserContext, page: Page, email: string) {
+// ★ The event page's edit mode (the owner's ruling, 2026-10-06): a presenter or staff member opens the member's page,
+// and the managing controls — «أضف مادة», the scope chips — are drawn in edit mode alone. `edit: true` opens the page
+// in it through its address (`?edit=1`), the same state «تعديل» sets, with no wait on hydration.
+async function goToEvent(context: BrowserContext, page: Page, email: string, opts: { edit?: boolean } = {}) {
   await page.setViewportSize(PHONE);
   await signIn(context, email);
-  await page.goto(`/ar/app/sessions/${sessionId}`);
+  await page.goto(`/ar/app/sessions/${sessionId}${opts.edit ? "?edit=1" : ""}`);
   await waitForStreamsToSettle(page);
 }
 
@@ -234,8 +237,15 @@ test("wave9-content-materials-member-grouped: a plain member sees the session's 
 });
 
 test("wave9-content-materials-presenter-grouped: the presenter sees every group, including the empty third day, each with its own «أضف مادة»", async ({ context, page }) => {
+  // ★ Edit mode: on load the presenter reads the member's page — no add control, and the empty third day not drawn.
   await goToEvent(context, page, presenterEmail);
   const materials = page.locator("#materials");
+  await expect(page.getByRole("heading", { name: "المواد", exact: true, level: 2 })).toBeVisible();
+  await expect(materials.getByRole("heading", { name: /اليوم الأول/, level: 3 })).toBeVisible();
+  await expect(materials.locator("summary[aria-label^='أضف مادة']")).toHaveCount(0);
+  await expect(materials.getByRole("heading", { name: /اليوم الثالث/, level: 3 })).toHaveCount(0);
+  await page.goto(`/ar/app/sessions/${sessionId}?edit=1`);
+  await waitForStreamsToSettle(page);
   await expect(page.getByRole("heading", { name: "المواد", exact: true, level: 2 })).toBeVisible();
   await expect(materials.getByRole("heading", { name: /اليوم الثالث/, level: 3 })).toBeVisible();
   // «أضف مادة» is a <summary> (a native disclosure closed by default — see GroupDisclosure). A
@@ -250,7 +260,7 @@ test("wave9-content-materials-presenter-grouped: the presenter sees every group,
 });
 
 test("wave9-content-materials-scope-chip-open: the presenter opens a material's scope chip and moves it", async ({ context, page }) => {
-  await goToEvent(context, page, presenterEmail);
+  await goToEvent(context, page, presenterEmail, { edit: true });
   const materials = page.locator("#materials");
   // ★ `RescopeChip` moved onto `ui/menu` (Radix) after `ui-lint` flagged its hand-rolled floating
   // panel (`content.md` §28) — no longer a `<details>` at all, and its open menu portals to the end
@@ -282,7 +292,7 @@ test("wave9-content-materials-scope-chip-open: the presenter opens a material's 
 });
 
 test("wave9-content-tasks-scope-chip-open: the presenter moves a task between groups", async ({ context, page }) => {
-  await goToEvent(context, page, presenterEmail);
+  await goToEvent(context, page, presenterEmail, { edit: true });
   const tasks = page.locator("#tasks");
   const card = tasks.locator("li").filter({ hasText: "اقرأ الملف قبل اليوم الأول" });
   await card.getByRole("button", { name: /^تغيير نطاق المهمة/ }).click();
@@ -303,7 +313,7 @@ test("wave9-content-tasks-scope-chip-open: the presenter moves a task between gr
 });
 
 test("wave9-content-photos-scope-chip-open: staff moves a photo between groups", async ({ context, page }) => {
-  await goToEvent(context, page, staffEmail);
+  await goToEvent(context, page, staffEmail, { edit: true });
   const photos = page.locator("#photos");
   // Photos have no title text — identified by the photo's own object path instead, which is
   // STABLE, unlike its `src`: every server render signs a fresh URL (the token carries `iat`), so

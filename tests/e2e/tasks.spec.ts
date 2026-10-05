@@ -180,7 +180,9 @@ test("★ REQ-TSK-004: a member marks a checklist task done, and it persists acr
 
 test("★ REQ-TSK-001/002: the presenter adds an external task through the inline form; it is a reminder only — check-in path never consults it", async ({ context, page }) => {
   await signIn(context, presenterEmail);
-  await page.goto(`/ar/app/sessions/${sessionId}`);
+  // ★ The event page's edit mode (the owner's ruling, 2026-10-06): the task form is drawn in edit mode alone;
+  // `?edit=1` opens the page in it, the state «تعديل» sets.
+  await page.goto(`/ar/app/sessions/${sessionId}?edit=1`);
 
   // ★ Desktop-only strict-mode find: `getByLabel('نوع المهمة')` resolved to
   // 2 elements. Traced the actual DOM (a debug dump of every <select>'s

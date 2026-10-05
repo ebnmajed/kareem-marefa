@@ -22,6 +22,12 @@
       "sessionScope": "للورشة كاملة"
     },
     "event": {
+      "editMode": {
+        "edit": "تعديل",
+        "done": "تم",
+        "editingStatus": "وضع التعديل",
+        "readingStatus": "عرض الأعضاء"
+      },
       "cancelledTitle": "جلسة ملغاة",
       "cancelledReason": "السبب الذي ذكره المشرف",
       "cancelledNote": "الصفحة باقية والمواد متاحة لمن حجز، والتعليقات مغلقة للكتابة.",

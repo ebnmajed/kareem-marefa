@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { deleteMyCommentAction, editCommentAction, removeCommentAction, reportCommentAction, toggleReactionAction } from "@/components/event/actions";
 import { timeAgo } from "@/components/feed/relative";
 import { orgDay } from "@/components/browse/session-post";
+import { EditOnly } from "@/components/sessions/edit-mode";
 import { formatDateTime } from "@/components/sessions/numerals";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -210,7 +211,12 @@ export function CommentItem({
             </button>
           ) : null}
           {comment.isMine ? <DeleteConfirm pending={pending} onConfirm={() => run(() => deleteMyCommentAction(locale, comment.id), () => router.refresh())} /> : null}
-          {comment.isStaffViewer ? <StaffRemove locale={locale} commentId={comment.id} authorName={comment.author.displayName ?? "—"} onRemoved={() => router.refresh()} /> : null}
+          {/* Staff's removal is moderation — drawn in the event page's edit mode alone (`sessions/edit-mode.tsx`). */}
+          {comment.isStaffViewer ? (
+            <EditOnly>
+              <StaffRemove locale={locale} commentId={comment.id} authorName={comment.author.displayName ?? "—"} onRemoved={() => router.refresh()} />
+            </EditOnly>
+          ) : null}
           {!comment.isMine && !isReported ? <ReportDialog pending={pending} onSubmit={report} /> : null}
           {isReported ? <span className="px-2 text-caption text-fg-muted">{t("report.already")}</span> : null}
         </div>

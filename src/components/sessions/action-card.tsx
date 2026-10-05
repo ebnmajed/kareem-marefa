@@ -298,7 +298,8 @@ async function LiveCount({ session, figures, faces }: { session: EventSession; f
 
 async function TasksJump({ tasks }: { tasks: Promise<SlotSummary> }) {
   const [summary, t] = await Promise.all([tasks, getTranslations("sessions.event.actions")]);
-  if (!summary.visible) return null;
+  // A tasks section only a manager can see (`editOnly`) is not drawn in read mode, so nothing jumps to it there.
+  if (!summary.visible || summary.editOnly) return null;
   const outstanding = summary.outstanding ?? 0;
   const label = t("tasks");
   return (

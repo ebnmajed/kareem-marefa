@@ -70,7 +70,14 @@ describe("Materials slot — rebuilt", () => {
     expect(row).toHaveAttribute("href", expect.stringContaining(`/app/sessions/${sessionId}/materials/mat1`));
     expect(row.querySelector("bdi")).toHaveTextContent("شرائح الجلسة الافتتاحية");
     expect(row).toHaveTextContent("بعد الجلسة");
-    expect(row).toHaveTextContent("للقراءة في العارض والتحميل");
+    // DEC-266: a member reads it in the viewer and never downloads the original, whatever `allow_download` says.
+    expect(row).toHaveTextContent("للقراءة في العارض");
+    expect(row).not.toHaveTextContent("والتحميل");
+  });
+
+  it("★ DEC-266: staff with download on are told the row is for reading and downloading", async () => {
+    await renderSlot({ ...base, canManageAll: true, materials: [mat({})] });
+    expect(screen.getByRole("link", { name: /شرائح الجلسة الافتتاحية/ })).toHaveTextContent("للقراءة في العارض والتحميل");
   });
 
   it("with download off, the row says the viewer only and draws no download glyph", async () => {
@@ -128,9 +135,10 @@ describe("Materials slot — rebuilt", () => {
     const slider = screen.getByRole("slider", { name: "موضع التشغيل" });
     expect(slider.parentElement).toBe(play.parentElement);
     expect(play.parentElement!.querySelectorAll("p")).toHaveLength(2);
-    // As drawn, «58:12 · للاستماع والتحميل»: what it is for, and no phase word on a playing row.
+    // «58:12 · للاستماع فقط» for a member (DEC-266 — listening is theirs, the file is not), and no phase word on a
+    // playing row.
     const timeLine = play.parentElement!.querySelectorAll("p")[1];
-    expect(timeLine).toHaveTextContent("للاستماع والتحميل");
+    expect(timeLine).toHaveTextContent("للاستماع فقط");
     expect(timeLine).not.toHaveTextContent("بعد الجلسة");
     expect(screen.getByTestId("slot").querySelector("audio")).toHaveAttribute("src", "https://storage.test/a.m4a");
   });
@@ -156,9 +164,10 @@ describe("Materials slot — rebuilt", () => {
       vi.mocked(getMaterialsPageData).mockResolvedValue({ ...base, materials: [mat({})] });
       expect(await materialsSummary({ sessionId, memberId: "m1", locale: "ar" })).toEqual({ visible: true, count: 1, outstanding: null });
     });
-    it("is visible with count 0 for a manager with nothing yet", async () => {
+    // ★ The event page's edit mode (the owner's ruling, 2026-10-06): visible to a manager, in edit mode alone.
+    it("is visible with count 0 for a manager with nothing yet — in edit mode alone", async () => {
       vi.mocked(getMaterialsPageData).mockResolvedValue({ ...base, canManageAll: true });
-      expect(await materialsSummary({ sessionId, memberId: "m1", locale: "ar" })).toEqual({ visible: true, count: 0, outstanding: null });
+      expect(await materialsSummary({ sessionId, memberId: "m1", locale: "ar" })).toEqual({ visible: true, count: 0, outstanding: null, editOnly: true });
     });
     it("is NOT visible for a non-manager with nothing — exactly when the slot returns null", async () => {
       vi.mocked(getMaterialsPageData).mockResolvedValue(base);

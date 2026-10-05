@@ -210,7 +210,9 @@ async function review(p: Page, name: string) {
 test("the Materials slot shows the substitution warning on the material, and links to the viewer", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
   await signIn(context, presenterEmail);
-  await page.goto(`/ar/app/sessions/${sessionId}`);
+  // ★ The event page's edit mode (the owner's ruling, 2026-10-06): the font warning is a presenter's, drawn in edit
+  // mode alone; `?edit=1` opens the page in it, the state «تعديل» sets.
+  await page.goto(`/ar/app/sessions/${sessionId}?edit=1`);
   await waitForStreamsToSettle(page);
   await expect(page.getByRole("heading", { name: "المواد", exact: true, level: 2 })).toBeVisible();
   // ★ latent bug found by the lead's real-build run, not a wave-6 regression:
@@ -260,7 +262,8 @@ test("★ REQ-MAT-003/010: the viewer's arrows follow the RTL reading direction 
 test("★ REQ-MAT-001/012: the presenter drives a real upload through the form end to end — initiate, PUT, sniff-and-complete, sniffed on content", async ({ context, page }) => {
   const TINY_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
   await signIn(context, presenterEmail);
-  await page.goto(`/ar/app/sessions/${sessionId}`);
+  // ★ Edit mode (the owner's ruling, 2026-10-06): the uploader is drawn in edit mode alone.
+  await page.goto(`/ar/app/sessions/${sessionId}?edit=1`);
   await waitForStreamsToSettle(page);
 
   await page.getByLabel("نوع المادة").selectOption("image");

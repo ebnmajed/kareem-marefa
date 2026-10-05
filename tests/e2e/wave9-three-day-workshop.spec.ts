@@ -341,7 +341,9 @@ test("2 · two members reserve; the event page shows the three days", async ({ c
 test("3 · the presenter adds one material to the workshop and one to day 2 — the header control is the scope", async ({ context, page }) => {
   test.slow();
   await signIn(context, email.presenter);
-  await page.goto(`/ar/app/sessions/${sessionId}`);
+  // ★ The event page's edit mode (the owner's ruling, 2026-10-06): each group's «أضف مادة» is drawn in edit mode
+  // alone; `?edit=1` opens the page in it, the state «تعديل» sets.
+  await page.goto(`/ar/app/sessions/${sessionId}?edit=1`);
   await settled(page);
   const materials = page.locator("#materials");
 

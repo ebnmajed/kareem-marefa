@@ -22,6 +22,12 @@
       "sessionScope": "The whole workshop"
     },
     "event": {
+      "editMode": {
+        "edit": "Edit",
+        "done": "Done",
+        "editingStatus": "Editing",
+        "readingStatus": "Member view"
+      },
       "cancelledTitle": "This session is cancelled",
       "cancelledReason": "The reason the admin gave",
       "cancelledNote": "The page stays, the materials stay available to anyone who reserved a seat, and comments are frozen.",

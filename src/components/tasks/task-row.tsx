@@ -4,6 +4,7 @@ import { useOptimistic, useState, useTransition, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { rescopeTaskAction, submitTaskFormResponseAction, toggleTaskCompletionAction } from "@/components/tasks/actions";
 import { RescopeChip, type RescopeOption } from "@/components/materials/rescope-chip";
+import { EditOnly } from "@/components/sessions/edit-mode";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field } from "@/components/ui/field";
@@ -80,14 +81,17 @@ export function TaskRow({ locale, sessionId, task, scope }: { locale: string; se
       ) : null}
       {task.kind === "form" && task.formSchema ? <TaskForm locale={locale} sessionId={sessionId} task={task} /> : null}
       {scope ? (
-        <RescopeChip
-          currentLabel={scope.currentLabel}
-          options={scope.options}
-          triggerAriaLabel={t.markup("list.rescope.trigger", { label: scope.currentLabel, bdi: (chunks) => chunks })}
-          failedLabel={t("list.rescope.failed")}
-          rescopeAction={rescopeTaskAction.bind(null, locale, sessionId, task.id)}
-          className="ms-2"
-        />
+        // A manager's control — drawn in the event page's edit mode alone (`sessions/edit-mode.tsx`).
+        <EditOnly>
+          <RescopeChip
+            currentLabel={scope.currentLabel}
+            options={scope.options}
+            triggerAriaLabel={t.markup("list.rescope.trigger", { label: scope.currentLabel, bdi: (chunks) => chunks })}
+            failedLabel={t("list.rescope.failed")}
+            rescopeAction={rescopeTaskAction.bind(null, locale, sessionId, task.id)}
+            className="ms-2"
+          />
+        </EditOnly>
       ) : null}
       {error ? (
         <p role="alert" className="px-2 pb-1 text-caption text-fg-heading">
