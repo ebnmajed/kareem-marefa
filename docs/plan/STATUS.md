@@ -1,11 +1,93 @@
-**Last updated:** 2026-10-05 · **Branch:** `wave-26e/the-mark` · ★★ **WAVE 26 IS OPEN — THE LAST WAVE (`DEC-245`, `DEC-247`, `DEC-248`, M28)** · **`main`:** `3d22c33a`; production is at **`0199`** (`0194`, `0198`, `0199` pushed 2026-10-05); the next migration is **`0200`** · **Phase:** ★★ **THE OWNER ACCEPTED THE SCREENS ON 2026-10-05 AND MERGED A (#73 `b095155c`), B (#74 `1f2883d3`), C (#75 `7602966c`) AND D (#76 `c053dbcb`); E (#77) IS THE LAST.** `main` was taken into each branch before its merge and its specs re-run on a production build. E, holding all five together: `qa` 57/57, 142 e2e passed across the shell, the door, the platform console, every wave-26 spec, the accessibility sweep and the frozen routes. ★ The last-org guard (`DEC-253` §7.1) is **deferred by the owner** — «not right now; I just need to be careful in the time being». Before that: ★★ **WAVE 26 WAS BUILT, REVIEWED AND WAITING FOR THE OWNER (`DEC-253`)** — A #73 `4c70894d`, B #74 `c1db6221`, C #75 `aa22a782`, D #76 `a562fc93`, E #77: each green on its own production build, every capture read beside its artboard by its owner and sampled by the lead. **What is left is the owner's: accept, merge A → E, check Railway, and rule on the last-org lockout (`DEC-253` §7.1).** ★ **One precision on `DEC-253` §1's row for D:** on its final head `a562fc93` six of its seven wave-26 specs ran green (29 passed); the seventh, the video spec's two cases that need the real worker container, last ran green at `2554d889` — and nothing under `worker/`, the upload routes, `packages/` or `supabase/` has changed since (`git diff --stat 2554d889 a562fc93` over those paths is empty). After A merges, the lead takes `main` into B, C, D and E in turn and re-runs each. Step 0, for the record: the map is in `CLAUDE.md`, the ten agent files are regenerated, `01-prd.md` holds `REQ-UIX-114` … `120` and the eighteen `REQ-STO-*`, trace is green at 445 requirements and 268 stories. Five PRs — **A** the public site (the lead, alone), **B** the brand kit and privacy (`branding`), **C** the platform console (`platform`, behind the lead's frame), **D** stories (`sessions` the generated half, `content` the viewer, the capture and the attendee half), **E** the mark inside the product (the lead). ★★ **WHEN THIS MERGES, EVERY SCREEN IN THE PRODUCT HAS A DESIGN AND IS BUILT — NOTHING REMAINS.** ★★ **THE LINE: APPEARANCE AND THE IMPORT GRAPH MAY CHANGE; BEHAVIOUR MAY NOT** — the URLs, the registration behaviour byte for byte, the accessibility floor, and `registrations`. ★★ **Owed by the owner:** ~~PR #69~~ — **discharged**: merged as `3c118d8c`, its entry renumbered `DEC-250`, `0194` on production; ~~the platform nav set's path~~ — ruled, `DEC-249` §3; impersonation's durations (`DEC-248` §7.9); the `railway.json` migration due **2026-12-01**; the last acceptance. ★ **Nobody deletes a file before the lead posts «the plans are approved».**
+**Last updated:** 2026-10-05 · **Branch:** `wave-27a/the-small-items` · ★★ **WAVE 27 IS OPEN (`DEC-254`, M29) — STEP 0 DONE, FOUR TEAMMATES PLANNING, NO CODE AND NO MIGRATION YET** · **`main`:** `81511b91`; production **`0199`**; next migration **`0200`**, next decision **`DEC-255`** · five items, three PRs (A the small items, B companies by domain, C templates an org owns); adding an admin by email **stays refused** by the owner's ruling. **Next: sync 1 — four plans approved, then «the plans are approved».** **Before that (wave 26's header, kept):** ★★ **WAVE 26 (`DEC-245`, `DEC-247`, `DEC-248`, M28)** · **`main` then:** `3d22c33a`; production is at **`0199`** (`0194`, `0198`, `0199` pushed 2026-10-05); the next migration is **`0200`** · **Phase:** ★★ **THE OWNER ACCEPTED THE SCREENS ON 2026-10-05 AND MERGED A (#73 `b095155c`), B (#74 `1f2883d3`), C (#75 `7602966c`) AND D (#76 `c053dbcb`); E (#77) IS THE LAST.** `main` was taken into each branch before its merge and its specs re-run on a production build. E, holding all five together: `qa` 57/57, 142 e2e passed across the shell, the door, the platform console, every wave-26 spec, the accessibility sweep and the frozen routes. ★ The last-org guard (`DEC-253` §7.1) is **deferred by the owner** — «not right now; I just need to be careful in the time being». Before that: ★★ **WAVE 26 WAS BUILT, REVIEWED AND WAITING FOR THE OWNER (`DEC-253`)** — A #73 `4c70894d`, B #74 `c1db6221`, C #75 `aa22a782`, D #76 `a562fc93`, E #77: each green on its own production build, every capture read beside its artboard by its owner and sampled by the lead. **What is left is the owner's: accept, merge A → E, check Railway, and rule on the last-org lockout (`DEC-253` §7.1).** ★ **One precision on `DEC-253` §1's row for D:** on its final head `a562fc93` six of its seven wave-26 specs ran green (29 passed); the seventh, the video spec's two cases that need the real worker container, last ran green at `2554d889` — and nothing under `worker/`, the upload routes, `packages/` or `supabase/` has changed since (`git diff --stat 2554d889 a562fc93` over those paths is empty). After A merges, the lead takes `main` into B, C, D and E in turn and re-runs each. Step 0, for the record: the map is in `CLAUDE.md`, the ten agent files are regenerated, `01-prd.md` holds `REQ-UIX-114` … `120` and the eighteen `REQ-STO-*`, trace is green at 445 requirements and 268 stories. Five PRs — **A** the public site (the lead, alone), **B** the brand kit and privacy (`branding`), **C** the platform console (`platform`, behind the lead's frame), **D** stories (`sessions` the generated half, `content` the viewer, the capture and the attendee half), **E** the mark inside the product (the lead). ★★ **WHEN THIS MERGES, EVERY SCREEN IN THE PRODUCT HAS A DESIGN AND IS BUILT — NOTHING REMAINS.** ★★ **THE LINE: APPEARANCE AND THE IMPORT GRAPH MAY CHANGE; BEHAVIOUR MAY NOT** — the URLs, the registration behaviour byte for byte, the accessibility floor, and `registrations`. ★★ **Owed by the owner:** ~~PR #69~~ — **discharged**: merged as `3c118d8c`, its entry renumbered `DEC-250`, `0194` on production; ~~the platform nav set's path~~ — ruled, `DEC-249` §3; impersonation's durations (`DEC-248` §7.9); the `railway.json` migration due **2026-12-01**; the last acceptance. ★ **Nobody deletes a file before the lead posts «the plans are approved».**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 26 — OPEN — THE LAST WAVE: the public site, the brand kit and privacy, the platform console, stories, the mark (`DEC-245` · `DEC-247` · `DEC-248`)
+## ★★★ WAVE 27 — OPEN — the owner's list (`DEC-254`, M29): the first wave that is not drawn
+
+**Brief:** `docs/plan/notes/wave-27-lead.md` — ★ where it disagrees with `DEC-254`, `DEC-254` wins. **Map:** `CLAUDE.md`
+§ *Ownership map (wave 27)*. Trace green at **453 requirements, 278 stories**.
+
+### The goal (the owner's words)
+
+★★ A member's company comes from their email domain, not from the member · ★★ an organisation owns its templates ·
+★ certificates are held for review by default · ★ an admin can fix a session's name · ★ the check-in code stops
+changing every ten minutes. **«Good» is not «the gates are green».**
+
+### The three PRs — each against `main` from its first push · merge order A, B, C
+
+| PR | Branch · tree | Who | What | State |
+|---|---|---|---|---|
+| **A** | `wave-27a/the-small-items` · the main checkout | lead, `sessions`, `checkin` | the map and the plan; the rename (`REQ-SES-021`); the default (`REQ-CRT-018`); the rotation (`REQ-CHK-019`) | Step 0 committed; plans owed |
+| **B** | `wave-27b/companies-by-domain` · `../kareem-marefa-wave27b` | `console`, lead | `REQ-PRF-012`, `013`, `REQ-ADM-024` | not cut — after the map lands |
+| **C** | `wave-27c/an-org-owns-its-templates` · `../kareem-marefa-wave27c` | `designer`, lead | `REQ-DSG-035`; `SCR-083` deleted | not cut |
+
+### The checklist
+
+| # | Row | Owner | State |
+|---|---|---|---|
+| 0 | `DEC-254`, the map, the ten agent files, seven requirements, M29, nine stories; trace green | lead | **done** |
+| 1 | Four plans in the teammates' notes | `sessions`, `checkin`, `console`, `designer` | — |
+| 2 | Sync 1 — «the plans are approved» (`DEC-255`) | lead | — |
+| 3 | A: the audit trigger, the rename; the rotation column and functions; `SCR-063`'s option | lead, `sessions`, `checkin` | — |
+| 4 | A: the certificate default (`REQ-CRT-018`) | lead | — |
+| 5 | B: `company_domains`, `company_assigned_by`, `provision_member()`; then `console`'s three stories | lead, `console` | — |
+| 6 | C: the seed, `create_org()`, the backfill of **both** production orgs | `designer`, lead | — |
+| 7 | C: one library level; `SCR-083` deleted; the removal migration that raises first | `designer`, lead | — |
+| 8 | The owner rehearses each batch on a dump taken at `0199`, pushes, merges A → B → C | owner | — |
+| 9 | ★ **After B merges**: the revoke of `company_id` from the member's grant. ★ **After C merges**: the removal migration | lead writes, owner pushes | — |
+| 10 | The closing entry | lead | — |
+
+### ★★ The production order, because two migrations follow their code (`DEC-254` §8.4)
+
+A's and B's migrations and C's **seed + backfill** are additive and pushed before their merges, as every wave.
+★ **Two are pushed after their code is on `main`**: B's **revoke** of `company_id` from the member's grant, and C's
+**removal** of the platform rows, which raises if any org lacks a published certificate default. The certificate
+default needs no ordering of its own — a template resolves at every moment (`DEC-254` §4).
+
+### Closed without building: adding an admin by email
+
+Asked for by the owner; measured as a deliberate refusal in four places (`DEC-243` §5.4, `DEC-244` §11, `0197`); the
+owner ruled **«add as a member then promote»** (`DEC-254` §7).
+
+### What Step 0 measured that the brief does not say (the full table is `DEC-254` §1)
+
+| # | Finding | Evidence | Consequence |
+|---|---|---|---|
+| 1 | ★★ **Item 6 is a reversal, not a bug.** «An invitation cannot create an `admin`» was decided twice and is enforced in the **database**, not only in the form and the two Zod schemas | `DEC-243` §5.4, `DEC-244` §11; `0197:37-40` (`RPC-add_member.no_admin_by_email`, refused `22023`) and `0197:143-145`; introduced by `7644e9f6` | **Four places, one of them SQL — so item 6 needs a migration and a `DECISIONS.md` entry reversing `DEC-244` §11.** The recorded reason: an addition by email is a standing grant to whoever controls the mailbox. **Owed: the owner's ruling, knowing that reason.** It was never «there and disappeared» for *adding* — adding arrived in wave 25 without it |
+| 2 | ★★ **The brief's «`DEC-178` stands … still refused after completion» is out of date.** `DEC-250` lifted the refusal for `completed` and `archived` (kept for `cancelled`) | `DEC-250`, `0194` on production | The log wins. The mode has one writer (`045`); it is **not** refused after completion |
+| 3 | ★ **Item 3 moves ONE default** — the column's. The live `schedule_session()` (`0154:54`) already defaults to null = unchanged, and both session inserts name no mode | `0010:88`; `0020:75`, `0151:74` | One `alter table … set default`. `0194:57-59` names this exact change as «the owner's call» — now made |
+| 4 | ★★ **Item 3 raises item 2's stakes.** With `review` as the default, **every** completed session fans out certificates, so every completion needs a template to resolve or the job raises `42704` | `0127:260-274` | Item 2's seeding and backfill are no longer protecting an opt-in feature; they protect every session |
+| 5 | ★★ **«Abolish platform scope» cannot delete every platform row.** `certificates.template_version_id` and `design_documents.template_version_id` are `on delete restrict`, and every certificate issued through the fallback references a **platform** version (`REQ-CRT-014`) | `0055:135`, `0055:288`; `DEC-242` measurement 5 | Referenced platform rows are **retired, never deleted** (as `0193` did), or re-owned where exactly one org references them. The count on production is the owner's read — `supabase db query --linked` is denied to this session |
+| 6 | ★ `add_member()` already takes `p_company` — an admin placing a member at the moment of adding them | `0197:128`, `admin-members.ts:251,287` | Item 1 must say whether that is a manual placement (ruling 6) or a default the domain then overrides. Proposed: manual |
+| 7 | ★ `provision_member()`'s live definition is `0197`'s, not `0005`'s | `0197:278-420` | Item 1 replaces that one |
+
+### Production, read by the owner on 2026-10-05 (counts only)
+
+| orgs | certificates | certificates on a platform version | documents on a platform version | org-scoped templates | companies | members | members with no company | sessions not completed, archived or cancelled |
+|---|---|---|---|---|---|---|---|---|
+| **2** | **0** | **0** | **0** | **0** | 7 | 4 | **4** | 2 |
+
+★ **Nothing references a platform row today**, so finding 5 binds nothing *yet* — but a certificate issued between now
+and the migration would, so the migration still deletes only what is unreferenced and retires the rest, and the count is
+re-read at the rehearsal. ★ **Two orgs, not one**: both have no template of their own and both are backfilled before any
+platform row goes. ★ All four members have no company: the retroactive sweep (item 1, ruling 4) is the whole population.
+★ Two open sessions stay at `off` when the default moves (item 3 — a default applies to new rows).
+
+### Not this session's, and uncommitted in the main checkout
+
+`.claude/settings.json` (three permissions moved — carried from wave 26, the owner's to confirm or revert),
+`.gitignore` (`pics/`) and `scripts/seed-demo.mjs` (the demo seed). None is staged by the lead.
+
+### The untouched-suite ledger (wave 27)
+
+One file per PR: `docs/plan/notes/wave-27-ledger-{a,b,c}.md`. Empty so far.
+
+---
+
+## ★★★ WAVE 26 — MERGED (#73 – #77, closed by `DEC-253`) — THE LAST DESIGNED WAVE: the public site, the brand kit and privacy, the platform console, stories, the mark (`DEC-245` · `DEC-247` · `DEC-248`)
 
 **The programme's twelfth wave, and its last designed work.** The brief is `docs/plan/notes/wave-26-lead.md`; the
 drawing is `docs/design/screens/M13.md` with **seventeen** artboards and seventeen PNGs in `docs/design/screens/m13/`,

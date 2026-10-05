@@ -76,7 +76,7 @@ thought about in the language it ships in. Every example string is **Arabic**.
         ├── /orgs                         SCR-080
         ├── /orgs/new                     SCR-081
         ├── /orgs/[id]/domains            SCR-082
-        ├── /templates                    SCR-083  platform library
+        ├── /templates                    SCR-083  platform library   ★ WITHDRAWN by DEC-254 §3.5
         ├── /metrics                      SCR-084
         └── /impersonate                  SCR-085  ★ break-glass
 ```
@@ -747,7 +747,7 @@ The screens above are described in prose; this is the machine-checkable index be
 | SCR-080 orgs | `REQ-ADM-001`, `REQ-TEN-001`, `REQ-TEN-002`, `REQ-TEN-006`, `REQ-NFR-014`, `REQ-UIX-118` |
 | SCR-081 create org | `REQ-TEN-002`, `REQ-TEN-004` |
 | SCR-082 domains | `REQ-TEN-007`, `REQ-AUT-003` |
-| SCR-083 platform templates | `REQ-DSG-008` |
+| SCR-083 platform templates — ★ **withdrawn by `DEC-254` §3.5**: there is no platform library | `REQ-DSG-008`, `REQ-DSG-035` |
 | SCR-084 metrics | `REQ-ADM-003` |
 | SCR-085 impersonate | `REQ-ADM-002`, `REQ-ADM-019`, `REQ-TEN-003` |
 

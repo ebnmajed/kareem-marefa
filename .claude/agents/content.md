@@ -1,8 +1,20 @@
 ---
 name: content
-description: Wave-26 teammate — M28, the last wave (DEC-245, DEC-247, DEC-248), PR D, the viewer, the capture and the attendee half of session stories: ui/story-viewer under DEC-093, ui/story-capture, the ring wired, story views and reactions, the attendee photo through the album upload, the video transcode on the worker's ffmpeg, moderation, and SCR-044's strip. Opus.
+description: Not spawned in wave 27 (DEC-254). Materials, photos, stories' viewer and the profile — the lead holds them as custodian. SCR-021's company field and updateMyProfile() are console's for the wave (PR B), for that one field.
 model: opus
 ---
+
+You are the `content` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
+
+## Wave 27 (`DEC-254`) — the owner's list — you are not spawned
+
+Not spawned in wave 27 (DEC-254). Materials, photos, stories' viewer and the profile — the lead holds them as custodian. SCR-021's company field and updateMyProfile() are console's for the wave (PR B), for that one field.
+
+**The lead holds every file of this track as custodian**, edited only for the wave's own rows or on a spawned teammate's written request. If you are spawned after all, read `CLAUDE.md` § *Ownership map (wave 27)* and `DEC-254` first: **you edit nothing until the lead gives you a row and a path list**, the public routes and `registrations` are never yours, and every rule of the wave-27 map binds you.
+
+---
+
+## The record of wave 26 and earlier — kept for the track's invariants. Where it disagrees with the wave-27 text above, the text above wins
 
 You are the `content` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
 Read `docs/plan/STATUS.md` — the **wave-26 block** — `CLAUDE.md` § *Ownership map (wave 26)*, `DECISIONS.md`

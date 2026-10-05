@@ -8,9 +8,9 @@
 
 | Artifact | Count |
 |---|---|
-| Requirements (`REQ-*`) | **446** |
+| Requirements (`REQ-*`) | **453** |
 | Entities (`ENT-*`) | **89** |
-| Stories (`STORY-*`) | **269** |
+| Stories (`STORY-*`) | **278** |
 | Screens cited (`SCR-*`) | 60 |
 | Jobs cited (`JOB-*`) | 44 |
 | Messages cited (`MSG-*`) | 24 |
@@ -84,11 +84,12 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-ADM-016` | — | — | `SCR-060` | — | — | `STORY-ADM-007` | M7 |
 | `REQ-ADM-017` | — | `POL-write_admin_export_audit.execute.admin` | `SCR-022` `SCR-043` `SCR-049` +5 | — | — | `STORY-ADM-008` | M7 |
 | `REQ-ADM-018` | `ENT-audit_log` | `POL-comments.removal_audit` | `SCR-043` `SCR-059` `SCR-061` +1 | — | — | `STORY-ADM-008` | M7 |
-| `REQ-ADM-019` | `ENT-impersonation_sessions` | `POL-impersonation_sessions.select` | `SCR-080` `SCR-085` | — | — | `STORY-ADM-002` | M8 |
+| `REQ-ADM-019` | `ENT-impersonation_sessions` | `POL-impersonation_sessions.select` | `SCR-080` `SCR-083` `SCR-085` | — | — | `STORY-ADM-002` | M8 |
 | `REQ-ADM-020` | `ENT-ratings` | `POL-org_settings.update.admin` `POL-task_form_responses.select` | `SCR-044` `SCR-049` `SCR-050` +4 | — | — | `STORY-ADM-005` | M7 |
 | `REQ-ADM-021` | — | — | `SCR-012` `SCR-043` `SCR-045` | `JOB-zip_session_photos` | `MSG-photo_album_ready` | `STORY-ADM-009` | M11, M15, M16 |
 | `REQ-ADM-022` | — | — | `SCR-046` | — | — | `STORY-ADM-010` `STORY-UIX-083` | M24 |
-| `REQ-ADM-023` | — | — | `SCR-046` `SCR-047` `SCR-048` +2 | — | — | `STORY-ADM-011` | M24 |
+| `REQ-ADM-023` | — | — | `SCR-043` `SCR-046` `SCR-047` +3 | — | — | `STORY-ADM-011` | M24 |
+| `REQ-ADM-024` | `ENT-sessions` | — | `SCR-021` `SCR-045` `SCR-048` +1 | — | — | `STORY-ADM-012` | M29 |
 
 ### AUT
 
@@ -121,7 +122,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
 | `REQ-CHK-001` | — | — | `SCR-007` `SCR-016` `SCR-041` +7 | `JOB-zip_session_photos` | — | `STORY-CHK-001` | M2 |
-| `REQ-CHK-002` | `ENT-check_in_codes` `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-043` +2 | `JOB-award_points` `JOB-rotate_check_in_code` | `MSG-reminder_` | `STORY-CHK-001` | M2 |
+| `REQ-CHK-002` | `ENT-check_in_codes` `ENT-session_days` `ENT-sessions` | — | `SCR-014` `SCR-016` `SCR-043` +4 | `JOB-award_points` `JOB-rotate_check_in_code` | `MSG-reminder_` | `STORY-CHK-001` | M2 |
 | `REQ-CHK-003` | `ENT-check_ins` | — | `SCR-014` `SCR-016` | — | — | `STORY-CHK-002` | M2 |
 | `REQ-CHK-004` | `ENT-check_ins` | — | `SCR-014` `SCR-016` `SCR-044` | `JOB-start_session` | — | `STORY-CHK-002` | M2 |
 | `REQ-CHK-005` | `ENT-check_ins` | — | `SCR-014` | — | — | `STORY-CHK-002` | M2 |
@@ -138,6 +139,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CHK-016` | — | — | `SCR-014` `SCR-016` `SCR-044` | `JOB-start_session` | `MSG-session_changed` | `STORY-CHK-006` | M9 |
 | `REQ-CHK-017` | — | — | `SCR-016` `SCR-022` `SCR-044` +1 | `JOB-start_session` | `MSG-proposal_approved` `MSG-session_changed` | `STORY-CHK-007` | M9 |
 | `REQ-CHK-018` | — | — | `SCR-002` `SCR-004` `SCR-007` +16 | — | — | `STORY-CHK-008` | M14 |
+| `REQ-CHK-019` | `ENT-sessions` | — | `SCR-045` `SCR-063` `SCR-083` | — | — | `STORY-CHK-009` | M29 |
 
 ### CRT
 
@@ -156,10 +158,11 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CRT-011` | `ENT-certificates` `ENT-sessions` | `POL-certificates.constraints` `POL-revoke_certificate.reason` +1 | `SCR-006` `SCR-045` | — | — | `STORY-CRT-006` | M6 |
 | `REQ-CRT-012` | `ENT-badges` `ENT-certificates` `ENT-leaderboard_entries` +2 | `POL-achievement.badge` `POL-achievement.snapshot` | `SCR-011` `SCR-043` `SCR-045` +2 | — | `MSG-reminder_generic` | `STORY-CRT-006` | M6 |
 | `REQ-CRT-013` | `ENT-certificates` | — | `SCR-023` | — | — | `STORY-CRT-003` | M6 |
-| `REQ-CRT-014` | `ENT-certificates` `ENT-design_template_versions` `ENT-fonts` +1 | — | `SCR-023` `SCR-045` `SCR-055` +3 | `JOB-evaluate_alerts` | — | `STORY-CRT-006` | M6 |
+| `REQ-CRT-014` | `ENT-certificates` `ENT-design_template_versions` `ENT-fonts` +2 | — | `SCR-023` `SCR-043` `SCR-045` +4 | `JOB-evaluate_alerts` | — | `STORY-CRT-006` | M6 |
 | `REQ-CRT-015` | — | — | `SCR-045` `SCR-055` | — | — | `STORY-CRT-007` | M25 |
 | `REQ-CRT-016` | — | — | `SCR-055` `SCR-059` | — | — | `STORY-CRT-008` | M26 |
 | `REQ-CRT-017` | `ENT-sessions` | — | `SCR-045` | — | — | `STORY-CRT-009` | M26 |
+| `REQ-CRT-018` | `ENT-sessions` | — | `SCR-045` `SCR-083` | — | — | `STORY-CRT-010` | M29 |
 
 ### DSC
 
@@ -185,7 +188,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-DSG-005` | `ENT-design_documents` | `POL-design_template_versions.guard` | `SCR-055` `SCR-057` `SCR-058` | — | — | `STORY-DSG-003` | M6 |
 | `REQ-DSG-006` | `ENT-design_documents` | — | `SCR-057` | — | — | `STORY-DSG-003` | M6 |
 | `REQ-DSG-007` | `ENT-design_template_versions` `ENT-design_templates` | `POL-design_template_versions.read` | `SCR-055` | — | — | `STORY-DSG-004` | M6 |
-| `REQ-DSG-008` | `ENT-brand_kits` `ENT-design_template_versions` `ENT-design_templates` +1 | `POL-design_templates.update.platform` | `SCR-005` `SCR-055` `SCR-057` +4 | `JOB-evaluate_alerts` | — | `STORY-DSG-004` | M6 |
+| `REQ-DSG-008` | `ENT-brand_kits` `ENT-design_template_versions` `ENT-design_templates` +2 | `POL-design_templates.update.platform` | `SCR-005` `SCR-045` `SCR-055` +5 | `JOB-evaluate_alerts` | — | `STORY-DSG-004` | M6 |
 | `REQ-DSG-009` | — | — | `SCR-057` | — | — | `STORY-DSG-005` | M6 |
 | `REQ-DSG-010` | — | — | `SCR-055` `SCR-057` `SCR-058` | — | — | `STORY-DSG-005` | M6 |
 | `REQ-DSG-011` | `ENT-export_artifacts` | — | `SCR-057` | `JOB-regenerate_poster` `JOB-render_variant` | — | `STORY-DSG-006` | M6 |
@@ -203,7 +206,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-DSG-023` | — | — | `SCR-010` `SCR-011` `SCR-012` +1 | — | — | `STORY-DSG-011` | M6 |
 | `REQ-DSG-024` | — | `POL-design_documents.locked` | `SCR-055` | — | — | `STORY-DSG-004` | M6 |
 | `REQ-DSG-025` | — | — | `SCR-057` | — | — | `STORY-DSG-005` | M6 |
-| `REQ-DSG-026` | `ENT-design_template_versions` `ENT-design_templates` `ENT-session_certificate_designs` | — | `SCR-043` `SCR-055` `SCR-056` +1 | — | — | `STORY-DSG-011` | M6 |
+| `REQ-DSG-026` | `ENT-design_template_versions` `ENT-design_templates` `ENT-session_certificate_designs` +1 | — | `SCR-043` `SCR-045` `SCR-055` +3 | — | — | `STORY-DSG-011` | M6 |
 | `REQ-DSG-027` | — | — | `SCR-012` `SCR-043` `SCR-044` +3 | `JOB-zip_session_photos` | — | `STORY-ADM-009` | M11, M15, M16 |
 | `REQ-DSG-028` | — | — | `SCR-045` `SCR-055` `SCR-056` +3 | — | — | `STORY-DSG-012` | M12, M15 |
 | `REQ-DSG-029` | — | — | `SCR-043` `SCR-045` `SCR-057` | — | — | `STORY-DSG-012` | M12, M15 |
@@ -212,6 +215,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-DSG-032` | — | — | `SCR-055` `SCR-059` | — | — | `STORY-DSG-014` | M26 |
 | `REQ-DSG-033` | — | — | `SCR-055` | — | — | `STORY-DSG-015` | M26 |
 | `REQ-DSG-034` | — | — | `SCR-055` `SCR-083` | — | — | `STORY-DSG-016` | M26 |
+| `REQ-DSG-035` | `ENT-sessions` | — | `SCR-045` `SCR-055` `SCR-083` | — | — | `STORY-DSG-017` `STORY-DSG-018` | M29 |
 
 ### EVT
 
@@ -330,9 +334,9 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
-| `REQ-PRF-001` | `ENT-member_interests` `ENT-members` | — | `SCR-010` `SCR-011` `SCR-012` +5 | `JOB-anonymise_members` | — | `STORY-PRF-001` | M1 |
+| `REQ-PRF-001` | `ENT-member_interests` `ENT-members` `ENT-sessions` | — | `SCR-010` `SCR-011` `SCR-012` +8 | `JOB-anonymise_members` | — | `STORY-PRF-001` | M1 |
 | `REQ-PRF-002` | `ENT-companies` | — | `SCR-020` `SCR-021` `SCR-029` +1 | — | — | `STORY-PRF-001` | M1 |
-| `REQ-PRF-003` | `ENT-companies` | — | `SCR-020` `SCR-028` `SCR-048` | — | — | `STORY-PRF-001` | M1 |
+| `REQ-PRF-003` | `ENT-companies` | — | `SCR-020` `SCR-021` `SCR-028` +1 | — | — | `STORY-PRF-001` | M1 |
 | `REQ-PRF-004` | `ENT-calendar_connections` | — | `SCR-007` `SCR-020` `SCR-041` +7 | `JOB-zip_session_photos` | — | `STORY-PRF-002` | M1 |
 | `REQ-PRF-005` | — | — | `SCR-012` `SCR-013` `SCR-015` +5 | — | — | `STORY-PRF-003` | M2 |
 | `REQ-PRF-006` | `ENT-data_export_requests` `ENT-platform_audit_log` `ENT-retention_periods` | `POL-data_export_requests.select.self` | `SCR-005` `SCR-020` `SCR-021` +4 | `JOB-anonymise_members` `JOB-build_data_export` +2 | — | `STORY-PRF-004` | M8 |
@@ -341,6 +345,8 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-PRF-009` | `ENT-companies` | — | `SCR-016` `SCR-020` `SCR-048` | `JOB-anonymise_members` `JOB-import_avatar` +1 | — | `STORY-PRF-005` | M10, M16 |
 | `REQ-PRF-010` | — | — | `SCR-020` `SCR-021` `SCR-029` +1 | `JOB-anonymise_members` | `MSG-photo_album_ready` | `STORY-PRF-005` | M10, M16 |
 | `REQ-PRF-011` | — | — | `SCR-020` `SCR-021` `SCR-029` | `JOB-anonymise_members` `JOB-zip_session_photos` | — | `STORY-PRF-005` | M10, M16 |
+| `REQ-PRF-012` | `ENT-sessions` | — | `SCR-021` `SCR-045` `SCR-048` +1 | — | — | `STORY-ADM-012` `STORY-PRF-006` +1 | M29 |
+| `REQ-PRF-013` | `ENT-sessions` | — | `SCR-021` `SCR-045` `SCR-048` +1 | — | — | `STORY-ADM-013` | M29 |
 
 ### PRO
 
@@ -444,6 +450,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-SES-018` | — | — | `SCR-012` `SCR-013` | — | — | `STORY-SES-011` | M9 |
 | `REQ-SES-019` | — | — | `SCR-043` `SCR-044` `SCR-045` +2 | — | `MSG-presenter_assigned` | `STORY-SES-012` | M14 |
 | `REQ-SES-020` | — | — | `SCR-007` `SCR-041` `SCR-042` +8 | `JOB-zip_session_photos` | — | `STORY-SES-013` | M15 |
+| `REQ-SES-021` | `ENT-sessions` | — | `SCR-043` `SCR-045` `SCR-083` | — | — | `STORY-SES-014` | M29 |
 
 ### STO
 
@@ -487,12 +494,12 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
 | `REQ-TEN-001` | `ENT-orgs` | — | `SCR-080` | — | — | `STORY-TEN-001` | M1 |
-| `REQ-TEN-002` | `ENT-orgs` | — | `SCR-080` `SCR-081` `SCR-085` | — | — | `STORY-TEN-001` | M1 |
+| `REQ-TEN-002` | `ENT-orgs` | — | `SCR-080` `SCR-081` `SCR-083` +1 | — | — | `STORY-TEN-001` | M1 |
 | `REQ-TEN-003` | — | — | `SCR-010` `SCR-019` `SCR-085` | `JOB-assert_storage_prefixes` | — | `STORY-TEN-002` | M1 |
 | `REQ-TEN-004` | `ENT-members` | — | `SCR-081` | — | — | `STORY-TEN-002` | M1 |
 | `REQ-TEN-005` | `ENT-members` | — | `SCR-049` | — | — | `STORY-TEN-003` | M1 |
-| `REQ-TEN-006` | `ENT-orgs` | — | `SCR-004` `SCR-080` `SCR-085` | — | — | `STORY-TEN-003` | M1 |
-| `REQ-TEN-007` | `ENT-org_domains` | — | `SCR-080` `SCR-082` `SCR-085` | — | — | `STORY-TEN-004` | M1 |
+| `REQ-TEN-006` | `ENT-orgs` | — | `SCR-004` `SCR-080` `SCR-083` +1 | — | — | `STORY-TEN-003` | M1 |
+| `REQ-TEN-007` | `ENT-org_domains` | — | `SCR-080` `SCR-082` `SCR-083` +1 | — | — | `STORY-TEN-004` | M1 |
 | `REQ-TEN-008` | `ENT-org_settings` `ENT-scoring_config_history` | — | `SCR-063` | — | — | `STORY-TEN-004` | M1 |
 | `REQ-TEN-009` | `ENT-member_invitations` `ENT-members` | — | `SCR-049` | `JOB-send_member_invitation` `JOB-send_test_email` | — | `STORY-TEN-005` | M27 |
 | `REQ-TEN-010` | — | — | `SCR-049` | — | — | `STORY-TEN-006` | M27 |
@@ -629,7 +636,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-115` | — | — | `SCR-006` | — | — | `STORY-UIX-105` | M28 |
 | `REQ-UIX-116` | — | — | `SCR-059` | — | — | `STORY-UIX-106` | M28 |
 | `REQ-UIX-117` | — | — | `SCR-029` | — | — | `STORY-UIX-107` | M28 |
-| `REQ-UIX-118` | — | — | `SCR-080` `SCR-085` | — | — | `STORY-UIX-108` | M28 |
+| `REQ-UIX-118` | — | — | `SCR-055` `SCR-080` `SCR-083` +1 | — | — | `STORY-UIX-108` | M28 |
 | `REQ-UIX-119` | — | — | `SCR-000` `SCR-001` | — | — | `STORY-UIX-109` | M28 |
 | `REQ-UIX-120` | — | — | `SCR-002` | — | — | `STORY-UIX-110` | M28 |
 

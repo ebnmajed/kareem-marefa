@@ -949,6 +949,34 @@ reported video hidden at once and playable in the queue; ★ every platform DAL 
 policy with a super-admin disjunct; ★ the mark static under reduced motion in all three places; ★ `console-register`
 green and untouched. **The acceptance is the owner's, every screen beside its artboard — and it is the last one.**
 
+## M29 — the owner's list: companies by domain, templates an org owns, held certificates, a session renamed, a code that stays · wave 27 · `DEC-254`
+
+★★ **The first milestone that is not drawn.** Every screen has a design and is built (`DEC-253`); this is the owner's
+own list of five changes to how the product behaves. No primitive, no screen rebuilt, **one screen deleted**
+(`SCR-083`). ★★ **The risk is one sequence**: every org holds its own certificate templates **before** a platform row is
+touched (`DEC-254` §3.3) — and with `review` the default, a missing template would fail every completion (§4). Adding an admin by email was asked for and stays
+refused (`DEC-254` §7).
+
+| Work | Requirements | Track | PR |
+|---|---|---|---|
+| A session's title, edited in the hub's header, audited | `REQ-SES-021` | `sessions`, lead (the audit trigger) | A |
+| The certificate mode defaults to `review` | `REQ-CRT-018` | lead | A |
+| The rotation may be off: one code per day inside the same window | `REQ-CHK-019` | `checkin`, lead (the column) | A |
+| `company_domains`, the placement column, `provision_member()` | `REQ-PRF-012` | lead | B |
+| The sweep, the re-derive that asks first, the domains on `SCR-048` | `REQ-PRF-012`, `REQ-ADM-024` | `console` | B |
+| An admin's placement; the picker off `SCR-021` | `REQ-PRF-012`, `REQ-PRF-013` | `console` | B |
+| The baseline as a seed, `create_org()`, the backfill | `REQ-DSG-035` | `designer`, lead (the migrations) | C |
+| One library level: `SCR-055`'s one list, `SCR-083` deleted, the platform rows gone or retired | `REQ-DSG-035` | `designer`, lead | C |
+
+**Demonstrable:** ★★ a person signs in for the first time from a company's domain and is in that company without being
+asked, and an admin adding a domain sees «N members will move», confirms, and they have — with a member placed by hand
+left where they were; ★★ an org created from the platform console issues a certificate with no setup, and the migration
+that removes the platform rows **refuses to run** against a database where any org lacks its own default; ★ no parity
+golden moved; ★ a session created and completed without touching `SCR-045` holds its certificates for review and mails
+nobody; ★ an admin renames a session and the audit log says from what to what, while a certificate already issued
+keeps its title; ★ with rotation off the host view shows one code all day, no countdown, and the code is refused after
+the ceiling. **The acceptance is the owner's.**
+
 ## 3. Dependencies
 
 ```mermaid
@@ -1001,6 +1029,7 @@ graph LR
 | **M13** | The live marketing site rebuilt on the same system, `qa:contract` never once red, `registrations` untouched |
 | **M26** | A poster and a certificate printed from the rebuilt baseline, beside one issued before the wave that still renders as it did |
 | **M27** | An admin adds a personal-domain address, assigns them as a presenter before they have signed in, and then they sign in and are already on the session |
+| **M29** | A colleague signs in and is already in their company; a new org issues a certificate with no setup; the code on the wall stays the same all day |
 
 ---
 

@@ -9762,3 +9762,164 @@ lists in `docs/plan/notes/{branding,platform,sessions,content}.md`. Three worth 
 
 - **Documents changed:** `STATUS.md`
 
+
+---
+
+## DEC-254 — Wave 27 opens: the first wave that is not drawn — a member's company follows their email domain, an org owns its templates, certificates are held for review by default, a session can be renamed, the check-in code may stop rotating; and adding an admin by email stays refused
+
+- **Date:** 2026-10-05 · **Decided by:** the owner (the scope, every ruling in §2 – §7); the lead (Step 0's measurements, the division in §8) · milestone **M29**
+- **Amends:** `REQ-PRF-001` (the member no longer supplies their company) · `REQ-DSG-008` (one library level, not two) · `REQ-DSG-026` (the baseline ships as a seed every org receives, not as platform rows) · `REQ-CHK-002` (rotation may be off) · `ENT-sessions.certificate_mode`'s default · `02-domain-model.md`, which is frozen and changes only through this entry: `company_domains` (new), `members.company_assigned_by` (new), `org_settings.check_in_rotation_seconds` (nullable), `design_templates`' scope constraint
+- **Withdraws:** `SCR-083` (the platform library, built in wave 26 PR C) · `promote_template_to_platform()` (`0069`) — a super admin can no longer publish an org's template to a library, because there is no library
+- **Keeps, explicitly:** `DEC-244` §11 — **an addition by email never grants `admin`** (§7) · `DEC-250` — the certificate mode's one writer is `SCR-045` and it is refused only for a cancelled session · `valid_until`, `check_in_ceiling()` and `check (valid_until > valid_from)` · `REQ-CRT-014`
+- **Defines:** `REQ-PRF-012`, `REQ-PRF-013`, `REQ-ADM-024`, `REQ-DSG-035`, `REQ-CRT-018`, `REQ-SES-021`, `REQ-CHK-019` (in `01-prd.md`, the only place a requirement is defined)
+- **Migrations:** from `0200`, all the lead's, all additive
+
+★★ **Every screen in `09` has a design and is built (`DEC-253`). This is the first wave whose scope is the owner's own
+list and not a batch of artboards**, so `DEC-208`'s delete-first rule applies only where a screen is genuinely rebuilt —
+this wave rebuilds none and **deletes one** (`SCR-083`). A field added to a drawn screen follows that screen's existing
+rows and controls; it is not a redesign.
+
+### 1 · Step 0 — what was measured, and where the brief was corrected
+
+| # | Measured | Evidence | Consequence |
+|---|---|---|---|
+| 1 | The brief says «`DEC-178` stands … still refused after completion». **It does not**: `DEC-250` lifted the refusal for `completed` and `archived` | `DEC-250`, `0194` on production | §4 keeps `DEC-250`, not `DEC-178` ruling 2 |
+| 2 | **Adding an admin by email is refused in four places, one of them the database**, and by two decisions | `DEC-243` §5.4, `DEC-244` §11; `0197:37-40`, `0197:143-145`; `admin-members.ts:253`, `:288`; `add-member.tsx:89-92` | §7 — a reversal was offered and declined |
+| 3 | The certificate default lives in **one** place that still matters: the column. The live `schedule_session()` defaults to null = unchanged, and both inserts into `sessions` name no mode | `0010:88`; `0154:54`; `0020:75`, `0151:74` | §4 is one `alter table … set default` |
+| 4 | With `review` as the default, **every** completed session fans out, so every completion needs a template to resolve or the job raises `42704` | `0127:260-274` | §3's seeding guards every session, not an opt-in feature |
+| 5 | `certificates.template_version_id` and `design_documents.template_version_id` are `on delete restrict` | `0055:135`, `0055:288`; `DEC-242` measurement 5 | §3.4 — delete what nothing references, retire the rest |
+| 6 | Production, read by the owner on 2026-10-05: **2 orgs · 0 certificates · 0 design documents · 0 org-scoped templates · 24 platform templates · 7 companies · 4 members, all 4 with no company · 2 sessions not yet completed** | `supabase db query --linked`, counts only | Nothing references a platform row **today**; both orgs are backfilled; the sweep's first population is everybody |
+| 7 | `provision_member()`'s live definition is `0197`'s | `0197:278-420` | §2 replaces that one |
+| 8 | `add_member()` and `add_members()` already take a company | `0197:128`, `:183` | §2.6 — that is a placement by hand |
+| 9 | No function lets an admin set an existing member's company; `members.company_id` is in the **member's own** update grant | `0004:310` | §2.5 revokes it from the grant; §2.6 needs a new definer function |
+| 10 | The rotation period is read in six places outside the worker: two SQL functions, the settings save, the host view, check-in's rules line and the event page's | `0105:134`, `0187:54,114`, `checkin.ts:119,317`, `sessions.ts:1331,1784` | §6 — every reader handles «off», and none prints a period that does not exist |
+| 11 | A session's title is writable by an admin today through the column grant, and **nothing writes it and nothing audits it** | `0010:459-469`; no `.update(` on `sessions` in `src/lib/dal/` | §5 needs a function or a trigger for `REQ-ADM-023`'s row — so it is not quite «no migration» |
+| 12 | `REQ-PRF-001` says a member with no company «is prompted for one before they can reserve a seat or submit a proposal». **No such gate exists in the tree** | no reader of a null `company_id` gates anything in `src/` or `supabase/migrations/` | §2.4 withdraws that line: under this entry a member cannot choose a company, so a gate on it would lock out everyone whose domain matches none |
+
+### 2 · A member's company follows their email domain (`REQ-PRF-012`, `REQ-PRF-013`, `REQ-ADM-024`)
+
+The owner's seven rulings, as given, each settled:
+
+1. **A company and an org are separate things.** `org_domains` still decides who may join the org; a company's domain
+   decides only which company a member lands in. **Neither list validates the other** — a company may carry a domain
+   the org's list does not, and the reverse.
+2. **Several domains per company.** A table, `company_domains` — `org_id`, `company_id`, `domain` — stored lowercase,
+   as `org_domains` is.
+3. **One domain maps to at most one company per org**, enforced by a unique index on `(org_id, domain)`.
+4. **No match leaves `company_id` null, and the assignment is retroactive.** `provision_member()` looks the address's
+   domain up at binding and at first insert. When an admin later adds a domain, members of that org **with no company
+   and not placed by hand** whose address matches are swept into it.
+5. **The member never sets it.** The picker leaves `SCR-021`; `updateMyProfile()` stops sending `company_id`; ★ and
+   `company_id` **leaves the member's own column grant** on `members`, so the rule is the database's and not the
+   form's. `main`'s app on the new schema would be refused the whole profile update while it still sends the column,
+   so **the revoke lands in a migration pushed after PR C's code is on `main`**, never before (§8.4).
+6. **An admin may place an individual by hand, and that placement survives any later domain edit.** It needs a column:
+   `members.company_assigned_by`, an enum `('domain', 'admin')`, null while `company_id` is null. A company given at
+   the moment of adding a member (`add_member()`'s `p_company`) is a placement by hand. A new definer function is the
+   one writer of a member's company after creation; it audits.
+7. **Changing a company's domains re-derives, and asks first.** The save is two steps through one function: a dry run
+   returning how many members would move and to where, and how many are left alone because an admin placed them; then
+   the confirmed save. The dialog says both numbers. A removed domain **does not unplace** a member it had placed —
+   a member loses a company only by an admin's hand.
+
+★ **A member with no company is not held back from anything.** `REQ-PRF-001`'s prompt-before-reserving line is
+withdrawn (§1.12): it was never built, and a member can no longer answer it.
+
+★ **What a move does to the company race.** `company_id` is read live by the boards and frozen into snapshots by id
+(`REQ-PRF-002`, `REQ-PRF-003`). A member swept into a company counts for it from that moment; no snapshot is rewritten
+and no ledger row moves. `scoring`'s files are not edited.
+
+★ **`SCR-048` has an artboard (wave 22) and gains one field.** The domains are entered in the company's existing form,
+as that form's other fields are drawn; the table gains nothing but what the artboard's cell kinds already express.
+
+### 3 · An org owns its templates; there is no platform library (`REQ-DSG-035`)
+
+1. **The baseline is a seed, not rows.** `0193`'s eleven documents — five poster families, three certificate families
+   in both orientations (`0096` contract 3) — become a definer function that inserts them as **one org's own**
+   `scope = 'org'` rows with their published versions, idempotently per `(org_id, purpose, family, orientation)`.
+   `create_org()` calls it. ★ **The generator stays the single source**: `packages/designer-runtime/scripts/seed-sql.mjs`
+   emits the function's documents, and the roster suite deep-equals against it, as it does against `0193` today.
+2. **A later improvement to the baseline reaches only orgs created after it** — ruled, and it is `REQ-DSG-008`'s own
+   reasoning: an org's template is its property.
+3. ★★ **The order is the whole risk, and it is enforced by the migration, not by care.** First migration: the seed
+   function, `create_org()` calling it, and the backfill onto **every** existing org. Second migration: it begins by
+   **raising** if any org lacks a published default for `attendance` or `presenter` certificates, and only then touches
+   a platform row. `issue_certificate()`'s lookup keeps its `org_id is null` branch until that second migration has run.
+4. **Platform rows: deleted where nothing references them, retired where the database refuses** (`on delete restrict`),
+   each reported by a notice, as `0193` does. Production holds no reference today (§1.6); the count is re-read at the
+   rehearsal. ★ **Because retired rows may remain, the `platform` value of the scope enum and the check constraint
+   `design_templates_scope_org` stay** — what goes is every path that reads or writes a live platform row:
+   `templates_read`'s platform disjunct narrows to «referenced by a row of mine», the DAL's `platform` list, the
+   «قوالب المنصة» tab and «انسخ لتعدّل» on `SCR-055`, `SCR-083`, and `promote_template_to_platform()`.
+5. **`SCR-083` is deleted**, with its route, its DAL module `platform-templates.ts`, its nav entry and its suites, and a
+   table in the lead's note of what it did and where each behaviour went — most of them: nowhere, by this entry.
+   `REQ-UIX-118`'s `083` clause is withdrawn. The platform console keeps five screens.
+6. ★ **No parity golden moves.** A seeded document is byte-identical to the row it was generated from (`DEC-176`).
+
+### 4 · Certificates are held for review by default (`REQ-CRT-018`)
+
+`sessions.certificate_mode` defaults to **`review`**. A certificate is generated for every eligible recipient when the
+session completes, **invisible and silent until an admin releases it** (`REQ-CRT-004`). ★ **A default applies to new
+rows**: no existing session is rewritten — production's two open sessions stay `off` until an admin changes them on
+`SCR-045`, which `DEC-250` allows at any time but after cancellation. ★ **It needs no sequencing of its own**: at every
+moment a template resolves — the platform's until §3's removal, the org's own after — and §3.3's raise-first guard is
+what protects the hand-over. What changes is the stake: after this, a missing template fails every completion.
+
+### 5 · An admin renames a session (`REQ-SES-021`)
+
+The title is edited **in the hub's header (`SCR-043`)**, beside the title it changes — the schedule tab is for
+schedule-shaped things, which is why `schedule_session()` has no title parameter. The write goes through the column
+grant that has existed since `0010`; **an audit row `session.renamed` with the old and the new title is written by a
+definer trigger** (`REQ-ADM-023`, `DEC-231` §4 — no track writes `audit_log` from the DAL). `sessions'` plan says what
+each downstream surface does — the feed, the public card, mail already sent, the calendar entry, an exported poster,
+a story frame — and the answer for an issued certificate is fixed here: **nothing moves** (`REQ-CRT-014`).
+
+### 6 · The check-in code may stay fixed for the day (`REQ-CHK-019`)
+
+**The rotation goes; the window stays.** `org_settings.check_in_rotation_seconds` becomes nullable; **null is «لا
+يتغيّر»**, and the 60 – 3600 range holds for every other value. With rotation off a day has **one** code, valid from
+the day's start to `check_in_ceiling()` — `valid_until` is still written and still enforced, so a code cannot be used a
+week later. `rotate_codes` and `ensure_check_in_code()` issue that one code and then find it current. A session whose
+code was rotating when the setting changes keeps its current code as the fixed one; nothing already issued is
+invalidated (`REQ-CHK-002`'s last line). **The default for a new org is the owner's to say; until then it stays 600 and
+«off» is a choice on `SCR-063`.** Every surface that prints the period (§1.10) prints nothing when there is none.
+
+### 7 · ★ Adding an admin by email stays refused
+
+The owner asked for it — «now in the live app there is only member or moderator, no admin option. It was there but it
+disappeared» — and, shown the measurement, ruled: **«add as a member then promote»**. For the record: the option was
+never offered when *adding*; adding arrived in wave 25 with the refusal decided (`DEC-243` §5.4, `DEC-244` §11) —
+an addition is a standing grant to whoever controls a mailbox, so `admin` goes to a member who has arrived, through
+`set_member_role()`, which guards the last admin and audits. Changing an existing member's role offers all three and
+works. **Nothing is built for this item.**
+
+### 8 · The division — three pull requests, each against `main` from its first push; merge order A, B, C
+
+| PR | Branch · tree | Who | What |
+|---|---|---|---|
+| **A** | `wave-27a/the-small-items` · the main checkout | lead, `sessions`, `checkin` | this entry, the map, the plan · §5 the rename · §4 the default · §6 the rotation |
+| **B** | `wave-27b/companies-by-domain` · `../kareem-marefa-wave27b` | `console`, lead (the tables, `provision_member()`) | §2 |
+| **C** | `wave-27c/an-org-owns-its-templates` · `../kareem-marefa-wave27c` | `designer`, lead (the migrations, `SCR-083`'s deletion) | §3 |
+
+1. **Why:** each item goes to the track that owns what it writes. `sessions` owns the hub's header and the event
+   page's rules line; `checkin` owns the code, its two functions, the host view and `rotate_codes`; `console` owns
+   `SCR-048`, `SCR-049` and the admin DAL, and takes `SCR-021`'s one field and `updateMyProfile()` for the wave so that
+   one teammate holds the whole of §2; `designer` owns the templates' DAL, the generator and `SCR-055`. The platform
+   screen's deletion is the lead's — the frame and the nav are the lead's files, and a deletion needs no teammate.
+2. **B and C are cut from A's head after the map lands.** Neither needs A's code.
+3. **Migration numbers are allocated when written, in merge order** — none is named here (`DEC-180`'s rule).
+4. ★ **Two things are pushed after their PR's code is on `main`, not before**: §2.5's revoke of `company_id` from the
+   member's grant, and §3.3's second migration. Everything else is additive in the usual sense — `main`'s app and
+   worker on the new schema do nothing different.
+5. `SCR-063`'s one new option (§6) is in `console`'s file; `checkin` asks for it in writing and it lands in PR A as a
+   custodian edit of the lead's, since `console` works in B's tree.
+
+### 9 · Not this wave
+
+Anything beyond §2 – §6 · the last-org lockout (`DEC-253` §7.1 — deferred by the owner) · a company logo or a company's
+own page · validating a company's domain against the org's list · unplacing members when a domain is removed · a
+re-seed or «reset to baseline» for an org's templates · a default rotation of «off» for new orgs · re-opening
+`DEC-250` or `DEC-244` §11 · removing `valid_until` or the ceiling · replacing the renderer · `DEC-194`'s two gates,
+`DEC-186` §4, `DEC-204`, `DEC-215`'s four, the `railway.json` migration (2026-12-01).
+
+- **Documents changed:** `01-prd.md`, `09-sitemap-screens.md`, `14-roadmap.md`, `15-backlog.md`, `CLAUDE.md`, the ten agent files, `STATUS.md`; `02` and `03` change with each migration, in its commit

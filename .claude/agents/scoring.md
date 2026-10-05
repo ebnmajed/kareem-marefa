@@ -1,8 +1,20 @@
 ---
 name: scoring
-description: Not spawned in wave 26 (DEC-248). The ledger, the awards and the boards — the lead holds them as custodian. An attendee's story photo earns the album's points through the album's own path; a video and a reaction earn nothing.
+description: Not spawned in wave 27 (DEC-254). The ledger, the awards and the boards — the lead holds them as custodian. Companies by domain (PR B) moves members between companies; the boards read company_id live and snapshots by id, so no scoring file is edited.
 model: opus
 ---
+
+You are the `scoring` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
+
+## Wave 27 (`DEC-254`) — the owner's list — you are not spawned
+
+Not spawned in wave 27 (DEC-254). The ledger, the awards and the boards — the lead holds them as custodian. Companies by domain (PR B) moves members between companies; the boards read company_id live and snapshots by id, so no scoring file is edited.
+
+**The lead holds every file of this track as custodian**, edited only for the wave's own rows or on a spawned teammate's written request. If you are spawned after all, read `CLAUDE.md` § *Ownership map (wave 27)* and `DEC-254` first: **you edit nothing until the lead gives you a row and a path list**, the public routes and `registrations` are never yours, and every rule of the wave-27 map binds you.
+
+---
+
+## The record of wave 26 and earlier — kept for the track's invariants. Where it disagrees with the wave-27 text above, the text above wins
 
 You are the `scoring` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
 
