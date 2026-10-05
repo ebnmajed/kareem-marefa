@@ -10185,3 +10185,38 @@ cases stale since waves 21, 24 and 26, passing by accident or never run, because
 Collaborative editing; a version history; a server-side draft; a server autosave under any name; `canvas.tsx`'s engine, the goldens, the export pipeline. ★ **Awaiting the owner, and not scope until ruled:** the last-org lockout (`DEC-253` §7.1; the brief's §2 holds the measurement and two candidate fixes); reversing `DEC-255` §1 (rename only until published) or `DEC-254` §7 (no admin by email). Carried as recorded: `DEC-257`'s table.
 
 - **Documents changed:** `01-prd.md` (`REQ-DSG-022` amended, `REQ-DSG-036`), `06-visual-designer.md` §10, `09-sitemap-screens.md` (`SCR-057`), `14-roadmap.md` (M30), `15-backlog.md` (`STORY-DSG-019`, `020`), `CLAUDE.md` (the wave-28 map), `.claude/agents/*.md`, `STATUS.md`, `notes/wave-28-lead.md`
+
+---
+
+## DEC-259 — Wave 28, sync 1: the plan is approved; discard leaves rather than reloads; nothing is edited while a draft's offer is unanswered; and what the plan measured that `DEC-258` got wrong
+
+- **Date:** 2026-10-05 · **Decided by:** the lead · **Refines:** `DEC-258` · `REQ-DSG-036` · **Plan:** `docs/plan/notes/designer.md`, «Wave 28 — plan» (`f85c0f8d`)
+
+### 1 · What the plan measured that `DEC-258` got wrong or left imprecise
+
+| # | `DEC-258` said | Measured | Ruling |
+|---|---|---|---|
+| 1 | §2.6 — discard reloads the document from the server | The only discard is the dialog's, and it leaves the page; the destination loads fresh. `router.refresh()` would not reset the editor anyway: the page segment's state survives it | **§2.6 is withdrawn.** There is no in-place discard this wave. `REQ-DSG-036`'s line — «discard leaves with the server's document unchanged» — already says the right thing |
+| 2 | §1.6 — the lead's `wave23-lead-certificate-walk` will change | It opens the studio and edits nothing | No lead spec changes. Four designer helpers gain a Save click; their call sites do not move |
+| 3 | §2.2 — «the back control and any in-app link» | One exit more: the sibling-orientation `<form>`, a Server Action that redirects to another document. Two kinds of link that must **not** ask: `/api/` downloads, and the scheme links, which keep the editor mounted | Adopted as the plan writes it |
+| 4 | §2.4 — publish saves first | Today's `flush()` publishes even when its save failed, then records the on-screen document as published | **Publish runs only after a save that landed.** A pre-existing defect, fixed here |
+| 5 | §3 — «the dialog does not animate» | `ui/dialog`'s overlay has a 150 ms `motion-safe` fade, already worn by the studio's delete dialog; `console-register` passes with it | The rule means **nothing new animates**. `ui/dialog` is not edited |
+| 6 | — | ★ **An expired session is not a 403.** `requireSession()` redirects inside the Route Handler; `fetch` follows the 307, receives the sign-in page as `200 text/html`, and `push()` reads it as `error` — «تعذّر الحفظ… أعِد المحاولة», every time, with nothing saying to sign in | **Accepted and recorded**, because `push()` is frozen this wave and the draft survives it: a reload leads to sign-in and the reopened editor offers the work back. Rare — it needs the refresh token itself to have expired. A `401` from the route with its own words is a follow-up the owner may want |
+| 7 | §1.5 — `live_poster` reading as `conflict` | Reachable only when a poster turns live in another tab; the toast's advice (reload) is right, its attribution is not | Recorded, not fixed |
+
+### 2 · Rulings on the plan's questions
+
+1. **The bar's word for unsaved changes is «غير محفوظ»**, not the artboard's «مسودة», which already means an unpublished template on the same bar and would now also mean the local draft. The owner sees it at acceptance.
+2. **Drafts are not swept at sign-out.** They are keyed by member and document, so another admin on the same browser never sees one; sweeping would throw away exactly the work a draft exists to keep.
+3. **Save is `secondary`.** The bar keeps one primary, «صدّر», as drawn; «غير محفوظ» beside Save carries the signal.
+4. **A draft write that fails says nothing.** The bar's «غير محفوظ» is already the one true thing.
+5. **Removing a draft that cannot be parsed or validated is not «dropped silently»** under `DEC-258` §2.3: it cannot be offered. The rule protects a draft that could be restored.
+6. ★★ **Nothing is edited while a draft's offer is unanswered** — the lead's change to the plan. The plan paused the draft writer during the offer and left edits made meanwhile unprotected against Back and a crash, which is the exact loss the draft exists to prevent. The editor is read-only until the person answers «استعِدها» or «احذفها»; the mechanism is `designer`'s.
+7. **`email/builder.tsx`**: no shared module, and it does not gain «save» unasked. ★ **One gap is taken**: its leave dialog is wired to its own back button only, so any other in-app link leaves unasked. The lead closes it as `notify`'s custodian with the house's capture listener, in this PR, with a spec.
+8. The draft is written at the next idle moment, on `pagehide`, on the tab going hidden and at unmount — local only. **That is not autosave** (`DEC-258` §2.3): no request, no `updated_at`, nothing another reader sees.
+
+### 3 · Still the owner's
+
+`DEC-258` §2.4 — publish saving first, against «انشر» refused while there are unsaved changes. Built as the former.
+
+- **Documents changed:** `STATUS.md`
