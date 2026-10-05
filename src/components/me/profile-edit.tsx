@@ -20,7 +20,7 @@ import { useToast } from "@/components/ui/toast";
 import { formatNumber } from "@/components/sessions/numerals";
 import { summaryErrors } from "@/lib/form-state";
 import type { Locale } from "@/i18n/routing";
-import type { Company, MyInterests, SelfProfile } from "@/lib/dal/members";
+import type { MyInterests, SelfProfile } from "@/lib/dal/members";
 import { saveProfile } from "@/app/[locale]/app/me/actions";
 import { emptyProfileState, PROFILE_FIELDS, type ProfileField, type ProfileState } from "@/app/[locale]/app/me/state";
 
@@ -43,6 +43,9 @@ import { emptyProfileState, PROFILE_FIELDS, type ProfileField, type ProfileState
 //
 // ★ The leaderboard opt-out is not here (contract 5, `REQ-LDR-008`): it moved to `/app/me/settings`' switch in the
 // same PR that added it, so no deployment of `main` lacked a way to opt out.
+//
+// ★ wave 27 (`DEC-254` §2.5, `REQ-PRF-012`, `STORY-PRF-007`): no company control. A member's company follows their
+// email domain or an admin's placement; the read mode shows it, and the save never sends the column.
 
 function FormError({ message }: { message: string }) {
   const region = useRef<HTMLDivElement>(null);
@@ -65,11 +68,10 @@ const BIO_MAX = 600;
 export interface ProfileEditProps {
   locale: Locale;
   me: SelfProfile;
-  companies: Company[];
   interests: MyInterests;
 }
 
-export function ProfileEdit({ locale, me, companies, interests }: ProfileEditProps) {
+export function ProfileEdit({ locale, me, interests }: ProfileEditProps) {
   const t = useTranslations("profile");
   const tDialog = useTranslations("ui.dialog");
   const toast = useToast();
@@ -80,13 +82,11 @@ export function ProfileEdit({ locale, me, companies, interests }: ProfileEditPro
 
   const initial = {
     displayName: me.displayName ?? "",
-    companyId: me.companyId ?? "",
     jobTitle: me.jobTitle ?? "",
     bio: me.bio ?? "",
     interests: interests.chosen.map((i) => i.id),
   };
   const [displayName, setDisplayName] = useState(initial.displayName);
-  const [companyId, setCompanyId] = useState(initial.companyId);
   const [jobTitle, setJobTitle] = useState(initial.jobTitle);
   const [bio, setBio] = useState(initial.bio);
   const [chosen, setChosen] = useState<string[]>(initial.interests);
@@ -94,7 +94,6 @@ export function ProfileEdit({ locale, me, companies, interests }: ProfileEditPro
   const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((id) => b.includes(id));
   const changed = {
     displayName: displayName !== initial.displayName,
-    companyId: companyId !== initial.companyId,
     jobTitle: jobTitle !== initial.jobTitle,
     bio: bio !== initial.bio,
     interests: !sameSet(chosen, initial.interests),
@@ -139,10 +138,7 @@ export function ProfileEdit({ locale, me, companies, interests }: ProfileEditPro
     const key = state.errors[field];
     return key ? t(`errors.${key}`) : undefined;
   };
-  const fieldLabel = (field: ProfileField): string => {
-    if (field === "companyId") return t("company");
-    return t(field);
-  };
+  const fieldLabel = (field: ProfileField): string => t(field);
   const summary = summaryErrors(state, { fields: PROFILE_FIELDS, label: fieldLabel, message: (key) => t(`errors.${key}`) });
   const label = (text: string, isChanged: boolean) => (
     <>
@@ -176,19 +172,6 @@ export function ProfileEdit({ locale, me, companies, interests }: ProfileEditPro
         <Field id="displayName" label={label(t("displayName"), changed.displayName)} required error={errorFor("displayName")}>
           <div className={mark(changed.displayName)}>
             <Input name="displayName" required maxLength={120} value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-          </div>
-        </Field>
-
-        <Field id="companyId" label={label(t("company"), changed.companyId)} error={errorFor("companyId")}>
-          <div className={mark(changed.companyId)}>
-            <Select name="companyId" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
-              <option value="">{t("companyNone")}</option>
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
           </div>
         </Field>
 

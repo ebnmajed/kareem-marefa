@@ -131,10 +131,17 @@ test("★ SCR-021: read by default, no company, edit on intent, a refused save s
   await expect(main.getByRole("heading", { level: 2, name: "ملفي" })).toBeVisible();
   await expect(main.locator("input:not([type=hidden]), select, textarea")).toHaveCount(0);
   await expect(main.getByRole("link", { name: "الإعدادات" })).toHaveAttribute("href", "/ar/app/me/settings"); // PR B
-  // No company: the hub says what it blocks, and the row is the way to choose one.
-  await expect(main.getByRole("status")).toContainText("اختر شركتك قبل حجز مقعد");
+  // ★ wave 27 (DEC-254 §2, REQ-PRF-012; ledger B): no company is SHOWN — «بلا شركة» — and nothing asks for one.
+  const profileRegion = main.getByRole("region", { name: "ملفي" });
+  await expect(profileRegion.getByText("بلا شركة", { exact: true })).toBeVisible();
+  await expect(main.getByText("اختر شركتك", { exact: false })).toHaveCount(0);
   await noSideways(page);
   await capture(page, "me", "nocompany");
+  // ★ wave 27 (ledger B): an admin's placement — the owner stands in for SCR-049 here — then a profile save that must
+  // leave it where it is: the save never sends the column (REQ-PRF-012, REQ-PRF-013).
+  await db.query(`update public.members set company_id = (select id from public.companies where org_id = $1 and name = 'شركة الاختبار') where id = $2`, [orgId, memberId]);
+  await page.reload();
+  await expect(profileRegion.getByText("شركة الاختبار", { exact: true })).toBeVisible();
 
   await main.getByRole("link", { name: "عدّل ملفك" }).click();
   await expect(page).toHaveURL(/\/ar\/app\/me\?edit/);
@@ -152,7 +159,8 @@ test("★ SCR-021: read by default, no company, edit on intent, a refused save s
 
   // Fill everything, a category among the interests, and save.
   await main.getByLabel("الاسم", { exact: false }).fill("عضو الحساب المُحدَّث");
-  await main.getByLabel("الشركة", { exact: false }).selectOption({ label: "شركة الاختبار" });
+  // ★ wave 27 (ledger B): edit mode has no company control.
+  await expect(main.getByLabel("الشركة", { exact: false })).toHaveCount(0);
   await main.getByLabel("المسمى الوظيفي", { exact: false }).fill("مهندس حلول");
   await main.getByLabel("الاهتمامات", { exact: false }).selectOption({ label: "حوكمة" });
   await capture(page, "me", "edit");
