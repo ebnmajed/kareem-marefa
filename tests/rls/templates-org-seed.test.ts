@@ -158,18 +158,30 @@ describe("RPC-seed_org_templates — REQ-DSG-035", () => {
 
   it("seed.keeps_my_default — an org's own live default is never demoted, and its own composition is not doubled", async () => {
     await withTx(async (tx) => {
-      const f = await seed(tx);
       await m1(tx);
-      // Fixture org A already holds a live presenter DEFAULT of its own (fixture-m6), with a document that has no
-      // master — so no presenter composition is present and both presenter rows are seeded, neither as default.
-      const [{ n }] = await tx.q<{ n: number }>(`select public.seed_org_templates($1) as n`, [f.a.id]);
-      expect(n).toBe(11);
-      const defaults = await tx.q<{ name: string }>(
-        `select name from public.design_templates where org_id = $1 and purpose = 'certificate' and family = 'presenter' and is_default`,
-        [f.a.id],
+      // An org that already owns an attendance LANDSCAPE default before the seed reaches it — inserted with the trigger
+      // off, as an org that predates M1 is, then given its own template the way an admin's «قالب جديد» gives one.
+      await tx.asOwner();
+      await tx.q(`alter table public.orgs disable trigger orgs_seed_templates`);
+      const org = await bareOrg(tx);
+      await tx.q(`alter table public.orgs enable trigger orgs_seed_templates`);
+      const [{ id: mine }] = await tx.q<{ id: string }>(
+        `insert into public.design_templates (org_id, scope, purpose, family, name, is_default) values ($1, 'org', 'certificate', 'attendance', 'شهادتنا', true) returning id`,
+        [org],
       );
-      expect(defaults).toEqual([{ name: "شهادة المقدّم" }]);
-      expect(await tx.q(`select * from public.org_missing_templates($1)`, [f.a.id])).toEqual([]);
+      await tx.q(
+        `insert into public.design_template_versions (template_id, version, document, published_at)
+         values ($1, 1, '{"schemaVersion":1,"purpose":"certificate","master":{"width":3508,"height":2480,"unit":"px","dpi":300},"direction":"rtl","layers":[]}'::jsonb, now())`,
+        [mine],
+      );
+
+      // The attendance landscape composition is present, so ten are seeded, not eleven…
+      const [{ n }] = await tx.q<{ n: number }>(`select public.seed_org_templates($1) as n`, [org]);
+      expect(n).toBe(10);
+      // …and the org's own default is still the default.
+      const defaults = await tx.q<{ id: string }>(`select id from public.design_templates where org_id = $1 and family = 'attendance' and is_default`, [org]);
+      expect(defaults).toEqual([{ id: mine }]);
+      expect(await tx.q(`select * from public.org_missing_templates($1)`, [org])).toEqual([]);
     });
   });
 
