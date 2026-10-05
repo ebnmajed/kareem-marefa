@@ -177,10 +177,12 @@ describe("the breakdown", () => {
     expect(screen.getByRole("heading", { name: "كيف حصلت شركتك على نقاطها" })).toBeTruthy();
   });
 
-  it("★ no company: the prompt to choose one, in place of the breakdown", async () => {
+  // wave 27 (DEC-255 §4, REQ-PRF-012): «بلا شركة» and no way to choose one — a member does not choose a company.
+  it("★ no company: «بلا شركة» in place of the breakdown, and nothing asking for one", async () => {
     const ui = await CompanyPointsBreakdownSection({ breakdown: null, locale: "ar", timeZone: "Asia/Riyadh" });
     render(<Wrap>{ui}</Wrap>);
-    expect(screen.getByRole("link", { name: "اختر شركتك" })).toHaveAttribute("href", expect.stringContaining("/app/me"));
+    expect(screen.getByText("بلا شركة")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /اختر شركتك/ })).not.toBeInTheDocument();
   });
 });
 

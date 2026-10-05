@@ -66,8 +66,8 @@ function post(over: Partial<Post> = {}): Post {
   } as Post;
 }
 
-async function show(p: Post, noCompany = false) {
-  const ui = await SessionPost({ post: p, locale: "ar", today: TODAY, noCompany });
+async function show(p: Post) {
+  const ui = await SessionPost({ post: p, locale: "ar", today: TODAY });
   return render(
     <NextIntlClientProvider locale="ar" messages={{ ...browseAr, ...feedAr }}>
       {ui}
@@ -110,10 +110,12 @@ describe("SessionPost", () => {
     expect(screen.getByRole("link", { name: "3 تعليقات" })).toHaveAttribute("href", expect.stringContaining("#discussion"));
   });
 
-  it("with no company set, the control says why instead of leading to a refusal", async () => {
-    await show(post(), true);
-    expect(screen.queryByRole("link", { name: /احجز مقعدك/ })).not.toBeInTheDocument();
-    expect(screen.getByText("اختر شركتك أولًا لتحجز مقعدًا")).toBeInTheDocument();
+  // wave 27 (DEC-255 §4, REQ-PRF-012): the «choose your company first» control is gone — a member no longer chooses
+  // a company, so its absence refuses nothing. The post takes no «has a company» input at all.
+  it("the reserve control never depends on the viewer's company", async () => {
+    await show(post());
+    expect(screen.getByRole("link", { name: /احجز مقعدك/ })).toBeInTheDocument();
+    expect(screen.queryByText(/اختر شركتك/)).not.toBeInTheDocument();
   });
 
   it("a cancelled post keeps its badge and offers nothing — no action, no reactions, no share", async () => {

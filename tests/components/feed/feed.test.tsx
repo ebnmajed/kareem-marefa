@@ -38,7 +38,7 @@ const post = (id: string) => ({ id }) as never;
 
 function feed(over: Partial<FeedData> = {}): FeedData {
   return {
-    viewer: { memberId: "me", isStaff: false, hasCompany: true },
+    viewer: { memberId: "me", isStaff: false },
     groups: [
       { day: TODAY, entries: [{ kind: "session", key: "session:s1", day: TODAY, at: `${TODAY}T12:00:00Z`, post: post("s1") }] },
       { day: "2026-10-02", entries: [{ kind: "session", key: "session:s2", day: "2026-10-02", at: "2026-10-02T15:00:00Z", post: post("s2") }] },
@@ -78,18 +78,15 @@ describe("Feed", () => {
     expect(order).toEqual(["rings", "avatar-prompt", "week", "h2:اليوم", "post", "race", expect.stringMatching(/^h2:/), "post", "h2:أمس", "recap", "h2:عندك موضوع؟"]);
   });
 
-  it("with a company set there is no role=status at all; without one, exactly one, above the week", async () => {
-    const { unmount } = await show(feed());
+  // wave 27 (DEC-255 §4, REQ-PRF-012): the «choose your company» status line is gone with the gate it announced.
+  it("there is no role=status on the home: nothing asks a member for a company", async () => {
+    await show(feed());
     expect(screen.queryAllByRole("status")).toHaveLength(0);
-    unmount();
-    const { container } = await show(feed({ viewer: { memberId: "me", isStaff: false, hasCompany: false } }));
-    const status = screen.getByRole("status");
-    expect(status).toHaveTextContent("اختر شركتك");
-    expect(status.compareDocumentPosition(container.querySelector('[data-region="week"]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText(/اختر شركتك/)).not.toBeInTheDocument();
   });
 
   it("the staff strip is drawn for staff with something waiting, and each count links to its queue", async () => {
-    await show(feed({ viewer: { memberId: "me", isStaff: true, hasCompany: true }, attention: { proposals: 2, unscheduled: 0, photoReports: 1, commentReports: 0, total: 3 } }));
+    await show(feed({ viewer: { memberId: "me", isStaff: true }, attention: { proposals: 2, unscheduled: 0, photoReports: 1, commentReports: 0, total: 3 } }));
     expect(screen.getByRole("heading", { name: "يحتاج انتباهك" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "مقترحان بانتظار القرار" })).toHaveAttribute("href", expect.stringContaining("/app/admin/proposals"));
     expect(screen.queryByText(/جلسة بلا موعد/)).not.toBeInTheDocument();
