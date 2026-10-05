@@ -12,12 +12,23 @@ their policies again **after** it (they name `public` objects) — with this wav
 that auxiliary copy, so they could only come from the migrations. Schema `public` given production's grants.
 
 - **The dump loaded with ONE error — the platform's `supabase_realtime` publication, as every wave.**
-- ★ **The dump already carries `0194`** (`set_session_certificate_mode`'s post-completion form): production had it
-  before its file reached `main` (PR #69). So the dump is at `0197` *with* `0194`, and `db push --include-all`
-  answered «up to date».
+- ★★ **CORRECTED the same day — `0194` is NOT on production, and this note first said it was.** The first version of
+  this line claimed the dump «already carries `0194`», on the strength of another session's report and a search that
+  only found the function's NAME — which has existed since `0154`. Read properly: the dump's
+  `set_session_certificate_mode()` still raises `session_completed` for a completed session, which is exactly what
+  `0194` removes. The owner's `supabase db push` then said the same thing in its own words: «Found local migration
+  files to be inserted before the last migration on remote database … `0194_certificate_mode_after_completion.sql`».
+  **So production is at `0197` WITHOUT `0194`, while `main`'s app (PR #69, merged) already offers the control that
+  `0194` makes work.** It is pushed with `--include-all`.
 - Before the migrations: no `story%` table, no `story%` policy, no bucket row.
 
 **`0198` then `0199`, one transaction, `ON_ERROR_STOP`, as `postgres`: exit 0, no error, no warning.**
+
+★ **Re-rehearsed in production's real order after the correction** — a fresh database, the same dump (one error, the
+publication): **`0194` alone, one transaction as `postgres`: exit 0, no error.** Before it the function refuses a
+completed session; after it, it does not, and `anon` still may not execute it while `authenticated` may. **Then `0198`
+and `0199` on top: exit 0, no error** — twelve `story%` policies and the triggers in place, as in the first pass. The
+three are independent, as `DEC-246` §4 said; the order changes nothing but is now proven rather than argued.
 
 ## The end state, checked
 
@@ -59,7 +70,7 @@ rehearsal; all four tables enable RLS themselves in `0198`, so its presence chan
 
 ## For the push
 
-`supabase db push` applies `0198` and `0199` — both, in order. Nothing on `main` names any of it, so `main`'s app
+★ **Two pushes, from two trees.** `0194` is on `main` and in every wave branch: `supabase db push --include-all` (from any of them) applies it, and it should go FIRST and now, because `main`'s deployed app already expects it. `0198` and `0199` exist only on `wave-26d/stories`: they are pushed **from `../kareem-marefa-wave26d`**, where `supabase db push` applies both, in order — a push from the main checkout does not see them. Nothing on `main` names any of it, so `main`'s app
 and worker on the new schema do nothing different; the three generator hooks begin writing frame rows nobody reads
 until PR D merges. CI on PR #76 at this head: RLS and unit green on a clean database; build, end-to-end and frozen
 routes green on the re-run.
