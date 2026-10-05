@@ -181,9 +181,13 @@ describe("MSG-materials_added — sent when a material is added after the sessio
     await withTx(async (tx) => {
       await tx.asOwner();
       await applyProposed(tx, "notify/materials_added_notify.sql");
-      await seed(tx);
+      const f = await seed(tx);
       await tx.asOwner();
-      expect(await sent(tx)).toEqual([]);
+      // Only the fixture's members: applied over a database that already holds sessions and materials (a demo seed,
+      // a browser run), the promotion announces THOSE — the guard is that seeding the fixture announces nothing.
+      const own = await tx.q<{ id: string }>(`select id from public.members where org_id in ($1, $2)`, [f.a.id, f.b.id]);
+      const ids = new Set(own.map((r) => r.id));
+      expect((await sent(tx)).filter((r) => ids.has(r.member_id))).toEqual([]);
     });
   });
 });
