@@ -1,21 +1,19 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { IntroSting } from "@/components/intro-sting";
-import { ButtonLink, buttonClass } from "@/components/ui/button";
 import { routing } from "@/i18n/routing";
 
 // SCR-000 · the landing — REQ-UIX-114, REQ-UIX-025, REQ-NFR-019, DEC-247, DEC-252.
 // Rebuilt in wave 26 from `docs/design/screens/m13/Landing.dc.html`. The regions, in the artboard's order:
-// the hero with its three posters and two doors · the seven companies as team rings · what the initiative is ·
-// the four things the platform does · the two paths · the register band. The header and the footer are the
-// layout's.
+// the hero with its three posters · the seven companies as team rings · what the initiative is · the four things
+// the platform does · the two paths. The header and the footer are the layout's.
 //
 // ★ THE COPY IS `marketing.json`'s, UNCHANGED (`M13.md` §000). Where the artboard's words differ — it draws four
 // steps a path and the catalogue has three, each with a sentence — the catalogue wins and the drawing gives the
 // structure. What is new is what the artboard adds: the two nav labels, the three poster titles, the company
 // names.
 //
-// ★ THE PRIMARY DOOR IS THE PLATFORM'S, since the platform is live (`M13.md`): «ادخل بحساب عملك» goes to the
-// Arabic sign-in from both locales, and «سجّل اهتمامك» is the band's and the header's.
+// ★ NO BUTTON ON THE PAGE (DEC-266, the owner's ruling): the hero's two doors and the register band are gone. The one
+// button on the public site is the header's «تسجيل الدخول», in the first viewport at every width.
 //
 // ★ STATIC, and it stays static: no session, no cookie, no data. The companies and the posters are copy, and
 // their colours are the seven team constants — a ring's colour is never the only channel, the name is beside it.
@@ -64,16 +62,6 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
             {t("hero.headline")}
           </h1>
           <p className="max-w-[32.5rem] text-body-lg text-fg-muted md:text-[1.25rem]">{t("hero.sub")}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2.5">
-            <ButtonLink href="/sign-in" locale="ar" hrefLang="ar">
-              {t("hero.signIn")}
-            </ButtonLink>
-            {/* An in-page anchor, so a plain <a> with the system's class — the locale-aware Link would turn
-                "#about" into a navigation. */}
-            <a href="#about" className={buttonClass("secondary", "lg")}>
-              {t("hero.ctaSecondary")}
-            </a>
-          </div>
         </div>
         <ul aria-label={t("hero.postersLabel")} className="flex shrink-0 items-center justify-center gap-2.5 md:w-[32.5rem]">
           {POSTERS.map(([key, look]) => (
@@ -135,15 +123,6 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
         </div>
       </section>
 
-      <section className={section}>
-        <div className={`${card} flex flex-col gap-5 rounded-[1.75rem] p-6 md:flex-row md:items-center md:gap-6 md:p-10`}>
-          <div className="flex-1">
-            <h2 className="font-display text-[1.75rem] leading-[1.4] font-extrabold text-fg-heading md:text-[2.125rem]">{t("header.cta")}</h2>
-            <p className="text-body-sm text-fg-muted">{t("hero.microTrust")}</p>
-          </div>
-          <ButtonLink href="/register">{t("header.cta")}</ButtonLink>
-        </div>
-      </section>
     </>
   );
 }

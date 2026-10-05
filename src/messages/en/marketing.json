@@ -4,7 +4,6 @@
     "description": "Share knowledge… make an impact — an internal knowledge-sharing platform for our group of companies"
   },
   "header": {
-    "cta": "Register interest",
     "signIn": "Sign in",
     "nav": "Main navigation",
     "about": "The initiative",
@@ -15,8 +14,6 @@
     "headline": "Share knowledge… make an impact.",
     "sub": "Every experience carries value, and every insight deserves to be shared.",
     "cta": "Register your interest",
-    "ctaSecondary": "Learn about the initiative",
-    "microTrust": "Takes less than a minute",
     "live": "The platform is open to everyone in the group.",
     "signIn": "Sign in with your work account",
     "postersLabel": "Sessions from the initiative",
