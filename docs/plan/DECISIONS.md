@@ -10310,3 +10310,29 @@ Measured live on 2026-10-05: with the only org deleted, `provision_member()` ans
 **Evidence.** The callback's unit test, five cases; `dal-session`'s four lines follow the type. **Not proven end to end** — the path runs behind Google's OAuth; the owner's sign-in on production after the deploy is the proof.
 
 - **Documents changed:** none beyond this entry
+
+---
+
+## DEC-264 — Wave 28 closes: the designer saves when it is told to; a platform admin always reaches the console; an admin may add another admin by email — merged, production at `0211`
+
+- **Date:** 2026-10-05 · **Decided by:** the lead; the owner accepted the sign-in on production · **Closes:** `DEC-258` … `DEC-263` · milestone **M30** · ★ `DEC-262` was never written: a closing entry drafted under that number on an unmerged branch (PR #86, closed) predated `DEC-263` and is replaced by this one
+
+| PR | Merge | Migration | What it is |
+|---|---|---|---|
+| **#84** | `db2194d4` | none | the designer's manual save, the three-answer leave dialog, the local draft; publish saves first; the email builder asks on every in-app link |
+| **#85** | `b2e16f03` | **`0211`**, pushed by the owner before the merge | the callback keeps a platform admin's session on `no_match`; `add_member()` accepts `admin`; the last-admin guard counts only admins who have signed in |
+| **#87** | `df491755` | none | a platform admin whose own org is suspended, or who is deactivated in it, lands on the console too (`DEC-263`) |
+
+**All three were merged by the lead at the owner's instruction**, each on a CI run that had concluded success, after the owner changed the project's permission settings to allow it. `main` is `df491755`; production is at **`0211`**; the next migration is `0212`.
+
+**`0211`'s rehearsal** (the lead, on the owner's dump `/tmp/prod-schema-0210.sql`, schema only, 0 data rows, in a throwaway local database): the dump loaded with the one usual error (the `supabase_realtime` publication); `0211` applied in one transaction with `ON_ERROR_STOP`, exit 0; the signatures, definer flag, `search_path` and ACLs of `add_member`, `add_members` and `set_member_role` identical before and after; a second application exit 0. The owner's dry run listed `0211` alone; the push printed «Finished supabase db push» with the CLI's known catalog-cache warning.
+
+**★ Proven on production by the owner, 2026-10-05:** signing in as the super admin lands on the platform console. It did **not** after #85 — the owner's address matched a suspended org, a path the first fix never reached — and did after #87.
+
+**★ Kept by the owner, asked and answered the same day:** a super admin has no access inside an org and is not its admin (`DEC-014`, invariant 8). The owner found it confusing and ruled «for now let's keep it this way». The two ways in remain a member row with the admin role, or impersonation.
+
+**What the wave found that no plan had:** the lead fixed the lockout case that had been measured and did not ask what else sends a platform admin to `/no-access` — the owner found the second case on production (`DEC-263`). CI caught one RLS case the lead had not run before pushing (ledger L-4): three files are not the suite. Three other RLS cases asserted that nothing happened anywhere in the database and failed on any local database holding earlier data; they now read the fixture's own rows (L-5, L-6). Two load flakes, neither the wave's: a gallery focus case on #84's CI, green on re-run; a designer case timing out at 5 s under the full local run, green alone.
+
+**Owed by the owner:** reactivate the suspended org from the console if it is wanted; check the Railway worker redeployed from `main`; delete `/tmp/prod-schema-0210.sql`; accept the designer's screens (`DEC-260` §3). **Standing, as recorded:** `DEC-257`'s table; the expired-session wording (`DEC-259` §1.6).
+
+- **Documents changed:** `STATUS.md`, `CLAUDE.md`
