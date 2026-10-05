@@ -38,8 +38,10 @@ const preflight = {
   serial: "KM-2026-000124",
 };
 
-function mount(mode: "off" | "automatic" | "review" = "off") {
-  return render(<CertificateModeControl locale="ar" sessionId="s1" mode={mode} preflight={preflight} />, { wrapper: Wrap });
+// ★ DEC-250: `completed` defaults to false, so every case written before this
+// change asserts exactly what it asserted then — the before-completion control.
+function mount(mode: "off" | "automatic" | "review" = "off", completed = false) {
+  return render(<CertificateModeControl locale="ar" sessionId="s1" mode={mode} completed={completed} preflight={preflight} />, { wrapper: Wrap });
 }
 
 beforeEach(() => {
@@ -83,11 +85,53 @@ describe("the certificate mode on SCR-045", () => {
     expect(saveCertificateMode).toHaveBeenCalledWith("ar", "s1", "off");
   });
 
+  // ★ DEC-250: the live refusal is the CANCELLED one. `session_completed` is no
+  // longer raised by `set_session_certificate_mode()` (`0194`), so pinning its
+  // copy here would pin a state the product cannot reach.
   it("a refusal says why, in the function's own terms", async () => {
-    saveCertificateMode.mockResolvedValueOnce({ status: "refused", error: "session_completed" });
+    saveCertificateMode.mockResolvedValueOnce({ status: "refused", error: "session_cancelled" });
     mount("review");
     await userEvent.click(screen.getByRole("radio", { name: "لا شهادات لهذه الجلسة" }));
     await userEvent.click(screen.getByRole("button", { name: "احفظ الوضع" }));
-    expect(show).toHaveBeenCalledWith({ tone: "error", title: "اكتملت الجلسة، فلم يعد الوضع يُغيَّر." });
+    expect(show).toHaveBeenCalledWith({ tone: "error", title: "أُلغيت الجلسة، فلا شهادات لها." });
+  });
+
+  // ★ DEC-250 (REQ-CRT-017). The defect was that this control did not exist for a
+  // completed session at all. Where it does, the act is different in kind — it
+  // issues NOW — and the screen has to say so, or «حُفظ» followed by an empty
+  // «محجوزة · 0» reads as a failure.
+  describe("★ on a session that has already completed", () => {
+    it("the confirmation says it issues now, and the button is «أصدر الآن»", async () => {
+      mount("off", true);
+      await userEvent.click(screen.getByRole("radio", { name: "تُجهَّز وتبقى محجوزة حتى تُطلقها" }));
+      await userEvent.click(screen.getByRole("button", { name: "احفظ الوضع" }));
+
+      const dialog = screen.getByRole("dialog");
+      expect(dialog).toHaveTextContent("اكتملت الجلسة، فالشهادات تصدر الآن لا لاحقًا.");
+      expect(dialog).toHaveTextContent("تصدر لـ 12 شخصًا");
+      expect(screen.queryByRole("button", { name: "ثبّت الوضع" })).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "أصدر الآن" }));
+      expect(saveCertificateMode).toHaveBeenCalledWith("ar", "s1", "review");
+    });
+
+    it("«fanned_out» is reported as being prepared, not as saved", async () => {
+      saveCertificateMode.mockResolvedValueOnce({ status: "fanned_out" });
+      mount("off", true);
+      await userEvent.click(screen.getByRole("radio", { name: "تصدر تلقائيًا عند اكتمال الجلسة" }));
+      await userEvent.click(screen.getByRole("button", { name: "احفظ الوضع" }));
+      await userEvent.click(screen.getByRole("button", { name: "أصدر الآن" }));
+      expect(show).toHaveBeenCalledWith({
+        tone: "success",
+        title: "يجري تجهيز الشهادات الآن، وتظهر في «محجوزة» أو «صادرة» بعد قليل.",
+      });
+    });
+
+    it("switching OFF on a completed session still needs no preflight", async () => {
+      mount("review", true);
+      await userEvent.click(screen.getByRole("radio", { name: "لا شهادات لهذه الجلسة" }));
+      await userEvent.click(screen.getByRole("button", { name: "احفظ الوضع" }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(saveCertificateMode).toHaveBeenCalledWith("ar", "s1", "off");
+    });
   });
 });

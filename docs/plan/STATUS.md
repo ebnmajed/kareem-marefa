@@ -45,7 +45,7 @@ anything more is new scope the owner decides.
 | Next decision / migration | **`DEC-252`** (`249` the owner's three rulings, `250` the hotfix's, `251` sync 1) · **`0198`** |
 | ★★ `0194` and the missing `DEC-245` | **Neither was abandoned and nothing failed to land: both are open PR #69** (`hotfix/certificates-after-completion`). ★★ **It is a collision** — the planner filled `DEC-245` with the wave-26 entry, so two decisions carry that number. `main`'s stands; **#69's is renumbered when #69 is rebased** (it conflicts with `main` today); `0194` keeps its number and `db push` needs `--include-all` |
 | `src/components/ui/` | **69**, floor **69** at `:123` → **71** in PR D |
-| ★★ `main` was RED | CI's unit job failed on `3d22c33a`: `logo-motion.html` declares a class `shadow`, and the design-files gate read Tailwind's `shadow` in `designer/canvas.tsx:727` as a leak. **Fixed by the canonical name `shadow-sm`** — the same value, no guard and no drawing edited — as this branch's first commit **and** its own PR against `main` |
+| ★★ `main` was RED (**fixed — PR #72 merged, `f46d2f59`**) | CI's unit job failed on `3d22c33a`: `logo-motion.html` declares a class `shadow`, and the design-files gate read Tailwind's `shadow` in `designer/canvas.tsx:727` as a leak. **Fixed by the canonical name `shadow-sm`** — the same value, no guard and no drawing edited — as this branch's first commit **and** its own PR against `main` |
 | ★★ A second guard | `console-register.test.ts:108` asserts the graph contains `components/platform/platform-nav.tsx` — the file the wave deletes. **The platform nav set is created at that path** (`DEC-248` §4), so the guard is untouched |
 | ★ Citations that do not exist | `REQ-PRV-*` (it is `REQ-PRF-006` … `008`, `REQ-NFR-013`) · `REQ-NFR-014` for the no-data-plane rule (it is `REQ-ADM-002`) · `REQ-PHO-*` (it is `REQ-EVT-010` … `016`) · the audit (it is `REQ-ADM-018`) · migration `0192` (it is `0198`) |
 | ★ `05-stories.md` vs §25 | the eighteen win: STO-04's eight triggers, expiry from the trigger, views per frame, the start-third tap zone, swipe down to close (`DEC-248` §7.7) |
@@ -58,17 +58,19 @@ anything more is new scope the owner decides.
 | 0 | The map, the ten agent files, `DEC-248`, the requirements, M28, the stories; trace green | lead | **done** |
 | 1 | Four plans, each with its kept-behaviour tables; `content`'s three `DEC-093` pairs; `platform`'s no-data-plane table | the four | **done** |
 | 2 | Sync 1 — «the plans are approved» (`DEC-251`) | lead | **done** |
-| 3 | A: `<Logo>`; the behaviour fingerprint taken on `main`; `006`; the one commit | lead | — |
-| 4 | C: the platform frame — «the frame is in at `<sha>`» | lead | — |
-| 5 | D: `0198` with policies, grants, RLS cases and fixture rows; `ffmpeg` in the image; the two signatures and the floor | lead | — |
-| 6 | B, C, D built; every capture beside its artboard | the four, lead | — |
+| 3 | A: `<Logo>`; the behaviour fingerprint taken on `main`; `006`; the one commit | lead | **the fingerprint is recorded and committed** (`e849a55a`, 17 states, both projects); **`<Logo>`, `006` and the one commit are NOT STARTED** |
+| 4 | C: the platform frame — «the frame is in at `<sha>`» | lead | **done** — `3e104896`; the phone break-glass failure of the frame's first run did not recur on the rebuilt `085` |
+| 5 | D: `0198`, `0199`; `ffmpeg` in the image; the two signatures and the floor | lead | **done** — `0198` (`393eb59d`) and `0199` (`f2e41b9a`, write policy corrected in place at `3b4555fa`); floor 71; the worker image builds with `ffmpeg` 5.1.9 (415 MB); `proxy.ts` allows the camera on `/app` paths only (`c36557f2`) — it was refused everywhere, so the capture could never have worked in production |
+| 6 | B, C, D built; every capture beside its artboard | the four, lead | ★ **All three pass on a production build.** **B** `f1251a6e`+: 28 passed, 0 failed. **C** `253edb31`: 38 passed, 0 failed, both projects. **D** `ae7b96dc`: 60 passed, 0 failed — the click-only and keyboard-only walks, the tap-only recording, the report with `051` playing the video, `044`'s removal, and `044`'s wave-21 suites untouched; ★★ **the video spec 4/4 through the REAL worker** — «visible — 12.0 s, 339085 bytes, no tag left», and 20 s refused by `ffprobe`. **Captures opened beside artboards by the lead so far:** B — privacy-ready, 059 read-default, 059 read-with-logo; C — 080, 084, 085 at 1280. **NOT yet opened:** the rest of B and C, every 390 capture of C, and all of D's |
 | 7 | E: the mark inside the product | lead | — |
 | 8 | The owner rehearses `0198` on a dump taken at `0197`, pushes, merges A → E; Railway's builder checked | owner | — |
 | 9 | The closing entry: the deviation list, and **the sentence** | lead | — |
 
 ### The untouched-suite ledger (wave 26)
 
-*Empty. Each changed assertion in a pre-existing test gets a line here, in the commit that changes it.*
+**One file per PR**, so four branches never edit the same lines here: `docs/plan/notes/wave-26-ledger-{a,b,c,d,e}.md`, each on its own branch. B1 and C1 – C5 are written; the teammates' lines are collected into them at each sync.
+
+★ **RLS on the shared local database with `0199` live: 1,680 of 1,686.** Two were `content`'s photo-frame cases (fixed, 19/19); four are in three older files reading rows other runs committed to that database (`sessions-clock` — one committed published session past its start; `notify-materials-added`; `add-a-member` ×2). **CI's clean database is the arbiter and has not been read yet.** ★ **Carried, found this wave:** the org console's venues table has no row rules (its sticky-header option switches the border model — `platform`'s finding); `radio-group`'s chip row does not wrap, so `085` sets it from the page. ★ **PR #69 is MERGED** (the owner); it was merged with `main` twice (`ce2a9a27`, `eb2cf485`), its decision renumbered `DEC-250`, and is mergeable; its CI is running on the green `main`. ★★ **`.claude/settings.json` was changed in the main checkout by a session that is not the lead** — `gh pr merge`, `git rebase` and `git switch` moved from denied to allowed. It is uncommitted and the lead has not used it: the owner confirms it or reverts it.
 
 ### Out, and not to be re-litigated
 
@@ -246,7 +248,48 @@ because that is what moving a default means — and an org that has overridden i
 
 | Spec · line | Moved | Kind |
 |---|---|---|
-| _(none yet)_ | | |
+| `tests/rls/sessions-certificate-mode.test.ts` «a completed session is refused, with no write and no audit» | ★ `DEC-250`: rewritten as «a cancelled session is refused». A completed session is now **accepted** — the mode is written, one audit row carries the old and the new, the function returns `fanned_out`. | **expectation** |
+| `tests/rls/sessions-certificate-mode.test.ts` «an archived and a cancelled session are refused too» | ★ `DEC-250`: **split**. Archived is accepted and fans out (`after_completion`); cancelled is still refused `session_cancelled` (`refusals`). | **expectation** |
+| `tests/rls/sessions-certificate-mode.test.ts` «enqueues no job and writes no notification and no transition» | ★ `DEC-250`: scoped to **before completion** and to a switch to `off`, which is what it always meant. The late switch's own jobs are asserted in `after_completion`; neither path writes a notification or a transition, and that part did not change. | **expectation** |
+| `tests/components/certificates/mode-control.test.tsx:42` (`mount`) | ★ `DEC-250`: the control takes `completed`, defaulted to `false` in the helper, so every case written before the change asserts exactly what it asserted then. | selector |
+| `tests/components/certificates/mode-control.test.tsx` «a refusal says why, in the function's own terms» | ★ `DEC-250`: `session_completed` → `session_cancelled`. `0194` no longer raises the first, so pinning its copy would pin a state the product cannot reach. | **expectation** |
+
+★ **Three new RLS describes and one new component describe** carry the new behaviour, in new blocks rather than in the
+old ones: `RPC-set_session_certificate_mode.after_completion` (three cases), `.after_completion_off`, and
+«★ on a session that has already completed» (three cases). ★ **`0194` is applied inside the rolled-back transaction**
+like a proposed file, so the suite is green on a database that has not been reset since it landed — safe because every
+statement in it is `create or replace`, `revoke`, `grant` or `comment`.
+
+---
+
+## ★ HOTFIX IN FLIGHT — `DEC-250`, the certificate mode outlives completion (`REQ-CRT-017`, `0194`)
+
+★★ **The owner met a live defect while wave 24 was open:** «there is a bug in the live app not allowing certificates to
+be issued … the default for the certificate is that the session has no certificate and the settings for enabling and
+disabling disappeared». Both halves true, and together a dead end — `certificate_mode` defaults to `off` (`0010:88`),
+the fan-out runs only on the **edge into `completed`** (`0065:78`), and `set_session_certificate_mode()` then refused a
+completed session (`0154`), so wave 23's `SCR-045` drew **no control at all** (`page.tsx`, gated on `!closed`). That
+control has no other home: the schedule screen only *reads* the mode.
+
+★★ **`DEC-178` ruling 2's premise was false.** «A mode changed after completion does nothing» was an observation about
+a **missing caller**, not about the mechanism: `fan_out_certificates()` reads the mode live, its
+`cert:{session}:{member}:{kind}` key makes a re-run **move** each pending job rather than duplicate it, and
+`issue_certificate()` is idempotent over a live row and re-derives eligibility at call time. Nothing was needed but a
+second caller.
+
+| # | Step | State |
+|---|---|---|
+| 1 | `DEC-250`; `REQ-CRT-017` in `01`; `03` §8.2's three new rows and two amended; `14`/`15` | ✓ |
+| 2 | `0194` — the refusal lifted for completed/archived, kept for cancelled, and the late switch fans out | ✓ |
+| 3 | `SCR-045` — the mode section gated on `!cancelled`; `changeable()` drops `heldCount > 0`; the `offLine` dead-end sentence removed; «من يستحق» shown to an admin on a completed session with nothing issued | ✓ |
+| 4 | The control says it issues **now** — `fanned_out` → «يجري تجهيز الشهادات الآن…», `confirmBodyCompleted`, `checkEligibleNow`, `confirmNow` | ✓ |
+| 5 | Gates: `tsc` clean · `lint` 0 errors · `npm test` **5375 passed, 1 skipped** · certificate RLS **70 passed** · `traceability` ✓ · `policy-diff` ✓ | ✓ |
+| 6 | ★ **Not run, and why:** `supabase db reset` and `npm run qa` / `visual` / `build` — a second session was working in the shared checkout and a reset would have destroyed its local data. The migration is proven **against the live 0193 schema** inside the suite's own transaction, not through a full-chain reset | ☐ **owner** |
+| 7 | ★ **Two questions left for the owner** (`DEC-250` §4): should a new session default to `review` rather than `off`? Should `off` be refused once certificates exist for the session? | ☐ **owner** |
+
+★ **`REQ-CRT-014` is untouched**: a certificate issued before this still renders as the version it was issued against,
+and a late switch never replaces one revoked **for cause** (`0127`). ★ **`registrations` is untouched and the five
+public routes do not move** — `SCR-045` is behind sign-in and renders none of them.
 
 ---
 
