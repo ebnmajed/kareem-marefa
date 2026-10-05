@@ -63,7 +63,23 @@
       "lockedRegion": "This region is locked in the template: <bdi>{layer}</bdi>",
       "invalid": "Something in the document prevents saving: <bdi>{issue}</bdi>",
       "forbidden": "Designing is an org admin's act.",
-      "failedBadge": "Not saved"
+      "failedBadge": "Not saved",
+      "unsaved": "Unsaved",
+      "action": "Save"
+    },
+    "leave": {
+      "title": "Your edits aren't saved",
+      "save": "Save and leave",
+      "discard": "Discard and leave",
+      "stay": "Stay"
+    },
+    "draft": {
+      "label": "Unsaved edits",
+      "fresh": "Your last edits weren't saved.",
+      "stale": "Your last edits weren't saved, and a newer version of this document was saved since.",
+      "staleConsequence": "If you restore and save them, they replace the newer version.",
+      "restore": "Restore them",
+      "delete": "Delete them"
     },
     "canvas": {
       "label": "Design canvas",

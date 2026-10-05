@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import type { DesignDocument, FocalPoint, Frame, Layer, PresetName, ReorderMove } from "@kareem/designer-runtime";
 import {
   addLayer,
+  fingerprintSource,
   alignLayer,
   alignLayers,
   derive,
@@ -39,11 +40,20 @@ import { useToast } from "@/components/ui/toast";
 //
 // MOVED VERBATIM out of `editor.tsx` (wave 23, slice 1), so the chrome can be
 // rebuilt from its artboard without re-deriving a requirement from memory:
-// the document, the selection, fifty-step document-level undo, the autosave
+// the document, the selection, fifty-step document-level undo, the save
 // through the Route Handler, and the rule that a gesture — or a burst of arrow
 // presses — is ONE undo entry (W13.1 R5). The one change inside the moved code:
 // which panel opens when a layer should be shown is the chrome's, so the four
 // `setPanel("inspector")` calls became `onRevealLayer()`.
+//
+// ★ WAVE 28 (REQ-DSG-036, DEC-258, DEC-259): THE PERSON SAVES. The two timers
+// and `AUTOSAVE_DELAY_MS` are gone; an edit, an undo and a redo change the
+// document on screen and send nothing. `push()` is the write, unchanged — what
+// changed is who calls it: `saveDocument()`, which the bar's «احفظ», ⌘S, the leave
+// dialog and publish call. ★ DIRTY IS DERIVED, never flagged: the document on
+// screen against the document the server last answered 200 for, in canonical
+// form, so an undo back to the saved document is clean again. `SaveState`
+// still reports the last attempt (and a refused edit) and gains nothing.
 
 export type SaveState =
   | { kind: "clean" }
@@ -55,19 +65,21 @@ export type SaveState =
   | { kind: "locked"; layerId: string }
   | { kind: "invalid"; issue: string };
 
-/** Long enough that typing in a number field is one save, short enough that
- *  closing the tab a second after a change does not lose it. */
-export const AUTOSAVE_DELAY_MS = 1200;
-
 /** 06 §10: fifty steps. */
 export const UNDO_STEPS = 50;
 
 export interface DesignerEditorStateOptions {
   /** Show the selected layer's properties — the chrome decides where. */
   onRevealLayer: () => void;
+  /** False while a local draft's offer is unanswered (DEC-259 §2.6): nothing is edited, undone or saved until the
+   *  person restores or deletes it. Absent means editable (when `canEdit`). */
+  editable?: boolean;
 }
 
-export function useDesignerEditorState(props: DesignerEditorProps, { onRevealLayer }: DesignerEditorStateOptions) {
+/** The document's canonical form — key order is not a change (as `editor.tsx`'s `differs`). */
+const canonicalOf = (d: DesignDocument) => fingerprintSource({ document: d, templateVersionId: null, bindings: {}, fontHashes: [] });
+
+export function useDesignerEditorState(props: DesignerEditorProps, { onRevealLayer, editable = true }: DesignerEditorStateOptions) {
   const ts = useTranslations("designer.save");
   const tb = useTranslations("designer.bindings");
   const ta = useTranslations("designer.add");
@@ -104,8 +116,14 @@ export function useDesignerEditorState(props: DesignerEditorProps, { onRevealLay
   const [overlays, setOverlays] = useState(() => PRESETS[presetsForDocument(props.initialDocument)[0] ?? "master"].bleed > 0);
   const [fontsReady, setFontsReady] = useState(false);
   const baseUpdatedAt = useRef(props.initialUpdatedAt);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlight = useRef<AbortController | null>(null);
+  /** The document the server last answered 200 for — the page's, until a save lands. */
+  const [savedDocument, setSavedDocument] = useState<DesignDocument>(props.initialDocument);
+  /** Read by the edit paths at call time: a closure would see the value of the render that created it. */
+  const canChange = useRef(props.canEdit && editable);
+  useEffect(() => {
+    canChange.current = props.canEdit && editable;
+  }, [props.canEdit, editable]);
 
   /** Locked by the TEMPLATE, or by the layer's own flag. The database
    *  enforces the first (design_documents_guard compares against the pinned
@@ -203,7 +221,9 @@ export function useDesignerEditorState(props: DesignerEditorProps, { onRevealLay
   }, [save.kind, toast, ts]);
 
   const mutate = useCallback(
-    (next: DesignDocument, options: { coalesce?: string } = {}) => {
+    (next: DesignDocument, options: { coalesce?: string; restore?: boolean } = {}) => {
+      // ★ Nothing is edited while a draft's offer is unanswered (DEC-259 §2.6) — except the restore itself.
+      if (!canChange.current && !options.restore) return;
       // Validated in the browser too, so a bad edit is refused at the field
       // rather than round-tripping to a 422. The Route Handler runs the same
       // function — this is a courtesy, never the boundary.
@@ -225,16 +245,15 @@ export function useDesignerEditorState(props: DesignerEditorProps, { onRevealLay
         setDepth({ past: past.current.length, future: 0 });
         return next;
       });
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => void push(next), AUTOSAVE_DELAY_MS);
     },
-    [push],
+    [],
   );
 
   const step = useCallback(
     (direction: "undo" | "redo") => {
       const from = direction === "undo" ? past : future;
       const to = direction === "undo" ? future : past;
+      if (!canChange.current) return;
       const previous = from.current[from.current.length - 1];
       if (!previous) return;
       from.current = from.current.slice(0, -1);
@@ -243,10 +262,8 @@ export function useDesignerEditorState(props: DesignerEditorProps, { onRevealLay
         setDepth({ past: past.current.length, future: future.current.length });
         return previous;
       });
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => void push(previous), AUTOSAVE_DELAY_MS);
     },
-    [push],
+    [],
   );
 
   useEffect(() => {
@@ -261,11 +278,43 @@ export function useDesignerEditorState(props: DesignerEditorProps, { onRevealLay
 
   useEffect(
     () => () => {
-      if (timer.current) clearTimeout(timer.current);
       inFlight.current?.abort();
     },
     [],
   );
+
+  // ★ DIRTY, DERIVED (DEC-258 §1.2, contract 2). Once per edit, never per render: undo pops the very object that was
+  // pushed, so an undo back to the saved document is clean by identity before anything is canonicalised.
+  const savedCanonical = useMemo(() => canonicalOf(savedDocument), [savedDocument]);
+  const dirty = useMemo(
+    () => props.canEdit && document !== savedDocument && canonicalOf(document) !== savedCanonical,
+    [props.canEdit, document, savedDocument, savedCanonical],
+  );
+
+  /** ★ SAVE — the one way the document reaches the server (REQ-DSG-036). `push()` records a landed save in exactly one
+   *  place, the base it was answered; so a base that moved is a save that landed, and the snapshot becomes what was
+   *  SENT — an edit made while it was in flight stays dirty. Resolves true when the document on screen was saved (or
+   *  already was), false for every refusal, which `push()` has already put on the bar. Never two at once: an abort
+   *  does not un-write a request the server applied, and the second would carry a stale base into a false 409. */
+  const saving = useRef(false);
+  const saveDocument = useCallback(async (): Promise<boolean> => {
+    if (!canChange.current || saving.current) return false;
+    if (!dirty) return true;
+    const sent = document;
+    const before = baseUpdatedAt.current;
+    saving.current = true;
+    try {
+      await push(sent);
+    } finally {
+      saving.current = false;
+    }
+    if (baseUpdatedAt.current === before) return false;
+    setSavedDocument(sent);
+    return true;
+  }, [dirty, document, push]);
+
+  /** The base the edits on screen sit on — what a local draft records. */
+  const baseOf = useCallback(() => baseUpdatedAt.current, []);
 
   const patchLayer = useCallback(
     (layerId: string, patch: Partial<Layer>) => {
@@ -539,14 +588,6 @@ export function useDesignerEditorState(props: DesignerEditorProps, { onRevealLay
 
   /* ── wave 23, after the move: what the rebuilt chrome needs beyond it ── */
 
-  /** Save NOW — before a navigation (a preview, a publish) drops the last 1.2 s of work. */
-  const flush = useCallback(async () => {
-    if (!timer.current) return;
-    clearTimeout(timer.current);
-    timer.current = null;
-    await push(document);
-  }, [document, push]);
-
   /** A tile tapped in العناصر, الحقول or الملفات: the layer is added inside the safe area at the document's start,
    *  selected and shown, and «ضع بنقرة» armed — the next tap on the canvas places its centre (DEC-093; the drag is the
    *  enhancement). */
@@ -623,7 +664,11 @@ export function useDesignerEditorState(props: DesignerEditorProps, { onRevealLay
     onSource,
     lockedIds,
     selection,
-    flush,
+    dirty,
+    savedDocument,
+    saveDocument,
+    baseOf,
+    restore: (next: DesignDocument) => mutate(next, { restore: true }),
     addFromPanel,
     setPlacing,
   };

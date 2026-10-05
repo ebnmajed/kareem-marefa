@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { PresetName } from "@kareem/designer-runtime";
 import { exportFingerprint, getDesignerDocument, getExportQueue, getLongestSamples, listPreviewMembers, listPreviewSessions, signExportUrl, type DesignerDocumentData } from "@/lib/dal/designer";
 import { listEditorFaces } from "@/lib/dal/fonts";
+import { requireSession } from "@/lib/dal/session";
 import { assetSizesFor, downloadHref, listDesignAssets } from "@/lib/dal/posters";
 import { DesignerEditor } from "@/components/designer/editor";
 import { ExportActionButton } from "@/components/designer/export-action-button";
@@ -69,12 +70,14 @@ export default async function DesignerPage({
   const proto = headerList.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const origin = `${proto}://${host}`;
 
-  const [t, te, ts, data, faces] = await Promise.all([
+  const [t, te, ts, data, faces, session] = await Promise.all([
     getTranslations("designer.editor"),
     getTranslations("designer.exports"),
     getTranslations("designer.studio"),
     getDesignerDocument(locale, documentId, origin, { scheme: requestedScheme ?? null, previewSessionId: previewSessionId ?? null, previewMemberId: previewMemberId ?? null }),
     listEditorFaces(locale),
+    // The DAL already read it (`getSessionState` is memoised per render): the local draft is this member's (DEC-259 §2.2).
+    requireSession(locale),
   ]);
   if (!data) notFound();
 
@@ -155,7 +158,10 @@ export default async function DesignerPage({
   // ★ ONE PAGE PER CERTIFICATE (DEC-148, DEC-238 §3): the strip shows this composition's one preset, and its other
   // orientation — a separate template in the org's library — is a link that opens that template's draft.
   const sibling = context.kind === "template_draft" && data.sibling ? (
-    <form action={openSiblingTemplate.bind(null, locale, data.sibling.templateId)} className="shrink-0">
+    // ★ It leaves for another document through a Server Action — not a link — so it says so, and the editor's leave
+    // guard asks before it submits with unsaved changes (DEC-259 §1.3). The attribute is `leave-guard.ts`'s
+    // `LEAVES_ATTRIBUTE`, spelled here: a constant imported from a client module is a reference on the server.
+    <form action={openSiblingTemplate.bind(null, locale, data.sibling.templateId)} className="shrink-0" data-designer-leaves="">
       <button type="submit" className={buttonClass("secondary", "sm")}>
         {ts(`siblingOrientation.${data.sibling.orientation}`)}
       </button>
@@ -254,6 +260,7 @@ export default async function DesignerPage({
       {...(previewMembers ? { previewMembers, previewMemberId: previewMemberId ?? null } : {})}
       samples={samples}
       uploads={uploads}
+      draftOwner={session.memberId}
     />
   );
 }
