@@ -10021,3 +10021,49 @@ branch would be applied ahead of the code it depends on. In PR C, M2 lives under
 proven with `applyProposed()`. **Order: push A's, B's and C's additive migrations → merge A, B, C → push D's → merge D.**
 
 - **Documents changed:** `01-prd.md`, `CLAUDE.md`, `STATUS.md`
+
+---
+
+## DEC-256 — The certificate mode is chosen where a session is set up: the schedule tab carries the control too; and what wave 27's builds found that no plan had
+
+- **Date:** 2026-10-05 · **Decided by:** the owner (§1); the lead (§2 – §4)
+- **Amends:** `DEC-178` ruling 1 and `DEC-237` §4 — «the mode is written only on `SCR-045`» becomes «the mode is written only through `set_session_certificate_mode()`, from `SCR-043` and from `SCR-045`» · `REQ-CRT-015`'s acceptance line that names the one screen
+- **Keeps:** `DEC-250` (the late switch and its fan-out) · one function, one component, one audit row per change
+
+### 1 · ★★ The owner's ruling
+
+Having gone looking for the setting and found it only on the certificates tab: «It is just confusing UI the placement
+of the certificate settings, the tab is after the selection and if the admin isn't attentive they will easily leave
+the option as is. So I need it repositioned.»
+
+- **The schedule tab's «الشهادة» row carries the mode control itself** — the three named options, with its preflight —
+  wherever `SCR-045` offers it: for an admin, in every state but `cancelled`. A cancelled session shows the sentence.
+- **`SCR-045` keeps the control.** It is where a late switch is made beside the recipients it will issue to.
+  Two places, **one component** (`certificates/mode-control.tsx`) **and one action**, imported and never copied.
+- ★ **What `DEC-178` guarded still holds.** Its defect was the schedule form's *save* rewriting the mode on every
+  press. The control here saves on its own; `schedule_session()` still receives null for the mode, and a test proves
+  that neither save triggers the other.
+
+### 2 · What the builds found — each fixed, none of them in a plan
+
+| Found by | What | Where it went |
+|---|---|---|
+| B's e2e, on a production build | ★ **The confirm dialog's «انقل واحفظ» never submitted**: it disabled itself from its own click before the browser's submit ran, so the confirmed save never left the browser. jsdom does not reproduce it | `console`, fixed; the e2e is the proof (ledger B14) |
+| the full RLS run on `0201` | seven cases assumed the fixture's sessions were `off` by the column's default | the fixture names `off` (ledger A1) |
+| the full RLS run on `0206` | 65 cases in four files: shared setups that empty both orgs' whole libraries, refused by the last-template guard | **the guard stays as written**; the four setups switch it off for their own rolled-back transaction (C-14 … C-17). Exempting a caller with no session was refused: it would let any definer function strip an org's last template silently |
+| C's e2e | three cases stale since `DEC-250` (wave 26): two «غيّر» lines on `045` and the mode control after completion are the correct screen | ledger C-19 … C-21, marked as wave 26's debt — CI skips signed-in e2e (`DEC-253` §7.2) |
+| C's e2e | two non-retrying reads in `platform-console.spec.ts`, each failing once in a different run | made retrying (L7) |
+| a teammate's commit | `161e7e41` swept the lead's staged promotion of `0205` – `0207` into a test commit | left as it is, unpushed history not rewritten; teammates commit with pathspecs |
+
+### 3 · The numbers, as allocated
+
+`0200` rename · `0201` the default · `0202` the rotation (PR A) · `0203` company domains, `0204` `console`'s functions
+(PR B) · `0205` – `0207` the org seed, its guard, the backfill (PR C). **PR D takes the next two when it is cut**: the
+revoke of `company_id` from the member's grant, and the platform rows' removal with its read policies.
+
+### 4 · Not built, and said so
+
+`SCR-063`'s «لا يتغيّر» has no capture beside an artboard — the settings artboard draws no such control; it is a
+switch beside the period, in the row that already holds it. The owner sees it at acceptance.
+
+- **Documents changed:** `01-prd.md` (`REQ-CRT-015`), `STATUS.md`

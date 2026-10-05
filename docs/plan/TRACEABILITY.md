@@ -148,7 +148,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CRT-001` | `ENT-certificates` `ENT-session_certificate_designs` `ENT-session_days` +1 | `POL-certificates.constraints` | `SCR-014` `SCR-016` `SCR-043` +2 | `JOB-award_points` | `MSG-reminder_` | `STORY-CRT-001` | M6 |
 | `REQ-CRT-002` | `ENT-certificates` `ENT-sessions` | `POL-certificates.fanout` | `SCR-043` `SCR-044` `SCR-045` +2 | — | — | `STORY-CRT-001` | M6 |
 | `REQ-CRT-003` | `ENT-certificates` `ENT-sessions` | `POL-certificates.constraints` `POL-issue_certificate.idempotent` | `SCR-045` | `JOB-issue_certificates` | — | `STORY-CRT-002` | M6 |
-| `REQ-CRT-004` | `ENT-certificates` | `POL-certificates.select.held` `POL-issue_certificate.mode` | `SCR-045` `SCR-055` `SCR-056` | — | — | `STORY-CRT-002` | M6 |
+| `REQ-CRT-004` | `ENT-certificates` | `POL-certificates.select.held` `POL-issue_certificate.mode` | `SCR-043` `SCR-045` `SCR-055` +1 | — | — | `STORY-CRT-002` | M6 |
 | `REQ-CRT-005` | `ENT-certificates` | — | `SCR-023` | — | — | `STORY-CRT-003` | M6 |
 | `REQ-CRT-006` | `ENT-certificates` | — | `SCR-023` `SCR-045` | — | `MSG-certificate_issued` | `STORY-CRT-003` | M6 |
 | `REQ-CRT-007` | `ENT-certificates` | `POL-certificates.verify.anon` `POL-verify_certificate.public` | `SCR-006` `SCR-007` `SCR-041` +7 | `JOB-zip_session_photos` | — | `STORY-CRT-005` | M6 |
@@ -159,9 +159,9 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CRT-012` | `ENT-badges` `ENT-certificates` `ENT-leaderboard_entries` +2 | `POL-achievement.badge` `POL-achievement.snapshot` | `SCR-011` `SCR-043` `SCR-045` +2 | — | `MSG-reminder_generic` | `STORY-CRT-006` | M6 |
 | `REQ-CRT-013` | `ENT-certificates` | — | `SCR-023` | — | — | `STORY-CRT-003` | M6 |
 | `REQ-CRT-014` | `ENT-certificates` `ENT-design_template_versions` `ENT-fonts` +2 | — | `SCR-023` `SCR-043` `SCR-045` +4 | `JOB-evaluate_alerts` | — | `STORY-CRT-006` | M6 |
-| `REQ-CRT-015` | — | — | `SCR-045` `SCR-055` | — | — | `STORY-CRT-007` | M25 |
+| `REQ-CRT-015` | — | — | `SCR-043` `SCR-045` `SCR-055` +1 | — | — | `STORY-CRT-007` | M25 |
 | `REQ-CRT-016` | — | — | `SCR-055` `SCR-059` | — | — | `STORY-CRT-008` | M26 |
-| `REQ-CRT-017` | `ENT-sessions` | — | `SCR-045` | — | — | `STORY-CRT-009` | M26 |
+| `REQ-CRT-017` | `ENT-sessions` | — | `SCR-043` `SCR-045` | — | — | `STORY-CRT-009` | M26 |
 | `REQ-CRT-018` | `ENT-sessions` | — | `SCR-045` `SCR-083` | — | — | `STORY-CRT-010` | M29 |
 
 ### DSC

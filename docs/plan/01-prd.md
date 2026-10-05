@@ -1744,6 +1744,7 @@ held certificates and none issued**, so the held ones can be re-rendered (`DEC-2
 **Acceptance:**
 - With no choice, a certificate is issued from the template `issue_certificate()` picks, and the screens name that same
   template — «افتراضي» only when it is the kind's default (`DEC-238` §2).
+- ★ **Amended by `DEC-256`:** the mode's control also sits on the session's **schedule tab** (`SCR-043`), with the session's other settings — the same control and the same function as on its certificates screen, never the schedule form's own save. The template is still chosen on the certificates screen alone.
 - ★ **Amended by `DEC-250`:** the mode is refused only once the session is **cancelled** (see `REQ-CRT-017`); the
   template once a certificate of that kind is issued.
 
