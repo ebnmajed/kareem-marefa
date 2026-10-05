@@ -66,7 +66,7 @@ export default async function NoAccessPage({
         <span aria-hidden className="inline-flex size-14 items-center justify-center rounded-[16px] border border-edge bg-raised text-[1.5rem] text-fg-muted">
           <LockIcon />
         </span>
-        <h1 className="font-display text-[1.625rem] leading-[1.2] font-extrabold text-fg-heading">{title}</h1>
+        <h1 className="font-display text-[1.625rem] leading-[1.4] font-extrabold text-fg-heading">{title}</h1>
         <p className="text-fg-muted">{body}</p>
 
         {masked ? (

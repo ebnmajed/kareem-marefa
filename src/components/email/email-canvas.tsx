@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { EmailBlock } from "@kareem/mail-runtime";
 import type { BlockCanvasBox, BlockCanvasPlace, BlockCanvasRow, BlockCanvasTarget } from "@/components/ui";
@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { blockName } from "@/components/email/checks";
 import { targetIdOf, type BuilderDoc } from "@/components/email/builder-state";
 import { toDisplay, toStored, type TokenMap } from "@/components/email/binding-labels";
+import { useHydrated } from "@/lib/hooks/use-hydrated";
 
 // The builder's canvas — wave 23, REQ-UIX-112, REQ-NTF-010, DEC-093, DEC-237 §3, `AdminEmails.dc.html`.
 //
@@ -27,10 +28,6 @@ import { toDisplay, toStored, type TokenMap } from "@/components/email/binding-l
 //
 // The stage around it is `ui/canvas-stage`'s, at 100 %: the mail is 600 px or the phone's 375, never scaled, so the
 // boxes the frame reports are the boxes the overlay draws.
-
-/** True only after hydration: the server snapshot is `false`, the client's `true`. */
-const subscribeNothing = () => () => {};
-const useHydrated = () => useSyncExternalStore(subscribeNothing, () => true, () => false);
 
 export interface EmailCanvasProps {
   messageKey: string;

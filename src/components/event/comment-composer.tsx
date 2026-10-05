@@ -28,6 +28,7 @@ import type { CommentAuthor, MentionCandidate } from "@/lib/dal/comments";
 
 const MAX_LENGTH = 4000;
 const COUNTER_THRESHOLD = 200;
+const COUNTER_ANNOUNCE = [20, 10, 0];
 const MAX_GROW_PX = 240;
 
 export function CommentComposer({
@@ -147,7 +148,7 @@ export function CommentComposer({
             autoFocus={autoFocus}
             aria-label={label}
             aria-describedby={describedBy}
-            className={controlClass(false, "md", "min-h-11 resize-none overflow-hidden rounded-panel")}
+            className={controlClass(false, "md", "min-h-11 resize-none overflow-y-auto rounded-panel")}
           />
           {candidates.length > 0 ? (
             <Panel className="absolute z-10 mt-1 w-full max-w-xs bg-raised! p-0! shadow-card">
@@ -172,10 +173,14 @@ export function CommentComposer({
           {t("mentionHint")}
         </p>
         {remaining <= COUNTER_THRESHOLD ? (
-          <p id={counterId} aria-live="polite" className="shrink-0 text-caption text-fg-muted">
+          <p id={counterId} className="shrink-0 text-caption text-fg-muted">
             {t("remainingChars", { count: remaining, value: formatNumber(remaining) })}
           </p>
         ) : null}
+        {/* The visible counter is described, not live — a live one reads every keystroke. Only these marks are spoken. */}
+        <p aria-live="polite" className="sr-only">
+          {COUNTER_ANNOUNCE.includes(remaining) ? t("remainingChars", { count: remaining, value: formatNumber(remaining) }) : null}
+        </p>
       </div>
       {error ? (
         <Panel tone="error" className="flex items-start gap-2 p-3">

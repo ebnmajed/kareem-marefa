@@ -116,7 +116,9 @@ describe("TemplateEditor", () => {
     // asserting a shape nothing produces is worse than no test.
     await waitFor(() => expect(router.push).toHaveBeenCalledTimes(1));
     const url = router.push.mock.calls[0][0] as string;
-    expect(url).toBe("/app/admin/surveys/77777777-7777-4777-8777-777777777777");
+    // Through the locale-aware router, as every sibling editor navigates: the locale is in the path, so the push costs no
+    // middleware redirect.
+    expect(url).toBe("/ar/app/admin/surveys/77777777-7777-4777-8777-777777777777");
     expect(url).not.toContain("undefined");
   });
 

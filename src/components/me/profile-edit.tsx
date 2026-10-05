@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { useRouter as useRawRouter } from "next/navigation";
@@ -23,6 +23,7 @@ import type { Locale } from "@/i18n/routing";
 import type { MyInterests, SelfProfile } from "@/lib/dal/members";
 import { saveProfile } from "@/app/[locale]/app/me/actions";
 import { emptyProfileState, PROFILE_FIELDS, type ProfileField, type ProfileState } from "@/app/[locale]/app/me/state";
+import { useHydrated } from "@/lib/hooks/use-hydrated";
 
 // SCR-021 in edit mode — `MeEdit.dc.html`, `M10c.md` §1, REQ-UIX-071, `DEC-216` §5.12, `DEC-218` §4.2 – §4.3.
 // Written from the artboard in wave 20 after `profile-form.tsx` was deleted (DEC-208); kept-behaviour table P1 – P22.
@@ -59,9 +60,6 @@ function FormError({ message }: { message: string }) {
     </div>
   );
 }
-
-const noop = () => () => {};
-const useHydrated = () => useSyncExternalStore(noop, () => true, () => false);
 
 const BIO_MAX = 600;
 

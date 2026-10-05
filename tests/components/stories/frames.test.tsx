@@ -54,7 +54,9 @@ describe("the frame bodies", () => {
     show({ ...base, id: "x", kind: "photo", photoId: "ph", uploader: { memberId: "r", name: "ريم الشهري", avatarUrl: null, teamColor: "#FF4FB8", company: null }, caption: "الشريحة الثالثة" });
     expect(screen.getByText("ريم الشهري")).toBeInTheDocument();
     expect(screen.getByText("الشريحة الثالثة")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "الشريحة الثالثة" })).toHaveAttribute("src", "https://x.test/p.webp");
+    // The caption is shown, so the photograph is not named by it a second time.
+    const img = document.querySelector('img[src="https://x.test/p.webp"]');
+    expect(img).toHaveAttribute("alt", "");
   });
 
   it("a video that is not visible plays nothing and says «جارٍ التجهيز» or «تعذّر»", () => {

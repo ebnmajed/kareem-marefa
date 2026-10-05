@@ -101,7 +101,7 @@ export function StoryCapture({
                 close's width, so the pill stays centred whatever its length. */}
             <div className="relative z-10 grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 px-3">
               <span aria-hidden />
-              <RadixDialog.Title className="justify-self-center truncate rounded-pill bg-chrome px-3 py-1.5 text-label font-bold">{labels.dialog}</RadixDialog.Title>
+              <RadixDialog.Title className="justify-self-center truncate rounded-pill bg-chrome px-3 py-1.5 text-label font-bold leading-[1.7]">{labels.dialog}</RadixDialog.Title>
               <RadixDialog.Close aria-label={labels.close} className={`${ROUND} size-11`}>
                 <CloseIcon aria-hidden />
               </RadixDialog.Close>

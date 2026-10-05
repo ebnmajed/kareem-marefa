@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { validateDocument, type DesignDocument } from "@kareem/designer-runtime";
+import { useHydrated } from "@/lib/hooks/use-hydrated";
 
 // SCR-057's local draft — REQ-DSG-036, STORY-DSG-020, DEC-258 §2.3, DEC-259 §2.
 //
@@ -105,9 +106,6 @@ function whenIdle(run: () => void): Idle {
   const id = window.setTimeout(run, 0);
   return { cancel: () => window.clearTimeout(id) };
 }
-
-const noop = () => () => {};
-const useHydrated = () => useSyncExternalStore(noop, () => true, () => false);
 
 export interface DraftOffer {
   draft: DesignerDraft;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState, useSyncExternalStore } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter as useRawRouter } from "next/navigation";
 import { formatNumber } from "@/components/sessions/numerals";
@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/toast";
 import { useRouter } from "@/i18n/navigation";
 import { summaryErrors } from "@/lib/form-state";
 import { emptyRecognitionState, field, type RecognitionOpened, type RecognitionState } from "./state";
+import { useHydrated } from "@/lib/hooks/use-hydrated";
 
 // SCR-054 in EDIT mode — `REQ-UIX-091`, `REQ-UIX-101`, `DEC-231` §3, `DEC-232` §3, in the shape `053` and `060` share.
 // ★ Edit mode names its state, counts the unsaved changes, marks each changed field by the accent AND «(معدّل)»;
@@ -27,8 +28,6 @@ import { emptyRecognitionState, field, type RecognitionOpened, type RecognitionS
 // (`DEC-232` §4 row 2) — its payout is SCR-053's «سلسلة الحضور الشهرية».
 // ★ A badge's description, rule and certificate flag are its sheet's (`?badge=<id>`); here, its name and its switch.
 
-const noop = () => () => {};
-const useHydrated = () => useSyncExternalStore(noop, () => true, () => false);
 const plain = (chunks: string) => chunks;
 
 type Values = Record<string, string | boolean>;

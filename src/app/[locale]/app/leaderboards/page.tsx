@@ -144,7 +144,7 @@ export default async function LeaderboardsPage({
             align="end"
             trigger={
               <Button variant="secondary" size="sm" iconEnd={<ChevronIcon direction="down" />}>
-                {topic ? t.markup("category.current", { name: topic.categoryName, bdi: (c) => c }) : t("category.trigger")}
+                {topic ? t.rich("category.current", { name: topic.categoryName, bdi: (c) => <bdi>{c}</bdi> }) : t("category.trigger")}
               </Button>
             }
             items={[

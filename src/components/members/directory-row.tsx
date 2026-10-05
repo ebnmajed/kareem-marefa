@@ -44,7 +44,7 @@ export async function DirectoryRow({ member }: { member: DirectoryMember }) {
       <div className="flex shrink-0 flex-col items-end gap-1">
         {member.level ? (
           <Badge level={member.level.tier} size="sm">
-            {member.level.name}
+            <bdi>{member.level.name}</bdi>
           </Badge>
         ) : null}
         {member.deactivated ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useActionState, useEffect, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter as useRawRouter } from "next/navigation";
 import { DurationInput } from "@/components/admin/duration-input";
@@ -19,6 +19,7 @@ import { useRouter } from "@/i18n/navigation";
 import { summaryErrors } from "@/lib/form-state";
 import { UNITS, bandWords, type ReminderRowKey } from "./rows";
 import { PROMPT_CONTROL_ID, amountField, emptyRemindersState, onField, rowControlId, unitField, type RemindersState } from "./state";
+import { useHydrated } from "@/lib/hooks/use-hydrated";
 
 // SCR-060 in edit mode — `REQ-UIX-091`, `M10c.md` §1, `DEC-231` §3, `DEC-232` §1.3 and §3. Written from the
 // artboard's table with `profile-edit.tsx` as the reference, read and never imported.
@@ -60,9 +61,6 @@ const timingOf = (minutes: number): Timing => {
   return { amount: String(amount), unit };
 };
 const sameTiming = (a: Timing, b: Timing) => a.amount === b.amount && a.unit === b.unit;
-
-const noop = () => () => {};
-const useHydrated = () => useSyncExternalStore(noop, () => true, () => false);
 
 export function RemindersEdit({
   action,
