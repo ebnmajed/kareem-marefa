@@ -236,8 +236,26 @@ async function orgClaim(context: BrowserContext): Promise<string | null | undefi
   return payload.app_metadata?.org_id ?? null;
 }
 
-/** Start a session from SCR-085's form, as an operator would. */
+/**
+ * Start a session from SCR-085's form, as an operator would.
+ *
+ * ★ Wave 26 (ledger C18). Two things made this helper flaky, both measured on a production build of `60e9e889`
+ * (desktop :583 and phone :817 failed with «ادخل» still PENDING at the 5 s default, the form on screen and no
+ * session in the log):
+ * 1. The press is ONE transition that spans three round trips — the action (`start_impersonation()`, which writes
+ *    two audit rows and enqueues the expiry), the token refresh, then `router.refresh()` re-rendering the console
+ *    with the org on the token. On a machine that has just woken, that is longer than 5 s. The region is waited for
+ *    as long as the transition can take, and «ادخل» must have finished pending — a refused start leaves the form
+ *    with its error, which this then reports instead of a bare timeout.
+ * 2. A session this platform admin left open (a failed case before the stop) makes `start_impersonation()` refuse
+ *    with `impersonation_already_active`. So any such row is closed first, as the expiry job would — this run's own
+ *    admin only, never another's.
+ */
 async function startFromForm(page: Page, orgId: string, reason: string) {
+  await db.query(
+    `update public.impersonation_sessions set ended_at = least(now(), expires_at) where platform_admin_id = $1 and ended_at is null`,
+    [platformUserId],
+  );
   await page.goto("/ar/app/platform/impersonate");
   await main(page).getByRole("combobox", { name: /^المؤسسة/ }).selectOption(orgId);
   await main(page).getByRole("textbox", { name: /^السبب/ }).fill(reason);
@@ -245,7 +263,10 @@ async function startFromForm(page: Page, orgId: string, reason: string) {
   // so the operator's press is on the chip's word.
   await main(page).locator("label").filter({ hasText: /^30 دقيقة$/ }).click();
   await expect(main(page).getByRole("radio", { name: "30 دقيقة" })).toBeChecked();
-  await page.getByRole("button", { name: /^ادخل/ }).click();
+  const enter = main(page).getByRole("button", { name: /^ادخل/ });
+  await enter.click();
+  await expect(page.getByRole("region", { name: /جلسة مفتوحة/ }).or(main(page).getByRole("alert"))).toBeVisible({ timeout: 30_000 });
+  await expect(main(page).getByRole("alert"), "the start was refused — the form says why").toHaveCount(0);
   await expect(page.getByRole("region", { name: /جلسة مفتوحة/ })).toBeVisible();
 }
 
