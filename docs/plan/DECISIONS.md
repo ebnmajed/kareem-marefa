@@ -10220,3 +10220,39 @@ Collaborative editing; a version history; a server-side draft; a server autosave
 `DEC-258` §2.4 — publish saving first, against «انشر» refused while there are unsaved changes. Built as the former.
 
 - **Documents changed:** `STATUS.md`
+
+---
+
+## DEC-260 — Wave 28 is built and waiting for the owner: the designer saves when it is told to, asks before work is lost, and offers a local draft back
+
+- **Date:** 2026-10-05 · **Decided by:** the lead; the acceptance is the owner's · **Closes:** `DEC-258`, `DEC-259` · `REQ-DSG-036` · milestone **M30** · PR #84
+
+### 1 · What is built, on `8f3e1a15`
+
+| What | Where |
+|---|---|
+| The two autosave timers and `AUTOSAVE_DELAY_MS` are gone. «احفظ» on the bar and ⌘S / Ctrl+S call the unchanged `push()`. The bar says «غير محفوظ», «يُحفَظ…» or «محفوظ», read from a comparison with the saved document | `editor-state.ts`, `editor.tsx` |
+| Leaving by any in-app link or the orientation switch asks «لم تُحفظ تعديلاتك»: «احفظ وغادر» · «تجاهلها وغادر» · «ابقَ». A save that fails keeps the person in the editor. A reload gets the browser's question | `leave-guard.ts`, `leave-dialog.tsx` |
+| A local draft, per member and document, written while there are unsaved changes and at unmount, tab-hide and `pagehide`; offered on reopening; read-only until answered; a stale one says so | `draft.ts`, `draft-offer.tsx` |
+| ★ **The owner ruled on 2026-10-05: «انشر» saves first** — and it publishes only after a save that landed. A preview and an export save nothing | `editor.tsx` |
+| The email builder asks on every in-app link, not only its own back button | `email/builder.tsx` (the lead, as `notify`'s custodian) |
+
+### 2 · The evidence
+
+- Production build of the branch; `wave28-designer-save` and `wave28-designer-draft` 11 of 11 on the desktop project; the four studio specs whose `saved()` helper now presses «احفظ» green in the first run (17 passed, 1 failed — the new Back case, whose own history was wrong; fixed in the spec and re-run).
+- Units 5,679 passed (`designer`'s run); the email suites 20 of 20; `tsc` clean; lint 0 errors; `ui-lint` strict green; trace 454 / 280.
+- `qa` 57 of 57. Parity holds at 21 of 28 locally, the count wave 27 saw; **no golden, no file under `packages/` and no file under `ui/` differs from `main`**. `console-register` and `ui-playground` pass untouched.
+- The ledger: eleven lines, one changed expectation (D-5 — «one PUT after 1.2 s» became «nothing after 60 s, one PUT on Save»).
+- **Not run:** the phone project for the new specs (the designer is desktop-only); the full e2e suite; CI on the final head, read when it concludes.
+
+### 3 · For the owner at acceptance
+
+| # | What | |
+|---|---|---|
+| 1 | «غير محفوظ», not the artboard's «مسودة»; Save is a secondary button; a freshly opened document says «محفوظ» | `DEC-259` §2 |
+| 2 | With Save and the state on the bar, the format strip scrolls sideways sooner — at 1440 px «طباعة A3» sits past the edge | as built; a layout pass if it bothers |
+| 3 | An expired session fails a save with «تعذّر الحفظ… أعِد المحاولة» and never says to sign in; the draft survives it | `DEC-259` §1.6 — a follow-up if wanted |
+| 4 | The email builder's dialog is still leave-or-stay; it did not gain «save» | not asked |
+| 5 | Still awaiting rulings, none of them scope: the last-org lockout (`DEC-253` §7.1); `DEC-255` §1; `DEC-254` §7 | the brief's §2 – §3 |
+
+- **Documents changed:** `STATUS.md`
