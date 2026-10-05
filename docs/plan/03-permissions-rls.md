@@ -828,6 +828,10 @@ for insert and update, so "opens at completion, closes 14 days later" is one rul
 | `leaderboard_snapshots`, `leaderboard_entries` | §5.7b | — | — | — | Job-written. |
 | `member_seen_marks` | §5.7c | §5.7c | §5.7c | — | A member's own bookmark of what they have seen (`0162`, `DEC-197`). No timestamp; no delete; the worker never touches it. |
 | `feed_announcements` | §5.7d | §5.7d | §5.7d | §5.7d | An org's announcements in the feed (`0164`, `DEC-206` §3, `REQ-UIX-056`). Members read what is published and unexpired; an admin reads and writes all of the org's. The update grant is by column. The worker never touches it. |
+| `story_frames` | §5.7e | — | — | — | A session's story (`0198`, `DEC-248` §5, `REQ-STO-001` … `018`). Members read what is visible and inside 24 h; the author reads their own unfinished video; staff read all. **No client write** — every write is a definer function. |
+| `story_views` | §5.7e | §5.7e | — | — | A member's own record of what they viewed; nobody else's, staff included (`REQ-STO-010`). |
+| `story_reactions` | §5.7e | §5.7e | §5.7e | §5.7e | One per member per frame; the update grant is by column; no ledger row, ever (`REQ-STO-005`). |
+| `story_frame_takedowns` | §5.7e | — | — | — | «أزلني» on a video frame; the requester and staff read; written only by definer functions (`REQ-STO-014`). |
 
 #### §5.7a — `points_ledger`, read
 ```sql
@@ -890,6 +894,38 @@ grant select, insert, delete on feed_announcements to authenticated;
 grant update (body, published_at, expires_at) on feed_announcements to authenticated;
 revoke all on feed_announcements from anon, service_role;
 ```
+
+
+#### §5.7e — session stories — `story_frames`, `story_views`, `story_reactions`, `story_frame_takedowns` (`0198`, `DEC-248` §5, `DEC-251` §5)
+A story is the session's; a frame is a row that stores an identity and an instant and **no figure**. Expiry, hiding,
+removal, cancellation and a hidden photograph are all one predicate, `story_frame_is_visible()` — security invoker, so
+it reads the session and the photograph through the caller's own policies and can only take authority away. The read
+policy calls it and so does the story feed, so the two cannot drift. **No client role writes a frame or a removal
+request**: the generator, the capture, the transcode and moderation are definer functions. `service_role` holds
+nothing on any of the four. Cases: `POL-story_frames.read_visible`, `.read_own`, `.staff_read`, `.no_client_write`,
+`.one_per_trigger`, `POL-story_views.own`, `POL-story_reactions.own`, `POL-story_frame_takedowns.read`,
+`POL-reports.story_frame`, `POL-story_media_read` in `tests/rls/story-tables.test.ts`.
+```sql
+create policy "story_frames_read_visible"   on story_frames for select to authenticated;  -- org_id = auth_org_id() and story_frame_is_visible(row): visible, not hidden, not removed, inside 24 h of its trigger, session not cancelled, its photograph visible
+create policy "story_frames_read_own"       on story_frames for select to authenticated;  -- the author's own video while processing or failed, never a removed one
+create policy "story_frames_staff_read"     on story_frames for select to authenticated;  -- org_id = auth_org_id() and is_staff() — expired, hidden and removed too (REQ-STO-017)
+grant select on story_frames to authenticated;                                             -- no insert, update or delete for anyone: definer functions only
+create policy "story_views_read_own"        on story_views for select to authenticated;   -- member_id = auth_member_id(); no staff policy (REQ-STO-010)
+create policy "story_views_insert_own"      on story_views for insert to authenticated;   -- the same, and the frame is one the caller may read now
+grant select, insert on story_views to authenticated;
+create policy "story_reactions_read"        on story_reactions for select to authenticated;  -- the org's, for a frame the caller may read
+create policy "story_reactions_insert_own"  on story_reactions for insert to authenticated;  -- member_id = auth_member_id(), a readable frame
+create policy "story_reactions_update_own"  on story_reactions for update to authenticated;  -- the same, both sides
+create policy "story_reactions_delete_own"  on story_reactions for delete to authenticated;  -- member_id = auth_member_id()
+grant select, insert, delete on story_reactions to authenticated;
+grant update (kind) on story_reactions to authenticated;
+create policy "story_frame_takedowns_read"  on story_frame_takedowns for select to authenticated;  -- is_staff() or requester_id = auth_member_id()
+grant select on story_frame_takedowns to authenticated;                                     -- requests and decisions are definer functions
+revoke all on story_frames, story_views, story_reactions, story_frame_takedowns from anon, service_role;
+```
+`reports` gains `story_frame_id` and `report_target` gains `story_frame`; a check ties the two
+(`POL-reports.story_frame`). `photos` gains `caption` and `story_derivative_ready`, both written by the worker's
+definer alone.
 
 ### 5.8 Certificates
 
@@ -1120,6 +1156,8 @@ create policy "exports_storage_read_public_card" on storage.objects for select t
 create policy "exports_storage_certificate_restricted" on storage.objects as restrictive for select to authenticated;  -- DEC-178 (0153): a certificate's render only to staff of its org or its own member once released, via export_object_is_foreign_certificate(name); narrows exports_storage_read, which admitted the whole org prefix
 create policy "photo_albums_storage_read"          on storage.objects for select to authenticated;  -- DEC-182 (0156): staff of the org, and only the album's CURRENT build (path segment 5 = build_id), ready and unexpired — a stale, superseded or expired zip is unreadable with its path in hand
 create policy "avatars_storage_read"                on storage.objects for select to authenticated;  -- DEC-182 (0157): same org, and only a member's CURRENT avatar_version (path segment 4) — clearing the version cuts access in the same statement
+create policy "story_media_read"                    on storage.objects for select to authenticated;  -- DEC-248 §5 (0198): a story video's rendition and poster — never its source — for a frame the caller may read now (the frame is looked up under the caller's own policies); the write policy lands with content's capture gate
+create policy "story_media_write"                   on storage.objects for insert to authenticated;  -- DEC-251 §5 (0199): a SOURCE only (source.mp4|mov|webm), under the caller's org and a session whose capture window is open for them — story_capture_open(): checked in, from the start until 24 h after the end; no update policy, so no overwrite
 create policy "design_assets_storage_read_public_logo" on storage.objects for select to anon, authenticated;  -- DEC-161 (0126): ONLY the PNG or JPEG an ACTIVE org's brand_kits.logo_asset_id names, via brand_logo_is_public(name) — so a mail client can fetch a logo; every other design asset stays closed
 create policy "fonts_storage_read"           on storage.objects for select to authenticated;  -- no org prefix (REQ-DSG-016)
 ```
@@ -1545,6 +1583,23 @@ generated suite is the highest-value test in the product.
 | `POL-photos_storage_read.removed` | ★ A removed photograph's object is readable by nobody, member or staff — before `0156` it was readable by every member of the org. (migration `0156`, `DEC-182`). |
 | `POL-photo_albums_read_staff` | Admin ✓ · moderator ✓ · member ✗ · another org's admin ✗. (migration `0156`). |
 | `POL-photo_albums_storage_read` | Staff, a ready and current build ✓ · a member ✗ · stale ✗ · expired ✗ · a superseded `build_id` ✗. (migration `0156`). |
+| `POL-story_media_write` | A checked-in attendee inside the window uploads a source under their org and that session ✓ · not checked in ✗ · outside the window ✗ · another org's prefix ✗ · any other file name ✗ · no overwrite. (migration `0199`; `tests/rls/story-frames-content.test.ts`). |
+| `RPC-resolve_report.story_frame` | A story-frame report given to `resolve_report()`: `invalid`, nothing written — only `decide_story_frame()` decides one. (migration `0199`). |
+| `TRG-story.published_once` | The admin's publish writes one `published` frame with no author; a second publish and a second generate write nothing. (`tests/rls/story-generator.test.ts`, as every `TRG-story.*` and `RPC-story*` row). |
+| `TRG-story.live_per_day` | The clock's start writes one `live` frame keyed on the running day; the minutely clock writes no second; a three-day workshop writes three. |
+| `TRG-story.recap_once` | Completion writes one `recap`; archive and reopen write none. |
+| `TRG-story.registration_no_coincidence` | `registration_opened` only after a priority window, at its end, once; `registration_closed` only for a deadline before the first start, once (`DEC-251` §4.3). |
+| `TRG-story.starts_soon_per_day` | One `starts_soon` per day, 24 h before it, never dated before publication, once. |
+| `TRG-story.photo_once` | The worker's record writes one `photo` frame naming the photograph; a second record, a hide and a restore write none; a hidden photograph's frame leaves the feed and returns with it. |
+| `TRG-story.materials_batched` | Two links on a completed session in one org-local day make one `materials` frame; a «بعد» material before completion makes none, a «قبل» one does. |
+| `RPC-story.cancelled` | The generator writes nothing for a cancelled session; `story_feed()` shows even staff none of its frames. |
+| `RPC-story_feed.member_view` | A member reads their org's visible frames, `seen` once they view one; another org reads none; staff get the same 24 hours; an author alone reads their own processing video. |
+| `RPC-story_recap_figures.withheld` | Attendance always; the average null below `rating_min_aggregate` and shown at it; no row for a non-completed session or another org. |
+| `RPC-story_live_count.org` | A day's active check-ins for the org; null for another org. |
+| `RPC-story.acl` | The generator is executable by no client role and not by `service_role`; the clock by `service_role` only; `story_feed()` not by `anon`. |
+| `RPC-story_capture.gate` | `story_capture_open()`, `initiate_story_photo()` and `begin_story_video()`: checked in ✓ · not checked in ✗ · a presenter or staff not checked in ✗ · before the start ✗ · 24 h after the end ✗ · cancelled ✗ · another org ✗. (`tests/rls/story-frames-content.test.ts`, as the rows below). |
+| `RPC-story_video.no_album_no_points` | A video writes no `photos` row and no ledger row; a story photograph is an album photograph with its points and its caption. |
+| `RPC-story_moderation` | A report hides the frame at once and lands in the queue; «أزلني» on a video hides it; `remove_story_frame()` on a photograph writes `photo.removed` and one compensating row, on a video `story_frame.removed` and no ledger row; a failed video is its author's alone. |
 | `RPC-record_photo_download` | Any member of the org ✓ for a visible photo, one `photo.downloaded` row naming the session; ★ a hidden photo ✗ **for staff too** (`DEC-182` Q3); removed ✗ · another org ✗ · unknown ✗ — all `42501`, no row. (migration `0156`). |
 | `RPC-request_photo_album` | Admin ✓ · moderator ✓: one row `queued`, one `photo_album.requested` row, one `zip_session_photos` job under `zipphotos:{session}`; a repeat moves `build_id`, not the row · member ✗ · another org ✗ (`42501`) · no visible photo → `album_empty` (`P0002`), no row. (migration `0156`). |
 | `RPC-record_photo_album_download` | Staff, a ready album ✓ per part, one `photo_album.downloaded` row each, named `photos-YYYYMMDD[-part-n-of-m].zip` · member ✗ · stale · expired · part out of range ✗. (migration `0156`). |

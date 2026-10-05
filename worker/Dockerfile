@@ -57,12 +57,17 @@ ENV NODE_ENV=production
 # part at a time — JOB-zip_session_photos (REQ-ADM-021, DEC-181: a binary in
 # this image, never an npm package). webp's cwebp also makes the 96/192 px
 # avatar derivatives (JOB-import_avatar, DEC-099: «a size list, not a new job»).
+# ffmpeg (Debian's 5.1, with ffprobe, libx264 and the native aac encoder)
+# transcodes an attendee's story video to one MP4 and strips every container
+# tag — JOB-transcode_story_video (REQ-STO-016, DEC-181, DEC-248 §6). Measured
+# on this package set: 88 packages, 54.4 MB of archives, 148 MB on disk.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       chromium \
       poppler-utils \
       webp \
       zip \
+      ffmpeg \
       fontconfig \
       ca-certificates \
  && rm -rf /var/lib/apt/lists/*

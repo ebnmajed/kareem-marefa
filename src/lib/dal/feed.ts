@@ -2,7 +2,6 @@ import "server-only";
 import { cache } from "react";
 import { orgDay } from "@/components/browse/session-post";
 import { groupFeed, toEntries, type FeedAnnouncement, type FeedGroup } from "@/components/feed/feed-merge";
-import { feedRings, type FeedRing } from "@/components/feed/ring-state";
 import { getMe } from "@/lib/dal/members";
 import { getRecapPhotos, type RecapPhotos } from "@/lib/dal/photos";
 import { getAchievementItems, type AchievementItem } from "@/lib/dal/recognition";
@@ -19,7 +18,7 @@ import { getShellData, type ShellAttention } from "@/lib/dal/shell";
 //   · colleagues' badges and streak months — `scoring`'s `getAchievementItems()` (contract 4), where the
 //     opt-out is enforced;
 //   · the org's announcements — `feed_announcements` (0164), read through RLS with the caller's client.
-// And beside them: the rings (`ring-state.ts`, pure), the staff strip's counts (`getShellData()`, the
+// And beside them (the rings are `sessions'` story feed since wave 26, DEC-251 §4): the staff strip's counts (`getShellData()`, the
 // lead's — null for a member, never a 404), and whether the member has a company.
 //
 // ★ ONE SOURCE FAILING DOES NOT TAKE THE HOME WITH IT. The session posts are the page: if they fail, the
@@ -43,7 +42,6 @@ export interface RecapExtra extends RecapPhotos {
 
 export interface Feed {
   viewer: { memberId: string; isStaff: boolean; hasCompany: boolean };
-  rings: FeedRing[];
   groups: FeedGroup[];
   /** Per ended session in the feed. */
   recaps: Record<string, RecapExtra>;
@@ -56,7 +54,7 @@ export interface Feed {
   now: string;
 }
 
-export type { FeedAnnouncement, FeedGroup, FeedRing };
+export type { FeedAnnouncement, FeedGroup };
 
 async function settled<T>(source: string, read: Promise<T>, fallback: T): Promise<T> {
   try {
@@ -120,7 +118,6 @@ export const getFeed = cache(async (locale: string): Promise<Feed> => {
   const today = orgDay(now, timeZone);
   return {
     viewer: { memberId: session.memberId, isStaff, hasCompany: me.companyId !== null },
-    rings: feedRings(postsData.posts, now, timeZone),
     groups: groupFeed(toEntries({ posts: postsData.posts, achievements, announcements }, timeZone), today),
     recaps,
     attention: isStaff ? shell.attention : null,

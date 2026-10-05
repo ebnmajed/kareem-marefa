@@ -23,6 +23,12 @@ vi.mock("@/components/feed/session-post", () => ({ SessionPost: ({ post }: { pos
 vi.mock("@/components/feed/recap-post", () => ({ RecapPost: () => <article data-region="recap" /> }));
 vi.mock("@/components/feed/achievement", () => ({ Achievement: () => <article data-region="achievement" /> }));
 vi.mock("@/components/feed/announcement", () => ({ Announcement: () => <article data-region="announcement" /> }));
+// ★ Wave 26 (DEC-251 §4, ledger): the ring row is `sessions'` story feed rendered by `content`'s `StoryRings` — its own
+// suites are tests/components/stories/**. Here it is a stand-in that draws the row or, with no story, nothing.
+let ringsShown = true;
+vi.mock("@/components/stories/story-rings", () => ({
+  StoryRings: () => (ringsShown ? <ul aria-label="جلسات اليوم وما حوله" /> : null),
+}));
 
 const { getFeed } = await import("@/lib/dal/feed");
 const { Feed } = await import("@/components/feed/feed");
@@ -33,7 +39,6 @@ const post = (id: string) => ({ id }) as never;
 function feed(over: Partial<FeedData> = {}): FeedData {
   return {
     viewer: { memberId: "me", isStaff: false, hasCompany: true },
-    rings: [{ sessionId: "s1", title: "مباشر الآن", state: "live", at: `${TODAY}T12:00:00Z`, day: TODAY, companyName: "مواهب", teamColor: "#35D0FF" }],
     groups: [
       { day: TODAY, entries: [{ kind: "session", key: "session:s1", day: TODAY, at: `${TODAY}T12:00:00Z`, post: post("s1") }] },
       { day: "2026-10-02", entries: [{ kind: "session", key: "session:s2", day: "2026-10-02", at: "2026-10-02T15:00:00Z", post: post("s2") }] },
@@ -48,7 +53,8 @@ function feed(over: Partial<FeedData> = {}): FeedData {
   };
 }
 
-async function show(data: FeedData) {
+async function show(data: FeedData, rings = true) {
+  ringsShown = rings;
   vi.mocked(getFeed).mockResolvedValue(data);
   const ui = await resolveTree(await Feed({ locale: "ar" }));
   return render(
@@ -102,17 +108,16 @@ describe("Feed", () => {
   });
 
   it("an empty feed asks for a proposal, and draws no ring row and no race", async () => {
-    const { container } = await show(feed({ groups: [], rings: [] }));
+    const { container } = await show(feed({ groups: [] }), false);
     expect(await screen.findByText("لا شيء في الساحة بعد")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "اقترح موضوعًا" })).toHaveAttribute("href", expect.stringContaining("/app/propose"));
     expect(container.querySelector("ul[aria-label]")).toBeNull();
     expect(container.querySelector('[data-region="race"]')).toBeNull();
   });
 
-  it("the ring row's rings open nothing: no button in it", async () => {
+  it("the ring row is the story feed's, first among the regions (wave 26)", async () => {
     await show(feed());
-    const row = screen.getByRole("list", { name: "جلسات اليوم وما حوله" });
-    expect(row.querySelector("button")).toBeNull();
-    expect(screen.getByRole("img", { name: "مباشر الآن، مباشر، الآن" })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "جلسات اليوم وما حوله" })).toBeInTheDocument();
   });
+
 });

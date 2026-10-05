@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 import { dayCountLabel } from "@/components/sessions/day-label";
 import { formatDate, formatNumber } from "@/components/sessions/numerals";
@@ -38,9 +39,11 @@ export interface EventHeroProps {
   /** The rule's amount for this viewer — the placeholder's sticker. Null draws none. */
   points: number | null;
   locale: string;
+  /** Wave 26 (add-only, REQ-STO-008): «شاهد القصة» beside the live badge from `lg` — the phone's is the top row's. */
+  story?: ReactNode;
 }
 
-export async function EventHero({ session, phase, seat, closingSoon, dayCount, points, locale }: EventHeroProps) {
+export async function EventHero({ session, phase, seat, closingSoon, dayCount, points, locale, story }: EventHeroProps) {
   const [t, tDays, tPoster, poster] = await Promise.all([
     getTranslations("sessions.event"),
     getTranslations("sessions.days"),
@@ -93,6 +96,8 @@ export async function EventHero({ session, phase, seat, closingSoon, dayCount, p
           status={
             <>
               <SessionStatusBadge phase={phase} seat={seat} closingSoon={closingSoon} />
+              {/* No desktop artboard draws it (DEC-251 §4.7 rules it in); one wrapper switches it by width (DEC-111). */}
+              {story ? <span className="hidden lg:inline-flex">{story}</span> : null}
               <TagChip label={t(`level.${session.level}`)} />
               <TagChip label={session.language === "ar" ? t("languageAr") : t("languageEn")} />
               {/* The length: only `EventDesktop.dc.html` draws it (the phone's three chips fit one row at 390) —

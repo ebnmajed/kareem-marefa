@@ -12,9 +12,22 @@ import type { SessionPhase } from "@/lib/session-status";
 //
 // back · the breadcrumb — or, while the session runs, the story's state · bookmark · share.
 //
-// ★ «شاهد القصة» SHOWS ITS STATE AND OPENS NOTHING (DEC-205 §1, DEC-209 §2): it is text beside the live dot,
-// never a link or a button — the viewer is wave 19's.
-export async function EventTopRow({ session, phase, bookmark, share }: { session: EventSession; phase: SessionPhase; bookmark: ReactNode; share: ReactNode }) {
+// ★ «شاهد القصة» OPENS THE STORY (REQ-STO-008, DEC-251 §4.7): `story` is the page's `StoryEntry`, given only when
+// the feed returned this live session's story. Without one — no frame I may see — the row keeps the state as text,
+// opening nothing, as it did from DEC-205 §1 until the viewer existed.
+export async function EventTopRow({
+  session,
+  phase,
+  bookmark,
+  share,
+  story,
+}: {
+  session: EventSession;
+  phase: SessionPhase;
+  bookmark: ReactNode;
+  share: ReactNode;
+  story?: ReactNode;
+}) {
   const [t, tUi] = await Promise.all([getTranslations("sessions.event"), getTranslations("ui.pageHeader")]);
   return (
     <div className="flex items-center gap-2.5 py-3 lg:hidden">
@@ -26,7 +39,9 @@ export async function EventTopRow({ session, phase, bookmark, share }: { session
         <ArrowIcon direction="back" aria-hidden="true" className="text-[1.125rem]" />
       </Link>
       <div className="flex min-w-0 flex-1 justify-center">
-        {phase === "live" ? (
+        {phase === "live" && story ? (
+          story
+        ) : phase === "live" ? (
           <p className="inline-flex items-center gap-2 text-caption font-bold text-fg-heading">
             <Badge tone="live" size="sm">
               {t("storyLive")}

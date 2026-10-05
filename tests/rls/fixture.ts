@@ -115,6 +115,22 @@ export async function seed(tx: Tx): Promise<M7Fixture> {
     // wave 18 (0164, DEC-206 §3): one published announcement per org, so the sweep meets org B's behind the wall.
     await tx.q(`insert into public.feed_announcements (org_id, author_id, body) values ($1, $2, $3)`, [org.id, org.admin.memberId, `إعلان ${org.slug}`]);
   }
+  // wave 26 (0198, DEC-248 §5): each org's published session has a story — a generated frame and an attendee's
+  // video — with a view, a reaction and a removal request, so the sweep meets a real row of org B in all four tables.
+  for (const [org, m2] of [[f.a, f.m2.a], [f.b, f.m2.b]] as const) {
+    const [{ id: frame }] = await tx.q<{ id: string }>(
+      `insert into public.story_frames (org_id, session_id, kind, trigger_key, triggered_at) values ($1, $2, 'published', 'published', now() - interval '1 hour') returning id`,
+      [org.id, m2.published],
+    );
+    const [{ id: video }] = await tx.q<{ id: string }>(
+      `insert into public.story_frames (org_id, session_id, kind, trigger_key, triggered_at, author_id, caption, video_path, poster_path, duration_ms)
+       values ($1, $2, 'video', gen_random_uuid()::text, now() - interval '30 minutes', $3, 'من القاعة', $4, $5, 12000) returning id`,
+      [org.id, m2.published, org.mod.memberId, `${org.id}/sessions/${m2.published}/frames/x/video.mp4`, `${org.id}/sessions/${m2.published}/frames/x/poster.webp`],
+    );
+    await tx.q(`insert into public.story_views (org_id, member_id, frame_id) values ($1, $2, $3)`, [org.id, org.members[0].memberId, frame]);
+    await tx.q(`insert into public.story_reactions (org_id, frame_id, member_id, kind) values ($1, $2, $3, 'clap')`, [org.id, frame, org.members[0].memberId]);
+    await tx.q(`insert into public.story_frame_takedowns (org_id, frame_id, requester_id) values ($1, $2, $3)`, [org.id, video, org.members[0].memberId]);
+  }
   return f;
 }
 

@@ -265,7 +265,11 @@ export async function decideReport(locale: string, input: z.input<typeof decideI
 export type PhotoQueueKind = "takedowns" | "reports";
 
 export interface PhotoQueueItem {
+  /** The route segment. A story frame's is `frame-{frameId}` (wave 26, REQ-STO-015), so it opens the frame's detail. */
   photoId: string;
+  /** Wave 26, add-only: set for a story frame — a video, or a photo frame reported as a frame. */
+  frameId?: string;
+  video?: boolean;
   kind: PhotoQueueKind;
   sessionTitle: string;
   thumbUrl: string;
@@ -331,7 +335,10 @@ export async function listPhotoQueue(locale: string): Promise<PhotoQueue | null>
   const photoIds = [
     ...new Set([...takedownsOpen, ...takedownsClosed].map((r) => r.photo_id).concat([...reportsOpen, ...reportsClosed].map((r) => r.photo_id ?? ""))),
   ].filter(Boolean);
-  if (photoIds.length === 0) return { takedowns: [], reports: [], closed: [] };
+  if (photoIds.length === 0) {
+    const frames = await frameQueueItems(supabase, now);
+    return { takedowns: frames.takedowns, reports: frames.reports, closed: [] };
+  }
 
   const { data: photoData, error: pErr } = await supabase.from("photos").select("id, storage_path, session_id, uploader_id, hidden_at, removed_at").in("id", photoIds);
   if (pErr) throw new Error(`photos (moderation): ${pErr.message}`);
@@ -399,9 +406,13 @@ export async function listPhotoQueue(locale: string): Promise<PhotoQueue | null>
   for (const t of takedownsClosed) consider(t.photo_id, "takedowns", t.resolution, t.resolved_by, t.resolved_at);
   for (const r of reportsClosed) consider(r.photo_id, "reports", r.resolution, r.resolved_by, r.resolved_at);
 
+  // ★ Wave 26 (REQ-STO-015, DEC-251 §4.8): a reported or taken-down story FRAME joins the same two chips — the photo
+  // queue takes it, video included. Its own detail plays it and decides it through `decide_story_frame()`.
+  const frames = await frameQueueItems(supabase, now);
+
   return {
-    takedowns: openItems("takedowns", takedownGroups),
-    reports: openItems("reports", reportGroups),
+    takedowns: [...openItems("takedowns", takedownGroups), ...frames.takedowns],
+    reports: [...openItems("reports", reportGroups), ...frames.reports],
     closed: [...decided.values()].sort((a, b) => b.at.localeCompare(a.at)).map((item) => ({ photoId: item.photoId, kind: item.kind, sessionTitle: item.sessionTitle, thumbUrl: item.thumbUrl, decision: item.decision })),
   };
 }
@@ -502,4 +513,180 @@ export async function restoreModeratedPhoto(locale: string, input: z.input<typeo
     .select("id");
   if (error) throw new Error(`photo_takedowns (restore): ${error.message}`);
   return (data ?? []).length > 0 ? { done: true } : { done: false, error: "already_resolved" };
+}
+
+
+// ── wave 26 — a story frame in SCR-051 (REQ-STO-014, REQ-STO-015, REQ-STO-017; DEC-251 §4.8 – §4.9) ─────────────────
+// `content`'s, add-only, for a video in the queue (and a photo frame reported AS a frame). A frame report hides the
+// FRAME only — the photograph stays in the album (REQ-EVT-008) — so its decision is the frame's: `decide_story_frame()`.
+
+export const FRAME_SEGMENT = "frame-";
+
+type FrameRow = {
+  id: string;
+  kind: "photo" | "video";
+  session_id: string;
+  author_id: string | null;
+  photo_id: string | null;
+  caption: string | null;
+  poster_path: string | null;
+  video_path: string | null;
+  hidden_at: string | null;
+  removed_at: string | null;
+  photo: { storage_path: string; uploader_id: string; caption: string | null } | null;
+};
+const FRAME_COLUMNS = "id, kind, session_id, author_id, photo_id, caption, poster_path, video_path, hidden_at, removed_at, photo:photos(storage_path, uploader_id, caption)";
+const STORY_MEDIA_TTL_S = 600;
+
+async function frameMedia(supabase: Supabase, rows: FrameRow[]): Promise<Map<string, { thumb: string; image: string; video: string }>> {
+  const out = new Map<string, { thumb: string; image: string; video: string }>();
+  const photoPaths = rows.filter((r) => r.kind === "photo" && r.photo).map((r) => r.photo!.storage_path);
+  const videoPaths = rows.filter((r) => r.kind === "video").flatMap((r) => [r.poster_path, r.video_path].filter((v): v is string => !!v));
+  const [photos, media] = await Promise.all([
+    signed(supabase, photoPaths),
+    videoPaths.length ? supabase.storage.from("story-media").createSignedUrls(videoPaths, STORY_MEDIA_TTL_S) : Promise.resolve({ data: [] as { path: string | null; signedUrl: string }[] }),
+  ]);
+  const byPath = new Map((media.data ?? []).map((m) => [m.path ?? "", m.signedUrl]));
+  for (const r of rows) {
+    if (r.kind === "photo") {
+      const url = r.photo ? (photos.get(r.photo.storage_path) ?? "") : "";
+      out.set(r.id, { thumb: url, image: url, video: "" });
+    } else out.set(r.id, { thumb: byPath.get(r.poster_path ?? "") ?? "", image: byPath.get(r.poster_path ?? "") ?? "", video: byPath.get(r.video_path ?? "") ?? "" });
+  }
+  return out;
+}
+
+async function frameQueueItems(supabase: Supabase, now: number): Promise<{ takedowns: PhotoQueueItem[]; reports: PhotoQueueItem[] }> {
+  const [t, r] = await Promise.all([
+    supabase.from("story_frame_takedowns").select("frame_id, requester_id, requested_at").is("resolved_at", null).order("requested_at", { ascending: true }).order("id", { ascending: true }),
+    supabase
+      .from("reports")
+      .select("story_frame_id, reporter_id, created_at")
+      .eq("target", "story_frame")
+      .eq("status", "open")
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true }),
+  ]);
+  if (t.error) throw new Error(`story_frame_takedowns (open): ${t.error.message}`);
+  if (r.error) throw new Error(`reports (open frames): ${r.error.message}`);
+  const takedowns = groupBy(((t.data ?? []) as { frame_id: string; requester_id: string; requested_at: string }[]).map((x) => ({ id: x.frame_id, who: x.requester_id, at: x.requested_at })), (x) => x.id);
+  const reports = groupBy(((r.data ?? []) as { story_frame_id: string; reporter_id: string; created_at: string }[]).map((x) => ({ id: x.story_frame_id, who: x.reporter_id, at: x.created_at })), (x) => x.id);
+  const ids = [...new Set([...takedowns.keys(), ...reports.keys()])];
+  if (ids.length === 0) return { takedowns: [], reports: [] };
+
+  const { data, error } = await supabase.from("story_frames").select(FRAME_COLUMNS).in("id", ids);
+  if (error) throw new Error(`story_frames (moderation): ${error.message}`);
+  const rows = ((data ?? []) as unknown as FrameRow[]).filter((f) => !f.removed_at);
+  const byId = new Map(rows.map((f) => [f.id, f]));
+  const [members, sessionTitles, media] = await Promise.all([
+    people(supabase, [...takedowns.values(), ...reports.values()].flat().map((x) => x.who)),
+    titles(supabase, rows.map((f) => f.session_id)),
+    frameMedia(supabase, rows),
+  ]);
+  const items = (kind: PhotoQueueKind, groups: Map<string, { who: string; at: string }[]>): PhotoQueueItem[] =>
+    [...groups].flatMap(([id, group]) => {
+      const f = byId.get(id);
+      if (!f) return [];
+      return [
+        {
+          photoId: `${FRAME_SEGMENT}${id}`,
+          frameId: id,
+          video: f.kind === "video",
+          kind,
+          sessionTitle: sessionTitles.get(f.session_id) ?? "",
+          thumbUrl: media.get(id)?.thumb ?? "",
+          first: person(members, group[0].who),
+          more: new Set(group.map((g) => g.who)).size - 1,
+          ageDays: ageDays(group[0].at, now),
+        },
+      ];
+    });
+  return { takedowns: items("takedowns", takedowns), reports: items("reports", reports) };
+}
+
+export interface FrameForModeration {
+  frameId: string;
+  kind: "photo" | "video";
+  imageUrl: string;
+  /** A video's rendition — played in the detail (REQ-STO-015). */
+  videoUrl: string;
+  posterUrl: string;
+  caption: string | null;
+  sessionId: string;
+  sessionTitle: string;
+  author: ModerationPerson | null;
+  status: PhotoStatus;
+  requests: { requester: ModerationPerson | null; ageDays: number }[];
+  reports: { reportId: string; reporter: ModerationPerson | null; reason: string; ageDays: number }[];
+}
+
+/** One story frame and what is open on it. Staff only, at the data — `null` otherwise. */
+export async function getStoryFrameForModeration(locale: string, frameId: string): Promise<FrameForModeration | null> {
+  if (!z.uuid().safeParse(frameId).success) return null;
+  const client = await requireStaff(locale);
+  if (!client) return null;
+  const { supabase } = client;
+  const now = Date.now();
+
+  const { data, error } = await supabase.from("story_frames").select(FRAME_COLUMNS).eq("id", frameId).in("kind", ["photo", "video"]).maybeSingle();
+  if (error) throw new Error(`story_frames (moderation detail): ${error.message}`);
+  if (!data) return null;
+  const f = data as unknown as FrameRow;
+
+  const [t, r] = await Promise.all([
+    supabase.from("story_frame_takedowns").select("id, requester_id, requested_at").eq("frame_id", frameId).is("resolved_at", null).order("requested_at", { ascending: true }).order("id", { ascending: true }),
+    supabase
+      .from("reports")
+      .select("id, reporter_id, reason, created_at")
+      .eq("target", "story_frame")
+      .eq("story_frame_id", frameId)
+      .eq("status", "open")
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true }),
+  ]);
+  if (t.error) throw new Error(`story_frame_takedowns (moderation detail): ${t.error.message}`);
+  if (r.error) throw new Error(`reports (frame detail): ${r.error.message}`);
+  const takedowns = (t.data ?? []) as { id: string; requester_id: string; requested_at: string }[];
+  const reports = (r.data ?? []) as { id: string; reporter_id: string; reason: string; created_at: string }[];
+  const authorId = f.kind === "photo" ? (f.photo?.uploader_id ?? null) : f.author_id;
+
+  const [members, sessionTitles, media] = await Promise.all([
+    people(supabase, [authorId, ...takedowns.map((x) => x.requester_id), ...reports.map((x) => x.reporter_id)]),
+    titles(supabase, [f.session_id]),
+    frameMedia(supabase, [f]),
+  ]);
+  const m = media.get(f.id);
+  return {
+    frameId: f.id,
+    kind: f.kind,
+    imageUrl: m?.image ?? "",
+    videoUrl: m?.video ?? "",
+    posterUrl: f.kind === "video" ? (m?.thumb ?? "") : "",
+    caption: f.kind === "photo" ? (f.photo?.caption ?? null) : f.caption,
+    sessionId: f.session_id,
+    sessionTitle: sessionTitles.get(f.session_id) ?? "",
+    author: person(members, authorId),
+    status: f.removed_at ? "removed" : f.hidden_at ? "hidden" : "visible",
+    requests: takedowns.map((x) => ({ requester: person(members, x.requester_id), ageDays: ageDays(x.requested_at, now) })),
+    reports: reports.map((x) => ({ reportId: x.id, reporter: person(members, x.reporter_id), reason: x.reason, ageDays: ageDays(x.created_at, now) })),
+  };
+}
+
+const decideFrameInput = z.object({ frameId: z.uuid(), outcome: z.enum(["removed", "restored", "dismissed"]), reason: z.string().trim().max(300).optional() });
+
+/** A frame's decision — `decide_story_frame()`: restored or dismissed clear the FRAME's hide and close what is open on
+ *  it; removed is `remove_story_frame()` (a photo frame through `remove_photo()`). `report.resolved`,
+ *  `story_frame.removed` / `.restored` and a photo's `photo.removed` with its reversal are triggers'. */
+export async function decideModeratedFrame(locale: string, input: z.input<typeof decideFrameInput>): Promise<ModerationResult> {
+  const parsed = decideFrameInput.safeParse(input);
+  if (!parsed.success) return { done: false, error: "unknown" };
+  if (parsed.data.outcome === "removed" && (parsed.data.reason ?? "").length < 3) return { done: false, error: "reason_required" };
+  const client = await requireStaff(locale);
+  if (!client) return { done: false, error: "not_authorized" };
+  const { data, error } = await client.supabase.rpc("decide_story_frame", { p_frame: parsed.data.frameId, p_outcome: parsed.data.outcome, p_reason: parsed.data.reason ?? null });
+  if (error) return { done: false, error: errorOf(error.message) };
+  const outcome = (data as { outcome?: string } | null)?.outcome;
+  if (outcome === parsed.data.outcome) return { done: true };
+  if (outcome === "already_removed") return { done: false, error: "already_resolved" };
+  return { done: false, error: errorOf(outcome ?? "unknown") };
 }

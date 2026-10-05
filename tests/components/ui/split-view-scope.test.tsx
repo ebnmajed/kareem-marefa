@@ -123,3 +123,22 @@ describe("ui/split-view — the keyboard model", () => {
     expect(screen.getAllByRole("link", { name: "المقترحات" }).some((a) => a.getAttribute("href")?.endsWith("/app/admin/proposals"))).toBe(true);
   });
 });
+
+// ── Wave 26: an empty queue names no detail (axe aria-prohibited-attr on /app/admin/proposals at 1280) ──────────────
+describe("ui/split-view — the detail's name", () => {
+  it("names the detail by its heading while an item is open", () => {
+    const { container } = rtlRender(
+      <SplitView label="المقترحات" narrow="list" currentId="a" items={THREE} detailLabelledBy="proposal-title" detail={<h2 id="proposal-title">الأول</h2>} />,
+      { wrapper: WithLocale },
+    );
+    expect(container.querySelector("section")!.getAttribute("aria-labelledby")).toBe("proposal-title");
+  });
+
+  it("with nothing open, the section names no id that is not there", () => {
+    const { container } = rtlRender(
+      <SplitView label="المقترحات" narrow="list" currentId={null} items={[]} detailLabelledBy="proposal-title" detail={null} />,
+      { wrapper: WithLocale },
+    );
+    expect(container.querySelector("section")!.hasAttribute("aria-labelledby")).toBe(false);
+  });
+});

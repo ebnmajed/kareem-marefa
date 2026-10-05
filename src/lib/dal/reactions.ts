@@ -68,3 +68,59 @@ export async function getReactionTotalsForComments(locale: string, commentIds: s
   }
   return out;
 }
+
+// ─── wave 26 — a reaction on a story frame (REQ-STO-005, DEC-251 §5) ───────────────────────────────────────────
+// Its own table, `story_reactions`, never `reactions`: one row per member per FRAME (choosing another replaces it),
+// four kinds, no broadcast. Worth nothing, always — no trigger and no catalogue entry writes a ledger row for it
+// (REQ-EVT-004, REQ-PTS-010). The policies are the authority: your own row, on a frame you may see now.
+
+export const STORY_REACTION_KINDS = ["heart", "fire", "clap", "idea"] as const;
+export type StoryReactionKind = (typeof STORY_REACTION_KINDS)[number];
+const storyReactionKind = z.enum(STORY_REACTION_KINDS);
+
+/** Sets the viewer's one reaction on a frame, replaces it, or (with null) removes it. */
+export async function setStoryReaction(locale: string, frameId: string, kind: StoryReactionKind | null): Promise<StoryReactionKind | null> {
+  const id = z.uuid().parse(frameId);
+  const { session, supabase } = await sessionClient(locale);
+  if (kind === null) {
+    const { error } = await supabase.from("story_reactions").delete().eq("frame_id", id).eq("member_id", session.memberId);
+    if (error) throw new Error(`story_reactions: ${error.message}`);
+    return null;
+  }
+  const parsed = storyReactionKind.parse(kind);
+  // ★ The update grant is on `kind` alone (0198): a reaction can change which of the four it is, never move. So an
+  // existing row is UPDATED by that one column (its `updated_at` is the trigger's) and a new one INSERTED — never an
+  // upsert, which would ask to update every column it sends.
+  const { data: updated, error: updateError } = await supabase.from("story_reactions").update({ kind: parsed }).eq("frame_id", id).eq("member_id", session.memberId).select("frame_id");
+  if (updateError) throw new Error(`story_reactions: ${updateError.message}`);
+  if ((updated ?? []).length === 0) {
+    const { error } = await supabase.from("story_reactions").insert({ org_id: session.orgId, frame_id: id, member_id: session.memberId, kind: parsed });
+    if (error) throw new Error(`story_reactions: ${error.message}`);
+  }
+  return parsed;
+}
+
+export interface StoryReactionSummary {
+  totals: Record<StoryReactionKind, number>;
+  mine: StoryReactionKind | null;
+}
+
+/** The counts on a page of frames and the viewer's own choice — through the select policy, so a frame the viewer may
+ *  not see contributes nothing. */
+export async function getStoryReactions(locale: string, frameIds: string[]): Promise<Record<string, StoryReactionSummary>> {
+  const ids = [...new Set(frameIds)].filter((id) => z.uuid().safeParse(id).success);
+  if (ids.length === 0) return {};
+  const { session, supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.from("story_reactions").select("frame_id, member_id, kind").in("frame_id", ids);
+  if (error) throw new Error(`story_reactions: ${error.message}`);
+  const out: Record<string, StoryReactionSummary> = {};
+  for (const id of ids) out[id] = { totals: { heart: 0, fire: 0, clap: 0, idea: 0 }, mine: null };
+  for (const r of data ?? []) {
+    const entry = out[r.frame_id as string];
+    const k = r.kind as StoryReactionKind;
+    if (!entry || !(k in entry.totals)) continue;
+    entry.totals[k] += 1;
+    if (r.member_id === session.memberId) entry.mine = k;
+  }
+  return out;
+}

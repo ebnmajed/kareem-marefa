@@ -7965,3 +7965,62 @@ photos suite (`tests/rls/{photo*,moderation*}`, `tests/components/photos/**`, `w
 `console-register`, `public-graph`. ★ **One expectation changes, a ledger line:** `tests/e2e/wave18-content-home.spec.ts:152-153`
 asserts the ring row holds **no button** and the ring is an `img` — wired, it is a button named the same; and
 `tests/unit/feed-ring-state.test.ts` if Q9 removes `ring-state.ts`.
+
+---
+
+## Wave 26 — as built after sync 1 (`DEC-251`), PR D, `wave-26d/stories`
+
+Commits `e373e7ad` (worker + SQL), `7b4cb91a` (the two primitives), `18c363f3` (the app half), `673c37a0` (component
+tests), `bb134576` (RLS, 16 cases, as members), `c1d81a8e` (the walk spec, the ring row failing soft).
+
+- **The rulings applied:** kinds are `sessions'` `photo` / `video`; every visible album photograph makes a frame
+  (`sessions'` hook) and the capture adds only `photos.caption`; a report hides the FRAME (a photo frame's photograph
+  stays in the album); «أزلني» on a photo frame is the photograph's own takedown; a frame takedown REQUEST writes no
+  audit row, a decision does; a hidden video notifies nobody; a removed photograph's objects stay unreadable; at a
+  story's end the viewer moves to the next ring and closes after the last.
+- **The primitives** are §2's with one add-only prop, `StoryViewerProps.paused` (a sheet over the viewer holds the
+  clock). The viewer composes Radix's dialog with `usePlayPortal()`; the slide is the lead's `story-frame-in`. Under
+  reduced motion the segment fills in whole seconds and nothing slides. `story-ring` gained `aria-haspopup="dialog"`
+  on its button branch only.
+- **The seam:** `StoryOpener` (server) wraps `sessions'` pill as children; `StoryRings` (server) is the ring row; both
+  read media hrefs (`getStoryMediaHrefs`), reactions and the capture hint once, in `components/stories/prepare.ts`.
+  `unseen` maps to `story-ring`'s `upcoming` before completion and `recap` after.
+- **Reactions:** `0198` grants `update (kind)` alone, so `setStoryReaction()` updates that one column on an existing
+  row and inserts a new one — never an upsert, which asks to update every column it sends.
+- **Moderation:** a frame report or takedown joins SCR-051's two chips as `frame-{id}`; `[photoId]/page.tsx` opens
+  `frame-detail.tsx`, which plays a video with `controls` and decides through `decide_story_frame()`.
+  `photo-detail.tsx` exports `Pair` and `Who` (add-only).
+- **Ledger (to the lead):** `tests/unit/feed-ring-state.test.ts` deleted with `components/feed/ring-state.ts` and
+  `relative.ts`'s `ringCaption`; `tests/components/feed/feed.test.tsx` loses the `rings` fixture and its «rings open
+  nothing» case becomes «the ring row is the story feed's» — an expectation changed. `tests/e2e/wave18-content-home.spec.ts:152-153`
+  fails once the row reads the story feed — the lead's call.
+- **Found on the way:** `resolve_report()` (`0183`) falls through to `remove_photo(rep.photo_id)` for any target that
+  is not `comment`, so a `story_frame` report must never reach it — the queue decides frames through
+  `decide_story_frame()` only; a guard in `resolve_report()` is offered to the lead. `tests/unit/admin-audit-labels`
+  reads `0198`'s `'poster.webp'` literal as an audit action.
+- **Owed:** the capture, video, moderation and strip e2e specs (after the promotion and the image with `ffmpeg`);
+  `story-video-strip.test.ts` run inside the worker image with `REQUIRE_FFMPEG=1`; the captures.
+
+### Wave 26 — the e2e runs (after `0199`), what they found
+
+- **A product defect, the lead's file:** `src/proxy.ts` sent `permissions-policy: camera=(), microphone=()` on every
+  page, so «أضف»'s camera could never open. Fixed by the lead at `c36557f2` — `camera=(self), microphone=(self)` on
+  `/{locale}/app` only; the public routes keep the old header byte for byte (`wave26-lead-permissions-policy`).
+- **The rendition audit refused our own output:** ffprobe reads the video stream's `encoder` back from the sample
+  description («Lavc libx264»). An `encoder` that is libavcodec's is ours; any other is still refused (`9f4fc75e`,
+  confirmed by the worker's log). The video spec then passed 4/4 through the real worker.
+- **Seeds, not code:** a `live` frame is a day's and the read model draws none without one; a uuid passed once as
+  two types; a ROLE locator behind an open sheet finds nothing, so «0 tiles» passed before the write.
+- **The strip says every answer** (`ae7b96dc`): a refusal is an error toast with the sheet left open, never a silent
+  close. An empty `role="status"` at rest on the home is gone (`9f4fc75e`).
+- PR D green on a production build of `ae7b96dc`: 60 passed, 0 failed; 044's own suites untouched.
+
+### Wave 26 — self-review, paused for the machine's sleep
+
+- **Reviewed:** the live, recap, photo and attendee-video frames, the desktop viewer, StoryAdd, SCR-051 with a video, and
+  044's strip — read against `m13/*.dc.html` and the PNGs; captures not regenerated (a production build is the lead's).
+- **Fixed:** axe's `aria-prohibited-attr` on SCR-051 (an id-less detail section, on `main` since wave 22) and a frame first
+  in the queue opening nothing (`b426b583`); the capture's caption line in every state and 044's tile foot as drawn
+  (`3179252a`).
+- **Next:** the captures from the lead's build of D's head (`wave26-content-story-walks`, `-attendee`), each opened beside
+  its board; a seeded recap/photo-frame capture case if the lead wants one.

@@ -17,6 +17,7 @@ import { checkInCeiling, resolveDay } from "@/lib/session-status";
 import { markManually, markManuallyNoScript, removeCheckInAction } from "./actions";
 import { AttendanceBoard, type BoardRow } from "./_components/attendance-board";
 import { CodeCard } from "./_components/code-card";
+import { AttendeeStories } from "@/components/stories/attendee-stories";
 
 // SCR-044 · the hub's الحضور tab, rebuilt from `AdminAttendance.dc.html` (REQ-UIX-090, STORY-UIX-080; `M11a.md` §5).
 // Written after the old page and its two forms were deleted (DEC-208, `bdbfb502`). What it had to keep, and the
@@ -211,6 +212,10 @@ export default async function AttendancePage({
           />
         )}
       </div>
+
+      {/* ★ wave 26 (REQ-STO-017, DEC-251 §4): «قصص الحضور» — `content`'s strip, add-only; it renders nothing when the
+          session has no attendee frame. */}
+      <AttendeeStories locale={locale as Locale} sessionId={id} />
 
       <AttendanceBoard
         rows={rows}
