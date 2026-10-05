@@ -109,11 +109,13 @@ test.beforeAll(async ({}, testInfo) => {
   // `derive()` clamps a layer's position into the safe area, and only a frame
   // WIDER than the safe area is still over it — the v1 template failed a
   // check only because its 60 px box was shorter than its own line.
+  // ★ LEDGER (wave 27, PR D, DEC-254 §3): the org's own seeded template — there is no live platform row to read.
   const { rows: version } = await db.query<{ id: string; document: { layers: Array<{ id: string; frame: { x: number; w: number } }> } }>(
     `select v.id, v.document from public.design_template_versions v
        join public.design_templates t on t.id = v.template_id
-      where t.scope = 'platform' and t.purpose = 'poster' and t.family = 'talk'
-      order by v.version desc limit 1`,
+      where t.org_id = $1 and t.purpose = 'poster' and t.family = 'talk'
+      order by t.is_default desc, v.version desc limit 1`,
+    [orgId],
   );
   const document = version[0].document;
   for (const layer of document.layers) if (layer.id === "l_where") layer.frame = { ...layer.frame, x: 0, w: 1080 };

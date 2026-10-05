@@ -9,8 +9,10 @@
 // default per (purpose, family) — every poster and the landscape certificates. ★ And a seeded document is the
 // platform document it replaces, byte for byte: the same `jsonb`, and the same HTML from the one renderer.
 import { randomUUID } from "node:crypto";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { renderDocumentToHtml, type DesignDocument } from "@kareem/designer-runtime";
+import { BASELINE_LIBRARY, renderDocumentToHtml, type DesignDocument } from "@kareem/designer-runtime";
 import { applyProposed, errorMessage, pool, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
 
@@ -19,6 +21,16 @@ afterAll(() => pool.end());
 const SEED = "designer/0007_seed_org_templates.sql";
 const GUARD = "designer/0008_org_templates_guard.sql";
 const BACKFILL = "designer/0009_org_templates_backfill.sql";
+
+/** The backfill's own SQL — proposed or promoted (0207) — to run against an org the trigger never reached. */
+function backfillSql(): string {
+  const proposed = join(process.cwd(), "supabase", "proposed", BACKFILL);
+  if (existsSync(proposed)) return readFileSync(proposed, "utf8");
+  const dir = join(process.cwd(), "supabase", "migrations");
+  const found = readdirSync(dir).find((f) => /_org_templates_backfill\.sql$/.test(f));
+  if (!found) throw new Error("the backfill is neither proposed nor promoted");
+  return readFileSync(join(dir, found), "utf8");
+}
 
 async function m1(tx: Tx) {
   await applyProposed(tx, SEED);
@@ -107,33 +119,33 @@ describe("RPC-seed_org_templates — REQ-DSG-035", () => {
     });
   });
 
-  it("★★ seed.byte_identical — every seeded document IS the platform document it replaces: the same jsonb, the same HTML", async () => {
+  // ★ LEDGER (wave 27, PR D): this compared each seeded document with the LIVE platform row it replaces. The removal
+  // (0209) leaves none, so the comparison is with the library those platform rows were generated from — the same
+  // object, passed through `jsonb` exactly as a stored row is — and the HTML the one renderer makes of each.
+  it("★★ seed.byte_identical — every seeded document IS the baseline document it came from: the same jsonb, the same HTML", async () => {
     await withTx(async (tx) => {
       await m1(tx);
       const org = await bareOrg(tx);
-      const pairs = await tx.q<{ key: string; equal: boolean; seeded: DesignDocument; platform: DesignDocument }>(
-        `with mine as (
-           select t.purpose, t.family, v.document,
-                  (v.document #>> '{master,width}')::numeric >= (v.document #>> '{master,height}')::numeric as landscape
-             from public.design_templates t join public.design_template_versions v on v.template_id = t.id
-            where t.org_id = $1
-         ), theirs as (
-           select t.purpose, t.family, l.document,
-                  (l.document #>> '{master,width}')::numeric >= (l.document #>> '{master,height}')::numeric as landscape
-             from public.design_templates t
-             cross join lateral (select v.document from public.design_template_versions v where v.template_id = t.id order by v.version desc limit 1) l
-            where t.scope = 'platform' and t.retired_at is null
-         )
-         select m.purpose || '/' || m.family || '/' || m.landscape as key, m.document = p.document as equal,
-                m.document as seeded, p.document as platform
-           from mine m join theirs p using (purpose, family, landscape)`,
+      const seeded = await tx.q<{ purpose: string; family: string; landscape: boolean; document: DesignDocument }>(
+        `select t.purpose::text as purpose, t.family, v.document,
+                (v.document #>> '{master,width}')::numeric >= (v.document #>> '{master,height}')::numeric as landscape
+           from public.design_templates t join public.design_template_versions v on v.template_id = t.id
+          where t.org_id = $1`,
         [org],
       );
-      expect(pairs).toHaveLength(11);
+      expect(seeded).toHaveLength(11);
       const opts = { fonts: [], bindings: { values: {} } };
-      for (const p of pairs) {
-        expect(p.equal, p.key).toBe(true);
-        expect(renderDocumentToHtml(p.seeded, opts), p.key).toBe(renderDocumentToHtml(p.platform, opts));
+      for (const t of BASELINE_LIBRARY) {
+        const key = `${t.purpose}/${t.family}/${t.orientation ?? "poster"}`;
+        const mine = seeded.find((r) => r.purpose === t.purpose && r.family === t.family && (t.purpose === "poster" || r.landscape === (t.orientation === "landscape")));
+        expect(mine, key).toBeDefined();
+        // The library object as a stored row holds it: through `jsonb`, which orders keys its own way.
+        const [{ stored, equal }] = await tx.q<{ stored: DesignDocument; equal: boolean }>(`select $1::jsonb as stored, $1::jsonb = $2::jsonb as equal`, [
+          JSON.stringify(t.document),
+          JSON.stringify(mine!.document),
+        ]);
+        expect(equal, key).toBe(true);
+        expect(renderDocumentToHtml(mine!.document, opts), key).toBe(renderDocumentToHtml(stored, opts));
       }
     });
   });
@@ -204,19 +216,25 @@ describe("RPC-seed_org_templates — REQ-DSG-035", () => {
 
   it("seed.backfill — every org that existed before the trigger is seeded, and the file checks itself", async () => {
     await withTx(async (tx) => {
-      const f = await seed(tx);
+      // ★ LEDGER (wave 27, PR D): with M1 promoted every org is seeded by the trigger and `applyProposed()` is a no-op,
+      // so this proved nothing of the backfill. It now makes the org the backfill exists for — one inserted with the
+      // trigger off, as every org before M1 was — and runs the backfill's own file against it, twice.
       await m1(tx);
-      await applyProposed(tx, BACKFILL);
-      for (const org of [f.a.id, f.b.id]) {
-        // The fixture's own presenter template (created by its admin) stays; the eleven seeded rows are made by no one.
-        const [{ count }] = await tx.q<{ count: number }>(`select count(*)::int as count from public.design_templates where org_id = $1 and created_by is null`, [org]);
-        expect(count).toBe(11);
-        expect(await tx.q(`select * from public.org_missing_templates($1)`, [org])).toEqual([]);
-      }
+      await tx.asOwner();
+      await tx.q(`alter table public.orgs disable trigger orgs_seed_templates`);
+      const org = await bareOrg(tx);
+      await tx.q(`alter table public.orgs enable trigger orgs_seed_templates`);
+      expect(await tx.q(`select id from public.design_templates where org_id = $1`, [org])).toEqual([]);
+
+      const backfill = backfillSql();
+      await tx.q(backfill);
+      const [{ count }] = await tx.q<{ count: number }>(`select count(*)::int as count from public.design_templates where org_id = $1 and created_by is null`, [org]);
+      expect(count).toBe(11);
+      expect(await tx.q(`select * from public.org_missing_templates($1)`, [org])).toEqual([]);
       // A re-run reports zeros and changes nothing.
-      await applyProposed(tx, BACKFILL);
-      const [{ count }] = await tx.q<{ count: number }>(`select count(*)::int as count from public.design_templates where org_id = any($1::uuid[])`, [[f.a.id, f.b.id]]);
-      expect(count).toBe(24);
+      await tx.q(backfill);
+      const [{ again }] = await tx.q<{ again: number }>(`select count(*)::int as again from public.design_templates where org_id = $1`, [org]);
+      expect(again).toBe(11);
     });
   });
 });

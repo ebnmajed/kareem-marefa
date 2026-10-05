@@ -42,9 +42,11 @@ const EMPTY_DOC = JSON.stringify({ schemaVersion: 1, layers: [] });
 
 async function platformRows(tx: Tx) {
   const one = async (sql: string, params: unknown[]) => (await tx.q<{ id: string }>(sql, params))[0].id;
+  // ★ LEDGER (wave 27, PR D, DEC-254 §3.4): a platform row may exist only RETIRED (`design_templates_platform_retired`,
+  // 0210) — what is left on production is a former platform version an org's certificate or document still names.
   const platformTemplateId = await one(
-    `insert into public.design_templates (org_id, scope, purpose, family, name, is_default)
-     values (null, 'platform', 'poster', 'talk', 'ملصق المحاضرة', true) returning id`,
+    `insert into public.design_templates (org_id, scope, purpose, family, name, retired_at)
+     values (null, 'platform', 'poster', 'talk', 'ملصق المحاضرة', now()) returning id`,
     [],
   );
   const platformTemplateVersionId = await one(

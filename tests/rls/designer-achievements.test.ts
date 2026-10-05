@@ -30,17 +30,9 @@ async function setup(tx: Tx) {
     await tx.q(`delete from public.${t}`);
   }
   await tx.q(`delete from graphile_worker._private_jobs`);
-  // An achievement template for both orgs to fall back on. The fixture's
-  // certificate templates are `attendance` and `presenter`.
-  const [tpl] = await tx.q<{ id: string }>(
-    `insert into public.design_templates (org_id, scope, purpose, family, name)
-     values (null, 'platform', 'certificate', 'achievement', 'قالب الإنجاز') returning id`,
-  );
-  await tx.q(
-    `insert into public.design_template_versions (template_id, version, document, published_at)
-     values ($1, 1, (select document from public.design_template_versions order by created_at limit 1), now())`,
-    [tpl.id],
-  );
+  // ★ LEDGER (wave 27, PR D, DEC-254 §3): this inserted a live PLATFORM achievement template for both orgs to fall back
+  // on. There is no platform fallback and no live platform row (0209, 0210): each fixture org owns its seeded achievement
+  // templates from the moment it is created (0205), and issuance reads those. Setup removed; no expectation moved.
   return f;
 }
 

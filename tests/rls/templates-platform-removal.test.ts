@@ -1,27 +1,22 @@
 // The platform library leaves — REQ-DSG-035, REQ-CRT-014, REQ-CRT-015, DEC-254 §3.3 – §3.4, DEC-255 (D2 the raise,
 // D3 the repoint, D4 the drops, D10 the lookup).
 //
-// ★★ M2 is NOT in PR C's chain (DEC-255, D9): the lead promotes it in the follow-up PR after C merges. Here it is
-// `supabase/proposed/designer/0010_platform_library_removal.sql`, applied inside a rolled-back transaction AFTER M1
-// (0007 – 0009), which is exactly the order production meets them in. Once promoted, `applyProposed()` is a no-op and
-// these cases read the promoted schema.
-//
-// ★ The world (`templates-world.ts`): org A holds a certificate, a poster document and two session designs against the
-// PLATFORM rows, and M1 has seeded every org. How a «pre-wave» certificate is made once M1 is promoted is said there.
+// ★★ LEDGER (wave 27, PR D): M2 is PROMOTED (0209, the lead's 0210). The chain a test meets has no live platform
+// row, so `templates-world.ts` rebuilds the world 0209 meets inside the rolled-back transaction and `removal()` runs
+// 0209's own sections 1 – 3, read from the migration file. The narrowed lookups and the drops (sections 4 – 5) are the
+// chain's. How the world is rebuilt, and how a «pre-wave» certificate is made, is said there.
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, errorMessage, pool, withTx } from "./db";
-import { seed } from "./fixture";
-import { M1, M2, world } from "./templates-world";
+import { errorCode, errorMessage, pool, withTx } from "./db";
+import { raiseFirst, removal, world } from "./templates-world";
 
 afterAll(() => pool.end());
 
 describe("MIG-platform_removal — the order is the safety", () => {
   it("★★ raises_first — an org that cannot resolve every fallback template stops the removal before anything changes", async () => {
     await withTx(async (tx) => {
-      const f = await seed(tx);
-      await applyProposed(tx, M1[0]!);
-      await applyProposed(tx, M1[1]!);
+      const w = await world(tx);
+      const f = w.f;
       // An org the seed never reached — what a failed or skipped backfill would leave. Inserted with the seed trigger
       // off, so it holds nothing of its own.
       await tx.asOwner();
@@ -31,12 +26,18 @@ describe("MIG-platform_removal — the order is the safety", () => {
         f.platformAdmin.authUserId,
       ]);
       await tx.q(`alter table public.orgs enable trigger orgs_seed_templates`);
-      const before = await tx.q<{ c: number }>(`select count(*)::int as c from public.design_templates where scope = 'platform'`);
-      expect(await errorMessage(() => applyProposed(tx, M2))).toMatch(/org_without_template/);
+      const live = `select count(*)::int as c from public.design_templates where scope = 'platform' and retired_at is null`;
+      const before = await tx.q<{ c: number }>(live);
+      expect(before[0]!.c).toBeGreaterThan(0);
+      expect(await errorMessage(() => raiseFirst(tx))).toMatch(/org_without_template/);
       await tx.asOwner();
-      expect(await tx.q<{ c: number }>(`select count(*)::int as c from public.design_templates where scope = 'platform'`)).toEqual(before);
-      // The functions it would have dropped are still there.
-      expect((await tx.q<{ ok: boolean }>(`select to_regprocedure('public.promote_template_to_platform(uuid,text)') is not null as ok`))[0]!.ok).toBe(true);
+      // Nothing moved: every platform row is still live, and the unlocked design still names its platform template.
+      expect(await tx.q<{ c: number }>(live)).toEqual(before);
+      const [{ scope }] = await tx.q<{ scope: string }>(
+        `select t.scope::text as scope from public.session_certificate_designs d join public.design_templates t on t.id = d.template_id where d.session_id = $1`,
+        [w.open],
+      );
+      expect(scope).toBe("platform");
     });
   });
 
@@ -44,7 +45,7 @@ describe("MIG-platform_removal — the order is the safety", () => {
     await withTx(async (tx) => {
       const w = await world(tx);
       const [{ document: before }] = await tx.q<{ document: unknown }>(`select document from public.design_template_versions where id = $1`, [w.cert.template_version_id]);
-      await applyProposed(tx, M2);
+      await removal(tx);
       await tx.asOwner();
 
       // No LIVE platform row remains.
@@ -72,7 +73,7 @@ describe("MIG-platform_removal — the order is the safety", () => {
     await withTx(async (tx) => {
       const w = await world(tx);
       // Lock the second design: an ISSUED attendance certificate exists for its session (made in world()).
-      await applyProposed(tx, M2);
+      await removal(tx);
       await tx.asOwner();
       const designs = await tx.q<{ session_id: string; kind: string; template_id: string; scheme: string; scope: string; org_id: string | null; portrait: boolean }>(
         `select d.session_id, d.kind::text as kind, d.template_id, d.scheme::text as scheme, t.scope::text as scope, t.org_id,
@@ -98,7 +99,7 @@ describe("MIG-platform_removal — the order is the safety", () => {
   it("★ org_only — issuance, achievement, the poster and SCR-045's design read the org's own; a platform template is refused", async () => {
     await withTx(async (tx) => {
       const w = await world(tx);
-      await applyProposed(tx, M2);
+      await removal(tx);
       await tx.asOwner();
       // A NEW attendance certificate pins the org's own default — never the retired platform row.
       await tx.q(`delete from public.session_certificate_designs where session_id = $1`, [w.f.m2.a.completed]);
@@ -133,7 +134,7 @@ describe("MIG-platform_removal — the order is the safety", () => {
   it("★ the platform library's functions are gone (D4), and `remove_platform_template()` is owner-only", async () => {
     await withTx(async (tx) => {
       const w = await world(tx);
-      await applyProposed(tx, M2);
+      await removal(tx);
       await tx.asOwner();
       for (const sig of [
         "public.promote_template_to_platform(uuid,text)",
@@ -155,7 +156,7 @@ describe("RPC-remove_platform_template — 0193's shape, one difference", () => 
   it("kept_retired · absent · an org's template refused · a retired, now-unreferenced row is DELETED on a second pass", async () => {
     await withTx(async (tx) => {
       const w = await world(tx);
-      await applyProposed(tx, M2);
+      await removal(tx);
       await tx.asOwner();
       const call = async (id: string) => (await tx.q<{ outcome: string; refused_by: string | null }>(`select * from public.remove_platform_template($1)`, [id]))[0]!;
 
