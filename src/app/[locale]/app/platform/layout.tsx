@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { PlayWordmark } from "@/components/brand/wordmark";
+import { Logo } from "@/components/brand/logo";
 import { ImpersonationBanner } from "@/components/platform/impersonation-banner";
 import { platformRailGroups } from "@/components/platform/platform-nav";
 import { AccountMenu } from "@/components/shell/account-menu";
@@ -58,9 +58,11 @@ export default async function PlatformLayout({ children, params }: { children: R
       banner={<ImpersonationBanner locale={locale} />}
       badge={<Badge tone="neutral">{tApp("platform.noOrgData")}</Badge>}
       brand={
-        // Inside the platform the mark leads home, not to the public site (REQ-UIX-027).
-        <Link href="/app" aria-label={tShell("brand")} className="inline-flex items-center text-accent">
-          <PlayWordmark height={26} label={null} />
+        // Inside the platform the mark leads home, not to the public site (REQ-UIX-027). ★ It is the MARK, at the
+        // 30 px the brand pack gives a console bar, and it never moves here (REQ-UIX-053, REQ-UIX-119): the platform
+        // bar is new this wave, so it never wore the wordmark that PR E retires everywhere else.
+        <Link href="/app" aria-label={tShell("brand")} className="inline-flex items-center">
+          <Logo height={30} label={null} motion="none" />
         </Link>
       }
       toApp={
