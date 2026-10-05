@@ -33,9 +33,9 @@ export async function BrandKitRead({
   const t = await getTranslations("branding");
   const a3 = kit.logo ? ppiAtA3(kit.logo.width, kit.logo.height) : null;
   const font = (f: BrandFontRef | null) => (f ? <bdi>{`${f.family} · ${formatNumber(f.weight)}`}</bdi> : t("fonts.platformDefault"));
-  // The artboard lays a group's swatches as a wrapping grid beside its label — two to a row at 1280 in this half-width card, one under `lg` —
+  // The artboard lays a group's swatches as a wrapping grid beside its label — two to a row at every width — at 390 one per line made the card ~2,200 px tall, and a name over its hex fits in half of it —
   // so the card stays the height it draws, each swatch still carrying its name and its value.
-  const GRID = "grid grid-cols-1 gap-x-4 gap-y-2 lg:grid-cols-2";
+  const GRID = "grid grid-cols-2 gap-x-4 gap-y-2";
   const scheme = (set: BrandColourSet) => (
     <span className={GRID}>
       {TOKENS.map((token) => (

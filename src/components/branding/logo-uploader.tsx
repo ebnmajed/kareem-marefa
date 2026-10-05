@@ -51,7 +51,11 @@ export function LogoUploader({
     startTransition(async () => {
       const result = await uploadLogo(locale, file);
       if (result.status !== "ok") {
+        // The refused file is dropped from the picker too: left there, `file-drop` drew it with a full bar, as if it
+        // had landed. The reason stays, inline.
         setError(result.status);
+        setFiles([]);
+        setResetKey((k) => k + 1);
         return;
       }
       setA3(result.a3);
