@@ -43,8 +43,7 @@ async function signIn(context: BrowserContext, email: string) {
   return data;
 }
 
-test.beforeAll(async ({}, testInfo) => {
-  if (testInfo.project.name !== "phone") return;
+test.beforeAll(async () => {
   admin = createClient(SUPABASE_URL, SERVICE_KEY!, { auth: { persistSession: false } });
   db = new pg.Client(DB_URL);
   await db.connect();
@@ -70,10 +69,35 @@ test.afterAll(async () => {
   await db.end();
 });
 
-async function capture(page: Page, state: string) {
+/** A capture at rest, as the page is drawn — no stitching. The toast is closed, nothing is focused (the skip link would
+ *  show), and the viewport is grown to the document's height for the shot, so a sticky bar is painted once, at the
+ *  top, instead of across a stitched full-page image; then the viewport is put back. */
+async function atRest(page: Page, path: string) {
+  const toastClose = page.getByRole("button", { name: "إغلاق الإشعار" });
+  for (const close of await toastClose.all()) await close.click().catch(() => {});
+  await expect(toastClose).toHaveCount(0);
+  const viewport = page.viewportSize()!;
+  const height = await page.evaluate(() => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    document.documentElement.style.scrollBehavior = "auto";
+    window.scrollTo(0, 0);
+    return Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+  });
+  await page.setViewportSize({ width: viewport.width, height: Math.max(height, viewport.height) });
+  await page.evaluate(async () => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    window.scrollTo(0, 0);
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  });
+  await expect.poll(() => page.evaluate(() => document.activeElement === document.body || document.activeElement === null)).toBe(true);
+  await page.screenshot({ path });
+  await page.setViewportSize(viewport);
+}
+
+async function capture(page: Page, state: string, width: 390 | 1280 = 390) {
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-  await page.screenshot({ path: `${SHOTS}/wave26-branding-privacy-${state}-390.png`, fullPage: true });
+  await atRest(page, `${SHOTS}/wave26-branding-privacy-${state}-${width}.png`);
 }
 
 /** One export row in the given state; `hoursAgo` decides whether the 24-hour limit still applies. */
@@ -150,4 +174,20 @@ test("★ every export state from the data, the hub page's rows, and «إيقا�
   expect(rows).toHaveLength(1);
   expect(rows[0].status).toBe("active");
   await capture(page, "sent");
+});
+
+test("/app/me/privacy at 1280 — a ready export inside the window, under the desktop hub frame", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "the 1280 capture runs on the desktop project");
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await signIn(context, memberEmail);
+  memberId = (await db.query<{ id: string }>(`select id from public.members where org_id = $1`, [orgId])).rows[0].id;
+  const main = page.locator("#main");
+
+  await seed("ready", 1);
+  await page.goto("/ar/app/me/privacy");
+  await expect(main.getByRole("heading", { name: "البيانات والخصوصية", level: 1 })).toBeVisible();
+  await expect(main.getByText(/^جاهز · /)).toBeVisible();
+  await expect(main.getByRole("link", { name: "نزّل", exact: true })).toHaveAttribute("href", "/api/me/export");
+  await expect(main.getByText(/أربع وعشرين ساعة/)).toBeVisible();
+  await capture(page, "ready", 1280);
 });

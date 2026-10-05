@@ -33,8 +33,7 @@ let orgId = "";
 let adminEmail = "";
 const userIds: string[] = [];
 
-test.beforeAll(async ({}, testInfo) => {
-  if (testInfo.project.name !== "desktop") return;
+test.beforeAll(async () => {
   admin = createClient(SUPABASE_URL, SERVICE_KEY!, { auth: { persistSession: false } });
   db = new pg.Client(DB_URL);
   await db.connect();
@@ -115,21 +114,34 @@ async function settle(page: Page) {
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
 }
 
-async function capture(page: Page, state: string) {
-  await settle(page);
-  // A full-page capture is taken from the top, at rest: the save's toast closed (its ✕) and gone, no element left
-  // focused (the skip link would show), the page scrolled to 0 with smooth scrolling forced off — scrolled, the sticky
-  // console bar is painted across the middle of the stitched image — and one frame let through.
+/** A capture at rest, as the page is drawn — no stitching. The toast is closed, nothing is focused (the skip link would
+ *  show), and the viewport is grown to the document's height for the shot, so a sticky bar is painted once, at the
+ *  top, instead of across a stitched full-page image; then the viewport is put back. */
+async function atRest(page: Page, path: string) {
   const toastClose = page.getByRole("button", { name: "إغلاق الإشعار" });
   for (const close of await toastClose.all()) await close.click().catch(() => {});
   await expect(toastClose).toHaveCount(0);
-  await page.evaluate(async () => {
+  const viewport = page.viewportSize()!;
+  const height = await page.evaluate(() => {
     (document.activeElement as HTMLElement | null)?.blur();
     document.documentElement.style.scrollBehavior = "auto";
     window.scrollTo(0, 0);
+    return Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+  });
+  await page.setViewportSize({ width: viewport.width, height: Math.max(height, viewport.height) });
+  await page.evaluate(async () => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    window.scrollTo(0, 0);
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   });
-  await page.screenshot({ path: `${SHOTS}/wave26-branding-scr059-${state}-1280.png`, fullPage: true });
+  await expect.poll(() => page.evaluate(() => document.activeElement === document.body || document.activeElement === null)).toBe(true);
+  await page.screenshot({ path });
+  await page.setViewportSize(viewport);
+}
+
+async function capture(page: Page, state: string, width: 1280 | 390 = 1280) {
+  await settle(page);
+  await atRest(page, `${SHOTS}/wave26-branding-scr059-${state}-${width}.png`);
 }
 
 test("★ SCR-059 read first, edit, the database's refusal on the screen, and a save's mark", async ({ context, page }, testInfo) => {
@@ -201,4 +213,37 @@ test("SCR-059 with a logo — the artboard's own state, uploaded through the rea
   const { rows } = await db.query<{ logo_asset_id: string | null }>(`select logo_asset_id from public.brand_kits where org_id = $1`, [orgId]);
   expect(rows[0]?.logo_asset_id).not.toBeNull();
   await capture(page, "read-with-logo");
+});
+
+test("SCR-059 refuses a disguised upload at its own field — an SVG named .png, judged on its content", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "SCR-059's artboard is drawn at 1280");
+  await page.setViewportSize(DESKTOP);
+  await signIn(context, adminEmail);
+  const main = page.locator("#main");
+
+  await page.goto("/ar/app/admin/branding?edit");
+  await expect(main.getByRole("heading", { name: "تعديل الهوية" })).toBeVisible();
+  // DEC-009, invariant 11: the declared type says PNG; the bytes are an SVG. The complete step sniffs the content after
+  // the bytes land and refuses it (415) — the refusal is said inline, `branding.logo.errors.rejected_content`.
+  const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>');
+  await main.locator('input[type="file"][name="logo"]').setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: svg });
+  await main.getByRole("button", { name: /^رفع شعار|^استبدال/ }).click();
+  await expect(main.getByRole("alert").filter({ hasText: "هذا الملف ليس صورة PNG أو JPG أو WebP صالحة." })).toBeVisible({ timeout: 20_000 });
+  await capture(page, "edit-upload-rejected");
+});
+
+test("SCR-059 at 390 — read, then edit, stacked under lg", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "phone", "the 390 px review runs on the phone project");
+  await signIn(context, adminEmail);
+  const main = page.locator("#main");
+
+  await page.goto("/ar/app/admin/branding");
+  await expect(main.getByRole("heading", { name: "هوية المؤسسة", level: 1 })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways scroll at 390").toBe(true);
+  await capture(page, "read", 390);
+
+  await page.goto("/ar/app/admin/branding?edit");
+  await expect(main.getByRole("heading", { name: "تعديل الهوية" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways scroll at 390").toBe(true);
+  await capture(page, "edit", 390);
 });
