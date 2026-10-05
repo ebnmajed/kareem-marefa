@@ -38,7 +38,7 @@ export function DeactivateSheet({ action }: { action: (prev: PrivacyState, formD
 
   return (
     <>
-      <Button type="button" variant="ghost" size="md" className="self-start px-0 text-error!" onClick={() => setOpen(true)}>
+      <Button type="button" variant="ghost" size="md" className="self-start px-0! text-error!" onClick={() => setOpen(true)}>
         {t("page.deactivateTitle")}
       </Button>
       <Sheet open={open} onOpenChange={setOpen} title={t("page.deactivateTitle")}>

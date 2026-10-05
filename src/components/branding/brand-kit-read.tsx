@@ -48,8 +48,8 @@ export async function BrandKitRead({
     <div className="mt-6 grid items-start gap-4 lg:grid-cols-2">
       <div className="flex min-w-0 flex-col gap-4">
         <section aria-labelledby="brand-logo" className="flex flex-wrap items-center gap-4 rounded-panel border border-edge bg-surface p-4">
-          {/* The artboard's bone tile: an org's mark is drawn for a light ground. */}
-          <div className="flex size-24 shrink-0 items-center justify-center overflow-clip rounded-card bg-fg-heading p-2">
+          {/* The artboard's bone tile under a mark (an org's mark is drawn for a light ground); a plain raised tile when there is none. */}
+          <div className={`flex size-24 shrink-0 items-center justify-center overflow-clip rounded-card p-2 ${kit.logo && logoUrl ? "bg-fg-heading" : "bg-raised"}`}>
             {kit.logo && logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- an org-uploaded image at a short-lived signed URL.
               <img src={logoUrl} alt={t("logo.current")} className="max-h-full max-w-full object-contain" />
@@ -78,7 +78,8 @@ export async function BrandKitRead({
               <p className="text-body-sm text-fg-muted">{t("logo.none")}</p>
             )}
           </div>
-          <ButtonLink href="/app/admin/branding?edit" variant="secondary" size="md">
+          {/* The artboard's «استبدال»: a filled, quiet pill, not an outline. */}
+          <ButtonLink href="/app/admin/branding?edit" variant="quiet" size="md">
             {kit.logo ? t("logo.replace") : t("logo.upload")}
           </ButtonLink>
         </section>

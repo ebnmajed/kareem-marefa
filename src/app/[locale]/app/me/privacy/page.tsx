@@ -70,7 +70,7 @@ export default async function MyPrivacyPage({ params }: { params: Promise<{ loca
         </div>
         <SettingsGroup title={t("groupLegal")} showTitle={false} rows={legal} />
         <AvatarSection locale={locale} />
-        <div className="flex flex-col px-1">
+        <div className="flex flex-col">
           <DeactivateSheet action={requestDeactivationAction.bind(null, locale as Locale)} />
         </div>
       </div>

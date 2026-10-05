@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 import { Avatar } from "@/components/ui/avatar";
-import { SectionHeader } from "@/components/ui/section-header";
 import type { Locale } from "@/i18n/routing";
 import { getMyAvatar } from "@/lib/dal/avatars";
 import { getMe } from "@/lib/dal/members";
@@ -29,24 +28,29 @@ export async function AvatarSection({ locale }: { locale: string }) {
   let control: ReactNode = null;
   if (mine.href) {
     line = t("ready");
-    control = <AvatarAnswerForm action={bind("declined")} label={t("remove")} />;
+    control = <AvatarAnswerForm action={bind("declined")} label={t("remove")} size="sm" />;
   } else if (!mine.hasSource) {
     line = t("noSource");
   } else if (mine.answer === "accepted") {
     line = t("pending");
-    control = <AvatarAnswerForm action={bind("accepted")} label={t("retry")} />;
+    control = <AvatarAnswerForm action={bind("accepted")} label={t("retry")} size="sm" />;
   } else {
     line = t("initials");
-    control = <AvatarAnswerForm action={bind("accepted")} label={t("use")} />;
+    control = <AvatarAnswerForm action={bind("accepted")} label={t("use")} size="sm" />;
   }
 
+  // ★ wave 26 (REQ-UIX-117): presentation only — the answer sits on `/app/me/privacy` as one more card in the page's
+  // register, after the legal links (DEC-251 §3.5), its title at label scale like the cards above it; the four states,
+  // their words and their forms are unchanged.
   return (
-    <section aria-labelledby="avatar" className="mt-10 max-w-2xl">
-      <SectionHeader id="avatar" title={t("title")} />
-      <div className="mt-4 flex flex-wrap items-center gap-4">
-        <Avatar memberId={me.id} displayName={me.displayName} src={mine.href} size={96} decorative />
-        <div className="flex min-w-0 flex-1 flex-col gap-3">
-          <p className="text-body text-fg-body">{line}</p>
+    <section aria-labelledby="avatar" className="rounded-panel border border-edge bg-surface p-4">
+      <h2 id="avatar" className="text-label font-bold text-fg-heading">
+        {t("title")}
+      </h2>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <Avatar memberId={me.id} displayName={me.displayName} src={mine.href} size={56} decorative />
+        <div className="flex min-w-0 flex-1 flex-col items-start gap-2">
+          <p className="text-body-sm text-fg-body">{line}</p>
           {control}
         </div>
       </div>

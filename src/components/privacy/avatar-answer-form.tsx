@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Panel } from "@/components/ui/panel";
-import type { ButtonVariant } from "@/components/ui";
+import type { ButtonVariant, Size } from "@/components/ui";
 
 // One answer to «نستخدم صورتك من Google؟», as its own form (REQ-PRF-008,
 // DEC-182). Two answers are two forms, each bound on the server to its own
@@ -18,10 +18,13 @@ export function AvatarAnswerForm({
   action,
   label,
   variant = "secondary",
+  size,
 }: {
   action: (prev: AvatarAnswerState, formData: FormData) => Promise<AvatarAnswerState>;
   label: string;
   variant?: ButtonVariant;
+  /** wave 26, add-only: privacy's card asks for a smaller control; the /app prompt keeps the default. */
+  size?: Size;
 }) {
   const t = useTranslations("privacy.errors");
   const [state, formAction, pending] = useActionState(action, initial);
@@ -34,7 +37,7 @@ export function AvatarAnswerForm({
           </Panel>
         </div>
       ) : null}
-      <SubmitButton pending={pending} variant={variant}>
+      <SubmitButton pending={pending} variant={variant} size={size}>
         {label}
       </SubmitButton>
     </form>

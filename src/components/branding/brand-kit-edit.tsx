@@ -280,7 +280,7 @@ export function BrandKitEdit({
           <BrandPreview colours={active} dark={dark} logoUrl={logo.previewUrl} />
 
           <Dialog open={resetOpen} onOpenChange={setResetOpen}>
-              <Button type="button" variant="secondary" onClick={() => setResetOpen(true)}>
+              <Button type="button" variant="secondary" size="md" onClick={() => setResetOpen(true)}>
                 {t("actions.reset")}
               </Button>
               <DialogContent
