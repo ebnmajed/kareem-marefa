@@ -203,7 +203,7 @@ No changed assertion is expected; any that changes is a line in `wave-27-ledger-
   (`sessions.ts:1821`) and one key in `schedule.json`. **D4** at null: «الرمز يُعرض في القاعة.» + `rotationPoints`
   unchanged, with a test that the points sentence survives a null **and** a failed read. **D5** both stand; the presenter's
   retitle is audited by the lead's trigger. **C3** is with the owner — the rename carries **no state restriction**.
-- ★ **D2 — the exact enqueue to copy** (`0111_day_change_notice.sql:306-323`, `sessions_notify()`'s arm 4; the same
+- ~~D2~~ **withdrawn by the owner's ruling (W27.11)**; kept for the record — **the exact enqueue to copy** (`0111_day_change_notice.sql:306-323`, `sessions_notify()`'s arm 4; the same
   call at `:157-181` in `session_days_changed()`):
 
   ```sql
@@ -227,6 +227,114 @@ No changed assertion is expected; any that changes is a line in `wave-27-ledger-
   My RLS case then asserts **one** `calendar_upsert` per confirmed RSVP and **no** notification after a title-only
   update (W27.8's D2 row flips to this).
 
+### W27.11 — ★ The owner's ruling (2026-10-05): the name is editable UNTIL PUBLISHED — this section supersedes W27.4's table, W27.8's rename tests, D2 and C3
+
+**The rule.** A session's title changes only while the session is **before publication**, with or without a proposal;
+from `published` on it is locked, for an admin and a presenter alike. C3 (certificates) closes: a certificate exists
+only after completion, so no title it could print can change. D2 is withdrawn. D0, D1, D3, D4, D5 stand (D5 minus the
+`published` state).
+
+**The states, from the state machine** (`session_state`, `0010:17`; transitions `0024`'s `sessions_guard_transition`):
+
+| Editable (before publication) | Locked |
+|---|---|
+| `draft` · `submitted` · `in_review` · `changes_requested` · `approved` | `published` · `in_progress` · `completed` · `archived` · `cancelled` |
+
+- These five are **exactly** the hub header's existing `PUBLISHABLE` set (`hub-header.tsx:22`), so «عدّل الاسم» renders
+  under the same condition as «انشر» (`viewerRole === "admin" && PUBLISHABLE.has(state)`) and is simply absent otherwise
+  — no disabled control, no explanation.
+- ★ **One case the lead should confirm:** `approved → cancelled` exists (`0024`), so a session can be cancelled **without
+  ever having been published**. «Published or later» does not literally name it; I read the ruling as a **whitelist of
+  the five** (so a cancelled session is locked whichever way it got there). A presenter's decline sends a pre-publication
+  session back to `draft` (`0024`, the last arm) — it stays editable, correctly.
+- **Writers:** an admin through `sessions_update_admin` (`0010:459-461`); a presenter through
+  `sessions_update_presenter`, whose own `using` already stops at `published` (`0010:462-465`) — the guard removes that
+  last state.
+
+**The guard I ask for (the lead's migration).** `before update of title on public.sessions for each row when (old.title is
+distinct from new.title)`; refuses when `old.state not in ('draft','submitted','in_review','changes_requested','approved')`
+with **`raise exception 'session_title_locked' using errcode = '55000'`** (`object_not_in_prerequisite_state` — distinct
+from `0024`'s `23514` and from a check violation, so it cannot be confused with the length check). Keyed on `old.state`
+so a title-and-state change in one statement (none exists today) is judged by where the row was. It must fire for every
+role, so it is not a policy predicate; the owner's own scoped statement is the lead's to exempt or not.
+
+**How the action classifies it.** `renameSession()` returns `{ ok: false, reason: "locked" }` when
+`error.message` contains `session_title_locked` (supabase-js passes the raised message through); `"refused"` for zero
+rows (RLS); `"failed"` otherwise (including `23514` from the length check). In the header, «locked» can only arise from a
+race (published in another tab between render and save): the dialog shows `sessions.hub.rename.locked` «نُشرت الجلسة —
+لا يتغيّر اسمها.» and the action revalidates the hub layout, so the control disappears with the published state. That
+is a refusal's message, not an explainer on a control.
+
+**What exists before publication — the downstream table, shrunk:**
+
+| Surface | What it reads | After a rename | Test |
+|---|---|---|---|
+| The hub's `h1` | `getSessionHubHeader()` → `sessions.title` (`sessions.ts:1729-1748`) | new, from the server's answer | component + e2e |
+| The admin sessions table `SCR-042` | `getConsoleSessions()` → `sessions.title` (`admin-sessions.ts:51`, `:94`; `admin/sessions/page.tsx:8`) | new | e2e |
+| The schedule tab's log (D3) | `getSessionLog()` over `audit_log` | a new «session.renamed» line; the creation line's `after.title` (`0020:106-108`) keeps the name it was born with | RLS (row) + e2e (line) |
+| `SCR-062`, the audit log | the row; the subject label is the **current** title (`admin-audit.ts:345`) | earlier rows display the new name; their content is unchanged | RLS |
+| The event page for its **presenter** | `sessions_read` admits staff and `is_presenter_of(id)` before publication (`0010:454-458`) | new | — (live read, same as the hub) |
+| The proposal it came from | `create_session()` **copies** the proposal's title into `sessions` (`0151:44-45`); nothing writes back | ★ **the proposal's title does NOT change** — no trigger, no function touches `proposals.title` on a session update (W27.5's trigger scan) | RLS: `proposals.title` unchanged after the rename |
+| «my proposal» `SCR-018` | the page's title and summary read `proposal.title` (`propose/[id]/page.tsx:96,101,207`); `ScheduledSession` reads the **session's** title (`proposals.ts:445`, `scheduled-session.tsx:19,31`) | before publication `ScheduledSession` renders **nothing** (`scheduled-session.tsx:24`, `SCHEDULED_SESSION_STATES` `proposals.ts:436`), so the page shows the proposal's own title only. **After publication** it shows the proposal's title at the top and the session's (renamed, now locked) title on the poster and its alt; a session cancelled before publication is named by its session title beside «sessionCancelled» (`scheduled-session.tsx:15-20`) | component: `ScheduledSession` with a draft session renders nothing |
+| A notice already sent | `MSG-presenter_assigned` copies `s.title` into its payload at the presenter's insert (`0039:219-231`), possible on a draft; the inbox reads `payload.title` (`inbox-item.tsx:22`) | **old** — sent mail is history | RLS: the payload unchanged |
+| A poster | the live poster is first rendered **on the edge into `published`** (`0063:200-206`), reading `title` then (`poster_render_context`); an uploaded poster attached to a draft is `detached` and is an image, printing no bound title (`posters.ts:211-240`); a studio document bound to a draft resolves `{title}` when exported | the published poster carries the final name; a studio export taken before the rename keeps the old one (an artefact already downloaded) | RLS: no `regenerate_poster` job on a pre-publication rename (`0063:209-211`'s state gate) |
+| Search | `search_vector`, generated stored (`0037:239-245`) | recomputed on the row | — (Postgres's) |
+
+**Rows that cannot occur, dropped, each with its proof:**
+- **The feed, browse, the public card `/s/[id]`** — a member reads no session before `published` (`sessions_read`,
+  `0010:454-458`); the public card filters `state in ('published','in_progress','completed')` (`0122:115`).
+- **The calendar entry and the ICS** — ★ **no confirmed RSVP can exist before `published`**: `reserve_seat()` refuses
+  `s.state <> 'published'` (`0045:45`); it and its predecessor (`0014:53`, `0045:81`) are the only inserts into
+  `rsvps` in `supabase/migrations/`; clients hold `select` only (`0010:499`). The one way back to pre-publication is a
+  presenter's decline from `submitted`…`approved`, none of which ever had a reservation. **No path found.** D2 is
+  rightly withdrawn.
+- **Reminders** — scheduled on the edge into `published` (`0111:242`) or after a reschedule of a published session
+  (`0111:277`, `:326`); `session_days_changed()` returns before a non-published session (`0111:107`).
+- **Story frames** — written from the edge into `published` on (`0199:824-827`).
+- **Certificates** — fan out on the edge into `completed` only (`0065:74-86`). C3 is closed.
+- **Mail about the rename itself** — none: `sessions_notify()` sends nothing on a title-only update, and before
+  publication it returns at arm 4's state gate anyway (`0111:277`).
+
+**What the lead's trigger now looks like from my side** (W27.6 amended): the audit trigger as W27.6 (`after update of
+title … when distinct`, `session.renamed`, before/after titles), **no calendar enqueue**; plus the guard above. With the
+guard `before` and the audit `after`, a refused rename writes no audit row.
+
+**`main` on the new schema before my code deploys:** `main` writes `sessions.title` nowhere; a presenter's or an
+admin's direct API write now succeeds only before publication and is audited. Nothing else moves.
+
+**Tests (replacing W27.8's rename list; the rules-line tests stand):**
+- `tests/rls/session-rename.test.ts` —
+  - an admin renames in **each** of `draft`, `submitted`, `in_review`, `changes_requested`, `approved`, **for a session
+    with a proposal (`create_session(p_proposal)`) and one without (direct)** — ten cases, each reading back the title and
+    the `session.renamed` row with `before.title` / `after.title` and the actor;
+  - the database refuses `session_title_locked` (`55000`) at `published`, `in_progress`, `completed`, `archived` and
+    `cancelled` (the last both via `approved → cancelled` and via `published → cancelled`), as an admin **and** as a
+    presenter at `published`; the title unchanged and **no** audit row;
+  - a moderator and a plain member: zero rows; another org's admin: zero rows; a presenter in `draft`: allowed and
+    audited (D5);
+  - a same-title save: no audit row;
+  - the proposal's `title` unchanged after its session is renamed;
+  - no `regenerate_poster`, no notification, no `calendar_upsert` after a pre-publication rename; an earlier
+    `MSG-presenter_assigned` payload unchanged.
+- `tests/components/sessions/rename-action.test.tsx` — rendered for an admin in each of the five states, absent in the
+  other five and for a moderator; the bounds at the field; typed text kept on refusal; `locked` shows its line.
+- `tests/e2e/wave27-sessions-rename.spec.ts` — `page.click()` and typing only: an admin renames a draft from the hub at
+  1280 and 390, the `h1` and `SCR-042`'s row change, the schedule tab's log shows the line; the same session published
+  shows no «عدّل الاسم». Captures `.qa-shots/rtl/wave27-sessions-hub-rename-{open,saved,published}-{1280,390}.png`.
+
+
+### W27.12 — Built (after «the plans are approved», DEC-255 at `313a5ec0`)
+
+- `5226ae33` — the rules line: `rotationLineFor()` (`event-actions.ts`), `action-card.tsx`, `sessions.event.rotationFixed`;
+  `tests/components/sessions/rename-rules-line.test.tsx` (6) — the points survive a null that means off **and** a failed read.
+- `bf8a8a1f` — the rename: `RENAMEABLE_STATES`, `sessionRenameInput`, `renameSession()` (`sessions.ts`, add-only);
+  `renameFromHub()` and `_hub/rename-state.ts`; `RenameAction` (`components/sessions/session-rename.tsx`) mounted first in
+  `hub-header.tsx`'s actions; `sessions.hub.rename.*`. Tests: `rename-action.test.tsx` (11), `tests/rls/session-rename.test.ts`
+  (22, green against `0200` applied locally), `tests/e2e/wave27-sessions-rename.spec.ts` (written, **not run** — the lead's
+  window through the gate lock).
+- ★ **Held:** `session.renamed` in `SESSION_LOG_ACTIONS` and `schedule.log.renamed` — the schedule page's `LOG_KEY`
+  (`schedule/page.tsx:56-69`) needs its one line too, or the log renders `log.undefined`; asked of the lead in writing.
+- No existing assertion changed — nothing for `wave-27-ledger-a.md`.
 ---
 
 ## 0. Two discrepancies found on day one (lead, please read)
