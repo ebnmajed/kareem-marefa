@@ -41,8 +41,11 @@ const isolate = (value: string) => `⁨${value}⁩`;
  */
 const CORAL = "text-error pg-dark:text-error-on-dark";
 
-/** A 36 px pill with a 44 px hit area: the pseudo-element extends the target, not the drawing. */
-const HIT = "relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']";
+/**
+ * A 36 px pill with a 44 px hit area: the pseudo-element extends the target, not the drawing. A pill's word never
+ * wraps — «أعد التفعيل» broke into two lines inside its pill at 1280 (the lead's capture).
+ */
+const HIT = "relative whitespace-nowrap after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']";
 
 export function OrgActions({ org, locale }: { org: OrgSummary; locale: Locale }) {
   const t = useTranslations("platform.orgs");

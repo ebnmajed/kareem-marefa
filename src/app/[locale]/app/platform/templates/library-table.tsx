@@ -102,8 +102,8 @@ function TemplateCard({ template, locale }: { template: PlatformTemplate; locale
   const tFamily = useTranslations("templates.family");
   const family = tFamily(template.family);
   // The board's two rows under the swatch: the name, the purpose chip and «⋯»; then the composition's chips —
-  // the family where the name does not already say it, a certificate's orientation — and the state badges.
-  const chips = [...(family === template.name ? [] : [family]), ...(template.orientation ? [t(template.orientation)] : [])];
+  // the family where the name does not already contain it («شهادة إنجاز» beside «شهادة إنجاز أفقية» said it twice), a certificate's orientation — and the state badges.
+  const chips = [...(template.name.includes(family) ? [] : [family]), ...(template.orientation ? [t(template.orientation)] : [])];
 
   return (
     <Card density="grid" className="h-full">

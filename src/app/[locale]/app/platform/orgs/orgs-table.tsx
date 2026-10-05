@@ -31,6 +31,18 @@ function monthYear(iso: string, locale: string): string {
 export function OrgsTable({ orgs, locale }: { orgs: OrgSummary[]; locale: Locale }) {
   const t = useTranslations("platform.orgs");
   const num = (n: number) => <bdi>{formatNumber(n)}</bdi>;
+  const statusBadge = (org: OrgSummary) =>
+    org.deletionPending ? (
+      <Badge tone="error" outline>
+        {t("statusDeleting")}
+      </Badge>
+    ) : org.status === "active" ? (
+      <Badge tone="success">{t("statusActive")}</Badge>
+    ) : (
+      <Badge tone="neutral" outline>
+        {t("statusSuspended")}
+      </Badge>
+    );
 
   const columns: DataTableColumn<OrgSummary>[] = [
     {
@@ -56,18 +68,8 @@ export function OrgsTable({ orgs, locale }: { orgs: OrgSummary[]; locale: Locale
       key: "status",
       header: t("statusColumn"),
       onCard: true,
-      cell: (org) =>
-        org.deletionPending ? (
-          <Badge tone="error" outline>
-            {t("statusDeleting")}
-          </Badge>
-        ) : org.status === "active" ? (
-          <Badge tone="success">{t("statusActive")}</Badge>
-        ) : (
-          <Badge tone="neutral" outline>
-            {t("statusSuspended")}
-          </Badge>
-        ),
+      // A status is one badge on one line: «قيد الحذف» wrapped inside its badge at 1280.
+      cell: (org) => <span className="whitespace-nowrap">{statusBadge(org)}</span>,
     },
     { key: "members", header: t("members"), onCard: true, align: "end", cell: (org) => num(org.members) },
     { key: "activeMembers", header: t("activeMembers"), align: "end", cell: (org) => num(org.activeMembers) },
