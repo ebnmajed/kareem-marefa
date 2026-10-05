@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, type CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import { Field } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
@@ -75,15 +75,19 @@ export function AttendeeStoriesClient({
                   {f.state === "failed" ? tf("failed") : f.state === "processing" ? tf("processing") : t("hidden")}
                 </span>
               ) : null}
-              <span className="relative flex flex-col gap-1">
-                <span className="truncate rounded-pill bg-chrome px-1.5 py-0.5 text-caption">
-                  <bdi>{f.authorName ?? ""}</bdi>
-                </span>
+              {/* `AdminAttendance.dc.html`: the poster's team ring at the start, «أزل» at the end, on one row. The name is
+                  the button's accessible name (with the kind), so the ring is never the only way to tell who posted it. */}
+              <span className="relative flex items-center justify-between gap-1">
+                <span
+                  aria-hidden
+                  style={f.authorTeamColor ? ({ "--team": f.authorTeamColor } as CSSProperties) : undefined}
+                  className={`size-5 shrink-0 rounded-pill border-2 bg-canvas ${f.authorTeamColor ? "border-team" : "border-team-neutral"}`}
+                />
                 <button
                   type="button"
                   onClick={() => setTarget(f)}
                   aria-label={`${t("remove")} — ${kind} — ${f.authorName ?? ""}`}
-                  className="min-h-9 rounded-pill bg-chrome px-2 text-caption font-bold text-fg-heading hover:bg-hover"
+                  className="min-h-9 rounded-pill bg-chrome px-2.5 text-caption font-bold text-fg-heading hover:bg-hover"
                 >
                   {t("remove")}
                 </button>

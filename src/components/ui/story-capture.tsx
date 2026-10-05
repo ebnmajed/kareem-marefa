@@ -118,7 +118,9 @@ export function StoryCapture({
             </div>
 
             <div className="relative z-10 flex flex-col gap-3 px-4">
-              {reviewing || busy ? (
+              {/* The one caption line, above the controls in every state but a refused camera — `StoryAdd.dc.html` draws
+                  it while recording (0:07 / 0:15), so it can be written before, during or after the take. */}
+              {state !== "denied" ? (
                 <>
                   <label htmlFor={captionId} className="sr-only">
                     {labels.caption}
@@ -134,6 +136,10 @@ export function StoryCapture({
                     onChange={(e) => onCaptionChange(e.target.value)}
                     className="min-h-11 w-full rounded-pill border-0 bg-chrome px-3.5 text-body text-fg-heading placeholder:text-fg-muted"
                   />
+                </>
+              ) : null}
+              {reviewing || busy ? (
+                <>
                   <div className="flex items-center gap-2">
                     <button type="button" onClick={onRetake} disabled={busy} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-pill bg-chrome px-4 font-bold">
                       {labels.retake}

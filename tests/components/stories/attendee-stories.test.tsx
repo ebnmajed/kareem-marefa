@@ -40,12 +40,12 @@ async function remove(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("«قصص الحضور»", () => {
-  it("names every frame's author and kind in text — never by a ring's colour alone", () => {
+  it("names every frame's author and kind in text — never by a ring's colour alone (the ring as drawn, the name in «أزل»)", () => {
     show();
     const strip = screen.getByRole("region", { name: "قصص الحضور · 3" });
     const tiles = within(strip).getAllByRole("listitem");
     expect(tiles).toHaveLength(3);
-    expect(within(tiles[0]).getByText("فهد العنزي")).toBeInTheDocument();
+    expect(within(tiles[0]).getByRole("button", { name: "أزل — فيديو 0:12 — فهد العنزي" })).toBeInTheDocument();
     expect(within(tiles[0]).getByText("فيديو 0:12")).toBeInTheDocument();
     expect(within(tiles[1]).getByText("مخفية")).toBeInTheDocument();
     expect(within(tiles[2]).getByText("تعذّر")).toBeInTheDocument();
