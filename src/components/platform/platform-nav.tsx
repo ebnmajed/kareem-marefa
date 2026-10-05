@@ -21,9 +21,10 @@ import type { AdminRailLink } from "@/components/ui";
 // section switcher on `ui/menu` — under `lg` the frame's sheet behind ≡ is the phone's navigation, as on every
 // console screen since wave 21.
 //
-// One ruled group: the six `Platform*.dc.html` boards draw the five items with no rule between them.
+// One ruled group: the `Platform*.dc.html` boards draw the items with no rule between them. ★ wave 27 (DEC-254 §3.5,
+// REQ-DSG-035): four items, not five — «مكتبة القوالب» went with SCR-083; there is no platform library.
 
-export type PlatformNavKey = "home" | "orgs" | "templates" | "metrics" | "impersonate";
+export type PlatformNavKey = "home" | "orgs" | "metrics" | "impersonate";
 
 export interface PlatformNavLeaf {
   key: PlatformNavKey;
@@ -35,7 +36,6 @@ export interface PlatformNavLeaf {
 export const PLATFORM_NAV: readonly PlatformNavLeaf[] = [
   { key: "home", href: "/app/platform", exact: true },
   { key: "orgs", href: "/app/platform/orgs" },
-  { key: "templates", href: "/app/platform/templates" },
   { key: "metrics", href: "/app/platform/metrics" },
   { key: "impersonate", href: "/app/platform/impersonate" },
 ];

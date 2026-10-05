@@ -6,9 +6,7 @@
       "tabPosters": "Posters",
       "tabCertificates": "Certificates",
       "orgHeading": "Your organisation's templates · <bdi>{value}</bdi>",
-      "platformHeading": "Platform templates · <bdi>{value}</bdi> · copy to edit",
       "orgEmpty": "Your organisation has no templates yet",
-      "platformEmpty": "No platform templates of this kind yet",
       "defaultsLabel": "Default templates",
       "defaultFor": {
         "attendance": "Default for attendance",
@@ -16,19 +14,16 @@
         "achievement": "Default for achievement"
       },
       "noTemplate": "No template",
-      "platformMark": "Platform",
       "noDefault": "No default set"
     },
     "card": {
       "isDefault": "Default",
       "retired": "Retired",
-      "duplicate": "Copy to edit",
       "edit": "Open in the designer",
       "publish": "Publish a new version",
       "setDefault": "Make it the default",
       "retire": "Retire",
       "restore": "Restore",
-      "platformBadge": "Platform",
       "orientation": {
         "landscape": "Landscape",
         "portrait": "Portrait"
@@ -52,11 +47,9 @@
     },
     "create": {
       "name": "Name",
-      "duplicateName": "Name for the copy",
       "orientation": "Orientation",
       "cancel": "Cancel",
       "save": "Save",
-      "duplicateTitle": "Copy «<bdi>{name}</bdi>» to your organisation",
       "renameTitle": "Rename «<bdi>{name}</bdi>»",
       "nameRequired": "Name the template.",
       "nameTooLong": "The name is longer than allowed.",
@@ -79,15 +72,16 @@
       "achievement": "Achievement certificate"
     },
     "result": {
-      "duplicated": "The template was copied into your org.",
+      "duplicated": "Template copied.",
       "created": "The template was created.",
       "defaultSet": "This template is now the default for its family.",
       "renamed": "The name was updated.",
       "retired": "The template was retired.",
       "restored": "The template is back in service.",
-      "notAuthorized": "This is an org admin's act, and platform templates are not edited here.",
+      "notAuthorized": "Only an organisation admin can do this.",
       "publishedToast": "A new version is published. What was issued before keeps its version.",
-      "invalidToast": "Could not save. Check the document in the studio and try again."
+      "invalidToast": "Could not save. Check the document in the studio and try again.",
+      "lastTemplate": "It can't be retired: it is the last published template of this kind."
     },
     "retire": {
       "title": "Retire «<bdi>{name}</bdi>»?",

@@ -247,7 +247,8 @@ const main = (page: Page) => page.locator("#main");
 const designPanel = (page: Page, kind: "attendance" | "presenter") => page.locator(`section[aria-labelledby="cert-template-${kind}-heading"]`);
 
 async function templateId(name: string): Promise<string> {
-  const { rows } = await db.query<{ id: string }>(`select id from public.design_templates where scope = 'platform' and purpose = 'certificate' and name = $1`, [name]);
+  // ★ LEDGER (wave 27, DEC-254 §3): the org's own seeded composition — SCR-045 offers no platform template.
+  const { rows } = await db.query<{ id: string }>(`select id from public.design_templates where org_id = $1 and purpose = 'certificate' and name = $2`, [orgId, name]);
   return rows[0]!.id;
 }
 
@@ -319,7 +320,9 @@ test("★ held certificates take the saved design, release confirms by count and
   // Expectation (wave 23): completed, the board's line names what the certificates were prepared with, and the template
   // still changes behind «غيّر» while the kind is only held (DEC-238 §2) — no «التصميم» section after completion.
   await expect(main(page).getByText("شهادة حضور أفقية")).toBeVisible();
-  await main(page).getByRole("link", { name: "غيّر" }).click();
+  // ★ LEDGER (wave 27): since DEC-250 (01c8fe7d) a kind with nothing issued stays changeable after completion, so the
+  // presenter kind — nothing issued — has its own «غيّر · التقديم» beside «غيّر · الحضور». Selector moved to the kind.
+  await main(page).getByRole("link", { name: "غيّر · الحضور" }).click();
   const panel = designPanel(page, "attendance");
   await panel.getByRole("radio", { name: "داكنة" }).check({ force: true });
   await panel.getByRole("button", { name: "احفظ التصميم" }).click();
@@ -364,7 +367,10 @@ test("★ held certificates take the saved design, release confirms by count and
 
   // A certificate of this kind reached a member: the design is fixed — expectation (wave 23): «غيّر» is gone, and the
   // line still names what they were issued with (set_certificate_design()'s own lock re-checks it).
-  await expect(main(page).getByRole("link", { name: "غيّر" })).toHaveCount(0);
+  // ★ LEDGER (wave 27): since DEC-250 (01c8fe7d) the presenter kind, which has nothing issued here, keeps its «غيّر»,
+  // so the locked kind is asserted by its own link — attendance has none. Expectation narrowed to the locked kind.
+  await expect(main(page).locator('a[href*="design=attendance"]')).toHaveCount(0);
+  await expect(main(page).locator('a[href*="design=presenter"]')).toHaveCount(1);
   await expect(main(page).getByText("شهادة حضور أفقية")).toBeVisible();
 });
 
@@ -464,7 +470,10 @@ test("390 px: held, the release confirm, the design in both compositions, revoke
 
   // Expectation (wave 23): a kind that has reached a member is a sentence on the line, with no «غيّر» — the locked
   // panel and its «اعرض التصميم» are gone.
-  await expect(main(page).getByRole("link", { name: "غيّر" })).toHaveCount(0);
+  // ★ LEDGER (wave 27): since DEC-250 (01c8fe7d) the presenter kind, which has nothing issued here, keeps its «غيّر»,
+  // so the locked kind is asserted by its own link — attendance has none. Expectation narrowed to the locked kind.
+  await expect(main(page).locator('a[href*="design=attendance"]')).toHaveCount(0);
+  await expect(main(page).locator('a[href*="design=presenter"]')).toHaveCount(1);
   await capture(page, "design-locked", { fullPage: false });
 
   await main(page).getByRole("link", { name: /ألغِ/ }).first().click();

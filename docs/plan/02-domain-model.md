@@ -1070,6 +1070,7 @@ One row per org (`unique (org_id)`), `logo_asset_id uuid references design_asset
 
 #### `ENT-design_templates` · `ENT-design_template_versions`
 **Serves:** `REQ-DSG-007`, `REQ-DSG-008`, `REQ-DSG-026`, D67
+★ **Wave 27 (`DEC-254` §3, `0205` – `0207`): an org owns its templates.** Every org receives the eleven baseline compositions as its own `scope = 'org'` rows, each with one published version, from an `after insert` trigger on `orgs` (`seed_org_templates()`); `design_templates_keep_one_live` refuses retiring or deleting an org's last live published template of a family issuance or a poster falls back on. `scope = 'platform'` and `design_templates_scope_org` remain for rows a certificate or a document still references; PR D retires or deletes them and narrows who reads them.
 `design_templates`: `scope template_scope not null`, `purpose template_purpose not null`,
 `family text not null` (`talk`, `workshop`, `panel`, `meetup`, `announcement`, `attendance`,
 `presenter`, `achievement`), `name`, `org_id` **nullable for `scope = 'platform'`**.

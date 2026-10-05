@@ -69,7 +69,6 @@
         "landscape": "Landscape",
         "portrait": "Portrait"
       },
-      "platformTemplate": "Platform template",
       "orgTemplate": "Your organisation's template",
       "notChosen": "No design chosen yet, so certificates are issued with the default template, light.",
       "save": "Save design",

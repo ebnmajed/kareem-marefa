@@ -142,45 +142,49 @@ test("055 · the posters tab and the certificates tab, beside their boards; the 
   await expect(main(page).getByRole("heading", { level: 1 })).toHaveText("القوالب");
   await expect(main(page).getByRole("link", { name: "قالب جديد" })).toBeVisible();
   await expect(main(page).getByRole("heading", { level: 2, name: /قوالب مؤسستك/ })).toBeVisible();
-  await expect(main(page).getByRole("heading", { level: 2, name: /قوالب المنصة/ })).toBeVisible();
+  // ★ LEDGER C-9 (wave 27, DEC-254 §3): ONE list — the org is seeded with the baseline as its own, so there is no
+  // «قوالب المنصة» section and no «انسخ لتعدّل» anywhere.
+  await expect(main(page).getByRole("heading", { level: 2, name: /قوالب المنصة/ })).toHaveCount(0);
+  await expect(main(page).getByText("انسخ لتعدّل")).toHaveCount(0);
   await settled(page);
   await shot(page, info, "templates", "posters");
 
   await page.goto("/ar/app/admin/templates/certificates");
   const defaults = main(page).getByLabel("القوالب الافتراضية");
   for (const kind of ["الافتراضي للحضور", "الافتراضي للتقديم", "الافتراضي للإنجاز"]) await expect(defaults).toContainText(kind);
-  // With no org template, issuance falls back to the platform's default — named and marked «المنصة» (DEC-238 §2.3).
-  await expect(defaults).toContainText("المنصة");
+  // ★ LEDGER C-9: the org's own seeded defaults are named, never a platform template (DEC-238 §2.3, DEC-254 §3).
+  for (const name of ["شهادة حضور أفقية", "شهادة تقديم أفقية", "شهادة إنجاز أفقية"]) await expect(defaults).toContainText(name);
+  await expect(defaults).not.toContainText("المنصة");
   const wide = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(wide, "the grid scrolls the page sideways").toBe(false);
   await settled(page);
   await shot(page, info, "templates", "certificates");
 });
 
-test("055 · a platform template is read-only until copied — one action, «انسخ لتعدّل», audited as the admin", async ({ page, context }, info) => {
+// ★ LEDGER C-9 (wave 27, DEC-254 §3): this case was «a platform template is read-only until copied — one action,
+// «انسخ لتعدّل»». There is no platform template; what survives is copying one's OWN, audited as the admin, and the
+// tie guard's half: a copy that is not the default leaves the seeded default named.
+test("055 · an admin copies one of the org's own templates — «انسخ», audited as the admin; the default stays named", async ({ page, context }, info) => {
   desktopOnly(info);
   await signIn(context, emails.admin);
   await page.goto("/ar/app/admin/templates/certificates");
-  const platform = main(page).locator("section", { has: page.getByRole("heading", { level: 2, name: /قوالب المنصة/ }) });
-  const card = platform.locator("article").first();
-  const name = (await card.getByRole("heading", { level: 3 }).innerText()).trim();
+  const mineSection = main(page).locator("section", { has: page.getByRole("heading", { level: 2, name: /قوالب مؤسستك/ }) });
+  const card = mineSection.locator("article", { has: page.getByRole("heading", { name: "شهادة حضور أفقية", exact: true, level: 3 }) });
   await card.getByRole("button", { name: "إجراءات أخرى" }).click();
-  await expect(page.getByRole("menuitem")).toHaveText(["انسخ لتعدّل"]);
-  await page.getByRole("menuitem", { name: "انسخ لتعدّل" }).click();
+  await page.getByRole("menuitem", { name: "انسخ", exact: true }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel(/الاسم/).fill(`${name} لنا`);
-  await dialog.getByRole("button", { name: "انسخ لتعدّل" }).click();
-  await expect(page.getByText("نُسخ القالب إلى مؤسستك.", { exact: true })).toBeVisible();
+  await dialog.getByLabel(/الاسم/).fill("شهادة حضور لنا");
+  await dialog.getByRole("button", { name: "انسخ", exact: true }).click();
+  await expect(page.getByText("نُسخ القالب.", { exact: true })).toBeVisible();
 
-  const mine = main(page).locator("article", { has: page.getByRole("heading", { name: `${name} لنا`, exact: true, level: 3 }) });
+  const mine = main(page).locator("article", { has: page.getByRole("heading", { name: "شهادة حضور لنا", exact: true, level: 3 }) });
   await expect(mine).toBeVisible();
-  const { rows } = await db.query<{ id: string }>(`select id from public.design_templates where org_id = $1 and name = $2`, [orgId, `${name} لنا`]);
+  const { rows } = await db.query<{ id: string }>(`select id from public.design_templates where org_id = $1 and name = $2`, [orgId, "شهادة حضور لنا"]);
   expect(await auditRows("design_template.created", rows[0].id)).toEqual([{ actor_id: members.admin }]);
-  // ★ The tie guard: an org copy that is not the default takes issuance from the platform's default, so that kind has no
-  // default set — the strip names neither, and says so (DEC-238, the owner's ruling).
+  // The copy is not the default, so the seeded default is still the one issuance takes — and the one named.
   const strip = main(page).getByLabel("القوالب الافتراضية");
-  await expect(strip).toContainText("لا قالب افتراضي");
-  await expect(strip).not.toContainText(`${name} لنا`);
+  await expect(strip).toContainText("شهادة حضور أفقية");
+  await expect(strip).not.toContainText("شهادة حضور لنا");
 });
 
 test("055 · ★ the tie guard — two non-default org templates of one kind on v1: the strip names neither", async ({ page, context }, info) => {
@@ -193,6 +197,10 @@ test("055 · ★ the tie guard — two non-default org templates of one kind on 
     );
     await db.query(`insert into public.design_template_versions (template_id, version, document, published_at) values ($1, 1, $2::jsonb, now())`, [rows[0].id, doc]);
   }
+  // ★ LEDGER (wave 27, DEC-254 §3): the org is seeded with a presenter DEFAULT, so the tie needs it gone. Retiring a
+  // default clears its flag (as SCR-055's «أحِله للتقاعد» does); the guard allows it because other presenter
+  // templates stay live. That is how a seeded org reaches the tie: no default left, several templates at v1.
+  await db.query(`update public.design_templates set retired_at = now(), is_default = false where org_id = $1 and family = 'presenter' and is_default`, [orgId]);
   await signIn(context, emails.admin);
   await page.goto("/ar/app/admin/templates/certificates");
   const presenter = main(page).getByLabel("القوالب الافتراضية").locator("div", { has: page.getByText("الافتراضي للتقديم", { exact: true }) });
@@ -258,13 +266,16 @@ test("045 · completed in review: «أصدر» issues one, audited as the admin;
   await signIn(context, emails.admin);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/certificates`);
   await expect(main(page).getByText("تُراجَع قبل الإطلاق")).toBeVisible();
-  await expect(main(page).getByRole("radiogroup", { name: "من يستحق شهادة، ومتى" })).toHaveCount(0);
+  // ★ LEDGER (wave 27): since 01c8fe7d (DEC-250, wave 26) the mode keeps its control after completion — only a
+  // cancelled session loses it. Expectation changed from «absent» to «present»; this case had not run since.
+  await expect(main(page).getByRole("radiogroup", { name: "من يستحق شهادة، ومتى" })).toHaveCount(1);
   await expect(main(page).getByRole("table", { name: "الشهادات المحجوزة" })).toContainText(NAMES.a);
   await page.waitForLoadState("networkidle");
   await shot(page, info, "certificates", "held");
 
-  // The template, while the kind is held and none issued (DEC-238 §2).
-  await main(page).getByRole("link", { name: "غيّر" }).click();
+  // The template, while the kind is held and none issued (DEC-238 §2). ★ LEDGER (wave 27): since 01c8fe7d a kind with
+  // nothing issued stays changeable, so presenter has its own «غيّر · التقديم» too — selector moved to the kind.
+  await main(page).getByRole("link", { name: "غيّر · الحضور" }).click();
   await expect(page.getByRole("dialog", { name: /القالب/ })).toBeVisible();
   await shot(page, info, "certificates", "change-template");
   await page.keyboard.press("Escape");
@@ -276,8 +287,10 @@ test("045 · completed in review: «أصدر» issues one, audited as the admin;
   expect(await auditRows("certificate.released", ids.b)).toEqual([{ actor_id: members.admin }]);
   await expect(main(page).getByRole("table", { name: "الشهادات الصادرة" })).toContainText(NAMES.b);
 
-  // Issued now: the kind is fixed, so «غيّر» is gone (set_certificate_design()'s own lock re-checks it).
-  await expect(main(page).getByRole("link", { name: "غيّر" })).toHaveCount(0);
+  // Issued now: the kind is fixed, so its «غيّر» is gone (set_certificate_design()'s own lock re-checks it). ★ LEDGER
+  // (wave 27): the presenter kind, nothing issued, keeps its own — expectation narrowed to the locked kind.
+  await expect(main(page).locator('a[href*="design=attendance"]')).toHaveCount(0);
+  await expect(main(page).locator('a[href*="design=presenter"]')).toHaveCount(1);
   await shot(page, info, "certificates", "issued");
 });
 

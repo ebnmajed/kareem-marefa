@@ -4,20 +4,23 @@ import { BASE_SCHEMA_VERSION, type BrandScheme, type DesignDocument, orientation
 import { previewBrandBindings } from "@/lib/dal/designer";
 import { sessionClient } from "@/lib/dal/session";
 
-// The two template libraries — REQ-DSG-007, REQ-DSG-008, REQ-DSG-024,
-// REQ-DSG-026, REQ-ADM-013, D67. SCR-055 (posters) and SCR-056 (certificates).
+// The org's template library — REQ-DSG-007, REQ-DSG-008, REQ-DSG-024,
+// REQ-DSG-026, REQ-DSG-035, REQ-ADM-013. SCR-055 (posters and certificates).
 //
-// TWO LEVELS, AND THE ASYMMETRY IS THE POINT. A platform template is readable
-// by every org and writable by none of them; an org template is created by
-// DUPLICATING one or starting blank. The duplicate is a COPY, so a later
-// platform improvement cannot reach a template an org has since adjusted —
-// which is what makes a platform template safe to improve at all.
+// ONE LEVEL: THE ORG'S (DEC-254 §3). Every org is seeded with the designed
+// baseline as its OWN published, editable templates the moment it is created
+// (`seed_org_templates()`, the trigger on `orgs`); there is no platform library
+// to read or copy. A template is the org's property, so a later improvement to
+// the baseline reaches only orgs created after it.
 //
-// Nothing in this file enforces that. `templates_read` and the three
-// `scope = 'org'` write clauses of 03 §5.9a do, on the caller's own client:
-// an org admin's UPDATE against a platform template matches no row and
-// changes nothing. The screen shows the row as read-only because the policy
-// says so, not the other way round.
+// ★ Every read here names `scope = 'org'` explicitly. Until the removal
+// migration runs, `templates_read` still returns the old platform rows; after
+// it, it returns a retired platform row an org's certificate or document still
+// references (REQ-CRT-014). Neither is a library entry, and neither may be
+// listed, counted or copied.
+//
+// The write clauses of 03 §5.9a (`scope = 'org'`, the caller's own org, an
+// admin) are the authority, on the caller's own client.
 //
 // VERSIONS ARE IMMUTABLE (REQ-DSG-007). An artifact records the version that
 // produced it, so publishing v4 must not alter a certificate issued against
@@ -38,7 +41,6 @@ export function familiesFor(purpose: TemplatePurpose): readonly string[] {
 
 export interface TemplateSummary {
   id: string;
-  scope: "platform" | "org";
   purpose: TemplatePurpose;
   family: string;
   name: string;
@@ -54,8 +56,8 @@ export interface TemplateSummary {
   /** The working document, when one exists. Opening a template means opening
    *  this in SCR-057. */
   draftDocumentId: string | null;
-  /** Always false for a platform template: 03 §5.9a's write clauses say so,
-   *  and the screen reads it from here rather than re-deriving the rule. */
+  /** An admin's: 03 §5.9a's write clauses say so, and the screen reads it
+   *  from here rather than re-deriving the rule. */
   canEdit: boolean;
   /** A certificate's composition, from its latest version's master (DEC-148:
    *  a row is a composition, and the document says which). Null for a poster. */
@@ -70,7 +72,6 @@ export interface TemplateSummary {
 
 export interface TemplateLibraryData {
   purpose: TemplatePurpose;
-  platform: TemplateSummary[];
   org: TemplateSummary[];
   canManage: boolean;
   /** The palette the cards preview in: posters are dark (DEC-125); a
@@ -83,7 +84,6 @@ export interface TemplateLibraryData {
 
 type TemplateRow = {
   id: string;
-  scope: "platform" | "org";
   purpose: TemplatePurpose;
   family: string;
   name: string;
@@ -111,9 +111,9 @@ export async function getTemplateLibrary(
 
   const { data: templates, error } = await supabase
     .from("design_templates")
-    .select("id, scope, purpose, family, name, description, is_default, retired_at")
+    .select("id, purpose, family, name, description, is_default, retired_at")
+    .eq("scope", "org")
     .eq("purpose", purpose)
-    .order("scope")
     .order("family");
   if (error) throw new Error(`templates: ${error.message}`);
 
@@ -135,8 +135,7 @@ export async function getTemplateLibrary(
   for (const d of (drafts ?? []) as { id: string; draft_for_template_id: string }[]) draftFor.set(d.draft_for_template_id, d.id);
 
   // Usage: the sessions of THIS org using any version of each template. RLS
-  // scopes both reads to the caller's org, so a platform template's count is
-  // this org's use of it and nobody else's.
+  // scopes both reads to the caller's org.
   const versionToTemplate = new Map<string, string>();
   for (const v of (versions ?? []) as VersionRow[]) versionToTemplate.set(v.id, v.template_id);
   const versionIds = [...versionToTemplate.keys()];
@@ -159,7 +158,6 @@ export async function getTemplateLibrary(
     const latest = list[list.length - 1];
     return {
       id: t.id,
-      scope: t.scope,
       purpose: t.purpose,
       family: t.family,
       name: t.name,
@@ -170,7 +168,7 @@ export async function getTemplateLibrary(
       versionCount: list.length,
       lockedRegionCount: latest ? lockedRegions(latest.document) : 0,
       draftDocumentId: draftFor.get(t.id) ?? null,
-      canEdit: t.scope === "org" && session.role === "admin",
+      canEdit: session.role === "admin",
       orientation: t.purpose === "certificate" && latest ? orientationOf(latest.document as DesignDocument) : null,
       previewDocument: latest ? (validateDocument(latest.document).ok ? (latest.document as DesignDocument) : null) : null,
       usageCount: sessionsByTemplate.get(t.id)?.size ?? 0,
@@ -178,12 +176,10 @@ export async function getTemplateLibrary(
   };
 
   const rows = (templates ?? []) as TemplateRow[];
-  // Retired platform rows are the platform's business, not an org's choice.
   const byOrientation = (a: TemplateSummary, b: TemplateSummary) => Number(b.isDefault) - Number(a.isDefault) || (a.orientation ?? "").localeCompare(b.orientation ?? "");
   return {
     purpose,
-    platform: rows.filter((t) => t.scope === "platform" && t.retired_at === null).map(summarise),
-    org: rows.filter((t) => t.scope === "org").map(summarise).sort(byOrientation),
+    org: rows.map(summarise).sort(byOrientation),
     canManage: session.role === "admin",
     scheme,
     previewBindings: await previewBrandBindings(locale, scheme),
@@ -204,7 +200,9 @@ export const createBlankInput = z.object({
   orientation: z.enum(["landscape", "portrait"]).optional(),
 });
 
-export type TemplateWriteFailure = { status: "not_authorized" } | { status: "invalid"; message: string };
+/** `last_template` — the database refused to retire the org's last live published template of a family the code
+ *  falls back on (`design_templates_keep_one_live`, DEC-255 D6): issuance or the automatic poster would have nothing. */
+export type TemplateWriteFailure = { status: "not_authorized" } | { status: "invalid"; message: string } | { status: "last_template" };
 export type TemplateWriteResult = { status: "ok"; templateId: string } | TemplateWriteFailure;
 export type PublishResult = { status: "ok"; version: number } | TemplateWriteFailure;
 
@@ -230,13 +228,16 @@ function blankDocument(purpose: TemplatePurpose, orientation: "landscape" | "por
 }
 
 /**
- * REQ-DSG-008 — duplicate a platform template into the org.
+ * REQ-DSG-008 — copy one of the org's OWN templates.
  *
  * A COPY, not a reference: the new template's version 1 carries the source's
- * document as it stands today, and a later platform edit never reaches it.
- * Three writes on the caller's own client, so `templates_write_org` and
- * `template_versions_insert_org` are the authority; a moderator's call
- * matches no policy and returns `not_authorized` rather than half a template.
+ * latest document as it stands today, and a later edit of either never
+ * reaches the other. Three writes on the caller's own client, so
+ * `templates_write_org` and `template_versions_insert_org` are the authority;
+ * a moderator's call matches no policy and returns `not_authorized` rather
+ * than half a template. ★ The source must be `scope = 'org'`: a retired
+ * platform row a certificate still references is readable (REQ-CRT-014), and
+ * it is not a library entry anyone may copy (DEC-254 §3.4).
  */
 export async function duplicateTemplate(locale: string, input: z.infer<typeof duplicateInput>): Promise<TemplateWriteResult> {
   const { session, supabase } = await sessionClient(locale);
@@ -245,6 +246,7 @@ export async function duplicateTemplate(locale: string, input: z.infer<typeof du
     .from("design_templates")
     .select("id, purpose, family, description")
     .eq("id", input.sourceTemplateId)
+    .eq("scope", "org")
     .maybeSingle();
   if (!source) return { status: "not_authorized" };
 
@@ -324,9 +326,9 @@ export async function openTemplateDraft(locale: string, templateId: string): Pro
   if (existing) return { documentId: existing.id as string };
 
   const { data: template } = await supabase.from("design_templates").select("id, scope, purpose").eq("id", templateId).maybeSingle();
-  // REQ-DSG-008: a platform template is read, never edited. Refusing here is
-  // a clearer answer than letting the insert succeed and the UPDATE that
-  // follows silently match no row.
+  // REQ-DSG-008: only the org's own template is edited. A retired platform row
+  // still readable for a certificate's sake (REQ-CRT-014) is refused here
+  // rather than letting the insert succeed and the UPDATE silently match no row.
   if (!template || template.scope !== "org") return { status: "not_authorized" };
 
   const { data: latest } = await supabase
@@ -411,15 +413,19 @@ export async function renameTemplate(locale: string, templateId: string, name: s
 }
 
 /** Retired, never deleted: an artifact records the version that produced it,
- *  and a template whose row is gone cannot explain a poster already printed. */
+ *  and a template whose row is gone cannot explain a poster already printed.
+ *  ★ The database refuses to retire the org's last live template of a family
+ *  the code falls back on (`last_live_template`, DEC-255 D6); that answer is
+ *  `last_template`, so the screen can say why. */
 export async function retireTemplate(locale: string, templateId: string, retired: boolean): Promise<TemplateWriteResult> {
   const { supabase } = await sessionClient(locale);
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("design_templates")
     .update({ retired_at: retired ? new Date().toISOString() : null, ...(retired ? { is_default: false } : {}) })
     .eq("id", templateId)
     .select("id")
     .maybeSingle();
+  if (error?.message.includes("last_live_template")) return { status: "last_template" };
   return data ? { status: "ok", templateId: data.id as string } : { status: "not_authorized" };
 }
 

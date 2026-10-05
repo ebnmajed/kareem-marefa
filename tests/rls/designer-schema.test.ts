@@ -42,6 +42,9 @@ async function setup(tx: Tx) {
   // sweep is never vacuous (DEC-049). These cases count rows and allocate
   // serials, so they start from an empty M6 world inside the rolled-back
   // transaction — the notify-contract pattern (TEAM.md §3).
+  // ★ LEDGER (wave 27, DEC-255 D6): this setup empties every org's whole template library, which nothing in production
+  // does but an org's own deletion — so it opts out of the last-live-template guard (0206) for this rolled-back transaction.
+  await tx.q(`alter table public.design_templates disable trigger design_templates_keep_one_live`);
   for (const t of ["certificates", "export_artifacts", "session_posters", "design_documents", "design_assets", "design_template_versions", "design_templates", "fonts", "certificate_serial_counters"]) {
     await tx.q(`delete from public.${t}`);
   }

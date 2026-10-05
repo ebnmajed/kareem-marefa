@@ -223,31 +223,35 @@ test("a member reaches neither library nor the studio — the gated not-found (D
 
 /* ── the poster library ─────────────────────────────────────────────────── */
 
-test("★ REQ-DSG-008: a platform template is copied, never edited — and the empty name is refused beside the field", async ({ context, page }) => {
+// ★ LEDGER (wave 27, DEC-254 §3): this case copied a PLATFORM card with «انسخ لتعدّل». There is no platform card: the
+// org is seeded with the baseline as its own, so the copy is of the org's seeded «جلسة», through its «انسخ».
+test("★ REQ-DSG-008: an org's own template is copied — and the empty name is refused beside the field", async ({ context, page }) => {
   test.skip(onPhone(), "the writes run once, on the desktop project");
   await signIn(context, adminEmail);
   await page.setViewportSize(DESKTOP);
   await page.goto("/ar/app/admin/templates/posters");
   await expect(main(page).getByRole("heading", { name: "القوالب", level: 1 })).toBeVisible();
 
-  const talk = await platformDefault("poster", "talk");
-  const platform = card(page, talk.name).filter({ hasText: "المنصة" });
-  await expect(platform).toBeVisible();
-  // The action that EXISTS, and no other — wave 23: a platform card's menu holds «انسخ لتعدّل» alone.
-  await platform.getByRole("button", { name: "إجراءات أخرى" }).click();
-  await expect(page.getByRole("menuitem", { name: "افتح في المصمّم" })).toHaveCount(0);
-  await page.getByRole("menuitem", { name: "انسخ لتعدّل" }).click();
+  const { rows: seeded } = await db.query<{ id: string; name: string }>(
+    `select id, name from public.design_templates where org_id = $1 and purpose = 'poster' and family = 'talk' and created_by is null and duplicated_from is null`,
+    [orgId],
+  );
+  const talk = { template_id: seeded[0]!.id, name: seeded[0]!.name };
+  const mine = card(page, talk.name);
+  await expect(mine).toBeVisible();
+  await mine.getByRole("button", { name: "إجراءات أخرى" }).click();
+  await page.getByRole("menuitem", { name: "انسخ", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText(talk.name);
 
   // ★ noValidate: the ACTION refuses the empty name, and says so by the field.
   await dialog.getByLabel(/الاسم/).fill("");
-  await dialog.getByRole("button", { name: "انسخ لتعدّل" }).click();
+  await dialog.getByRole("button", { name: "انسخ", exact: true }).click();
   await expect(dialog.getByText("اكتب اسمًا للقالب.")).toBeVisible();
 
   await dialog.getByLabel(/الاسم/).fill("نسخة ثانية من الجلسة");
-  await dialog.getByRole("button", { name: "انسخ لتعدّل" }).click();
-  await expect(page.getByText("نُسخ القالب إلى مؤسستك.", { exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "انسخ", exact: true }).click();
+  await expect(page.getByText("نُسخ القالب.", { exact: true })).toBeVisible();
   await expect(dialog).toBeHidden();
   await expect(card(page, "نسخة ثانية من الجلسة")).toBeVisible();
 
@@ -375,9 +379,9 @@ test("the libraries at 390 px — populated, the copy dialog, dark certificates,
   await expect(card(page, orgPosterName)).toBeVisible();
   await capture(page, "posters-populated");
 
-  const talk = await platformDefault("poster", "talk");
-  await card(page, talk.name).filter({ hasText: "المنصة" }).getByRole("button", { name: "إجراءات أخرى" }).click();
-  await page.getByRole("menuitem", { name: "انسخ لتعدّل" }).click();
+  // ★ LEDGER (wave 27): the copy dialog is the org card's «انسخ» — there is no platform card to copy from.
+  await card(page, orgPosterName).getByRole("button", { name: "إجراءات أخرى" }).click();
+  await page.getByRole("menuitem", { name: "انسخ", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.screenshot({ path: `${SHOTS}/wave8-designer-templates-posters-duplicate-dialog.png` });
   await page.keyboard.press("Escape");
@@ -387,13 +391,17 @@ test("the libraries at 390 px — populated, the copy dialog, dark certificates,
   await capture(page, "certificates-populated");
 });
 
-test("an org with no templates of its own is told what to do next", async ({ context, page }) => {
+// ★ LEDGER (wave 27, DEC-254 §3, REQ-DSG-035): this case was «an org with no templates of its own is told what to do
+// next» and expected «لا قوالب لمؤسستك بعد». A new org is now seeded with the baseline the moment it exists, so the
+// empty state is not reachable by creating one; the fresh org is asserted to hold its own library, in one list.
+test("a fresh org holds its own library from the start — five posters, one list", async ({ context, page }) => {
   await signIn(context, emptyAdminEmail);
   await page.setViewportSize(onPhone() ? PHONE : DESKTOP);
   await page.goto("/ar/app/admin/templates/posters");
-  // wave 23 (DEC-NEXT-25): one line and nothing else — the platform group sits right below it.
-  await expect(main(page).getByText("لا قوالب لمؤسستك بعد")).toBeVisible();
-  if (onPhone()) await capture(page, "posters-empty-org");
+  await expect(main(page).getByRole("heading", { level: 2, name: /قوالب مؤسستك/ })).toContainText("5");
+  await expect(main(page).getByRole("heading", { level: 2 })).toHaveCount(1);
+  await expect(main(page).getByText("لا قوالب لمؤسستك بعد")).toHaveCount(0);
+  if (onPhone()) await capture(page, "posters-fresh-org");
 });
 
 test("a moderator reads the library and is offered no write", async ({ context, page }) => {

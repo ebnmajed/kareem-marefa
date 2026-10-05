@@ -57,7 +57,7 @@ describe("the platform nav set, drawn by ui/admin-rail", () => {
     renderRail("/ar/app/platform/orgs/new");
     const rail = screen.getByRole("navigation", { name: "لوحة المنصة" });
     const links = within(rail).getAllByRole("link");
-    expect(links.map((l) => l.textContent)).toEqual(["لوحة المنصة", "المؤسسات", "مكتبة القوالب", "المؤشرات", "الدخول الاستثنائي"]);
+    expect(links.map((l) => l.textContent)).toEqual(["لوحة المنصة", "المؤسسات", "المؤشرات", "الدخول الاستثنائي"]);
     expect(within(rail).getByRole("link", { name: "المؤسسات" })).toHaveAttribute("aria-current", "page");
     expect(links.filter((l) => l.getAttribute("aria-current") === "page")).toHaveLength(1);
   });

@@ -15,7 +15,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { TagChip } from "@/components/ui/tag-chip";
 import { createAndOpen } from "@/app/[locale]/app/admin/templates/actions";
 import { NewTemplateForm } from "./new-template-form";
-import { OrgTemplateMenu, PlatformTemplateMenu } from "./template-menu";
+import { OrgTemplateMenu } from "./template-menu";
 import { TemplatePreview } from "./template-preview";
 
 // SCR-055 القوالب — rebuilt for wave 23 from `AdminTemplates.dc.html` and `AdminTemplatesCerts.dc.html` (DEC-208:
@@ -25,10 +25,13 @@ import { TemplatePreview } from "./template-preview";
 // The job: an admin finds the default for each certificate kind in one look — the strip names the template issuance
 // really picks (DEC-238 §2.3), and when the kind has no default set it names NONE and says «لا قالب افتراضي» (the owner's
 // tie guard: issuance would then take a template by version with no tiebreak) — and changes it in one move, ⋯ →
-// «اجعله الافتراضي». A platform template is read-only until copied: its card's one action is «انسخ لتعدّل».
+// «اجعله الافتراضي».
 //
-// Regions in the boards' order: the `h1` with «قالب جديد» · the tabs · قوالب مؤسستك · قوالب المنصة · (certificates) the
-// three defaults. ★ ONE KIND per certificate template, three defaults — حضور · تقديم · إنجاز; a template serving several
+// ★ wave 27 (DEC-254 §3, REQ-DSG-035): ONE list. Every org is seeded with the designed baseline as its own editable
+// templates, so the boards' «قوالب المنصة» section and its «انسخ لتعدّل» are gone — an admin edits a baseline template in
+// place. The kept-behaviour table is `docs/plan/notes/designer.md` §11.
+//
+// Regions in the boards' order: the `h1` with «قالب جديد» · the tabs · قوالب مؤسستك · (certificates) the three defaults. ★ ONE KIND per certificate template, three defaults — حضور · تقديم · إنجاز; a template serving several
 // kinds is not built (DEC-236 §1). Staff read; only an admin writes (`canManage`, and the policies, 03 §5.9a). A member
 // gets the streamed not-found (DEC-134). The page renders nothing of the console frame.
 
@@ -75,7 +78,7 @@ export async function TemplatesScreen({ locale, purpose, creating }: { locale: s
   const origin = `${proto}://${host}`;
 
   const values: Record<string, string> = { ...data.previewBindings };
-  for (const template of [...data.org, ...data.platform]) {
+  for (const template of data.org) {
     if (!template.previewDocument) continue;
     for (const binding of textBindingsOf(template.previewDocument)) {
       if (binding in values) continue;
@@ -135,13 +138,6 @@ export async function TemplatesScreen({ locale, purpose, creating }: { locale: s
               {data.org.length === 0 ? <p className="text-body-sm text-fg-muted">{t("library.orgEmpty")}</p> : grid(data.org)}
             </section>
 
-            <section aria-labelledby="tpl-platform" id="tpl-platform-section" className="flex flex-col gap-3">
-              <h2 id="tpl-platform" className="text-label text-fg-muted">
-                {t.rich("library.platformHeading", { value: formatNumber(data.platform.length), bdi })}
-              </h2>
-              {data.platform.length === 0 ? <p className="text-body-sm text-fg-muted">{t("library.platformEmpty")}</p> : grid(data.platform)}
-            </section>
-
             {effective ? (
               <dl aria-label={t("library.defaultsLabel")} className="flex flex-wrap gap-x-6 gap-y-3 text-body-sm">
                 {(["attendance", "presenter", "achievement"] as const).map((kind) => {
@@ -151,10 +147,7 @@ export async function TemplatesScreen({ locale, purpose, creating }: { locale: s
                       <dt className="text-caption font-bold text-fg-muted">{t(`library.defaultFor.${kind}`)}</dt>
                       <dd className="flex flex-wrap items-center gap-1.5 text-fg-heading">
                         {picked.status === "named" ? (
-                          <>
-                            <bdi>{picked.template.name}</bdi>
-                            {picked.template.scope === "platform" ? <span className="text-caption text-fg-muted">· {t("library.platformMark")}</span> : null}
-                          </>
+                          <bdi>{picked.template.name}</bdi>
                         ) : picked.status === "no_default" ? (
                           // The tie guard: issuance would take a template by version with no tiebreak — name none.
                           <span className="text-fg-muted">{t("library.noDefault")}</span>
@@ -190,7 +183,6 @@ async function TemplateCard({
   values: Record<string, string>;
 }) {
   const t = await getTranslations("templates");
-  const isPlatform = template.scope === "platform";
   const presets = template.previewDocument ? presetsForDocument(template.previewDocument) : [];
   const chips =
     template.purpose === "poster"
@@ -217,13 +209,12 @@ async function TemplateCard({
           <h3 className="min-w-0 flex-1 text-label text-fg-heading">
             <bdi>{template.name}</bdi>
           </h3>
-          {template.isDefault && !isPlatform ? (
+          {template.isDefault ? (
             <Badge size="sm" tone="success">
               {t("card.isDefault")}
             </Badge>
           ) : null}
-          {isPlatform ? <Badge size="sm">{t("card.platformBadge")}</Badge> : null}
-          {template.draftDocumentId && !isPlatform ? (
+          {template.draftDocumentId ? (
             <Badge size="sm" outline>
               {t("card.draft")}
             </Badge>
@@ -234,20 +225,16 @@ async function TemplateCard({
             </Badge>
           ) : null}
           {data.canManage ? (
-            isPlatform ? (
-              <PlatformTemplateMenu locale={locale} purpose={template.purpose} templateId={template.id} name={template.name} />
-            ) : (
-              <OrgTemplateMenu
-                locale={locale}
-                purpose={template.purpose}
-                templateId={template.id}
-                name={template.name}
-                isDefault={template.isDefault}
-                retired={template.retired}
-                hasDraft={template.draftDocumentId !== null}
-                usageCount={template.usageCount}
-              />
-            )
+            <OrgTemplateMenu
+              locale={locale}
+              purpose={template.purpose}
+              templateId={template.id}
+              name={template.name}
+              isDefault={template.isDefault}
+              retired={template.retired}
+              hasDraft={template.draftDocumentId !== null}
+              usageCount={template.usageCount}
+            />
           ) : null}
         </div>
         {chips.length ? (

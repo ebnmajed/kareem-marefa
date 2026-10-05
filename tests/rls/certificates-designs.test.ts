@@ -43,18 +43,21 @@ async function setup(tx: Tx) {
   return f;
 }
 
-/** The platform composition of a family, by its master. */
-async function platform(tx: Tx, family: string, orientation: "landscape" | "portrait") {
+/** The org's own composition of a family, by its master.
+ *  ★ LEDGER C-5 (wave 27, DEC-254 §3): this read the PLATFORM composition. Every org is now seeded with the baseline
+ *  as its own (0205), so the composition an admin names on SCR-045 — and the one issuance falls back on — is the
+ *  org's. Selector moved: the same composition, in the scope that now holds it. */
+async function seeded(tx: Tx, orgId: string, family: string, orientation: "landscape" | "portrait") {
   await tx.asOwner();
   const [row] = await tx.q<{ template_id: string; version_id: string }>(
     `select t.id as template_id, v.id as version_id
        from public.design_templates t
        join lateral (select id, document from public.design_template_versions v
                       where v.template_id = t.id and v.published_at is not null order by version desc limit 1) v on true
-      where t.scope = 'platform' and t.purpose = 'certificate' and t.family = $1 and t.retired_at is null
-        and ((v.document->'master'->>'width')::int >= (v.document->'master'->>'height')::int) = ($2 = 'landscape')
+      where t.org_id = $1 and t.purpose = 'certificate' and t.family = $2 and t.retired_at is null
+        and ((v.document->'master'->>'width')::int >= (v.document->'master'->>'height')::int) = ($3 = 'landscape')
       order by t.is_default desc limit 1`,
-    [family, orientation],
+    [orgId, family, orientation],
   );
   return row!;
 }
@@ -69,7 +72,7 @@ describe("POL-session_certificate_designs", () => {
   it("select_staff — the admin and the moderator read a session's design; a member and another org do not", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
-      const portrait = await platform(tx, "attendance", "portrait");
+      const portrait = await seeded(tx, f.a.id, "attendance", "portrait");
       await tx.as(f.a.admin.claims);
       await tx.q(`select public.set_certificate_design($1, 'attendance', $2, 'dark')`, [f.m2.a.completed, portrait.template_id]);
 
@@ -87,7 +90,7 @@ describe("POL-session_certificate_designs", () => {
   it("no_write_grant — an authenticated insert is refused; the RPC is the only door", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
-      const landscape = await platform(tx, "attendance", "landscape");
+      const landscape = await seeded(tx, f.a.id, "attendance", "landscape");
       await tx.as(f.a.admin.claims);
       expect(
         await errorCode(() =>
@@ -106,8 +109,8 @@ describe("RPC-set_certificate_design", () => {
   it("admin — an admin sets and resets it, audited; a moderator is refused", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
-      const portrait = await platform(tx, "attendance", "portrait");
-      const landscape = await platform(tx, "attendance", "landscape");
+      const portrait = await seeded(tx, f.a.id, "attendance", "portrait");
+      const landscape = await seeded(tx, f.a.id, "attendance", "landscape");
 
       await tx.as(f.a.mod.claims);
       expect(await errorCode(() => tx.q(`select public.set_certificate_design($1, 'attendance', $2, 'dark')`, [f.m2.a.completed, portrait.template_id]))).toBe(
@@ -133,9 +136,10 @@ describe("RPC-set_certificate_design", () => {
   it("family_matches_kind — another family, a poster, a retired template or another org's is refused", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
-      const presenter = await platform(tx, "presenter", "landscape");
+      const presenter = await seeded(tx, f.a.id, "presenter", "landscape");
       await tx.asOwner();
-      const [poster] = await tx.q<{ id: string }>(`select id from public.design_templates where scope = 'platform' and purpose = 'poster' limit 1`);
+      // ★ LEDGER C-5: a poster of the org's own (selector moved — the platform's leave in the removal).
+      const [poster] = await tx.q<{ id: string }>(`select id from public.design_templates where org_id = $1 and purpose = 'poster' limit 1`, [f.a.id]);
       const [otherOrg] = await tx.q<{ id: string }>(
         `insert into public.design_templates (org_id, scope, purpose, family, name) values ($1, 'org', 'certificate', 'attendance', 'قالب مؤسسة أخرى') returning id`,
         [f.b.id],
@@ -162,8 +166,8 @@ describe("RPC-set_certificate_design", () => {
   it("locked_after_issue — once a certificate of that kind is issued the design is refused; while held it may change", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
-      const portrait = await platform(tx, "attendance", "portrait");
-      const landscape = await platform(tx, "attendance", "landscape");
+      const portrait = await seeded(tx, f.a.id, "attendance", "portrait");
+      const landscape = await seeded(tx, f.a.id, "attendance", "landscape");
 
       await tx.q(`update public.sessions set certificate_mode = 'review' where id = $1`, [f.m2.a.completed]);
       const [held] = await issue(tx, f.m2.a.completed, f.a.members[1].memberId);
@@ -177,7 +181,7 @@ describe("RPC-set_certificate_design", () => {
         LOCKED,
       );
       // The other kind is its own design, and is still open.
-      const presenter = await platform(tx, "presenter", "portrait");
+      const presenter = await seeded(tx, f.a.id, "presenter", "portrait");
       await tx.as(f.a.admin.claims);
       expect(await errorCode(() => tx.q(`select public.set_certificate_design($1, 'presenter', $2, 'light')`, [f.m2.a.completed, presenter.template_id]))).toBeNull();
     });
@@ -188,7 +192,7 @@ describe("RPC-issue_certificate — the design, pinned", () => {
   it("pins_design — the chosen template's latest published version and its scheme", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
-      const portrait = await platform(tx, "attendance", "portrait");
+      const portrait = await seeded(tx, f.a.id, "attendance", "portrait");
       await tx.as(f.a.admin.claims);
       await tx.q(`select public.set_certificate_design($1, 'attendance', $2, 'dark')`, [f.m2.a.completed, portrait.template_id]);
 
@@ -208,10 +212,11 @@ describe("RPC-issue_certificate — the design, pinned", () => {
   it("no_design_is_default_light — the family default, and light: every certificate before wave 8", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
-      const landscape = await platform(tx, "attendance", "landscape");
+      // ★ LEDGER C-5 (wave 27): «the family default» is the org's own seeded attendance landscape. The case used to
+      // retire every org certificate template to reach the PLATFORM default; the retire guard (0206, D6) now refuses
+      // retiring an org's last attendance template, and there is no platform default to reach. Expectation changed.
+      const landscape = await seeded(tx, f.a.id, "attendance", "landscape");
       await tx.asOwner();
-      // No org template competes with the platform default here.
-      await tx.q(`update public.design_templates set retired_at = now() where org_id = $1 and purpose = 'certificate'`, [f.a.id]);
       const [cert] = await issue(tx, f.m2.a.completed, f.a.members[1].memberId);
       expect(cert).toMatchObject({ template_version_id: landscape.version_id, scheme: "light" });
     });
@@ -235,8 +240,8 @@ describe("RPC-redesign_held_certificates", () => {
   it("held_only — re-pins the held certificates of a kind, re-enqueues each render with its key, and leaves issued ones alone", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
-      const portrait = await platform(tx, "attendance", "portrait");
-      const landscape = await platform(tx, "attendance", "landscape");
+      const portrait = await seeded(tx, f.a.id, "attendance", "portrait");
+      const landscape = await seeded(tx, f.a.id, "attendance", "landscape");
 
       await tx.q(`update public.sessions set certificate_mode = 'review' where id = $1`, [f.m2.a.completed]);
       const [held] = await issue(tx, f.m2.a.completed, f.a.members[1].memberId);
@@ -281,7 +286,7 @@ describe("RPC-redesign_held_certificates", () => {
   it("record_certificate_document follows the pin — a redesigned held certificate's document is not refused by the locked-region guard", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
-      const portrait = await platform(tx, "attendance", "portrait");
+      const portrait = await seeded(tx, f.a.id, "attendance", "portrait");
       await tx.q(`update public.sessions set certificate_mode = 'review' where id = $1`, [f.m2.a.completed]);
       const [held] = await issue(tx, f.m2.a.completed, f.a.members[1].memberId);
 

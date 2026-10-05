@@ -134,7 +134,6 @@ const WAVE8 = [
   ["platform", `${L}/app/platform/orgs/page.tsx`],
   ["platform", `${L}/app/platform/orgs/new/page.tsx`],
   ["platform", `${L}/app/platform/orgs/[id]/domains/page.tsx`],
-  ["platform", `${L}/app/platform/templates/page.tsx`],
   ["platform", `${L}/app/platform/metrics/page.tsx`],
   ["platform", `${L}/app/platform/impersonate/page.tsx`],
   ["branding", `${L}/app/admin/branding/page.tsx`],

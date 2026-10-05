@@ -231,7 +231,7 @@ test("platform admin", async ({ context, page }) => {
   await signIn(context, emails.platform, false);
   for (const route of [
     "/ar/app/platform", "/ar/app/platform/orgs", "/ar/app/platform/orgs/new", `/ar/app/platform/orgs/${orgId}/domains`,
-    "/ar/app/platform/templates", "/ar/app/platform/metrics", "/ar/app/platform/impersonate",
+    "/ar/app/platform/metrics", "/ar/app/platform/impersonate",
   ]) {
     await scan(page, route, "platform");
   }

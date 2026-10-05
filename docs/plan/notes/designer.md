@@ -5,6 +5,721 @@ found. `docs/plan/` is otherwise the lead's; this file is mine.
 
 ---
 
+## Wave 27 — plan, PR C `wave-27c/an-org-owns-its-templates` (`REQ-DSG-035`; `STORY-DSG-017`, `018`; contract 4)
+
+Planning only. Measured in `../kareem-marefa-wave27c` at `50b534fa`. Nothing below is written yet. Every SQL object
+named here is either mine under `supabase/proposed/designer/` (functions) or the lead's (tables, policies, grants,
+the migrations themselves), and each is marked.
+
+### 0 · The goal, restated so the plan can be held to it
+
+Every org holds the designed baseline **as its own** editable, published templates. That means both orgs on production
+and every org created after. Nobody reads, copies or publishes a platform template again. **No org is without a
+certificate template at any instant of the change.** A certificate or document pinned to a former platform version
+still renders as that version (`REQ-CRT-014`). No parity golden moves.
+
+### 1 · What «the baseline» is — reconciling «eleven» with production's «24»
+
+| Source | What it holds |
+|---|---|
+| `packages/designer-runtime/src/library.ts:785-805` `BASELINE_LIBRARY` | **11 compositions**: 5 poster families (all `isDefault`) and 3 certificate families × landscape/portrait (`isDefault` = landscape). Each carries `version: 2` (`:790`, `:800`) |
+| `0193_baseline_library_playground.sql:186-3477` | created 11 NEW platform rows at **v1**, then superseded every other live platform row (`:3482-3492`) |
+| `0196_baseline_library_recolour.sql` | added **v2** (the re-coloured document) to the same 11 rows. `seed-sql.mjs:57-64`: «A VERSION, NOT A ROW» |
+| `STATUS.md:251-253` (wave 24's sync-1 read) | of the superseded rows, `poster/talk` had 2 design documents, so the expected outcome was **10 deleted and the old `talk` retired** |
+
+So the expected production state is **12 platform templates and 24 versions**. That is the 11 live rows with v1 and v2
+each (22 versions), plus the retired old `talk` with its 0061 v1 and 0098 v2 (2 versions).
+
+★ **The brief's «24 platform templates: 12 poster (2 retired), 12 certificate» matches exactly what `count(*)` returns
+over a `templates ⋈ versions` join in that state.** 6 poster rows × 2 versions = 12 «poster», and the retired talk's two
+versions are the «2 retired». 6 certificate rows × 2 = 12. I believe the read counted versions, not templates. **I have
+asked the lead for a per-row read (R1 below).** The delete-or-retire function decides at runtime either way, so nothing
+depends on the guess. The rehearsal notes should still carry the right number.
+
+★ **The set an org receives is 11 rows, with one version each:**
+
+| Column | Value | Why |
+|---|---|---|
+| `scope`, `org_id` | `'org'`, the org | satisfies `design_templates_scope_org` (`0055:92`) |
+| `purpose`, `family`, `name` | the library's (`library.ts:785-805`) | the Arabic names admins already see |
+| `is_default` | the library's `isDefault`, **and only if** the org has no live default of that `(purpose, family)` | otherwise `design_templates_single_default` (`0057:58-78`) would *demote* an org's own default. The seed never takes a default away from anyone |
+| `description`, `duplicated_from`, `created_by` | null | no provenance to a row that is about to be deleted (`0055:84` is `on delete set null` anyway) |
+| version `version` | **1** | a new template's first version. The platform row's `v2` is a platform number and means nothing on an org row |
+| version `document` | **the library's current document**: the one `0196` stored as platform v2, **not** `0193`'s v1 | `0193`'s v1 documents carry the superseded colours. An org's history starts at the designed document |
+| `dynamic_fields` | `dynamicFieldsOf(document)` | what `0196` stored (`seed-sql.mjs:110`) |
+| `safe_areas`, `font_hashes` | `'{}'`, `'{}'` | what the platform rows carry (`seed-sql.mjs:162-165`). `duplicateTemplate()` copies `'{}'` for the same reason (`templates.ts:282`), and issuance pins fonts from the worker, not from the template (`0127:282`) |
+| `published_at`, `published_by` | `now()`, null | published from the first minute, as `createBlankTemplate()` does (`templates.ts:306-312`) |
+
+### 2 · The generator and the roster suites — today, and after
+
+**Today.** `seed-sql.mjs` imports `BASELINE_LIBRARY` from the built `dist` (`:33`) and writes one `do $$ … $$` block
+(`:99-177`). Per composition, the block carries:
+
+- a `-- @family <family>[@<orientation>]@v<n>` marker (`:108`, `:172`);
+- the document and fields as `v_doc := $json$…$json$::jsonb; v_fields := $fields$…$fields$::jsonb;` (`:134-135`).
+
+The script is **forward-only** (`:5-15`): a promoted output is never regenerated, and a change goes in a new proposed
+file.
+
+`tests/unit/designer-library.test.ts:504-555` works like this:
+
+1. It parses every marker, `$json$` and `$fields$` out of **four** seed files: `0061`, `0098`, `0193` and `0196`
+   (`:506-516`).
+2. For each composition, **the newest file wins** (`:540-543`).
+3. It deep-equals the document, the fields and the marker's version against the library (`:548-554`).
+
+`tests/rls/templates-roster.test.ts` applies the seeds in order (`:20-90`) and asserts the platform roster in six cases
+(`:152-340`), all on `scope = 'platform'`.
+
+**After: one source, one more output.** `0196` is promoted, so the script's job is now the next file. `seed-sql.mjs` is
+rewritten to emit **`supabase/proposed/designer/0007_seed_org_templates.sql`**:
+
+```
+create or replace function public.seed_org_templates(p_org uuid) returns integer
+language plpgsql security definer set search_path = '' as $seed$
+declare v_template uuid; v_doc jsonb; v_fields jsonb; v_n int := 0;
+begin
+  if not exists (select 1 from public.orgs o where o.id = p_org) then raise exception 'unknown_org' using errcode = '42704'; end if;
+-- @family talk@v2
+  v_doc := $json${…}$json$::jsonb;
+  v_fields := $fields$[…]$fields$::jsonb;
+  if not exists (<the org holds a template of this composition — §3>) then
+    insert into public.design_templates (org_id, scope, purpose, family, name, is_default)
+    values (p_org, 'org', 'poster', 'talk', 'جلسة', <isDefault> and not exists (<a live default of (org, purpose, family)>))
+    returning id into v_template;                       -- RETURNING, never a second lookup (0193's lesson, §3)
+    insert into public.design_template_versions (template_id, version, document, dynamic_fields, font_hashes, published_at)
+    values (v_template, 1, v_doc, v_fields, '{}', now());
+    v_n := v_n + 1;
+  end if;
+… ten more …
+  return v_n;
+end $seed$;
+revoke execute on function public.seed_org_templates(uuid) from public, anon, authenticated, service_role;
+```
+
+- ★ **The marker keeps the library's version (`@v2`).** It names *which library document* this is: the same document
+  as platform v2. The row inserted is `version = 1`, and the generated comment says so. With that, the roster unit
+  **changes by one line only**: the new file is appended to the list at `designer-library.test.ts:506-516` as
+  `seedFile("0007_seed_org_templates.sql", /_seed_org_templates\.sql$/)`. The newest file still wins, version 2 equals
+  the library's 2, and documents and fields deep-equal. The parsing regex (`:532`) already accepts the `::jsonb;` shape.
+  **Ledger line C-1.**
+- The `$seed$` outer tag cannot collide with a document. The generator already throws if `$json$` or `$fields$`
+  appears inside one (`seed-sql.mjs:111`), and it adds `$seed$` to that check.
+- The function is owner-only, with no grant. It is called by the trigger function (§5) and by the backfill, both as the
+  owner. It is invisible through PostgREST, because `tests/rls/definer-exposure.test.ts` sees no grant.
+- `packages/designer-runtime/src/**` is **not edited at all**. `library.ts`'s doc comments mention «the platform
+  template» (`:173`, `:177`) and stay. An unedited runtime is the strongest form of the golden proof (§6).
+
+### 3 · The idempotency key and the unique indexes
+
+- `DEC-254` §3.1 says «idempotently per `(org_id, purpose, family, orientation)`». **Orientation is not a column.** It
+  is the document's master (`library.ts:182-185`, `DEC-148`). So the key is: **the org already holds a template, live
+  or retired, of this `(purpose, family)` whose latest version's master has this orientation.** For posters there is no
+  orientation, so the key is `(purpose, family)` alone. Retired rows count, so a re-run never brings back a template an
+  admin retired. Run twice, the second call returns 0 and writes nothing.
+- `design_templates_org_default` (`0055:102-103`) allows one default per `(org_id, purpose, family)`. The library
+  defaults only the landscape certificate (`library.ts:801`, held by `designer-library.test.ts:62-64`), so the two
+  orientations of one family never collide. The «don't steal a default» clause in §1 also means the seed never *moves*
+  an existing default through `0057`'s trigger.
+- ★ **What `0193` did about the duplicate key: it was not this index.**
+  - `0193` first looked a row up by `(family, name)`. That matched the **superseded** row, which had the same family and
+    name and was not yet retired. It then inserted version 1 onto a row that already had one, violating
+    `unique (template_id, version)` (`0055:123`).
+  - The fix was `RETURNING` into `v_template` instead of a second lookup (`0193:449-456`, comment `:450-453`).
+  - `0193` also inserted the new default *before* superseding the old row, so `0057`'s trigger cleared the old flag in
+    the same statement (`0193:161-170`).
+
+  The seed takes the first fix (`RETURNING`). The second does not arise, because the seed supersedes nothing.
+
+### 4 · Every guard a seeded row meets, inserted by a definer with no session
+
+| Guard | Where | Scope-sensitive? | A seeded row |
+|---|---|---|---|
+| `design_templates_scope_org` | `0055:92` | yes: `scope='org'` ⇔ `org_id` not null | passes |
+| `design_templates_family_purpose` | `0055:93-96` | no | passes (library families) |
+| `design_templates_org_default` / `_platform_default` | `0055:102-105` | partial on `org_id` | one default per family (§3) |
+| `design_templates_single_default` (invoker trigger) | `0057:58-78` | `org_id is not distinct from` | demotes nothing: the seed only defaults a family with no live default |
+| `design_template_versions_guard` | `0195:62-95` (the live body) | **no**. It copies `org_id` from the parent and checks structure only. **No colour is read since `0195`**; `0094`'s walk is gone | passes: the library is `validateDocument`-clean and has no duplicate layer id (`designer-library.test.ts:346-352`) |
+| `design_templates_audit` (definer) | `0191:36-68` | **yes**: returns early when `org_id is null` (`:38`) | ★ **writes `design_template.created` per row**: 11 audit rows per org, actor null, role `'system'` (`write_audit` `0005:33-34`; `'system'` is allowed by `0004:404`). See D7 |
+| `design_template_versions_audit` (definer) | `0191:71-85` | same early return | a v1 insert writes nothing (`:76`) |
+| `design_documents_guard` | `0055:517-563` | — | not reached; no document is created |
+| RLS | `0055:573-605` | every write clause is `scope='org' and org_id = auth_org_id() and is_org_admin()` | bypassed: the function is `security definer` owned by the migration owner (the table owner), exactly as `0193`'s and `0196`'s `do` blocks wrote platform rows |
+
+★ **No guard treats an org row more strictly than a platform row, except the audit trigger**, which writes for org rows
+only. `draft_for_template_id` (`0057:36`) is not touched, because no draft is created. The first «عدّل» creates one
+from v1 (`templates.ts:320-355`). `duplicated_from` stays null.
+
+**Called with no session.** `auth_member_id()` and `auth_org_role()` return null without JWT claims. So both callers
+audit as `'system'`: the backfill (run as the owner) and the trigger fired from `create_org()` (run by a super admin
+through `assert_platform_admin()`, `0005:351`). A test proves it (§10).
+
+### 5 · Who calls it — a trigger on `orgs`, not an edit of `create_org()` (D1)
+
+`DEC-254` §3.1 says «`create_org()` calls it». ★ **I recommend an `after insert` trigger on `orgs`, as `0027` did for
+the scoring catalogue** (`0027:513-520`, trigger `orgs_seed_scoring` at `:593`). Three measured reasons:
+
+1. **`create_org()` (`0005:340-382`) is not the only way an org row is born.**
+   - `tests/rls/fixture.ts:90` inserts orgs directly.
+   - So do **161 e2e specs** (`grep -l "insert into public.orgs" tests/e2e`).
+   - The production org `49be708a…` was **seeded by hand** (brief, `wave-27-lead.md:52`).
+
+   After migration 2, an org with no template fails **every** completion (`DEC-254` §1.4), and PR A makes `review` the
+   default. Seeding «only orgs made by `create_org()`» would break every fixture and every spec that completes a
+   session.
+2. `0027`'s comment gives the same reason: «this also seeds `tests/rls/fixture.ts`'s two orgs for free».
+3. `REQ-DSG-035`'s acceptance, «a مؤسسة created through the product can … issue a certificate of each kind without any
+   setup», is satisfied either way. Only the trigger also makes the invariant structural.
+
+The trigger function is mine to propose, in `supabase/proposed/designer/0008_orgs_seed_templates.sql`:
+`create function public.orgs_seed_templates() returns trigger … perform public.seed_org_templates(new.id); return null;`
+plus `create trigger orgs_seed_templates after insert on public.orgs for each row …`. If the lead prefers
+`create_org()`, the seed function is unchanged and only the call moves. The fixture and e2e consequences above are then
+the lead's to absorb.
+
+★ **What the trigger costs the suites.** Every fixture org gains 11 templates and 11 audit rows. The risk is measured
+and still has to be proven by a full `test:rls` run in this tree:
+
+- Tests that count an org's templates: `templates-roster`, which is mine.
+- Tests that assert «the family default» picks a fixture template: `certificates-designs.test.ts:208`, also mine. The
+  fixture's own org default (`fixture-m6.ts:69-72`) demotes the seeded presenter default through `0057`'s trigger, so
+  the fixture's template still wins.
+- Tests that count an org's audit rows without filtering by action: I found none. Every count in `tests/rls/*audit*`
+  filters by action.
+
+### 6 · No parity golden moves — and the proof
+
+**First half: structural.** `scripts/parity/harness.mjs` renders the goldens from `scripts/parity/cases.mjs`. The
+background block renders from **`BASELINE_LIBRARY` in memory** (`scripts/parity/backgrounds.mjs:36`, `:80`). **None of
+them reads the database.** So a golden depends only on `packages/designer-runtime/src/**` and the parity scripts, and
+this wave edits neither. In PR C, `git diff main -- packages/designer-runtime/src scripts/parity` is empty.
+
+**Second half: a seeded row renders byte-identically to the platform row it replaces.** Three checks:
+
+- (a) `designer-library.test.ts` deep-equals the function's eleven `$json$` blocks against the library (C-1).
+- (b) A new RLS case seeds an org and asserts, per composition, that `seeded.document = platform_v2.document` in
+  `jsonb`. That is the structural equality `0196`'s own idempotency relies on (`seed-sql.mjs:124-127`). It also asserts
+  that `renderDocumentToHtml()` returns the identical string for the two.
+- (c) A new unit renders each library document through `renderDocumentToHtml()` twice, once from the library object and
+  once from the parsed `$json$`, and compares the strings.
+
+The lead then runs the parity harness **without `--update`** and records zero changed files. If a golden moves, it is a
+bug.
+
+★ **One thing does change, and it is not a golden.** A poster's `export_artifacts.source_fingerprint` hashes the
+`templateVersionId` (`worker/src/tasks/regenerate_poster.ts:182`, `issue_certificates.ts:183`). So the first
+regeneration after the seed computes a new fingerprint for byte-identical output. Production holds **0 design
+documents** (`DEC-254` §1.6), so no existing export is touched. Noted, not acted on.
+
+### 7 · Every reader of a platform template — what it becomes, and when
+
+★ **The three states the code moves through:**
+
+- **M1** = migration 1: the seed, the trigger and the backfill.
+- **C** = PR C's code on `main`.
+- **M2** = migration 2: the removal, pushed after C.
+
+A DAL reader changes **in C**, and it filters `scope = 'org'` explicitly. That keeps it correct in gap (b), when
+platform rows still exist and are still readable.
+
+#### SQL
+
+| Reader | Live definition | The platform branch | Becomes | When |
+|---|---|---|---|---|
+| `issue_certificate()` | `0127:160-…`, lookup `:260-274` | `(t.org_id = v_org or t.org_id is null)` `:268`, `order by (t.org_id is not null) desc, t.is_default desc, v.version desc` `:270` | branch removed; the lookup goes through the helper below | **M2** |
+| `issue_achievement_certificate()` | `0066:39-…`, lookup `:84-92` | the same predicate `:89` and order `:91` | the same | **M2** |
+| `poster_render_context()` | `0128:42-…`, lateral `:85-95` | `(t.org_id = s.org_id or t.org_id is null)` `:92`, `family='talk'` only, no `published_at` filter | the same | **M2** |
+| `set_certificate_design()` | `0099:96-147`, check `:117-123` | `t.org_id = actor.org_id or (t.scope='platform' and t.org_id is null)` `:121` | `t.org_id = actor.org_id` | **M2** |
+| `certificate_template_latest_version()` | `0099:86-91` | none: reads by template id | unchanged | — |
+| `redesign_held_certificates()` | `0099:265-305` | none: reads the session's design | unchanged | — |
+| `certificate_render_context()` / `record_certificate_document()` | `0099:313-…`, `:341-…` | none: reads by version id, as definer | unchanged. **This is what renders a retired platform version for ever** | — |
+| `templates_read` | `0055:577-578` | `scope = 'platform' or org_id = auth_org_id()` | `org_id = auth_org_id() or (scope = 'platform' and public.template_referenced_by_my_org(id))`, the lead's | **M2** |
+| `template_versions_read` | `0055:595-598` | `t.scope = 'platform' or t.org_id = …` | the same predicate, on the parent | **M2** |
+| `promote_template_to_platform()` | `0069:676-715` | writes a platform row | **dropped** | **M2** |
+| ★ `retire_platform_template(uuid, boolean)` | `0069:717-751` | **with `p_retired = false` it RESTORES a platform row to live** | **dropped** (D4) | **M2** |
+| ★ `set_platform_template_default()` | `0069:757-778` | sets a platform default | **dropped** (D4) | **M2** |
+| ★ `platform_template_library()` | `0096:47-90` (replaces `0069:783`) | SCR-083's list | **dropped** (D4) | **M2** |
+| ★ `platform_promotable_versions()` | `0072:35-…` | SCR-083's promote list | **dropped** (D4) | **M2** |
+| `supersede_baseline_template()` | `0193:88-126` | platform-only, by its guard `:99-102` | **dropped**, replaced by §9's function (D4) | **M2** |
+| `design_template_audit()` / `_version_audit()` | `0191:38`, `:73` | skip `org_id is null` | unchanged | — |
+
+★ **One helper, one predicate** (proposed, mine). `public.org_template_version(p_org uuid, p_purpose
+template_purpose, p_family text) returns uuid` is stable, definer and owner-only. It returns the org's live template of
+that family with a published version, `order by t.is_default desc, v.version desc, t.id`.
+
+- The `t.id` tiebreak is new. Today, two non-default org templates at one version are picked arbitrarily;
+  `certificates.ts:437-438` documents this.
+- M2's three lookups call the helper, and **so does M2's raise guard**. «The guard passed» and «issuance resolves» are
+  then one statement, not two that could drift.
+- ★ The callers keep `issue_certificate()`'s family mapping: `case when p_kind = 'presenter' then 'presenter' else
+  'attendance' end` (`0127:267`).
+- ★ Using the helper adds a `published_at` filter to the poster lookup, which has none today (`0128:91`). Every seeded
+  and every DAL-written version is published, so this is a no-op in practice. It is still a change, and the lead may
+  prefer to keep the poster lookup's predicate verbatim (D10).
+
+★ **Why `templates_read` needs a definer helper.** «Referenced by a row of mine» means that one of my `certificates`
+(`0055:288`), my `design_documents` (`0055:135`) or my `session_certificate_designs` (`0099:63`) names a version of the
+template. Written inline, `templates_read` would query `design_template_versions`, whose policy queries
+`design_templates`: infinite recursion, error `42P17`. A `stable security definer` boolean
+`template_referenced_by_my_org(p_template)` breaks the cycle. It returns nothing but a boolean for the caller's own org.
+It is the lead's, with the policy.
+
+★ **Who reads a retired platform version after M2, and as whom.** This is why the narrowing must keep referenced rows
+visible:
+
+| Reader | Role | Needs the policy? |
+|---|---|---|
+| `issue_certificates` / `render_variant` / `regenerate_poster` (worker) | the worker's connection, through `certificate_render_context()` / `poster_render_context()`, both **security definer** | no: bypasses RLS |
+| `verify/[code]` | `verify_certificate()`, definer (`0055:430-446`) | no |
+| `designer.ts:261-262`: an admin opens a certificate or poster document whose `template_version_id` is a platform version | `authenticated` | **yes** |
+| ★ `design_documents_guard` (`0055:517-563`), which is **invoker**, not definer | `authenticated` | **yes. If it cannot see the version it returns early (`:527-530`) and enforces no locked region.** An over-narrow policy would silently unlock the QR and serial on every pre-wave certificate document. This is the strongest reason the predicate is «referenced by mine» and not «mine» |
+| `certificates.ts:334`: SCR-045's «صدرت بـ» name, through the embedded join | `authenticated` | **yes** |
+| `templates.ts:147-148`: usage counts | `authenticated` | no, after C (org rows only) |
+
+#### The DAL and the screens — all **in C**
+
+| File:line | Today | After |
+|---|---|---|
+| `templates.ts:7-20` header «TWO LEVELS» | the rationale for two levels | one level; a copy is an org's own |
+| `templates.ts:41`, `:86` `scope: "platform" \| "org"` | | `TemplateSummary.scope` removed; the select adds `.eq("scope", "org")` (`:112-117`) |
+| `templates.ts:73`, `:185` `platform: TemplateSummary[]` | the platform list | **removed** |
+| `templates.ts:137-139` usage comment | «a platform template's count» | org only |
+| `templates.ts:232-289` `duplicateTemplate()` | «duplicate a platform template» | duplicates **one's own**. The source select gains `.eq("scope", "org")`: after M2 a referenced platform row is still readable, and a crafted action must not copy it. `duplicated_from` is still set (a copy's provenance among one's own) |
+| `templates.ts:327-330` `openTemplateDraft()` refusal | «a platform template is read, never edited» | the check (`scope !== "org"`) is unchanged; the comment is updated |
+| `certificates.ts:283`, `:425`, `:472` `scope` fields | | removed from `CertificateTemplateOption`, `EffectiveTemplateCandidate` and `EffectiveCertificateTemplate` |
+| `certificates.ts:296` «the org's, else the platform's» | | «the org's» |
+| `certificates.ts:329` options select | no scope filter | `.eq("scope", "org")` |
+| `certificates.ts:363` sort «org's own first» | | defaults first, then landscape |
+| `certificates.ts:366-373`, `:427-468` `pickEffectiveTemplate()` / `resolveEffectiveDefault()` | org-before-platform ordering | `is_default desc, version desc, id`: **exactly the helper's order**, D10's tiebreak included |
+| `certificates.ts:478-492` `getEffectiveCertificateTemplates()` | «this org's templates and the platform's» | `.eq("scope", "org")` |
+| `designer.ts` | `siblingOrientation()` already filters `.not("org_id", "is", null)` (`:444-450`) | unchanged. It now **finds** the seeded portrait sibling of a seeded landscape template, which it never could for a platform row. This behaviour appears; no existing behaviour changes |
+| `posters.ts` | no template lookup | unchanged |
+| `templates-screen.tsx:78` | `[...data.org, ...data.platform]` | `data.org` |
+| `templates-screen.tsx:138-143` | the «قوالب المنصة» section | **removed** |
+| `templates-screen.tsx:156` | «· المنصة» on a default | removed |
+| `templates-screen.tsx:193`, `:220`, `:225-226`, `:237-238` | the `isPlatform` branches, the platform badge, `PlatformTemplateMenu` | removed; every card is an org card |
+| `template-menu.tsx:93-110` | `PlatformTemplateMenu` | **deleted** |
+| `template-menu.tsx:17`, `:166` | the org copy calls `duplicateFromPlatform` | calls `duplicateTemplate` (the action is renamed; see §11) |
+| `actions.ts:57-65` `duplicateFromPlatform` | | renamed `duplicateTemplate`, documented as «a copy of one's own template» |
+| ★ `admin/sessions/[id]/certificates/template-control.tsx:132` | «· من قوالب المنصة» on an option | removed. **Not in my edit list (R3)** |
+| `messages/*/templates.json` | `library.platformHeading` `:9`, `library.platformEmpty` `:11`, `library.platformMark` `:19`, `card.duplicate` «انسخ لتعدّل» `:25`, `card.platformBadge` `:31`. Already dead: `create.duplicateName` `:55`, `create.duplicateTitle` `:59` | deleted. ★ Two copy changes, keys stable: `result.notAuthorized` drops «وقوالب المنصة لا تُعدَّل من هنا» and becomes «هذا الإجراء من صلاحيات مشرف المؤسسة.»; `result.duplicated` «نُسخ القالب إلى مؤسستك.» becomes «نُسخ القالب.» |
+| `messages/*/certificates.json:72` | `platformTemplate` | deleted |
+
+★ **Nothing of mine imports `src/lib/dal/platform-templates.ts` or `/app/platform/templates/**`.** Its only importers
+are `src/app/[locale]/app/platform/templates/{actions,page,library-table,promote-table}.tsx` and the nav entry at
+`src/components/platform/platform-nav.tsx:38`, all the lead's. The tests that reach the platform functions,
+`tests/rls/platform-library.test.ts:127-128` and `tests/rls/platform-schema.test.ts:510-560`, are the lead's too.
+
+#### The worker
+
+Nothing changes. Every template read goes through a definer render context, by id or by the lookups above. There are
+only two failure modes: `regenerate_poster.ts:97-102` («no poster template available for org») and `issue_certificate`'s
+`42704`. Both are unreachable once every org holds its seed and M2's guard has passed.
+
+### 8 · Contract 4 — the order, and what `main` does in each gap
+
+**M1 (pushed first, additive):** `seed_org_templates()`, the `orgs` trigger (or `create_org()`'s call), and the
+backfill `select o.id, public.seed_org_templates(o.id) from public.orgs o order by o.created_at`, with one notice per
+org giving its count. On production that is 2 orgs × 11 rows.
+
+**Gap (a): M1 on production, with `main`'s app and worker:**
+
+| Surface | What it does | Evidence |
+|---|---|---|
+| SCR-055 posters | **two sections**: «قوالب مؤسستك · 5» (the seed: editable, the five defaults badged) and «قوالب المنصة · 5» (copyable). The two sections show the same names | `templates.ts:185-186`, `templates-screen.tsx:131-143` |
+| SCR-055 certificates | the same, 6 + 6. The defaults strip names **the org's** three landscape defaults and drops «· المنصة» | `resolveEffectiveDefault()` takes the org scope whenever the org has any row, `certificates.ts:462-463` |
+| SCR-045 | options list the org's first, then the platform's; the preselection is the org's default | `certificates.ts:363`, `pickEffectiveTemplate()` `:440-449` |
+| Issuance | **the org's**. `0127`'s order puts `org_id is not null` first (`:270`), and `0066:91` does the same for achievement | the pinned version is the org's v1, whose document is byte-identical to the platform v2 it would have taken |
+| Posters | **the org's `talk`**: `0128:93` orders org first | the same document |
+| SCR-083 | still lists the platform rows, and a super admin can still promote. Any row it creates is a platform row, and M2 sweeps it | `0069:676` |
+| Worker | unchanged code, reading org versions by id | — |
+
+So contract 4's expected answer holds: two sets are visible, and issuance and posters prefer the org's.
+
+**Gap (b): C merged, M2 not pushed.**
+
+- SCR-055 shows **one list**, the org's, and «انسخ لتعدّل» is gone.
+- SCR-045 offers the org's templates only, and the strip names the org's default.
+- SCR-083 is gone (the lead's deletion).
+- The SQL still has its platform branch but **never reaches it**: since M1 every org holds a live default per family,
+  and the branch is ordered last.
+
+★ **So C must not merge before M1 is pushed.** On production without M1, C's code would show an empty library and
+«لا قالب» on the strip while the SQL still issued against platform rows. That is survivable, but wrong on screen. The
+order is **push M1 → merge C → push M2**, and the rehearsal checks M1 and then M2 on one dump.
+
+**M2 (pushed after C is on `main`):**
+
+1. ★ **Raise first.** For every org in `public.orgs`, of any status, call `org_template_version(org, 'certificate',
+   'attendance')` and `('certificate', 'presenter')`. I recommend also checking `('certificate', 'achievement')` and
+   `('poster', 'talk')`, because M2 removes **their** platform fallback too (`0066:89`, `0128:92`) (D2). If any returns
+   null, `raise exception 'org_without_template: % % %', org, purpose, family` before a single platform row is touched.
+2. ★ **Repoint the open session designs** that name a platform template (D3). This comes before the removal, because
+   `session_certificate_designs.template_id` is `on delete restrict` (`0099:63`) and DEC-254 §1.5 does not list it.
+3. **Delete or retire** every platform row through §9's function, with a notice per row.
+4. **Narrow and drop.**
+   - Narrow the lookups in `issue_certificate()`, `issue_achievement_certificate()`, `poster_render_context()` and
+     `set_certificate_design()`. I propose the bodies, re-stated verbatim except for the lookup; the lead promotes them.
+   - Narrow `templates_read` and `template_versions_read` (the lead's).
+   - Drop the five platform-library functions and `supersede_baseline_template()` (D4).
+5. Optional (D5): `alter table design_templates add constraint design_templates_no_live_platform check (scope = 'org'
+   or retired_at is not null)`. It validates after step 3, and it makes «there is no live platform row» the database's
+   rule.
+
+★ **Is M2 in PR C's branch?** (D9) If it is, local `db reset` applies it and PR C's suites run on the post-M2 schema,
+while production gets it after the merge. That is `0196`'s pattern (`seed-sql.mjs:89-97`), and I recommend it: one PR,
+with the two pushes ordered around its merge. The cost is that every e2e spec that reads `scope='platform'` must move
+in PR C (R4).
+
+### 9 · The delete-or-retire function, modelled on `0193`'s
+
+`0193`'s `supersede_baseline_template()` (`:88-124`) has the right shape:
+
+- It is platform-only by its guard (`:99-102`: «an org's own template is never superseded»).
+- It wraps the `delete` in a subtransaction, because `restrict` raises `23503` at once (`:107-121`, comment `:76-79`).
+- On refusal it retires the row with `is_default = false` and reports `sqlerrm` as the reason.
+
+**I read its guard before reusing it. It is exactly the right guard, and I keep it.** But the function does two things
+M2 must not:
+
+- It returns `already_retired` **without trying the delete** (`:103-106`). Production's old `talk` was retired because
+  2 design documents referenced it, and per DEC-254 §1.6 those documents **no longer exist**. So it is now deletable,
+  and `supersede` would leave it. M2 must try every platform row, retired or not.
+- Its name and documentation describe a supersede, which M2 is not.
+
+So I propose a new function: **`public.remove_platform_template(p_template uuid) returns table (outcome text,
+refused_by text)`**. Its outcomes:
+
+- `absent`
+- `deleted`
+- `retired`: was live, and the delete was refused
+- `kept_retired`: was retired and is still referenced; `retired_at` is left as it was
+
+It is owner-only, with the same revokes as `0193:126`. M2's loop is `0193:3482-3492` with the new function, ordered by
+purpose, family and `created_at`, with a `raise notice` per row for `STATUS.md`. As in wave 24, nothing is forced: no
+`cascade`, no detach, no nulling, and no `design_document` deleted to clear the way.
+
+**Expected on production, pending R1:** the 11 live rows are deleted (0 certificates, 0 documents) and so is the old
+`talk` (its 2 documents are gone). The exception is a platform row named by a `session_certificate_designs` row: that
+one is `retired`, which is why D3 repoints first.
+
+### 10 · Tests
+
+**New, mine:**
+
+| File | Cases |
+|---|---|
+| `tests/rls/templates-org-seed.test.ts` | `seed.set`: a fresh org (inserted directly **and** through `create_org()` as a super admin) holds exactly 11 org rows. That is 5 poster families and 3 certificate families × landscape/portrait, one default per `(purpose, family)` (every poster and the landscape certificates), each with one published v1 · `seed.byte_identical`: per composition, the seeded document `=` the platform v2 document, and `renderDocumentToHtml()` gives the same string · `seed.idempotent`: a second call returns 0, templates and versions are unchanged, and a retired seeded row is not re-seeded · `seed.keeps_my_default`: an org with its own `attendance` default before the seed keeps it, and the seeded landscape is not the default · `seed.no_session`: inserted with no JWT, the audit rows are `design_template.created` with actor null and role `system`, one per row, and no `.published` · `seed.not_callable`: no role executes `seed_org_templates()` · `seed.backfill`: with two pre-existing orgs, the backfill statement seeds both |
+| `tests/rls/templates-platform-removal.test.ts` | `removal.raises_first`: an org with no attendance template makes M2's guard raise, and **no platform row changes** · `removal.deleted` · `removal.retired_by_certificate`: the certificate still resolves its document through `certificate_render_context()`, byte for byte (wave 24's `designer-baseline-supersede` case, carried over) · `removal.retired_by_document` · `removal.kept_retired` · `removal.absent` · `removal.org_template_refused` · `removal.not_callable` · `removal.designs_repointed` (D3) · `removal.issuance_is_the_orgs`: after M2, attendance, presenter and achievement each pin an org version, and with the org's templates retired the result is `42704` (no fallback) · `removal.poster_is_the_orgs` |
+| `tests/rls/templates-read-narrowed.test.ts` | an unreferenced platform row is invisible to an org admin. One referenced by **my** certificate, **my** document or **my** session design is visible, with its versions. One referenced only by **another** org's row is not · ★ `design_documents_guard` still refuses moving a locked QR on a document pinned to a retired platform version |
+| `tests/unit/designer-seed-function.test.ts` | the generated file parses: 11 markers, one `$seed$` body, the revoke line. Each `$json$` renders through `renderDocumentToHtml()` identically to the library object |
+| `tests/components/templates/templates-screen*.test.tsx` (if the screen's server component is testable; otherwise the e2e covers it) and an amended `template-menu.test.tsx` | one list, and no «انسخ لتعدّل» anywhere |
+| `tests/e2e/wave27-designer-library.spec.ts` | a fresh org made with `create_org()`. On SCR-055, the posters tab shows 5 cards in one list, and the certificates tab shows 6 with the three defaults named. ⋯ has no «انسخ لتعدّل». «عدّل» opens a seeded template in the studio, and publishing writes v2 · captures `wave27-designer-055-{posters,certificates}-1280.png` and `-390.png` |
+
+**Existing suites as evidence.** These are the assertions I expect to change. Each is a ledger line in
+`docs/plan/notes/wave-27-ledger-c.md`, in the same commit:
+
+| # | File:line | Change |
+|---|---|---|
+| C-1 | `tests/unit/designer-library.test.ts:506-516` | the seed-function file is appended to the list; the deep-equal is unchanged |
+| C-2 | `tests/rls/templates-roster.test.ts:152-340` (6 cases) | the platform roster becomes the **per-org** roster (`REQ-DSG-026` as amended). The platform counts in `roster.superseded` and `roster.idempotent` (`:249-250`, `:313-314`) move to `templates-org-seed` |
+| C-3 | `tests/rls/designer-baseline-supersede.test.ts` (8 cases) | if D4 drops `supersede_baseline_template()`, the file's REQ-CRT-014 cases move to `templates-platform-removal` and the file is deleted. «issuance resolves a NEW platform row» (`:283-…`) becomes «an org row» |
+| C-4 | `tests/rls/designer-schema.test.ts:132` `select.platform` | expectation **inverted**: an unreferenced platform template is invisible to an org admin. The same for versions at `:221`. `update.platform` at `:148` is unchanged |
+| C-5 | `tests/rls/certificates-designs.test.ts:54`, `:138` | the platform template they pick becomes the org's seeded one |
+| C-6 | `tests/rls/templates-audit.test.ts:168-…` | «a platform template's change writes nothing» is kept while the owner can still write platform rows. If D5 lands, the case writes on a retired row only |
+| C-7 | `tests/unit/certificates-effective.test.ts:10-11`, `:14`, `:18`, `:69` | the platform candidates leave, and the org-only order (with the id tiebreak) is asserted |
+| C-8 | `tests/components/templates/template-menu.test.tsx:15`, `:23`, `:33`, `:53-…` | `PlatformTemplateMenu`'s case is deleted, and the mock is renamed to `duplicateTemplate` |
+| C-9 | `tests/e2e/wave23-console-screens.spec.ts:145`, `:160-178` | the «قوالب المنصة» heading and the copy-from-platform case become «one list, no «انسخ لتعدّل»». The audit assertion moves to an org copy |
+
+### 11 · SCR-055's kept-behaviour table (`DEC-208`'s discipline; a removal, not a rebuild)
+
+| Behaviour today | Where today | After | Requirement |
+|---|---|---|---|
+| `h1` «القوالب» with «قالب جديد» for an admin | `templates-screen.tsx:103-113` | **kept** | `REQ-UIX-108` |
+| The create sheet: name, family and a certificate's orientation, then the studio | `:115-119`, `actions.ts:119-137` | **kept** | `REQ-DSG-008`, `DEC-148` |
+| The tabs ملصقات · شهادات | `:122-129` | **kept** | `REQ-UIX-108` |
+| «قوالب مؤسستك · N» with its count | `:131-136` | **kept**: the heading still names whose templates they are | `REQ-DSG-035` |
+| «لا قوالب لمؤسستك بعد» | `:135` | **kept**; reachable only if an org deletes its rows by hand | — |
+| «قوالب المنصة · N · انسخ لتعدّل», its grid and its empty line | `:138-143` | **removed** | `DEC-254` §3.4 |
+| A platform card: preview, «المنصة» badge, ⋯ → «انسخ لتعدّل» → name dialog | `:225`, `:237-238`, `template-menu.tsx:93-110` | **removed** | `DEC-254` §3.4 |
+| A card's live preview, with the org's name and `{label}` bindings | `:77-85`, `:203-214` | **kept** | `REQ-DSG-006` |
+| Badges: افتراضي · مسودة · متقاعد (dimmed) | `:220-235` | **kept**; the `!isPlatform` guards fall away | `REQ-DSG-002`, `REQ-DSG-007` |
+| Format chips (16:9 · A4 · A3 · 9:16), and kind and page chips | `:194-198`, `:253-261` | **kept** | `REQ-UIX-108` |
+| ⋯ «عدّل في الاستوديو», opening the template's draft | `template-menu.tsx:147`, `actions.ts:85-90` | **kept**, and now on every seeded template too. This is «an admin edits a baseline template in place» | `REQ-DSG-035` |
+| ⋯ «انسخ» on one's **own** template, named in a dialog, with the «— نسخة» suffix | `template-menu.tsx:148`, `:160-167` | **kept**; the action is renamed `duplicateTemplate` | `REQ-DSG-008` (what survives of it) |
+| ⋯ «اجعله الافتراضي» | `:149`, `actions.ts:97-100` | **kept** | `REQ-CRT-015` |
+| ⋯ «انشر» while a draft exists | `:150` | **kept** | `REQ-DSG-007` |
+| ⋯ «غيّر الاسم» | `:151`, `:168-175` | **kept** | `REQ-ADM-013` |
+| ⋯ «أحِل للتقاعد» with the usage count in the confirm · «أعِد للخدمة» | `:152-154`, `:176-192` | **kept** (see D6) | `REQ-UIX-013` |
+| The usage count: this org's sessions using any version | `templates.ts:137-155` | **kept** | `16` §10.3 |
+| The certificates' defaults strip: per kind, the template issuance picks, «لا قالب افتراضي», «لا قالب» | `:145-169` | **kept**; «· المنصة» removed (`:156`) | `REQ-CRT-015`, `DEC-238` |
+| Staff read, an admin writes, a member gets a 404 | `templates.ts:109`, `:187`, `templates-screen.tsx:70` | **kept** | `REQ-ADM-013` |
+| Every answer is a toast from the action's result | `template-menu.tsx:27-35` | **kept**; two strings re-worded (§7) | wave 6's trap |
+| Every write is audited by `0191` | `actions.ts:115-118` | **kept** | `REQ-ADM-023` |
+
+### 12 · Decisions I need
+
+- **D1**: seed through an `after insert` trigger on `orgs` (my recommendation, §5), **or** have `create_org()` call the
+  seed as DEC-254 words it.
+- **D2**: M2's raise covers attendance and presenter (DEC-254 §3.3), **or** also achievement and poster `talk`, whose
+  fallbacks M2 removes in the same file (my recommendation).
+- **D3**: what to do with `session_certificate_designs` rows that name a platform template.
+  - **Repoint**: point each at the org's seeded template of the same family and orientation, where no certificate of
+    that kind is issued or revoked. That is the rule `set_certificate_design()` itself applies (`0099:126-133`). Where a
+    certificate is issued or revoked, leave the row, and the platform template is then retired.
+  - **Or leave all of them.** Without a repoint, a retired platform template **keeps issuing** for that session,
+    because `certificate_template_latest_version()` ignores `retired_at` (`0099:86-91`).
+- **D4**: drop all five platform-library functions, not only `promote_template_to_platform()`, because
+  `retire_platform_template(…, false)` would **restore a live platform row**. Also drop `supersede_baseline_template()`,
+  replaced by `remove_platform_template()`.
+- **D5**: whether to add the optional `design_templates_no_live_platform` check after M2.
+- **D6**: whether to refuse retiring an org's **last** live template of `attendance`, `presenter`, `achievement` or
+  poster `talk`, and the direct `delete` that `templates_delete_org` allows (`0055:584-585`).
+  - After M2 there is no fallback. An admin who retires the last one makes every completion fail with `42704` in the
+    job. Today the platform row saves them.
+  - If it is refused, that needs a definer trigger (the lead's) and a line in the retire dialog (new copy).
+- **D7**: the seed writes 11 `design_template.created` audit rows per org (actor null, role `system`). Accept them (my
+  recommendation: they are true) or suppress them.
+- **D9**: put M2 in PR C's branch (my recommendation) or in a follow-up PR.
+- **D10**: the helper's order adds a `t.id` tiebreak, and the poster lookup gains `published_at is not null`. Both are
+  no-ops on seeded data. Accept both, or keep the poster predicate verbatim.
+
+### 13 · What I need from the lead
+
+- **R1**: a production read, counts only.
+  - Per platform row: `purpose`, `family`, `name`, `is_default`, `retired_at is not null`, and the number of versions,
+    referencing certificates, referencing design documents and `session_certificate_designs` rows naming it.
+  - `select count(*) from orgs`, with status.
+
+  This reconciles §1 and sizes D3.
+- **R2**: confirmation that the `0007`/`0008` proposed numbers are mine to pick inside `supabase/proposed/designer/`. The
+  promotion numbers are yours.
+- **R3**: a **grant** for `src/app/[locale]/app/admin/sessions/[id]/certificates/template-control.tsx` (one line,
+  `:132`). It is SCR-045's file and outside my wave-27 list.
+- **R4**: **custodian edits** to files that are not mine this wave. They are needed the moment M2 is in the local chain:
+  - `tests/rls/fixture-m6.ts:43-61`: `platformRows()` inserts a live platform default, which is refused if D5 lands.
+  - `tests/rls/platform-{library,schema,console}.test.ts`: they call the dropped functions.
+  - The e2e specs that read the platform `talk` or attendance version:
+    - `wave8-designer-editor:115`
+    - `wave8-designer-posters:134`
+    - `wave8-designer-templates:77`, `:236-249`, `:380`
+    - `wave8-designer-certificates:250`
+    - `wave10-designer-reissue-and-days:141`
+    - `wave13-designer-studio-drag:82`
+    - `wave13-designer-studio-taps:94`
+    - `wave23-designer-certificate:74`
+    - `wave23-designer-four-formats:93`
+    - `wave23-designer-taps:85`
+    - `wave11-lead-a11y-sweep:198`
+
+  Each becomes «the org's seeded row»: a one-line change from `scope = 'platform'` to `org_id = $org`. I can write them
+  if you grant them.
+- **R5**: the ledger file `docs/plan/notes/wave-27-ledger-c.md` created, or permission to create it.
+- **R6**: after the build, the parity harness without `--update`, and a full `test:rls` in this tree with the trigger
+  in place (§5's measured risk).
+
+### 14 · Where `DEC-254`, the brief or the agent file and the code disagree (written, not resolved)
+
+1. **«24 platform templates»** (`wave-27-lead.md:51`, `DEC-254` §1.6) against the code's **12 templates and 24
+   versions** (`0193:3482-3492` + `0196`). §1.
+2. **«eleven documents … the roster suite deep-equals against `0193`»** (agent file §1). The live documents are
+   `0196`'s (v2); `0193`'s are the superseded v1. The suite already reads the newest file
+   (`designer-library.test.ts:506-516`).
+3. **«`create_org()` calls it»** (`DEC-254` §3.1, §3.3). Orgs are also born by direct insert: `fixture.ts:90`, 161 e2e
+   specs and the hand-seeded production org. §5, D1.
+4. **«idempotently per `(org_id, purpose, family, orientation)`»**. Orientation is not a column (`0055:74-97`); it is
+   the latest version's master. §3.
+5. **`DEC-254` §1.5 lists two `on delete restrict` referents.** There is a third, on the **template** rather than a
+   version: `session_certificate_designs.template_id` (`0099:63`). `0193` knew it (`:44-45`). D3.
+6. **`DEC-254` §3.4 withdraws only `promote_template_to_platform()`.** Four more platform-library functions remain, and
+   one of them can make a platform row live again (`0069:717-751`). D4.
+7. **`DEC-254` §3.3's raise names attendance and presenter**, but M2 also removes the fallback for achievement
+   (`0066:89`) and for the poster (`0128:92`). D2.
+8. **«the «قوالب المنصة» tab»** (agent file, map). It is a **section** under each of the two tabs
+   (`templates-screen.tsx:138`); the tabs are ملصقات · شهادات, and both stay. Wording only.
+9. **«`issue_certificate()`'s `org_id is null` branch is narrowed in the removal migration and not before».** This is
+   correct, but after M2 the branch is dead anyway: every platform row is deleted or retired, and every lookup filters
+   `retired_at is null`. What protects the hand-over is the raise, not the narrowing.
+10. **`0193`'s `supersede` cannot be reused as is.** It never retries the delete of an already-retired row
+    (`:103-106`), and production's retired `talk` is now unreferenced. §9.
+
+### 15 · Sync-1 rulings (the lead, 2026-10-05) — and what each changes in the plan above
+
+D1, D2, D3, D4, D5, D6, D7 and D10 are accepted. **D9 is changed.** Where this section and §1–§14 disagree, this
+section wins.
+
+#### What ships where — PR C, and the follow-up PR (from D9)
+
+| | **PR C**: `supabase/proposed/designer/` (the lead promotes M1 from it) and the code | **Follow-up PR**: the lead promotes M2 after C merges, with B's grant revoke |
+|---|---|---|
+| SQL | **M1**: `seed_org_templates()`; the trigger `orgs_seed_templates`; the predicate `org_missing_templates()` and `org_template_version()` (below); **the D6 guard**; the backfill statement | **M2**: the raise; the D3 repoint; `remove_platform_template()` and its loop; the four narrowed lookups; the two narrowed policies with `template_referenced_by_my_org()` (the lead's); the five drops plus `supersede_baseline_template()`; the D5 constraint |
+| Where M2's SQL lives in PR C | under `supabase/proposed/designer/` **only**, proven by `applyProposed()` inside `templates-platform-removal.test.ts` and `templates-read-narrowed.test.ts` (both transactional and rolled back) | promoted |
+| Local chain | **keeps its platform rows**. Every existing suite that reads `scope='platform'` *in SQL* stays green in PR C | the platform rows go, and R4's SQL breakage lands here |
+| My code | the DAL `scope='org'` filters, one list on SCR-055, the D6 error mapped to its copy | none |
+
+★ **The D6 guard ships in M1, not M2. That is my proposal, and the lead should rule on it.** The guard is what keeps an
+org from losing its last template once nothing catches it. Shipping it with the seed means it holds from the first
+moment an org owns templates, so C's retire dialog shows its reason from day one. In gap (a), `main`'s app maps any
+error on retire to `not_authorized` (`templates.ts:415-424`, `answer()` `actions.ts:42-48`), so the refusal shows as
+the generic «not allowed» toast until C merges. That is acceptable, because main's app refuses nothing it allowed
+before, except retiring an org's last template of a family, which no org can have done yet. If the lead prefers it in
+M2, nothing else in the plan moves.
+
+#### D2 + D6 — one predicate, three callers
+
+```
+public.org_template_version(p_org uuid, p_purpose public.template_purpose, p_family text) returns uuid
+  -- the org's live template of that family with a published version:
+  -- order by t.is_default desc, v.version desc, t.id  (D10)
+public.org_missing_templates(p_org uuid) returns table (purpose public.template_purpose, family text)
+  -- every (purpose, family) in the fallback set for which org_template_version() is null.
+  -- THE FALLBACK SET, written once, inside this function:
+  --   (certificate, attendance) · (certificate, presenter) · (certificate, achievement) · (poster, talk)
+```
+
+Both are `stable security definer`, `search_path = ''`, and owner-only, with no grant. The three callers:
+
+1. **M2's raise**: `for each org: if exists (select 1 from org_missing_templates(o.id)) then raise …`, before any
+   platform row is touched.
+2. **D6's guard**: a definer trigger `design_templates_keep_one_live` on `design_templates`, **after update of
+   `retired_at` or delete, for each row**.
+   - It returns early when `old.org_id is null`, and when the org no longer exists (`0191`'s org-deletion escape). In a
+     cascade from an org's deletion the parent row is already gone, so this keeps `perform_org_deletion()` working.
+   - It returns early when `(old.purpose, old.family)` is not in the fallback set.
+   - Otherwise it raises if that pair is now among `org_missing_templates(old.org_id)`. The check runs *after* the
+     row's change, so the predicate reads the state the change would leave, and the raise rolls the change back.
+3. **Tests**: `org_missing_templates()` is asserted empty for every fixture org after M1.
+
+The trigger itself is a trigger, not a table, a policy or a grant, so I write it under `proposed/`. The lead should say
+if they would rather hold it.
+
+★ **The guard's error is `raise exception 'last_live_template' using errcode = '23514'`, with the family in `detail`.**
+
+- `retireTemplate()` maps it to a new status, `last_template` (add-only on `TemplateWriteResult` and
+  `TemplateActionState`).
+- The retire dialog then toasts **one line**: `templates.result.lastTemplate`, «لا يمكن إحالته للتقاعد: هو آخر قالب
+  منشور لهذا النوع.» (en: «It can't be retired: it is the last published template of this kind.»). A new key, Arabic
+  first, with no explanation beyond the reason.
+- A direct `delete` under `templates_delete_org` (`0055:584-585`) is refused by the same trigger. No screen offers a
+  delete.
+
+#### D3 — how «locked» is decided
+
+A `session_certificate_designs` row is **locked** exactly when `set_certificate_design()` itself would refuse to change
+it (`0099:126-133`): `exists (select 1 from public.certificates c where c.session_id = d.session_id and c.kind = d.kind
+and c.state in ('issued', 'revoked'))`. The rule is copied, not re-derived, so «M2 may repoint it» and «an admin may
+change it» are the same answer.
+
+- **Unlocked** (no certificate, or only `held` ones): `template_id` is set to the org's seeded template with **the same
+  family and the same orientation** as the platform template it named. Orientation is read from each template's latest
+  version's master. `scheme` is unchanged, and the write is audited as `certificate.design_set`, with the actor null and
+  role `system`.
+  - ★ Held certificates stay pinned to their platform version. They are invisible and unemailed (`REQ-CRT-004`), and an
+    admin can re-pin them with «طبّق على المحجوزة» (`redesign_held_certificates()`). M2 does not re-render on its own.
+  - Because their version is still referenced, that platform template is **retired, not deleted**.
+- **Locked**: the row is left as it is, and the platform template it names is **retired** by the removal loop. The FK
+  refuses the delete, `remove_platform_template()` catches that, and the outcome is `retired`.
+- No counterpart can be missing, because M2's raise has already proven every org holds every seeded family. If one is
+  missing anyway (an org deleted its own by hand), the repoint raises rather than guessing.
+
+#### D4 — the five platform-library functions M2 drops, by name and migration
+
+| Function | Defined | Live body |
+|---|---|---|
+| `promote_template_to_platform(uuid, text)` | `0069:676` | `0069:676-715` |
+| `retire_platform_template(uuid, boolean)` | `0069:717` | `0069:717-751` |
+| `set_platform_template_default(uuid)` | `0069:757` | `0069:757-778` |
+| `platform_template_library()` | `0069:783`, dropped and re-created in `0096:47-49` | `0096:49-90` |
+| `platform_promotable_versions(uuid)` | `0072:35` | `0072:35-…` |
+
+M2 also drops **`supersede_baseline_template(uuid)`** (`0193:88-126`) and replaces it with
+`remove_platform_template(uuid)` (§9).
+
+#### D5 — the constraint
+
+M2 ends with `alter table public.design_templates add constraint design_templates_platform_retired check (scope =
+'org' or retired_at is not null)`. It validates because the loop has just deleted or retired every platform row. The
+enum value and `design_templates_scope_org` stay, as DEC-254 §3.4 says.
+
+#### R3 — the path
+
+The grant names `src/components/certificates/template-control.tsx`, **which does not exist.** The file is
+**`src/app/[locale]/app/admin/sessions/[id]/certificates/template-control.tsx`** (the line to change is `:132`). I take
+the grant as meaning that file, for the platform-scope change only, unless the lead says otherwise.
+
+#### R4 — the list for the lead, as custodian. I edit none of these.
+
+★ **Two of them break in PR C itself, not in the follow-up**, because they drive the SCR-055 / SCR-045 *UI* that C
+changes. The rest read `scope='platform'` in SQL and break only when M2 is promoted.
+
+| File:line | What it reads or does | Breaks in | The edit |
+|---|---|---|---|
+| ★ `tests/e2e/wave8-designer-templates.spec.ts:230-250` | finds the platform `talk` card by the «المنصة» badge and copies it with «انسخ لتعدّل»; expects «نُسخ القالب إلى مؤسستك.» | **PR C** (the UI) | copy the org's own seeded `talk` with «انسخ», and expect «نُسخ القالب.» |
+| ★ `tests/e2e/wave8-designer-templates.spec.ts:378-383` | opens the platform card's «انسخ لتعدّل» dialog for a capture | **PR C** (the UI) | the org card's «انسخ» dialog |
+| ★ `tests/e2e/wave8-designer-certificates.spec.ts:249-252`, used at `:279` and `:456` | `templateId(name)` selects the **platform** «شهادة حضور عمودية» and picks it in SCR-045's select | **PR C** (SCR-045 now offers org rows only) | `scope = 'org' and org_id = $org and name = $1` |
+| `tests/e2e/wave8-designer-templates.spec.ts:72-82` `platformDefault()` | the latest version of a platform default (`scope='platform' and is_default`) | follow-up | the org's default: `org_id = $org and is_default` |
+| `tests/e2e/wave8-designer-editor.spec.ts:115` | the platform `talk` version, to bind a poster document | follow-up | the org's seeded `talk` |
+| `tests/e2e/wave8-designer-posters.spec.ts:134` | the same | follow-up | the same |
+| `tests/e2e/wave10-designer-reissue-and-days.spec.ts:141` | the platform `talk`'s latest published version (`bindPoster()`) | follow-up | the same |
+| `tests/e2e/wave13-designer-studio-drag.spec.ts:82` | the platform `talk` version | follow-up | the same |
+| `tests/e2e/wave13-designer-studio-taps.spec.ts:94` | the same | follow-up | the same |
+| `tests/e2e/wave23-designer-four-formats.spec.ts:93` | the same | follow-up | the same |
+| `tests/e2e/wave23-designer-taps.spec.ts:85` | the same | follow-up | the same |
+| `tests/e2e/wave23-designer-certificate.spec.ts:74` | the platform `attendance` certificate version | follow-up | the org's seeded `attendance` landscape |
+| `tests/e2e/wave11-lead-a11y-sweep.spec.ts:198` | the platform `talk` version | follow-up | the org's seeded `talk` |
+| `tests/rls/fixture-m6.ts:43-61` `platformRows()` | inserts a **live** platform `talk` default | follow-up (refused by D5) | insert it retired, or drop it with `m6.platformTemplate*`; the lead decides which fixture readers still need a platform row |
+| `tests/rls/platform-library.test.ts` (whole file; `:127-128` calls `promote_template_to_platform`) | the dropped functions | follow-up | deleted with the functions |
+| `tests/rls/platform-schema.test.ts:510-560` | `promote_template_to_platform` cases | follow-up | deleted |
+| `tests/rls/platform-console.test.ts` (its platform-template cases) | `platform_template_library()` | follow-up | deleted |
+
+#### What D9 moves in my own ledger (C-1 … C-9)
+
+| Line | Lands in |
+|---|---|
+| C-1 (`designer-library` list) | PR C |
+| C-2 (`templates-roster`) | **split.** The per-org roster cases are added in PR C. The platform-count cases (`:249-250`, `:313-314`) stay green in PR C, because the platform rows remain, and are changed in the follow-up |
+| C-3 (`designer-baseline-supersede`) | follow-up: the function survives in PR C's chain |
+| C-4 (`designer-schema` `select.platform`) | follow-up: the policy narrows in M2 |
+| C-5 (`certificates-designs:54`, `:138`) | follow-up: they read the platform rows in SQL, which remain in PR C |
+| C-6 (`templates-audit:168`) | follow-up, only if D5 makes the case's update illegal |
+| C-7 (`certificates-effective` unit) | PR C: the TypeScript order changes with the DAL |
+| C-8 (`template-menu` component test) | PR C |
+| C-9 (`wave23-console-screens`) | PR C |
+
+★ **Who edits C-2's second half, C-3, C-4, C-5 and C-6 in the follow-up?** They are my files, but the follow-up has no
+teammate tree. I will write the M2 assertions **in PR C's tree as new files** that run under `applyProposed()`:
+`templates-platform-removal.test.ts` and `templates-read-narrowed.test.ts`. That leaves the lead only the deletions and
+the one-line flips in the follow-up. I hand those flips over in writing as ledger lines.
+
+### 16 · As built (in progress)
+
+- **M1** is promoted as `0205_seed_org_templates.sql`, `0206_org_templates_guard.sql` and
+  `0207_org_templates_backfill.sql`. Three files, so the roster unit still finds `_seed_org_templates.sql`. The local
+  backfill's notice was «maarifa-demo -> 11».
+- **M2** stays proposed until the follow-up PR:
+  - `0010_platform_library_removal.sql` is mine;
+  - `0011_platform_rows_read.sql` is the lead's (the two policies, the helper and the D5 constraint).
+- **Green, run one file at a time on the shared database:**
+  - `templates-org-seed` 11/11
+  - `templates-platform-removal` 6/6
+  - `templates-read-narrowed` 5/5
+  - `certificates-designs` 10/10 (C-5)
+- **The full run with M1 in the chain:** 65 failures in four of my files, every one `last_live_template`. All 65 come
+  from four setup helpers that wipe every design template of both fixture orgs as the owner:
+  - `designer-schema` `setup()`
+  - `designer-render` `setup()`
+  - `designer-baseline-supersede` `preWaveLibrary()`
+  - `templates-roster` `buildLibrary()`
+
+  The guard does what D6 specifies. How to fix it is the lead's call.
+- ★ **«لا قوالب لمؤسستك بعد» is no longer reachable by any client path.**
+  - A retired template still shows in the list, so retiring never empties it.
+  - SCR-055 has no delete control.
+  - Through the API, `templates_delete_org` would let an admin delete the four poster families other than `talk`. The
+    last `talk` and the three certificate families are refused by D6, so neither tab can be emptied.
+  - Only the owner deleting rows by hand reaches it. The string stays.
+
+---
+
 ## Wave 24 — as built, PR B `wave-24b/the-baseline` (after the owner's four rulings)
 
 **The owner's rulings, applied:** five TOKEN grounds and the team colour deferred to its own wave · the thumbnails'
