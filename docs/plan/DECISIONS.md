@@ -9667,3 +9667,98 @@ sections laid out at no height. This PR changes no file under `(dev)/` or `ui/`,
 
 - **Documents changed:** `STATUS.md`, `docs/plan/notes/wave-26-ledger-a.md`
 
+---
+
+## DEC-253 — Wave 26 closes: every screen has a design and is built, and nothing remains
+
+- **Date:** 2026-10-05 · **Decided by:** the lead; the acceptance is the owner's · **Closes:** `DEC-245`, `DEC-247`, `DEC-248`, `DEC-249`, `DEC-251`, `DEC-252` · milestone **M28**
+
+★★ **Every screen has a design and is built, and nothing remains.** The seventeen artboards of
+`docs/design/screens/m13/` were the last the designer drew. With these five pull requests on `main`, every screen
+in `09` wears «ساحة اللعب», the public site included, and no designed work is left unbuilt. **After this wave
+there is no further plan**: anything more is new scope the owner decides.
+
+### 1 · The five pull requests, as they stand
+
+| PR | Branch · head | What it is | Verified |
+|---|---|---|---|
+| **A** #73 | `wave-26a/the-public-site` · `4c70894d` | `000`, `001`, `006`, `/og.png`, `<Logo>`, the rewritten guard | `qa` 57/57 with `contract.mjs` unedited; the registration behaviour equal to `main`'s in 17 states on both projects; captures read by the lead beside the artboards; CI 13/13 |
+| **B** #74 | `wave-26b/branding-and-privacy` · `c1db6221` | `059`, `/app/me/privacy` | e2e 6/6 on its production build; every state read by `branding` beside the artboards, the privacy page by the lead too |
+| **C** #75 | `wave-26c/the-platform-console` · `aa22a782` | the platform frame, `080` – `085` | e2e 34/34 on its production build; every state at 1280 and 390 read by `platform`, `080`/`084`/`085` by the lead too; CI 13/13 |
+| **D** #76 | `wave-26d/stories` · `a562fc93` | `0198`, `0199`, the generator, the viewer, the capture, the video, `044`'s strip | its seven wave-26 specs green on its production build, the click-only and keyboard-only walks among them (`DEC-093`); the video path proven through the real worker image; every frame kind read by `sessions` and `content`, the live frame and the strip by the lead too; the accessibility sweep 4/4 |
+| **E** #77 | `wave-26e/the-mark` · this entry's commit | the mark wherever the wordmark stood; both wordmark components deleted | shell, door, public card, accessibility, frozen routes and the behaviour fingerprint green on its production build; CI 13/13 before this entry |
+
+**Merge order A, B, C, D, E.** B, C, D and E were cut from A's head, so once A is on `main` each takes `main` in
+before it merges; the lead does that and re-runs each one's specs.
+
+### 2 · ★★ What did not move
+
+`registrations` was not read, altered or dropped. The five public URLs answer as they did. The registration
+form's action, schema and token have a **zero-line diff**; `scripts/qa/contract.mjs` was **not edited**; the
+behaviour fingerprint recorded from `main` before any public file was touched is equal in every state.
+`console-register.test.ts` is **untouched**. No policy gained a super-admin disjunct, and the platform's DAL
+returns counts.
+
+### 3 · The guards, and the owner's sentence
+
+One guard was rewritten: `public-graph.test.ts`, by the owner's explicit ruling (`DEC-247`), with two lists that
+followed from it and became stricter (`DEC-252` §3). ★ **The platform nav kept its path**, so that
+`console-register.test.ts` did not have to change. The owner's reason, for whoever reads this later: **«two
+guards edited in one wave is one too many. If `console-register.test.ts` must ever change, it is its own
+deliberate decision.»** Only the path survived; the file's contents were deleted and rebuilt under `DEC-208`.
+
+### 4 · `0194`, and an error of the lead's
+
+`0194` (the certificate mode after completion, `DEC-250`) sat in open PR #69 while the planner numbered this wave
+from `0198`. ★ **It was not on production until 2026-10-05**, when the owner pushed it with `--include-all`. The
+lead's first rehearsal note said it already was — taken from another session's word and a grep for the
+function's name, not its body. The owner's push showed otherwise; the note is corrected and the rehearsal was
+run again in order, `0194` → `0198` → `0199`. **A migration file missing from `main` while its number is passed
+is the dangerous shape**, and «is it on production» is answered by reading the function, never by its name.
+
+### 5 · What the reviews found that no gate did
+
+Each teammate held its captures beside its artboards on a production build. That found, and fixed:
+
+- a finished session's story saying «جارية الآن» for up to 24 hours (`sessions`, the read model);
+- a title on a team-colour ground in pale grey where the board draws ink (`content`);
+- a confirm dialog returning focus to the top of the page (`platform`);
+- a refused upload left in the picker under a full green bar, as if it had landed (`branding`);
+- a story frame first in the moderation queue opening an empty detail (`content`);
+- a video still processing drawn as «0:00» on `044`'s strip (`content`).
+
+★ **The lead left the four teammates idle for hours behind lead-only work, and the owner had to ask why nothing
+was running.** The capture review is where a wave's defects are found; it is scheduled with the build, not after
+the lead's own PRs.
+
+### 6 · Deviations that stand
+
+Each is recorded where it was ruled: `DEC-248` §7, `DEC-251` §2 – §4, `DEC-252` §4, and the plan-versus-drawing
+lists in `docs/plan/notes/{branding,platform,sessions,content}.md`. Three worth naming here:
+
+- ★ **The story header's avatar ring is bone**, not the company's colour as `REQ-STO-007` words it — on a
+  team-colour ground a ring in the same colour disappears.
+- **A recap withholds its rating below the org's minimum** (`REQ-RAT-006`); the board always draws one.
+- **`001` keeps today's fields**; the board's «الشركة» and «كلاهما» are not built (`REQ-NFR-019`).
+
+### 7 · Carried — none of it is a screen
+
+| # | What | Whose |
+|---|---|---|
+| 1 | ★★ **Deleting the last org locks the super admin out.** It empties `org_domains`; the sign-in callback then signs out any account on no org's list (`api/auth/callback/route.ts`), and a super admin enters only through an org's domain. It happened on production on 2026-10-05 and was repaired by a hand-seeded org — a data fix, deliberately not a migration. `080`'s delete confirm says nothing about a last org. No requirement covers a guard; it would be a new acceptance line under `REQ-NFR-014`, in `delete_org()` | **the owner's decision** |
+| 2 | CI's Playwright job runs against the stub with no Supabase, so every spec that needs a signed-in session **skips there**. Three phone cases sat stale from wave 20 to this wave unseen (ledger E1, E2), and one certificates case from wave 23 (ledger A2) | the owner's — a CI job with a database is new infrastructure |
+| 3 | The gallery (`/ar/ui`) is refused by `visual capture` at desktop width for two sections at no height; no file of it changed in this wave | `main`'s |
+| 4 | Under a full local run one or two component tests time out, different ones each time, and pass alone; CI on the same heads is green | the machine's load |
+| 5 | Dead with the old public design and not removed: `public/constellation*`, and the `sting-*`, `focus-word`, `hero-enter`, `reveal-cut` and `network-svg` rules in `globals.css` | a tidy-up, no behaviour |
+| 6 | The shell's footer repeats the two legal links under the privacy page's own legal card | cosmetic |
+| 7 | Standing from earlier waves and untouched: `DEC-194`'s two gates, `DEC-186` §4, `DEC-204`, `DEC-215`'s four, and the `railway.json` migration due **2026-12-01** (`DEC-241`) | as recorded |
+
+### 8 · What the owner does
+
+1. **Accept** — each screen beside its artboard, on a real phone and at 1280.
+2. **Merge A, then B, C, D, E.** `0198` and `0199` are already on production, so no push precedes a merge.
+3. **Railway**: confirm the worker redeployed from `main` with `ffmpeg` in its image — the story video path needs it.
+4. **Rule on §7.1.**
+
+- **Documents changed:** `STATUS.md`
+
