@@ -125,12 +125,13 @@ test.beforeAll(async ({}, testInfo) => {
     // The id twice, as two parameters: one parameter cannot be deduced as both a uuid and a text.
     [videoFrame, orgId, sessionId, ids.attendee, CAPTION, `${prefix}/video.mp4`, `${prefix}/poster.webp`, videoFrame],
   );
-  // ★ The poster is a real picture (`fixtures/story-room.jpg`, a 360 × 640 JPEG drawn for this spec), so the 044 strip
-  // and the queue's detail show an image beside their boards, never a broken one. The browser reads the bytes, not the
-  // path's extension; the path stays the builder's shape.
+  // ★ The poster is a real picture in the format the worker writes — `fixtures/story-room.webp`, a 360 × 640 WebP drawn
+  // for this spec — so the 044 strip and the queue's detail show an image beside their boards, never a broken one. The
+  // bucket admits only what the transcoder produces (`0198`: mp4/quicktime/webm and image/webp), so it is WebP, as
+  // cwebp's poster is.
   const objects = [
     ["video.mp4", "video/mp4", new Uint8Array([0, 0, 0, 0])],
-    ["poster.webp", "image/jpeg", readFileSync(join(process.cwd(), "tests", "e2e", "fixtures", "story-room.jpg"))],
+    ["poster.webp", "image/webp", readFileSync(join(process.cwd(), "tests", "e2e", "fixtures", "story-room.webp"))],
   ] as const;
   for (const [name, type, body] of objects) {
     const { error } = await admin.storage.from("story-media").upload(`${prefix}/${name}`, body, { contentType: type, upsert: true });
