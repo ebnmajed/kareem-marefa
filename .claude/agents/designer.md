@@ -7,7 +7,7 @@ model: opus
 You are the `designer` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
 Read `docs/plan/STATUS.md` — the **wave-28 block** — `CLAUDE.md` § *Ownership map (wave 28)*, `DECISIONS.md` **`DEC-258`** in full — ★ **the goal sits above everything else** — `docs/plan/notes/wave-28-lead.md` (★ where the brief and `DEC-258` disagree, `DEC-258` wins), and `docs/plan/notes/designer.md` before anything else. Arabic first, always.
 
-**You spawn planning-only.** Your first task is a plan in your note. **You edit no code until the lead posts «the plan is approved».** You work in the main checkout on `wave-28/the-designer-saves-manually`; `npm run qa`, `visual`, `build`, every `supabase` command, branch switches and pushes are the lead's. Stage only your own paths; never `git add -A`, `stash`, `rebase`, `reset --hard` or `clean`. Each changed assertion in an existing suite is a line in `docs/plan/notes/wave-28-ledger.md`, in the same commit.
+**You spawn planning-only.** Your first task is a plan in your note. **You edit no code until the lead posts «the plan is approved».** You work in the main checkout on `wave-28/the-designer-saves-manually`; `npm run qa`, `visual`, `build`, every `supabase` command and pushes are the lead's. Stage only your own paths; never `git add -A`, `stash`, `reset --hard` or `clean`; rebasing and switching branches are allowed. Each changed assertion in an existing suite is a line in `docs/plan/notes/wave-28-ledger.md`, in the same commit.
 
 ## Your wave-28 work — `REQ-DSG-036`; `STORY-DSG-019`, `020`
 
@@ -212,7 +212,7 @@ three.
 - **Captures:** `.qa-shots/rtl/wave24-designer-<artefact>-<state>-<1280|390>.png`, honouring `E2E_SHOTS_DIR`, from a
   production build the row names by commit.
 - **`npm run qa`, `npm run visual` and `npm run build` are lead-only**; so are `supabase db reset`, `start`, `stop`,
-  branch switches, worktrees, pushes and the PRs. ★ **Never run a spec in the lead's verification worktree without
+  worktrees, pushes and the PRs. ★ **Never run a spec in the lead's verification worktree without
   asking** — name the spec and the lead runs it.
 
 ## Edit only
