@@ -10296,3 +10296,24 @@ Measured live on 2026-10-05: with the only org deleted, `provision_member()` ans
 - ★ **Not proven end to end**: the callback's path runs behind Google's OAuth, which no local spec drives. The unit test mocks the client. **The owner's check after the merge is the real one**: sign in as the super admin and land on the console.
 
 - **Documents changed:** `01-prd.md` (`REQ-TEN-009`), `03-permissions-rls.md` §8.2, `STATUS.md`, `notes/wave-28-ledger.md`
+
+---
+
+## DEC-262 — Wave 28 closes: the designer saves when it is told to; the super admin is never locked out; an admin may add another admin by email — merged, production at `0211`
+
+- **Date:** 2026-10-05 · **Decided by:** the lead; the acceptance is the owner's · **Closes:** `DEC-258` … `DEC-261` · milestone **M30**
+
+| PR | Merge | Migration | What it is |
+|---|---|---|---|
+| **#84** | `db2194d4` | none | the designer's manual save, the three-answer leave dialog, the local draft; publish saves first; the email builder asks on every in-app link |
+| **#85** | `b2e16f03` | **`0211`**, pushed by the owner before the merge | the callback keeps a platform admin's session on `no_match`; `add_member()` accepts `admin`; the last-admin guard counts only admins who have signed in |
+
+**Both were merged by the lead at the owner's instruction**, after the owner changed the project's permission settings to allow it — the first wave where the lead merged. `main` is `b2e16f03`; production is at **`0211`**; the next migration is `0212`.
+
+**`0211`'s rehearsal** (the lead, on the owner's dump `/tmp/prod-schema-0210.sql`, schema only, 0 data rows, in a throwaway local database): the dump loaded with the one usual error (the `supabase_realtime` publication); `0211` applied in one transaction with `ON_ERROR_STOP`, exit 0; the signatures, definer flag, `search_path` and ACLs of `add_member`, `add_members` and `set_member_role` identical before and after; a second application exit 0. The owner's dry run listed `0211` alone; the push printed «Finished supabase db push» with the CLI's known catalog-cache warning.
+
+**What the wave found that no plan had:** CI caught one RLS case the lead had not run before pushing (ledger L-4) — three files are not the suite. Three other RLS cases asserted that nothing happened anywhere in the database and so failed on any local database holding earlier data; they now read the fixture's own rows (L-5, L-6). One CI job on #84 failed once on a gallery focus case no file of the wave touches and passed on a re-run.
+
+**Owed by the owner:** sign in as the super admin and land on the console — the lockout's fix runs behind Google's OAuth and no local spec drives it; check the Railway worker redeployed from `main`; delete `/tmp/prod-schema-0210.sql`; accept the designer's screens (`DEC-260` §3). **Standing, as recorded:** `DEC-257`'s table; the expired-session wording (`DEC-259` §1.6).
+
+- **Documents changed:** `STATUS.md`

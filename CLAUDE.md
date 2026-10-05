@@ -325,7 +325,9 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
-### Ownership map (wave 28 — M30, the designer saves when it is told to — DEC-258)
+### Ownership map (wave 28 — M30, the designer saves when it is told to — DEC-258) — ★ THE RECORD OF A FINISHED WAVE
+
+> Wave 28 merged as PRs #84 and #85 (`main` `b2e16f03`, production `0211`, closed by `DEC-262`). Its map is kept as the record. **No wave is open**: the next lead writes a new map before spawning anyone.
 
 **The owner's ask** (milestone **M30**): ★★ **«instead of auto save i want the user to manually save and in case they
 made edits that weren't saved then a popup shows up to either discard or save».** Specified by `DEC-258` and the brief
