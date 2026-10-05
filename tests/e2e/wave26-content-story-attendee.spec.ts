@@ -11,6 +11,7 @@
 //
 // Every page-level locator comes from `#main` (DEC-145). Captures at 390 and 1280 beside `StoryAdd`, `StoryAttendee`
 // and `AdminAttendance`.
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
@@ -115,7 +116,7 @@ test.beforeAll(async ({}, testInfo) => {
   // An attendee's visible video frame — the rows only; its objects are the worker's, and a missing rendition is a
   // poster-less <video> that still renders its controls.
   // ★ Its paths are the one builder's shape for THIS frame — `story_media_read` reads segment 5 as the frame — and its
-  // two objects exist, so the queue's detail can sign them (a stand-in's bytes: the spec proves the player, not a codec).
+  // two objects exist, so the queue's detail can sign them (the video a stand-in's bytes: the spec proves the player, not a codec).
   videoFrame = crypto.randomUUID();
   const prefix = `${orgId}/sessions/${sessionId}/frames/${videoFrame}`;
   await db.query(
@@ -124,8 +125,15 @@ test.beforeAll(async ({}, testInfo) => {
     // The id twice, as two parameters: one parameter cannot be deduced as both a uuid and a text.
     [videoFrame, orgId, sessionId, ids.attendee, CAPTION, `${prefix}/video.mp4`, `${prefix}/poster.webp`, videoFrame],
   );
-  for (const [name, type] of [["video.mp4", "video/mp4"], ["poster.webp", "image/webp"]] as const) {
-    const { error } = await admin.storage.from("story-media").upload(`${prefix}/${name}`, new Uint8Array([0, 0, 0, 0]), { contentType: type, upsert: true });
+  // ★ The poster is a real picture (`fixtures/story-room.jpg`, a 360 × 640 JPEG drawn for this spec), so the 044 strip
+  // and the queue's detail show an image beside their boards, never a broken one. The browser reads the bytes, not the
+  // path's extension; the path stays the builder's shape.
+  const objects = [
+    ["video.mp4", "video/mp4", new Uint8Array([0, 0, 0, 0])],
+    ["poster.webp", "image/jpeg", readFileSync(join(process.cwd(), "tests", "e2e", "fixtures", "story-room.jpg"))],
+  ] as const;
+  for (const [name, type, body] of objects) {
+    const { error } = await admin.storage.from("story-media").upload(`${prefix}/${name}`, body, { contentType: type, upsert: true });
     if (error) throw error;
   }
 });

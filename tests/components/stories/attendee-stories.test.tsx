@@ -52,6 +52,13 @@ describe("«قصص الحضور»", () => {
     expect(within(tiles[2]).getByText("تعذّر")).toBeInTheDocument();
   });
 
+  it("a video with no length yet draws no «0:00» — its state says what it is, and «أزل» still names the kind", () => {
+    show();
+    const tile = within(screen.getByRole("region", { name: "قصص الحضور · 3" })).getAllByRole("listitem")[2];
+    expect(within(tile).queryByText(/0:00/)).toBeNull();
+    expect(within(tile).getByRole("button", { name: "أزل — فيديو — خالد الغامدي" })).toBeInTheDocument();
+  });
+
   it("«أزل» opens a sheet whose reason is required, and posts the frame and the reason", async () => {
     const user = userEvent.setup();
     const action = show();

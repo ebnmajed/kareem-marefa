@@ -62,17 +62,21 @@ export function AttendeeStoriesClient({
         {frames.map((f) => {
           // The pill as `AdminAttendance` draws it — a video's LENGTH alone («0:12»), or «صورة»; the full word («فيديو
           // 0:12») is in «أزل»'s accessible name, so a screen reader hears what the eye reads from the length.
-          const kind = f.kind === "video" ? t("video", { length: length(f.durationMs) }) : t("photo");
-          const pill = f.kind === "video" ? length(f.durationMs) : t("photo");
+          // ★ A video still processing has no length yet: no «0:00» is drawn — its state pill below says what it is.
+          const known = f.kind === "video" && f.durationMs != null;
+          const kind = f.kind === "video" ? t("video", { length: known ? length(f.durationMs) : "" }).trim() : t("photo");
+          const pill = f.kind === "video" ? (known ? length(f.durationMs) : null) : t("photo");
           return (
             <li key={f.id} data-frame-id={f.id} className="relative flex h-[8.75rem] w-24 shrink-0 flex-col justify-between overflow-hidden rounded-tile bg-surface p-1.5">
               {f.thumbUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- a signed URL
                 <img src={f.thumbUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
               ) : null}
-              <span className="relative self-start rounded-pill bg-chrome px-1.5 py-0.5 text-caption font-bold">
-                <bdi dir={f.kind === "video" ? "ltr" : undefined}>{pill}</bdi>
-              </span>
+              {pill ? (
+                <span className="relative self-start rounded-pill bg-chrome px-1.5 py-0.5 text-caption font-bold">
+                  <bdi dir={f.kind === "video" ? "ltr" : undefined}>{pill}</bdi>
+                </span>
+              ) : null}
               {f.state !== "visible" || f.hidden ? (
                 <span className="relative self-start rounded-pill bg-chrome px-1.5 py-0.5 text-caption">
                   {f.state === "failed" ? tf("failed") : f.state === "processing" ? tf("processing") : t("hidden")}
