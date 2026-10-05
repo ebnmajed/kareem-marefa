@@ -110,8 +110,9 @@ export interface ConsoleMembers {
   /** 1-based positions of the page's first and last row; 0 and 0 for none. */
   from: number;
   to: number;
-  /** For the company chip: every company of the org, active first. */
-  companies: { id: string; name: string }[];
+  /** For the company chip: every company of the org, active first. ★ wave 27 (add-only): `active` — the placement
+   *  dialog offers only active companies (a deactivated one places nobody, `DEC-255` §4); absent reads as active. */
+  companies: { id: string; name: string; active?: boolean }[];
   /** Active org admins — the last one's menu says why it cannot be demoted or deactivated (`REQ-ADM-009`). */
   activeAdmins: number;
 }
@@ -164,7 +165,7 @@ export async function listMembersForConsole(locale: string, query: MemberQuery):
     to: (page - 1) * MEMBERS_PAGE_SIZE + slice.length,
     companies: companies
       .sort((a, b) => Number(a.deactivated_at !== null) - Number(b.deactivated_at !== null) || (a.name as string).localeCompare(b.name as string, "ar"))
-      .map((c) => ({ id: c.id as string, name: c.name as string })),
+      .map((c) => ({ id: c.id as string, name: c.name as string, active: c.deactivated_at === null })),
     activeAdmins: members.filter((m) => m.role === "admin" && m.status === "active").length,
   };
 }
@@ -327,4 +328,27 @@ export async function removeUnboundMember(locale: string, memberId: string): Pro
   const { error } = await supabase.rpc("remove_unbound_member", { p_member: memberId });
   if (error) return { error: classify(error.message, UNBOUND_ERRORS) };
   return { error: null };
+}
+
+// ── wave 27 · M29 — an admin places a member by hand (`REQ-PRF-013`, `DEC-254` §2.6, `DEC-255` §4) ─────────────────
+//
+// One thin call into `set_member_company()` (`supabase/proposed/console/`), the one writer of a member's company after
+// creation: `assert_fresh_admin()` is the gate, the audit row (`member.company_changed`, the old and the new) is the
+// RPC's, and the placement is recorded as the admin's, so no later domain edit moves it. `companyId` null is «بلا شركة»
+// — the admin's deliberate none, which no sweep re-places.
+
+export const memberCompanyInput = z.object({ memberId: z.uuid(), companyId: z.uuid().nullable() }).strict();
+export type MemberCompanyInput = z.infer<typeof memberCompanyInput>;
+
+const MEMBER_COMPANY_ERRORS = ["company_deactivated", "member_not_found", "not_an_admin", "stale_claims"] as const;
+
+export async function setMemberCompany(locale: string, input: MemberCompanyInput): Promise<{ error: string | null; changed: boolean }> {
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.rpc("set_member_company", { p_member: input.memberId, p_company: input.companyId });
+  if (error) {
+    if (error.message.includes(OTHER_ORG_COMPANY)) return { error: "company_other_org", changed: false };
+    const hit = MEMBER_COMPANY_ERRORS.find((k) => error.message.includes(k));
+    return { error: hit ?? "failed", changed: false };
+  }
+  return { error: null, changed: (data as { status?: string } | null)?.status === "saved" };
 }
