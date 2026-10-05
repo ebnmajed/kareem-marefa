@@ -344,7 +344,8 @@ test("★ the eligible list tells a removal's revocation from an admin's FOR CAU
   // Khalid holds only a for-cause revocation and his check-in is still there,
   // so the list must say NO replacement is coming. The eligible list is a
   // DataTable too, so this sentence has a hidden twin as well.
-  await expect(shown(main(page), "مُلغاة نهائيًا — لن يصدر بديل.").first()).toBeVisible();
+  // ★ wave 26 (ledger A2): SCR-045's rebuild says it in the row, as a word — «لا بديل» — not as a sentence.
+  await expect(shown(main(page), "لا بديل").first()).toBeVisible();
   // Sara holds a live replacement, so she carries no warning at all: the gap
   // closed, and the screen must stop talking about it.
   await expect(shown(main(page), "مُلغاة لإزالة الحضور")).toHaveCount(0);
@@ -377,7 +378,8 @@ test("★ /verify resolves each certificate separately — «ملغاة» withou
   // fields `verify_certificate()` returns (DEC-010 — the serial is a reference
   // number, never a credential, and the page resolves by code alone).
   await page.goto(`/ar/verify/${revoked.code}`);
-  await expect(page.locator('p[role="status"]')).toHaveText("هذه الشهادة ملغاة.");
+  // ★ wave 26 (ledger A1): the artboard's words — «شهادة ملغاة» (`Verify.dc.html`, `M13.md`). Still the status, still no reason.
+  await expect(page.locator('p[role="status"]')).toHaveText("شهادة ملغاة");
   await expect(page.getByText(SARA, { exact: false }).first()).toBeVisible();
   // REQ-CRT-007: it verifies AS revoked, and the reason is the member's and
   // the admin's — never the public's.
