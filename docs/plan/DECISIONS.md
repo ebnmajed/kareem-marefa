@@ -10336,3 +10336,33 @@ Measured live on 2026-10-05: with the only org deleted, `provision_member()` ans
 **Owed by the owner:** reactivate the suspended org from the console if it is wanted; check the Railway worker redeployed from `main`; delete `/tmp/prod-schema-0210.sql`; accept the designer's screens (`DEC-260` §3). **Standing, as recorded:** `DEC-257`'s table; the expired-session wording (`DEC-259` §1.6).
 
 - **Documents changed:** `STATUS.md`, `CLAUDE.md`
+
+## DEC-265 — The QA sweep: defects fixed across the app, the worker and the console; four database findings owed to the owner
+
+- **Date:** 2026-10-06 · **Decided by:** the lead, at the owner's request («a full sweep of the app … no bugs, no errors, no inconsistencies, no unused or slow code») · **Branch:** `qa/full-sweep` · **No migration** · **No parity golden and no pinned mail file moved**
+
+Five read-only audits ran in parallel — the DAL and routes, the UI with RTL and accessibility, dead code and performance, the worker and packages, the final schema against the invariants. Every finding below was verified by reading the code or the local database at `0211` before it was fixed.
+
+**Fixed, behaviour that was wrong:**
+
+1. ★ **A Server Action swallowed the redirect a stale session raises.** 31 action files caught `NEXT_REDIRECT` and returned it as an error string, so a deactivated member, or one in a suspended org, saw «NEXT_REDIRECT» in a toast instead of the sign-in or no-access screen. Every `catch` in a `"use server"` file now begins with `unstable_rethrow()`, which rethrows only Next's own control flow.
+2. ★ **One materialised font replaced the platform's font set for every org.** `fonts` holds only what an org materialised (`0064`); the platform set is the package's and is never seeded there. `renderFaces()` (worker) and `listEditorFaces()` (app) returned the table alone once it had a row. Both now return the platform faces plus the materialised ones, de-duplicated by hash — identical to before when nothing is materialised, so no golden moves. `render-faces.test.ts`'s «supersedes» case asserted the defect and now asserts the composition.
+3. **Reads whose errors were dropped:** the certificates list (`listEligibleRecipients`), the editor's six parallel reads (`designer.ts`), and a failed test send reported as «not permitted» (`sendTestEmail` now has a `failed` outcome with its own message).
+4. **Races and validation:** two quick taps on a story reaction no longer fail (23505 retried as an update); `deactivateInput` is applied before the RPC (the same rule the function enforces); a malformed email-design payload is refused instead of reaching the error boundary.
+5. **The worker** — a photo lost on a transient Storage error; mail retried eight times on a permanent refusal, and possibly sent twice (an `Idempotency-Key` now, and a quoted display name); a calendar event duplicated when the database write after Google's insert failed (a client-chosen id, 409 as update); a material shown «failed» during a retry's backoff; an odd-width video refused by the encoder; a story video's frame left `processing` or its files orphaned; a calendar marked revoked on a 5xx; no timeout on any outbound request; storage paths not URL-encoded; a data export retried 25 times for a member who is gone; and non-consecutive days across two months printed without the first month («28 و3 أكتوبر»).
+6. **The UI** — `<bdi>` on an org's category name and a member's level; the survey editor's router without the locale; tashkeel clipped on the capture sheet's title and the auth headings' line height; error boundaries for `(auth)`, `verify` and `s`; the comment counter announced on every keystroke; a story photo's caption read twice; a story video stalling on iOS (muted, and advancing on its duration when play is refused); avatars loaded lazily.
+
+**Faster:** `getMe()` and `listPhotoQueue()` are request-scoped `cache()` reads (each ran twice per console page); the console layout reads its attention counts in the same batch as the rest; the event page starts its days read beside the others.
+
+**Removed:** four unreferenced files and seventeen exported functions nothing called; a duplicated hook made one; lint ignores build output and honours the `_` convention — 35 warnings to 3 (the untracked demo seed and the frozen registration form, both left alone).
+
+**★★ Owed by the owner — found and verified, NOT written, because a migration reaches production:**
+
+1. ★★ **A deactivated member, and every member of a suspended org, keeps full RLS access.** `custom_access_token_hook()` writes `org_id` and `org_role` whatever the status, and no policy reads `status` or `org_status`. Verified with the claims of a deactivated admin in a suspended org: members, scoring rules and `org_settings` remain readable and writable. `03` §1.1's «corrects itself within 15 minutes» never happens. The proposed fix: `auth_org_id()` and `auth_org_role()` answer null unless both claims are `active` (the hook unchanged — it must never raise).
+2. **Any member can broadcast on `session:<id>`** (`realtime_session_insert`, `0016`), and the event page renders a broadcast as a comment. Proposed: drop the policy; nothing in the browser sends.
+3. **An org admin can insert another org's sign-in domain** (`org_domains`' p2 policies), and `provision_member()` then offers that org to the other org's people. Proposed: drop the three write policies and their grants; the platform's `add_org_domain()` is the only writer the app uses. `tenancy.test.ts` and `03` change with it.
+4. Indexes for the reversal lookup on every event page (`points_ledger.source_id`) and three unindexed foreign keys.
+
+Also found and left for a decision: `registrations` still grants `TRUNCATE` to `authenticated` (invariant 2 — not reachable through PostgREST); `audit_log` has no append-only trigger; definer functions that trust a claim's role without `assert_fresh_admin()`; a material's download blocked because `finalize_material_upload` mints its own version id; a rejected upload never deleted (no delete grant on `storage.objects`); `regenerate_poster` inserting a document per run; `issue_certificates` re-announcing a certificate already issued; phone photos shown sideways (the orientation tag is stripped, the pixels never rotated).
+
+- **Documents changed:** `STATUS.md`
