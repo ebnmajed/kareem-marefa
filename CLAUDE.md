@@ -2356,8 +2356,9 @@ twenty-four times a wave, which made "qa is lead-only" unenforceable. Waiters qu
 runs `npm run build`**; teammates run `tsc`, lint, `npm test`, `npm run test:rls`, and their e2e
 through the lock.
 
-### One integration branch per wave (`wave-1/m2`). 
-Stage **only your own paths** — never `git add-A`.
+### Git in a shared tree
+
+One integration branch per wave (`wave-1/m2`). Stage **only your own paths** — never `git add -A`.
 Sessions may switch branches, rebase, merge PRs (`gh pr merge`) and change repository settings
 without asking the owner — the owner has made the workflow fully automated, and the shared settings
 carry no deny list. ★ **Still check before acting**: merge only on a concluded-green CI run; push a

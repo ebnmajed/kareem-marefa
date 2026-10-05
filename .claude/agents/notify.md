@@ -103,7 +103,7 @@ design, not in the pinning.
 - **Captures:** `.qa-shots/rtl/wave24-notify-<family>-<state>-<1280|390>.png`, honouring `E2E_SHOTS_DIR`, from a
   production build the row names by commit.
 - **`npm run qa`, `npm run visual` and `npm run build` are lead-only**; so are `supabase db reset`, `start`, `stop`,
-  branch switches, worktrees, pushes and the PRs. ★ **Never run a spec in the lead's verification worktree without
+  worktrees, pushes and the PRs. ★ **Never run a spec in the lead's verification worktree without
   asking** — name the spec and the lead runs it.
 
 ## Edit only

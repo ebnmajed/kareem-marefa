@@ -136,8 +136,8 @@ note, `.claude/**`, `package.json`, and everything the wave-26 never-touch list 
   your note, in the same commit, saying whether a selector moved or an expectation did.
 - ★ **No new dependency.** `package.json` is the lead's. **No npm package touches media** (`DEC-181`).
 - **One writer per file, specs and demos included. `ui-lint --strict` has no allowlist.** Run `npm run ui-lint` before
-  you commit. Stage **only your own paths** — never `git add -A`; never `stash`, `rebase`, `reset --hard`, `clean` or
-  switch branches.
+  you commit. Stage **only your own paths** — never `git add -A`; never `stash`, `reset --hard` or `clean`. Rebasing and
+  switching branches are allowed (the owner's fully automated workflow).
 - **Captures:** `.qa-shots/rtl/wave26-<track>-<screen>-<state>-<width>.png` at the artboard's board width, honouring
   `E2E_SHOTS_DIR`, from a production build the row names by commit.
 - **`npm run qa`, `npm run visual` and `npm run build` are lead-only**; so are `supabase db reset`, `start`, `stop`,
@@ -353,7 +353,7 @@ except your own note. `src/messages/index.ts` gains a namespace **by append only
 
 ★ **Three trees this wave**: PR A in the main checkout, PR B in `../kareem-marefa-wave23b` and PR C in `../kareem-marefa-wave23c` (cut from B once the shared chrome lands) — **work on a PR's files in that PR's tree only**, and never run a gate in a tree that is not yours without asking. **A shared working tree protects the repository, not your memory of a file.** The owner and the lead commit into this tree while you work. **Before editing any file you did not write in this session, re-read it from disk**, and `git log -1 --format='%h %s' -- <file>` tells you whether it moved since you read it. A stale in-context copy written back is a silent revert — the quieter version of the shared-index bug that has already lost this repo commits.
 
-**`npm run qa`, `npm run visual`, `npm run build`, `supabase db reset|start|stop`, branch switches,
+**`npm run qa`, `npm run visual`, `npm run build`, `supabase db reset|start|stop`,
 pushes and the PR are the lead's.** You run `npx tsc --noEmit`, `npm run lint` (grep the output for
 `problems` — the "N fixable" line reads as green and is not the summary), `npm test`, ★ **`npm run ui-lint`
 before any commit that ships a screen** (it is not in your task hook; CI's design-system job is otherwise
@@ -370,8 +370,8 @@ under `tests/rls/`** — everyone's run executes it. A write-then-`raise` RPC ro
 `public.enqueue_job()`. **Never order by `created_at` or `inserted_at` to find «the last row»** — it is the
 transaction's start, identical for rows written together; wave 9 met that trap three times. **Western
 numerals only, everywhere, including Arabic copy and comments** (`DEC-124`): never type `٠١٢٣٤٥٦٧٨٩`. Stage by
-explicit filename and `git commit -- <paths>` at once — never `git add -A`, never stash, rebase, reset, clean
-or switch branches; delete a file with `rm`, never `git rm` (it stages at once, into everyone's index); never
+explicit filename and `git commit -- <paths>` at once — never `git add -A`, never stash, reset or clean
+(rebasing and switching branches are allowed); delete a file with `rm`, never `git rm` (it stages at once, into everyone's index); never
 create, restore or delete a file outside your own list. A `"use server"` module exports async functions and
 types alone — `export type { X }` from one breaks the build while `tsc` stays clean; **a Server Component
 never hands an inline closure to a `"use client"` component** — bind the `"use server"` export (`DEC-159`).
