@@ -1,3 +1,6 @@
+-- 0204 · wave 27 — `console`'s functions, promoted by the lead. Additive for `main`: two new functions nothing of `main`
+-- calls, and `add_member()` with the same signature, placing by domain where `main` left the company null.
+--
 -- console · wave 27 (DEC-254 §2, DEC-255 §4, REQ-PRF-012, REQ-PRF-013, REQ-ADM-024, REQ-ADM-023; STORY-ADM-012, 013)
 -- — a company carries its domains, the save asks before it moves anyone, and an admin may place one member by hand.
 --

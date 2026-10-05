@@ -1314,6 +1314,16 @@ generated suite is the highest-value test in the product.
 | `RPC-provision_member.places_by_domain` | A first sign-in from a company's domain lands in that company with source `'domain'`; no match leaves both null; a deactivated company places nobody. |
 | `RPC-provision_member.binding_keeps_admin_choice` | A member added with a company keeps it at first sign-in whatever their domain; one added with none is placed by domain. |
 | `RPC-provision_member.company_never_blocks` | ★ With the company lookup made to raise, the sign-in still provisions, with no company — the lookup never blocks sign-in. |
+| `RPC-save_company.admin_only` | A moderator and a member are refused `42501`; another org's company is `company_not_found`. |
+| `RPC-save_company.dry_run_writes_nothing` | The dry run returns the two counts and the destination's NAME — never a member's — and writes no row. |
+| `RPC-save_company.moves_exactly_the_preview` | The confirm moves exactly the members counted, with source 'domain'; the admin-placed are left. |
+| `RPC-save_company.token` | A member who arrives between the dry run and the confirm makes the confirm answer `changed` with the new numbers, writing nothing. |
+| `RPC-save_company.removal_unplaces_nobody` | Removing a domain leaves every member it placed where they are. |
+| `RPC-save_company.refusals_name_the_domain` | A malformed domain and one on another company of the org come back per domain with their reason; nothing is written. |
+| `RPC-save_company.deactivated_places_nobody` | Domains saved on a deactivated company move nobody (DEC-255 §4, Q3). |
+| `RPC-save_company.audit` | `company.domain_added` / `company.domain_removed` per domain, `member.company_changed` per member moved; `company.created` / `.changed` / `.team_color_changed` still from their triggers. |
+| `RPC-set_member_company.by_hand` | An admin's placement or removal is source 'admin', audited with the old and the new, and no later save moves it. |
+| `RPC-add_member.company_source` | A company given while adding is 'admin'; none given and a matching domain is 'domain'; none at all is null. |
 | `POL-org_settings.update.admin` | A moderator updating settings is rejected (`REQ-ADM-020`). |
 | `POL-members.select.member` | Selecting `email` on another member **errors on the column grant**, not returns null. |
 | `POL-members.update.self` | A member updating their own `org_role` is rejected; the column is not granted. |
