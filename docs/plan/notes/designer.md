@@ -542,6 +542,154 @@ one is `retired`, which is why D3 repoints first.
 10. **`0193`'s `supersede` cannot be reused as is.** It never retries the delete of an already-retired row
     (`:103-106`), and production's retired `talk` is now unreferenced. §9.
 
+### 15 · Sync-1 rulings (the lead, 2026-10-05) — and what each changes in the plan above
+
+D1, D2, D3, D4, D5, D6, D7 and D10 are accepted. **D9 is changed.** Where this section and §1–§14 disagree, this
+section wins.
+
+#### What ships where — PR C, and the follow-up PR (from D9)
+
+| | **PR C**: `supabase/proposed/designer/` (the lead promotes M1 from it) and the code | **Follow-up PR**: the lead promotes M2 after C merges, with B's grant revoke |
+|---|---|---|
+| SQL | **M1**: `seed_org_templates()`; the trigger `orgs_seed_templates`; the predicate `org_missing_templates()` and `org_template_version()` (below); **the D6 guard**; the backfill statement | **M2**: the raise; the D3 repoint; `remove_platform_template()` and its loop; the four narrowed lookups; the two narrowed policies with `template_referenced_by_my_org()` (the lead's); the five drops plus `supersede_baseline_template()`; the D5 constraint |
+| Where M2's SQL lives in PR C | under `supabase/proposed/designer/` **only**, proven by `applyProposed()` inside `templates-platform-removal.test.ts` and `templates-read-narrowed.test.ts` (both transactional and rolled back) | promoted |
+| Local chain | **keeps its platform rows**. Every existing suite that reads `scope='platform'` *in SQL* stays green in PR C | the platform rows go, and R4's SQL breakage lands here |
+| My code | the DAL `scope='org'` filters, one list on SCR-055, the D6 error mapped to its copy | none |
+
+★ **The D6 guard ships in M1, not M2. That is my proposal, and the lead should rule on it.** The guard is what keeps an
+org from losing its last template once nothing catches it. Shipping it with the seed means it holds from the first
+moment an org owns templates, so C's retire dialog shows its reason from day one. In gap (a), `main`'s app maps any
+error on retire to `not_authorized` (`templates.ts:415-424`, `answer()` `actions.ts:42-48`), so the refusal shows as
+the generic «not allowed» toast until C merges. That is acceptable, because main's app refuses nothing it allowed
+before, except retiring an org's last template of a family, which no org can have done yet. If the lead prefers it in
+M2, nothing else in the plan moves.
+
+#### D2 + D6 — one predicate, three callers
+
+```
+public.org_template_version(p_org uuid, p_purpose public.template_purpose, p_family text) returns uuid
+  -- the org's live template of that family with a published version:
+  -- order by t.is_default desc, v.version desc, t.id  (D10)
+public.org_missing_templates(p_org uuid) returns table (purpose public.template_purpose, family text)
+  -- every (purpose, family) in the fallback set for which org_template_version() is null.
+  -- THE FALLBACK SET, written once, inside this function:
+  --   (certificate, attendance) · (certificate, presenter) · (certificate, achievement) · (poster, talk)
+```
+
+Both are `stable security definer`, `search_path = ''`, and owner-only, with no grant. The three callers:
+
+1. **M2's raise**: `for each org: if exists (select 1 from org_missing_templates(o.id)) then raise …`, before any
+   platform row is touched.
+2. **D6's guard**: a definer trigger `design_templates_keep_one_live` on `design_templates`, **after update of
+   `retired_at` or delete, for each row**.
+   - It returns early when `old.org_id is null`, and when the org no longer exists (`0191`'s org-deletion escape). In a
+     cascade from an org's deletion the parent row is already gone, so this keeps `perform_org_deletion()` working.
+   - It returns early when `(old.purpose, old.family)` is not in the fallback set.
+   - Otherwise it raises if that pair is now among `org_missing_templates(old.org_id)`. The check runs *after* the
+     row's change, so the predicate reads the state the change would leave, and the raise rolls the change back.
+3. **Tests**: `org_missing_templates()` is asserted empty for every fixture org after M1.
+
+The trigger itself is a trigger, not a table, a policy or a grant, so I write it under `proposed/`. The lead should say
+if they would rather hold it.
+
+★ **The guard's error is `raise exception 'last_live_template' using errcode = '23514'`, with the family in `detail`.**
+
+- `retireTemplate()` maps it to a new status, `last_template` (add-only on `TemplateWriteResult` and
+  `TemplateActionState`).
+- The retire dialog then toasts **one line**: `templates.result.lastTemplate`, «لا يمكن إحالته للتقاعد: هو آخر قالب
+  منشور لهذا النوع.» (en: «It can't be retired: it is the last published template of this kind.»). A new key, Arabic
+  first, with no explanation beyond the reason.
+- A direct `delete` under `templates_delete_org` (`0055:584-585`) is refused by the same trigger. No screen offers a
+  delete.
+
+#### D3 — how «locked» is decided
+
+A `session_certificate_designs` row is **locked** exactly when `set_certificate_design()` itself would refuse to change
+it (`0099:126-133`): `exists (select 1 from public.certificates c where c.session_id = d.session_id and c.kind = d.kind
+and c.state in ('issued', 'revoked'))`. The rule is copied, not re-derived, so «M2 may repoint it» and «an admin may
+change it» are the same answer.
+
+- **Unlocked** (no certificate, or only `held` ones): `template_id` is set to the org's seeded template with **the same
+  family and the same orientation** as the platform template it named. Orientation is read from each template's latest
+  version's master. `scheme` is unchanged, and the write is audited as `certificate.design_set`, with the actor null and
+  role `system`.
+  - ★ Held certificates stay pinned to their platform version. They are invisible and unemailed (`REQ-CRT-004`), and an
+    admin can re-pin them with «طبّق على المحجوزة» (`redesign_held_certificates()`). M2 does not re-render on its own.
+  - Because their version is still referenced, that platform template is **retired, not deleted**.
+- **Locked**: the row is left as it is, and the platform template it names is **retired** by the removal loop. The FK
+  refuses the delete, `remove_platform_template()` catches that, and the outcome is `retired`.
+- No counterpart can be missing, because M2's raise has already proven every org holds every seeded family. If one is
+  missing anyway (an org deleted its own by hand), the repoint raises rather than guessing.
+
+#### D4 — the five platform-library functions M2 drops, by name and migration
+
+| Function | Defined | Live body |
+|---|---|---|
+| `promote_template_to_platform(uuid, text)` | `0069:676` | `0069:676-715` |
+| `retire_platform_template(uuid, boolean)` | `0069:717` | `0069:717-751` |
+| `set_platform_template_default(uuid)` | `0069:757` | `0069:757-778` |
+| `platform_template_library()` | `0069:783`, dropped and re-created in `0096:47-49` | `0096:49-90` |
+| `platform_promotable_versions(uuid)` | `0072:35` | `0072:35-…` |
+
+M2 also drops **`supersede_baseline_template(uuid)`** (`0193:88-126`) and replaces it with
+`remove_platform_template(uuid)` (§9).
+
+#### D5 — the constraint
+
+M2 ends with `alter table public.design_templates add constraint design_templates_platform_retired check (scope =
+'org' or retired_at is not null)`. It validates because the loop has just deleted or retired every platform row. The
+enum value and `design_templates_scope_org` stay, as DEC-254 §3.4 says.
+
+#### R3 — the path
+
+The grant names `src/components/certificates/template-control.tsx`, **which does not exist.** The file is
+**`src/app/[locale]/app/admin/sessions/[id]/certificates/template-control.tsx`** (the line to change is `:132`). I take
+the grant as meaning that file, for the platform-scope change only, unless the lead says otherwise.
+
+#### R4 — the list for the lead, as custodian. I edit none of these.
+
+★ **Two of them break in PR C itself, not in the follow-up**, because they drive the SCR-055 / SCR-045 *UI* that C
+changes. The rest read `scope='platform'` in SQL and break only when M2 is promoted.
+
+| File:line | What it reads or does | Breaks in | The edit |
+|---|---|---|---|
+| ★ `tests/e2e/wave8-designer-templates.spec.ts:230-250` | finds the platform `talk` card by the «المنصة» badge and copies it with «انسخ لتعدّل»; expects «نُسخ القالب إلى مؤسستك.» | **PR C** (the UI) | copy the org's own seeded `talk` with «انسخ», and expect «نُسخ القالب.» |
+| ★ `tests/e2e/wave8-designer-templates.spec.ts:378-383` | opens the platform card's «انسخ لتعدّل» dialog for a capture | **PR C** (the UI) | the org card's «انسخ» dialog |
+| ★ `tests/e2e/wave8-designer-certificates.spec.ts:249-252`, used at `:279` and `:456` | `templateId(name)` selects the **platform** «شهادة حضور عمودية» and picks it in SCR-045's select | **PR C** (SCR-045 now offers org rows only) | `scope = 'org' and org_id = $org and name = $1` |
+| `tests/e2e/wave8-designer-templates.spec.ts:72-82` `platformDefault()` | the latest version of a platform default (`scope='platform' and is_default`) | follow-up | the org's default: `org_id = $org and is_default` |
+| `tests/e2e/wave8-designer-editor.spec.ts:115` | the platform `talk` version, to bind a poster document | follow-up | the org's seeded `talk` |
+| `tests/e2e/wave8-designer-posters.spec.ts:134` | the same | follow-up | the same |
+| `tests/e2e/wave10-designer-reissue-and-days.spec.ts:141` | the platform `talk`'s latest published version (`bindPoster()`) | follow-up | the same |
+| `tests/e2e/wave13-designer-studio-drag.spec.ts:82` | the platform `talk` version | follow-up | the same |
+| `tests/e2e/wave13-designer-studio-taps.spec.ts:94` | the same | follow-up | the same |
+| `tests/e2e/wave23-designer-four-formats.spec.ts:93` | the same | follow-up | the same |
+| `tests/e2e/wave23-designer-taps.spec.ts:85` | the same | follow-up | the same |
+| `tests/e2e/wave23-designer-certificate.spec.ts:74` | the platform `attendance` certificate version | follow-up | the org's seeded `attendance` landscape |
+| `tests/e2e/wave11-lead-a11y-sweep.spec.ts:198` | the platform `talk` version | follow-up | the org's seeded `talk` |
+| `tests/rls/fixture-m6.ts:43-61` `platformRows()` | inserts a **live** platform `talk` default | follow-up (refused by D5) | insert it retired, or drop it with `m6.platformTemplate*`; the lead decides which fixture readers still need a platform row |
+| `tests/rls/platform-library.test.ts` (whole file; `:127-128` calls `promote_template_to_platform`) | the dropped functions | follow-up | deleted with the functions |
+| `tests/rls/platform-schema.test.ts:510-560` | `promote_template_to_platform` cases | follow-up | deleted |
+| `tests/rls/platform-console.test.ts` (its platform-template cases) | `platform_template_library()` | follow-up | deleted |
+
+#### What D9 moves in my own ledger (C-1 … C-9)
+
+| Line | Lands in |
+|---|---|
+| C-1 (`designer-library` list) | PR C |
+| C-2 (`templates-roster`) | **split.** The per-org roster cases are added in PR C. The platform-count cases (`:249-250`, `:313-314`) stay green in PR C, because the platform rows remain, and are changed in the follow-up |
+| C-3 (`designer-baseline-supersede`) | follow-up: the function survives in PR C's chain |
+| C-4 (`designer-schema` `select.platform`) | follow-up: the policy narrows in M2 |
+| C-5 (`certificates-designs:54`, `:138`) | follow-up: they read the platform rows in SQL, which remain in PR C |
+| C-6 (`templates-audit:168`) | follow-up, only if D5 makes the case's update illegal |
+| C-7 (`certificates-effective` unit) | PR C: the TypeScript order changes with the DAL |
+| C-8 (`template-menu` component test) | PR C |
+| C-9 (`wave23-console-screens`) | PR C |
+
+★ **Who edits C-2's second half, C-3, C-4, C-5 and C-6 in the follow-up?** They are my files, but the follow-up has no
+teammate tree. I will write the M2 assertions **in PR C's tree as new files** that run under `applyProposed()`:
+`templates-platform-removal.test.ts` and `templates-read-narrowed.test.ts`. That leaves the lead only the deletions and
+the one-line flips in the follow-up. I hand those flips over in writing as ledger lines.
+
 ---
 
 ## Wave 24 — as built, PR B `wave-24b/the-baseline` (after the owner's four rulings)
