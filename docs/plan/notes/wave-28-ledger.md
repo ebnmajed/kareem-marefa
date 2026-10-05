@@ -21,3 +21,14 @@ One line per changed assertion or fixture in a file that existed before the wave
 
 **No lead-owned spec changes** (`DEC-259` §1.2): `wave23-lead-certificate-walk` opens the studio and edits nothing;
 `wave11-lead-a11y-sweep` scans it; `wave13-demo-download` never opens it.
+
+## PR B — the lockout and admin by email (`DEC-261`) — the lead's lines
+
+| # | File | What changed | Selector or expectation | Why |
+|---|---|---|---|---|
+| L-1 | `tests/rls/add-a-member.test.ts`, «no_admin_by_email» | **expectation reversed**: `admin` refused `role_not_allowed` → `admin` accepted and carried on the row; renamed «admin_by_email» | **expectation** | the owner's ruling, `0211` |
+| L-2 | same | a new case, «last_admin_arrived» | addition | `0211`'s guard |
+| L-3 | `tests/components/admin/members-add.test.tsx`, «offers عضو and مُنظِّم and NEVER مشرف المؤسسة» | **expectation reversed**: two options → three, the default still «عضو» | **expectation** | the owner's ruling |
+| L-4 | `tests/rls/member-company.test.ts`, «add_members inherits it line by line; an addition still never grants admin» | **expectation reversed** in its last line: `admin` refused `22023` → accepted and placed by domain. ★ Missed locally — only three RLS files were run before the push — and found by CI | **expectation** | the owner's ruling, `0211` |
+| L-5 | `tests/rls/sessions-clock.test.ts`, two cases of «RPC-clock.idempotent» | three `toEqual([])` on the global clock's answer → the same on the fixture's own sessions | selector (the scope) | the cases failed on any database that already held sessions past their time — a demo seed, a browser run; green on CI's clean one |
+| L-6 | `tests/rls/notify-materials-added.test.ts`, «promoted before the fixture is seeded…» | `sent()` read every org's notifications → the fixture's members' | selector (the scope) | as L-5 |

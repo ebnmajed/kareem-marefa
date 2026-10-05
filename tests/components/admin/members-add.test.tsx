@@ -83,13 +83,13 @@ beforeEach(() => {
 });
 
 describe("«أضف عضوًا»", () => {
-  it("offers عضو and مُنظِّم and NEVER مشرف المؤسسة — an addition cannot grant it (DEC-244 §5.4)", async () => {
+  it("offers عضو, مُنظِّم and مشرف المؤسسة — an admin may add another admin by email (DEC-261, reversing DEC-244 §11)", async () => {
     wrap(<AddMember locale="ar" companies={COMPANIES} />);
     await userEvent.click(screen.getByRole("button", { name: "أضف عضوًا" }));
     const role = screen.getByLabelText("الدور") as HTMLSelectElement;
     const offered = [...role.options].map((o) => o.textContent);
-    expect(offered).toEqual(["عضو", "مُنظِّم"]);
-    expect(offered).not.toContain("مشرف المؤسسة");
+    expect(offered).toEqual(["عضو", "مُنظِّم", "مشرف المؤسسة"]);
+    expect(role.value).toBe("member");
   });
 
   it("says the one thing that changes what the admin does next, and no more", async () => {

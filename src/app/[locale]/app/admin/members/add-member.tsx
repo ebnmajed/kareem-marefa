@@ -89,6 +89,7 @@ export function AddMember({ locale, companies }: { locale: Locale; companies: { 
             <Select name="role" defaultValue="member">
               <option value="member">{te("role.member")}</option>
               <option value="moderator">{te("role.moderator")}</option>
+              <option value="admin">{te("role.admin")}</option>
             </Select>
           </Field>
 

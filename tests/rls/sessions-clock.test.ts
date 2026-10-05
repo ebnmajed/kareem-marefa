@@ -13,6 +13,15 @@ afterAll(() => pool.end());
 
 const startClock = (tx: Tx) => tx.q<{ session_id: string }>(`select public.clock_start_sessions() as session_id`);
 const completeClock = (tx: Tx) => tx.q<{ session_id: string }>(`select public.clock_complete_sessions() as session_id`);
+/** Only the fixture's sessions: the clock is global, and a database that already holds sessions past their time
+ *  (a demo seed, a browser run) answers with those too. What these cases assert is about the fixture's own. Read as
+ *  the owner, before the role changes — `service_role` holds no grant on `sessions`. */
+const fixtureSessions = async (tx: Tx, f: { a: { id: string }; b: { id: string } }) => {
+  await tx.asOwner();
+  const own = await tx.q<{ id: string }>(`select id from public.sessions where org_id in ($1, $2)`, [f.a.id, f.b.id]);
+  const ids = new Set(own.map((r) => r.id));
+  return (rows: { session_id: string }[]) => rows.filter((r) => ids.has(r.session_id));
+};
 const stateOf = async (tx: Tx, id: string) => (await tx.q<{ state: string }>(`select state from public.sessions where id = $1`, [id]))[0].state;
 
 /**
@@ -104,9 +113,10 @@ describe("RPC-clock.idempotent", () => {
       await tx.q(`update public.sessions set cancellation_reason = 'المُقدِّم مريض' where id = $1`, [f.m2.a.published]);
       await retime(tx, f.m2.a.published, "-1 hour", "-10 minutes", "cancelled");
 
+      const ours = await fixtureSessions(tx, f);
       await tx.asServiceRole();
-      expect(await startClock(tx)).toEqual([]);
-      expect(await completeClock(tx)).toEqual([]);
+      expect(ours(await startClock(tx))).toEqual([]);
+      expect(ours(await completeClock(tx))).toEqual([]);
 
       await tx.asOwner();
       expect(await stateOf(tx, f.m2.a.completed)).toBe("completed");
@@ -130,9 +140,10 @@ describe("RPC-clock.idempotent", () => {
       const f = await seed(tx);
       await retime(tx, f.m2.a.published, "-30 minutes", "30 minutes");
 
+      const ours = await fixtureSessions(tx, f);
       await tx.asServiceRole();
       await startClock(tx);
-      expect(await completeClock(tx)).toEqual([]); // still running
+      expect(ours(await completeClock(tx))).toEqual([]); // still running
 
       await tx.asOwner();
       await tx.q(`update public.sessions set ends_at = now() - interval '1 minute' where id = $1`, [f.m2.a.published]);
