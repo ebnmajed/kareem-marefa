@@ -1995,3 +1995,9 @@ capture paths), `components/platform/{orgs-table,org-actions,new-org-form,domain
 - **Q8** `081`: default language (N-a, recommend drop), one domain or a list (N-b).
 - **Q9** `080`: delete offered on active orgs (O-b); counts on a pending-deletion row (O-c).
 - **Q10** `tokenTail` on `085` (I-c) under `DEC-NEXT-25`.
+
+### W26.8 Self-review, paused 2026-10-05 (head `6cfff9f0`)
+
+- **Reviewed:** the 02:06 captures (the lead's build of `bb28772b`) at native size beside `m13/png` — `081`, `082`, `083` at 1280 and `orgs-delete-confirm-390`; `080`, `084`, `085` at 1280 were the lead's. I could not build myself (refused as lead-only).
+- **Fixed (`6cfff9f0`):** `081` column width, rhythm and a quiet «إلغاء»; `082` full-width table, no undrawn slug/status line, the domain in the body face; `083` even 16:9 swatches and the board's card rows, no versions count; the capture case gained suspend, suspended-row, remove-confirm and impersonate-filled (ledger C17).
+- **Next:** the lead builds `6cfff9f0` and runs the capture case on both projects; then I open every state at 1280 and 390, the dialogs included, beside the boards, and fix what differs.
