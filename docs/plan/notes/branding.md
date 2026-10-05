@@ -1147,3 +1147,9 @@ strict `getByText` (it would throw on two). The second copy is `DEC-145`'s orpha
 which is why it failed on one project per run. The spec's page-level locators are now scoped to `#main` (lines 128,
 162–163, 193, 301, 318, 324); the two `dialog` locators stay on `page`, because the sheet portals outside `#main` by
 design. `wave26-branding-{scr059,privacy}.spec.ts` were already scoped to `#main` throughout.
+
+### W26.16 Pause (2026-10-05, machine sleep)
+
+- **Reviewed:** the 14 wave26-branding captures from the lead's 01:35 build, beside `AdminBranding` / `Privacy` (`.dc.html` and PNG), and the kept-behaviour tables read back against the new files — all rows hold.
+- **Fixed:** `1fff1140` (the «refused once, then saved» guard, committed at last) · `2ac632ee` (059: the quiet «استبدال» pill, a raised tile with no logo, a medium reset; privacy: the avatar answer as a card, «إيقاف حسابي» flush). No assertion changed.
+- **Next:** captures regenerated from a production build of `2ac632ee` (the lead's build), then each opened at native size again; the upload-error state, 059 at 390 and privacy at 1280 if the lead wants them captured.
