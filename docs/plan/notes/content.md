@@ -8014,3 +8014,13 @@ tests), `bb134576` (RLS, 16 cases, as members), `c1d81a8e` (the walk spec, the r
 - **The strip says every answer** (`ae7b96dc`): a refusal is an error toast with the sheet left open, never a silent
   close. An empty `role="status"` at rest on the home is gone (`9f4fc75e`).
 - PR D green on a production build of `ae7b96dc`: 60 passed, 0 failed; 044's own suites untouched.
+
+### Wave 26 — self-review, paused for the machine's sleep
+
+- **Reviewed:** the live, recap, photo and attendee-video frames, the desktop viewer, StoryAdd, SCR-051 with a video, and
+  044's strip — read against `m13/*.dc.html` and the PNGs; captures not regenerated (a production build is the lead's).
+- **Fixed:** axe's `aria-prohibited-attr` on SCR-051 (an id-less detail section, on `main` since wave 22) and a frame first
+  in the queue opening nothing (`b426b583`); the capture's caption line in every state and 044's tile foot as drawn
+  (`3179252a`).
+- **Next:** the captures from the lead's build of D's head (`wave26-content-story-walks`, `-attendee`), each opened beside
+  its board; a seeded recap/photo-frame capture case if the lead wants one.
