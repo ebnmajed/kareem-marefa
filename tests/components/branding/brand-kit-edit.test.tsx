@@ -188,3 +188,28 @@ describe("BrandKitEdit — the read-mode pattern (DEC-231 §3)", () => {
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/app/admin/branding"));
   });
 });
+
+describe("BrandKitEdit — a save after a refusal (wave 26, the lead's e2e finding)", () => {
+  it("★ refused once, then a valid palette saves and routes back to read mode", async () => {
+    replace.mockClear();
+    const saveAction = vi
+      .fn<(prev: SaveBrandKitState, fd: FormData) => Promise<SaveBrandKitState>>()
+      .mockResolvedValueOnce({ error: "statusContrast", saved: false, failedPair: "live_vs_light_canvas" })
+      .mockResolvedValueOnce({ error: null, saved: true, updatedAt: "2026-10-05T10:00:00Z" });
+    renderEdit(saveAction);
+    fireEvent.change(field("canvas"), { target: { value: "#8a5a1f" } });
+    await act(async () => {
+      fireEvent.submit(field("canvas").closest("form") as HTMLFormElement);
+    });
+    await waitFor(() => expect(screen.getByText(t.errors.statusContrastPair.live_vs_light_canvas)).toBeInTheDocument());
+    expect(replace).not.toHaveBeenCalled();
+
+    fireEvent.change(field("canvas"), { target: { value: "#f4f6f9" } });
+    await act(async () => {
+      fireEvent.submit(field("canvas").closest("form") as HTMLFormElement);
+    });
+    await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(2));
+    expect((saveAction.mock.calls[1][1] as FormData).get("light[canvas]")).toBe("#f4f6f9");
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/app/admin/branding"));
+  });
+});
