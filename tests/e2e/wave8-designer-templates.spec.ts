@@ -391,13 +391,17 @@ test("the libraries at 390 px — populated, the copy dialog, dark certificates,
   await capture(page, "certificates-populated");
 });
 
-test("an org with no templates of its own is told what to do next", async ({ context, page }) => {
+// ★ LEDGER (wave 27, DEC-254 §3, REQ-DSG-035): this case was «an org with no templates of its own is told what to do
+// next» and expected «لا قوالب لمؤسستك بعد». A new org is now seeded with the baseline the moment it exists, so the
+// empty state is not reachable by creating one; the fresh org is asserted to hold its own library, in one list.
+test("a fresh org holds its own library from the start — five posters, one list", async ({ context, page }) => {
   await signIn(context, emptyAdminEmail);
   await page.setViewportSize(onPhone() ? PHONE : DESKTOP);
   await page.goto("/ar/app/admin/templates/posters");
-  // wave 23 (DEC-NEXT-25): one line and nothing else — the platform group sits right below it.
-  await expect(main(page).getByText("لا قوالب لمؤسستك بعد")).toBeVisible();
-  if (onPhone()) await capture(page, "posters-empty-org");
+  await expect(main(page).getByRole("heading", { level: 2, name: /قوالب مؤسستك/ })).toContainText("5");
+  await expect(main(page).getByRole("heading", { level: 2 })).toHaveCount(1);
+  await expect(main(page).getByText("لا قوالب لمؤسستك بعد")).toHaveCount(0);
+  if (onPhone()) await capture(page, "posters-fresh-org");
 });
 
 test("a moderator reads the library and is offered no write", async ({ context, page }) => {
