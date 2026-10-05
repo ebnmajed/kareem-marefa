@@ -130,7 +130,8 @@ describe("RPC-add_member.company_source — DEC-254 §2.6, DEC-255 §4 Q4", () =
     });
   });
 
-  it("add_members inherits it line by line; an addition still never grants admin (DEC-244 §11)", async () => {
+  // ★ 0211 (DEC-261): the last line was «an addition still never grants admin» — reversed by the owner's ruling.
+  it("add_members inherits it line by line; an admin added by email is placed by domain like anyone else (DEC-261)", async () => {
     await withTx(async (tx) => {
       const { f, acme } = await setup(tx);
       await tx.as(f.a.admin.claims);
@@ -141,7 +142,8 @@ describe("RPC-add_member.company_source — DEC-254 §2.6, DEC-255 §4 Q4", () =
       expect(await placement(tx, r[0].member_id!)).toEqual({ company_id: acme, company_assigned_by: "domain" });
       expect(await placement(tx, r[1].member_id!)).toEqual({ company_id: null, company_assigned_by: null });
       await tx.as(f.a.admin.claims);
-      expect(await errorCode(() => tx.q(`select public.add_member(p_email => 'boss@acme.example', p_role => 'admin')`))).toBe("22023");
+      const [{ id }] = await tx.q<{ id: string }>(`select (public.add_member(p_email => 'boss@acme.example', p_role => 'admin')).id as id`);
+      expect(await placement(tx, id)).toEqual({ company_id: acme, company_assigned_by: "domain" });
     });
   });
 });
