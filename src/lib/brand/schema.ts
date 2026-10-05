@@ -44,6 +44,10 @@ export const brandLogo = z.object({
   storagePath: z.string().min(1),
   width: z.number().int().positive(),
   height: z.number().int().positive(),
+  /** ★ wave 26 (REQ-UIX-116), add-only: the SNIFFED type and the bytes, for SCR-059's logo card — what
+   *  `design_assets` recorded after the content was judged (DEC-009), never the filename. */
+  mime: z.string().nullable().default(null),
+  byteSize: z.number().int().positive().nullable().default(null),
 });
 export type BrandLogo = z.infer<typeof brandLogo>;
 

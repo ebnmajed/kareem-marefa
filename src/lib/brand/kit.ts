@@ -73,17 +73,30 @@ export async function getBrandKit(locale: string, orgId: string): Promise<BrandK
 async function fetchLogo(
   supabase: Awaited<ReturnType<typeof sessionClient>>["supabase"],
   assetId: string,
-): Promise<{ assetId: string; storagePath: string; width: number; height: number } | null> {
-  const { data } = await supabase.from("design_assets").select("id, storage_path, width, height").eq("id", assetId).maybeSingle();
+): Promise<{ assetId: string; storagePath: string; width: number; height: number; mime: string | null; byteSize: number | null } | null> {
+  // ★ wave 26: a FAILED read throws; only an ABSENT row is null. Degrading a failed read to «no logo» was not soft: SCR-059's
+  // edit mode binds what this returns as the form's `logoAssetId`, so a transient error here followed by any save
+  // would have unbound the org's logo, silently. The page's error boundary is the honest outcome; «no logo» is not.
+  const { data, error } = await supabase.from("design_assets").select("id, storage_path, width, height, sniffed_mime, byte_size").eq("id", assetId).maybeSingle();
+  if (error) throw error;
   if (!data || !data.width || !data.height) return null;
-  return { assetId: data.id, storagePath: data.storage_path, width: data.width, height: data.height };
+  return {
+    assetId: data.id,
+    storagePath: data.storage_path,
+    width: data.width,
+    height: data.height,
+    mime: (data.sniffed_mime as string | null) ?? null,
+    byteSize: data.byte_size === null || data.byte_size === undefined ? null : Number(data.byte_size),
+  };
 }
 
 async function fetchFont(
   supabase: Awaited<ReturnType<typeof sessionClient>>["supabase"],
   fontId: string,
 ): Promise<{ id: string; family: string; weight: number; style: string; sha256: string } | null> {
-  const { data } = await supabase.from("fonts").select("id, family, weight, style, sha256").eq("id", fontId).maybeSingle();
+  // ★ wave 26: as `fetchLogo` — a failed read throws, so edit mode never posts «platform default» over a chosen face.
+  const { data, error } = await supabase.from("fonts").select("id, family, weight, style, sha256").eq("id", fontId).maybeSingle();
+  if (error) throw error;
   if (!data) return null;
   return data;
 }
@@ -95,9 +108,11 @@ async function fetchFont(
  * `claims_version` fresh, DEC-014). A moderator or member reaches Postgres
  * and is refused `42501`; this function does not re-check the role.
  */
-export async function saveBrandKit(locale: string, input: SaveBrandKitInput): Promise<void> {
+export async function saveBrandKit(locale: string, input: SaveBrandKitInput): Promise<{ updatedAt: string | null }> {
   const { supabase } = await sessionClient(locale);
-  const { error } = await supabase.rpc("save_brand_kit", {
+  // ★ wave 26 (REQ-UIX-116, DEC-231 §3), add-only: `save_brand_kit()` returns the row it wrote, so the saved mark is
+  // read from the server's answer — its `updated_at` — never from the client's clock.
+  const { data, error } = await supabase.rpc("save_brand_kit", {
     p_light: input.light,
     p_dark: input.dark,
     p_logo_asset_id: input.logoAssetId,
@@ -105,6 +120,7 @@ export async function saveBrandKit(locale: string, input: SaveBrandKitInput): Pr
     p_body_font_id: input.bodyFontId,
   });
   if (error) throw error;
+  return { updatedAt: (data as { updated_at?: string | null } | null)?.updated_at ?? null };
 }
 
 /** Deletes the org's row — "reset" is "no row" (06 §8.3), never a copy of
