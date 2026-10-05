@@ -1866,6 +1866,8 @@ const SESSION_LOG_ACTIONS = [
   "session.reopen",
   "session.presenter_added",
   "session.presenter_removed",
+  // wave 27 (DEC-255): the lead's trigger, before publication only.
+  "session.renamed",
 ] as const;
 
 /**

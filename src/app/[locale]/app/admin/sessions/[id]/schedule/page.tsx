@@ -66,6 +66,7 @@ const LOG_KEY: Record<string, string> = {
   "session.reopen": "reopen",
   "session.presenter_added": "presenterAdded",
   "session.presenter_removed": "presenterRemoved",
+  "session.renamed": "renamed",
 };
 
 export default async function SchedulePage({

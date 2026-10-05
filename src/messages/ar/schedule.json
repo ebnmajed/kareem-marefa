@@ -246,7 +246,8 @@
       "archive": "أُرشفت",
       "reopen": "أُعيد فتحها",
       "presenterAdded": "أُضيف مُقدِّم",
-      "presenterRemoved": "أُزيل مُقدِّم"
+      "presenterRemoved": "أُزيل مُقدِّم",
+      "renamed": "تغيّر الاسم"
     }
   }
 }
