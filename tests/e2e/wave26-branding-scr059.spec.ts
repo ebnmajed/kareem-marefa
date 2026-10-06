@@ -144,7 +144,7 @@ async function capture(page: Page, state: string, width: 1280 | 390 = 1280) {
   await atRest(page, `${SHOTS}/wave26-branding-scr059-${state}-${width}.png`);
 }
 
-test("★ SCR-059 read first, edit, the database's refusal on the screen, and a save's mark", async ({ context, page }, testInfo) => {
+test("★ SCR-059 read first, edit, a low-contrast palette saved as typed, and a save's mark", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "SCR-059's artboard is drawn at 1280");
   await page.setViewportSize(DESKTOP);
   await signIn(context, adminEmail);
@@ -173,21 +173,15 @@ test("★ SCR-059 read first, edit, the database's refusal on the screen, and a 
   await expect(main.getByRole("button", { name: "حفظ (2)" })).toBeVisible();
   await capture(page, "edit-changed");
 
-  // ★★ The database refuses: the pair is named inline, the value is kept, nothing is written.
+  // ★ DEC-272 (0216): no contrast lock — a canvas equal to the live badge's colour, refused before, now SAVES as typed,
+  // with no alert. Read mode again, the value written beside its swatch, the saved mark from the row.
   await main.getByRole("button", { name: "حفظ (2)" }).click();
-  await expect(main.getByRole("alert").filter({ hasText: "شارة «جارية الآن» لا تُقرأ على خلفية الوضع الفاتح" })).toBeVisible();
-  await expect(main.getByLabel(/^الخلفية/)).toHaveValue("#8a5a1f");
-  expect((await db.query(`select 1 from public.brand_kits where org_id = $1`, [orgId])).rows).toEqual([]);
-  await capture(page, "edit-refused");
-
-  // A palette the database accepts: read mode again, the value written beside its swatch, the saved mark from the row.
-  await main.getByLabel(/^الخلفية/).fill("#f4f6f9");
-  await main.getByRole("button", { name: /^حفظ/ }).click();
+  await expect(main.getByRole("alert")).toHaveCount(0);
   await expect(main.getByRole("link", { name: "عدّل" })).toBeVisible();
-  await expect(main.getByText("#F4F6F9").first()).toBeVisible();
+  await expect(main.getByText("#8A5A1F").first()).toBeVisible();
   await expect(main.getByText(/حُفظ ·/)).toBeVisible();
   const { rows } = await db.query<{ light_canvas: string }>(`select light_canvas from public.brand_kits where org_id = $1`, [orgId]);
-  expect(rows[0]?.light_canvas).toBe("#f4f6f9");
+  expect(rows[0]?.light_canvas).toBe("#8a5a1f");
   await capture(page, "read-saved");
 });
 

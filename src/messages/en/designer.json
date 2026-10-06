@@ -360,7 +360,6 @@
         "to": "End colour",
         "angle": "Angle in degrees",
         "angleHint": "The angle is the Arabic source's; the English variant mirrors by itself.",
-        "tokenNote": "Brand and design colours only — no colour typed by hand, so a colour change reaches every template.",
         "tokens": {
           "canvas": "Canvas",
           "surface": "Surface",
@@ -436,6 +435,14 @@
         "deleteConfirm": "Delete",
         "cancel": "Cancel",
         "deletePosition": "A «<bdi>{kind}</bdi>» layer, number <bdi>{position}</bdi> of <bdi>{total}</bdi> in the layer list."
+      },
+      "colour": {
+        "custom": "Any colour",
+        "picker": "Pick from the colour wheel",
+        "hex": "Colour code",
+        "invalidHex": "Write the colour as <bdi>#rrggbb</bdi>.",
+        "current": "Current colour",
+        "customOption": "Custom colour"
       }
     },
     "add": {

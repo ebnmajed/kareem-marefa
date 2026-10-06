@@ -286,8 +286,9 @@ export async function getDesignerDocument(
     // The org's brand override over the platform palette (wave 4, DEC-052,
     // 06 §8.3) — the same composition the worker's request path makes, so
     // the preview an admin approves is what the export renders. A template
-    // binds `{{brand.*}}` and never a hex literal (REQ-DSG-021); no row is
-    // the identity override.
+    // may bind `{{brand.*}}` — the studio offers the kit as linked swatches —
+    // or carry any literal colour (DEC-272, `0195`); no row is the identity
+    // override.
     ...resolveBrand(await editorBrandOverrides(supabase, session.orgId), scheme),
     ...sessionBindings(boundSessionRow, bindingOptions),
     ...certificateBindings(certificateRow as CertificateRow | null, bindingOptions),

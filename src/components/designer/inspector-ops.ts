@@ -4,8 +4,8 @@ import type { AlignAxis, AlignEdge, AlignTarget, DesignDocument, FocalPoint, Gro
 // REQ-DSG-030, DEC-093, DEC-096, DEC-127, DEC-237 §2.
 //
 // MOVED VERBATIM out of `inspector.tsx` (wave 23, slice 1): the op types the
-// editor and two suites import, the brand-token mapping (a colour is a TOKEN,
-// never a hex — REQ-DSG-021), the background switch, the focal grid's names
+// editor and two suites import, the brand-token mapping (a swatch's binding;
+// a colour may also be any literal since DEC-272), the background switch, the focal grid's names
 // and tolerance. Pure; nothing here reads the console's direction (DEC-096).
 
 export type ArrangeOp =

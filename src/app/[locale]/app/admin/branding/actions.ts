@@ -24,18 +24,10 @@ import { signDesignAssetUrl } from "@/lib/dal/posters";
 // nothing the admin typed is lost, by construction rather than by echo.
 
 // ★ wave 26 (REQ-UIX-116, DEC-251 §3.5), add-only: `updatedAt` is the row `save_brand_kit()` wrote — the saved mark is
-// read from it, never from the client's clock (DEC-231 §3) — and `failedPair` is the 55000 refusal's `detail`, the
-// status pair that failed AA, so the refusal is shown on the screen with the database's reason.
-export type SaveBrandKitState = { error: string | null; saved: boolean; updatedAt?: string | null; failedPair?: string | null };
-
-const STATUS_PAIRS = [
-  "live_vs_light_canvas",
-  "live_vs_light_surface",
-  "ended_vs_light_canvas",
-  "ended_vs_light_surface",
-  "live_on_dark_vs_dark_canvas",
-  "live_on_dark_vs_dark_surface",
-] as const;
+// read from it, never from the client's clock (DEC-231 §3).
+// ★ DEC-272 (the owner, 2026-10-06): the status-badge contrast refusal is gone — a palette is the org's to choose, with
+// no check, no note and no block — so there is no `failedPair` and no `statusContrast` error any more.
+export type SaveBrandKitState = { error: string | null; saved: boolean; updatedAt?: string | null };
 
 function readColourSet(formData: FormData, scheme: "light" | "dark"): Record<string, string> {
   const out: Record<string, string> = {};
@@ -66,14 +58,6 @@ export async function saveBrandKitAction(locale: Locale, _prev: SaveBrandKitStat
     const code = (e as { code?: string })?.code;
     if (code === "42501") return { error: "notAdmin", saved: false };
     if (code === "22023") return { error: "badReference", saved: false };
-    // ★ DEC-073's consequence (wave 11, `0003_status_contrast_guard.sql`):
-    // `save_brand_kit()` refuses, in the database, a palette on which a
-    // status badge would fail AA — before any write.
-    if (code === "55000") {
-      const detail = (e as { details?: string })?.details ?? null;
-      const failedPair = STATUS_PAIRS.find((p) => p === detail) ?? null;
-      return { error: "statusContrast", saved: false, failedPair };
-    }
     return { error: "unknown", saved: false };
   }
 

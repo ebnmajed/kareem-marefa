@@ -90,10 +90,24 @@ describe("BrandKitEdit — the eight cases of the deleted form", () => {
     expect(field("fgHeading").value).toBe("#ff0000");
   });
 
-  it("★ a low-contrast pair shows the failing ratio", () => {
-    renderEdit();
+  // ★ LEDGER (DEC-272, the owner, 2026-10-06): «a low-contrast pair shows the failing ratio» is REPLACED — the contrast
+  // lock is removed entirely. A low-contrast pair now shows nothing, and saves.
+  it("★ DEC-272: a low-contrast pair shows no ratio, no note and no alert, and saves as typed", async () => {
+    const saveAction = vi.fn(async (_prev: SaveBrandKitState, _fd: FormData): Promise<SaveBrandKitState> => ({ error: null, saved: true, updatedAt: "2026-10-06T10:00:00Z" }));
+    renderEdit(saveAction);
     fireEvent.change(field("fgBody"), { target: { value: "#eeeeee" } });
-    expect(screen.getAllByRole("alert").some((el) => el.textContent?.includes("4.5"))).toBe(true);
+    fireEvent.change(field("canvas"), { target: { value: "#ffffff" } });
+    expect(screen.queryAllByRole("alert")).toHaveLength(0);
+    expect(screen.queryByText(/:1/)).toBeNull();
+    await act(async () => {
+      fireEvent.submit(field("canvas").closest("form") as HTMLFormElement);
+    });
+    await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1));
+    const fd = saveAction.mock.calls[0]![1] as FormData;
+    expect(fd.get("light[fgBody]")).toBe("#eeeeee");
+    expect(fd.get("light[canvas]")).toBe("#ffffff");
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/app/admin/branding"));
+    replace.mockClear();
   });
 
   it("★ the malformed-hex error isolates #rrggbb inside a <bdi dir=ltr>", () => {
@@ -152,15 +166,17 @@ describe("BrandKitEdit — the read-mode pattern (DEC-231 §3)", () => {
     expect(screen.getByRole("link", { name: t.actions.cancel })).toHaveAttribute("href", "/app/admin/branding");
   });
 
-  it("★★ B10: the database's refusal is shown inline with the failing pair, and nothing typed is lost", async () => {
-    const saveAction = vi.fn(async (): Promise<SaveBrandKitState> => ({ error: "statusContrast", saved: false, failedPair: "live_vs_light_canvas" }));
+  // ★ LEDGER (DEC-272): the refusal was the status-contrast one, which no longer exists; the same guarantee is held with
+  // a refusal that still does (`badReference`, 22023).
+  it("★★ B10: the database's refusal is shown inline, and nothing typed is lost", async () => {
+    const saveAction = vi.fn(async (): Promise<SaveBrandKitState> => ({ error: "badReference", saved: false }));
     renderEdit(saveAction);
     fireEvent.change(field("canvas"), { target: { value: "#8a5a1f" } });
     await act(async () => {
       fireEvent.submit(field("canvas").closest("form") as HTMLFormElement);
     });
-    await waitFor(() => expect(screen.getByText(t.errors.statusContrastPair.live_vs_light_canvas)).toBeInTheDocument());
-    expect(screen.getByText(t.errors.statusContrastPair.live_vs_light_canvas).closest("[role=alert]")).not.toBeNull();
+    await waitFor(() => expect(screen.getByText(t.errors.badReference)).toBeInTheDocument());
+    expect(screen.getByText(t.errors.badReference).closest("[role=alert]")).not.toBeNull();
     expect(field("canvas").value).toBe("#8a5a1f");
     expect(replace).not.toHaveBeenCalled();
   });
@@ -194,14 +210,15 @@ describe("BrandKitEdit — a save after a refusal (wave 26, the lead's e2e findi
     replace.mockClear();
     const saveAction = vi
       .fn<(prev: SaveBrandKitState, fd: FormData) => Promise<SaveBrandKitState>>()
-      .mockResolvedValueOnce({ error: "statusContrast", saved: false, failedPair: "live_vs_light_canvas" })
+      // ★ LEDGER (DEC-272): the first refusal was `statusContrast`; it is `badReference` now — the flow is unchanged.
+      .mockResolvedValueOnce({ error: "badReference", saved: false })
       .mockResolvedValueOnce({ error: null, saved: true, updatedAt: "2026-10-05T10:00:00Z" });
     renderEdit(saveAction);
     fireEvent.change(field("canvas"), { target: { value: "#8a5a1f" } });
     await act(async () => {
       fireEvent.submit(field("canvas").closest("form") as HTMLFormElement);
     });
-    await waitFor(() => expect(screen.getByText(t.errors.statusContrastPair.live_vs_light_canvas)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(t.errors.badReference)).toBeInTheDocument());
     expect(replace).not.toHaveBeenCalled();
 
     fireEvent.change(field("canvas"), { target: { value: "#f4f6f9" } });

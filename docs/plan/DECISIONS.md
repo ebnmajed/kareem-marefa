@@ -10495,3 +10495,27 @@ outright (`REQ-ADM-025`).
 
 - **Documents changed:** `01-prd.md` (`REQ-SES-023`), `14-roadmap.md` (M32), `15-backlog.md` (`STORY-SES-016`),
   `03-permissions-rls.md`, `STATUS.md`
+
+## DEC-272 — Template colours are fully editable, the brand colours are quick-select swatches, and the brand kit has no contrast lock · `0216`
+
+- **Date:** 2026-10-06 · **Decided by:** the owner · **Amends:** `REQ-DSG-021`, `DEC-073`'s M13 consequence · **Migration:** `0216`
+
+**The ask:** «remove the hardcoding of the colors of the templates and make them fully editable and the brand colors
+become something like an accent for quick select, also remove the color visibility lock thingy in the brand colors
+selector».
+
+**What was locked, measured.** The database had already stopped refusing a typed colour in a template (`0195`,
+`DEC-242`), and the renderer passes a literal straight through (`resolveColour()`). The lock left was the editor's:
+`inspector.tsx`'s `TokenSelect` offered only brand tokens by name, «never a picker». The brand kit's lock was
+`save_brand_kit()`'s `status_contrast_failed` (`0143`, `DEC-073`'s M13 consequence) and the screen's contrast badge.
+
+**The rulings, asked and answered:**
+1. **Any colour + brand swatches.** Every colour in the editor — text, shapes, the background, both gradient stops — has
+   a picker and a hex field, with the org's brand colours (and the platform palette the baseline uses) as one-tap
+   swatches above it. **A swatch stays linked**: it stores `{{brand.<token>}}` as before, so a brand-kit edit still
+   repaints it; a picked colour is stored as `#rrggbb` and stays as picked. No golden moves: an untouched document is
+   unchanged.
+2. **The contrast lock is removed entirely** — no refusal and no note, light and dark alike (`0216` re-creates
+   `save_brand_kit()` without the check; `status_contrast_failure()` remains as a measure that refuses nothing).
+
+- **Documents changed:** `01-prd.md` (`REQ-DSG-021`), `STATUS.md`

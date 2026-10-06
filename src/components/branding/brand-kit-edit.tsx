@@ -21,7 +21,6 @@ import type { ResetBrandKitState, SaveBrandKitState } from "@/app/[locale]/app/a
 import { emptyResetState, emptySaveState } from "@/app/[locale]/app/admin/branding/state";
 import { BrandPreview } from "./brand-preview";
 import { ColourField } from "./colour-field";
-import { ContrastBadge } from "./contrast-badge";
 import { LogoUploader } from "./logo-uploader";
 import { useHydrated } from "@/lib/hooks/use-hydrated";
 
@@ -31,9 +30,9 @@ import { useHydrated } from "@/lib/hooks/use-hydrated";
 // ★ EDIT MODE NAMES ITS STATE — «تعديل الهوية» and the count of unsaved changes; each changed field outlined in the
 // accent AND «(معدّل)» in its accessible name. ★ NOTHING IS WRITTEN BEFORE «حفظ» — an uploaded logo is bound only
 // then. ★ «إلغاء» goes back to read mode with nothing written. ★ LEAVING WITH CHANGES ASKS.
-// ★★ THE DATABASE IS THE JUDGE (B10): `save_brand_kit()` refuses a palette on which a status badge fails AA (`0144`),
-// and the refusal is shown HERE, inline, naming the failing pair from the error's `detail` — every typed value kept,
-// because every control is controlled (B14). On success the saved mark is the server's: the toast, then read mode,
+// ★★ NO CONTRAST LOCK (DEC-272, the owner, 2026-10-06): the palette is the org's — no ratio is shown, nothing is
+// refused for contrast. A refusal the database does raise (not an admin, a bad reference) is shown HERE, inline, every
+// typed value kept, because every control is controlled (B14). On success the saved mark is the server's: the toast, then read mode,
 // whose mark is the row's `updated_at`.
 // ★ Both schemes are submitted whichever tab is open (B15). Declares no animation (REQ-UIX-053).
 
@@ -144,11 +143,7 @@ export function BrandKitEdit({
   const setToken = (token: BrandColourToken, value: string) => (scheme === "light" ? setLight : setDark)((prev) => ({ ...prev, [token]: value }));
   const other = scheme === "light" ? { name: "dark", set: dark } : { name: "light", set: light };
 
-  const refusal = state.error
-    ? state.error === "statusContrast" && state.failedPair
-      ? t(`errors.statusContrastPair.${state.failedPair}`)
-      : t(`errors.${state.error}`)
-    : null;
+  const refusal = state.error ? t(`errors.${state.error}`) : null;
 
   const changedWord = (on: boolean) => (on ? <span className="sr-only"> {t("editMode.changed")}</span> : null);
 
@@ -214,14 +209,6 @@ export function BrandKitEdit({
             {TOKENS.map((token) => (
               <input key={token} type="hidden" name={`${other.name}[${token}]`} value={other.set[token]} />
             ))}
-
-            <div className="mt-4 divide-y divide-edge border-t border-edge pt-2">
-              <p className="py-2 text-label text-fg-heading">{t("contrast.title")}</p>
-              <ContrastBadge foreground={active.fgHeading} background={active.canvas} use="large" label={t("contrast.large")} />
-              <ContrastBadge foreground={active.fgBody} background={active.canvas} use="body" label={t("contrast.body")} />
-              <ContrastBadge foreground={active.fgMuted} background={active.canvas} use="body" label={t("contrast.muted")} />
-              <ContrastBadge foreground={active.edgeStrong} background={active.canvas} use="ui" label={t("contrast.ui")} />
-            </div>
           </section>
 
           <section aria-labelledby="brand-fonts" className="flex flex-col gap-4 rounded-panel border border-edge bg-surface p-4">

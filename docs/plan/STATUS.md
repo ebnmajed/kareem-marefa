@@ -1,4 +1,4 @@
-**Last updated:** 2026-10-06 · **Branch:** `feat/delete-events` · ★ **M32 (`DEC-271`) — an admin deletes events, one or many, in progress**: a deleted event disappears for everyone, its points are reversed and its certificates revoked, nothing is physically erased. Migration **`0215`** (local; production pushes before the merge). Next migration **`0216`**, next decision **`DEC-272`**. **Before that:** **Before that:** **Before that:** 
+**Last updated:** 2026-10-06 · **Branch:** `feat/free-template-colours` · ★ **`DEC-272` / `0216`** — template colours fully editable with brand swatches; the brand kit has no contrast lock. **M32 merged as #96 (`af746e3c`), production `0215`.** Next migration **`0217`**, next decision **`DEC-273`**. **Before that:** **Before that:** **Before that:** **Before that:** 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
