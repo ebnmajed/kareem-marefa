@@ -38,6 +38,7 @@ import { evaluate_levels_perks } from "./tasks/evaluate_levels_perks.js";
 import { snapshot_leaderboards } from "./tasks/snapshot_leaderboards.js";
 import { render_variant } from "./tasks/render_variant.js";
 import { regenerate_poster } from "./tasks/regenerate_poster.js";
+import { publish_announcement } from "./tasks/publish_announcement.js";
 import { materialise_font } from "./tasks/materialise_font.js";
 import { issue_certificates } from "./tasks/issue_certificates.js";
 import { enforce_retention } from "./tasks/enforce_retention.js";
@@ -108,7 +109,7 @@ const runner = await run({
   // minute. Concurrency stays 1 (DEC-051) — this is the cheaper knob, and
   // it is the one the measurement pointed at.
   pollInterval: POLL_INTERVAL_MS,
-  taskList: { ping, promote_waitlist, rotate_codes, start_session, complete_session, award_points, send_notification, award_presenter_points, evaluate_no_shows, audit_balances, send_reminder, rsvp_nudge, rating_prompt, schedule_reminders, calendar_upsert, calendar_delete, refresh_calendar_tokens, convert_document, render_pages, process_photo, evaluate_streaks, evaluate_badges, evaluate_levels_perks, snapshot_leaderboards, render_variant, regenerate_poster, materialise_font, issue_certificates, enforce_retention, anonymise_members, assert_storage_prefixes, expire_impersonation, build_data_export, delete_org, evaluate_alerts, record_survey_response, send_test_email, import_avatar, zip_session_photos, send_member_invitation, generate_story_frames, transcode_story_video, purge_story_video },
+  taskList: { ping, promote_waitlist, rotate_codes, start_session, complete_session, award_points, send_notification, award_presenter_points, evaluate_no_shows, audit_balances, send_reminder, rsvp_nudge, rating_prompt, schedule_reminders, calendar_upsert, calendar_delete, refresh_calendar_tokens, convert_document, render_pages, process_photo, evaluate_streaks, evaluate_badges, evaluate_levels_perks, snapshot_leaderboards, render_variant, regenerate_poster, materialise_font, issue_certificates, enforce_retention, anonymise_members, assert_storage_prefixes, expire_impersonation, build_data_export, delete_org, evaluate_alerts, record_survey_response, send_test_email, import_avatar, zip_session_photos, send_member_invitation, generate_story_frames, transcode_story_video, purge_story_video, publish_announcement },
   // 11 §2.1: the clock runs every minute. Both functions are idempotent and
   // only move forward along 02 §6.2 (migration 0022), so a missed or doubled
   // tick is harmless. Inline rather than a crontab file so the image carries

@@ -93,8 +93,10 @@ describe("notification_matrix — 08 §1", () => {
       const rows = await tx.q<{ key: string }>(`select key from public.notification_matrix() order by key`);
       // 38 in 08 §1 as settled, plus MSG-reminder_generic (§1.2's fourth
       // reminder, DEC-047 → migration 0062), plus MSG-photo_album_ready
-      // (§1.6a, in-app only, DEC-182 → migration 0156).
-      expect(rows).toHaveLength(40);
+      // (§1.6a, in-app only, DEC-182 → migration 0156), plus MSG-announcement_published (§1.8, an org announcement
+      // going live, REQ-ADM-025, DEC-267 → migration 0213).
+      expect(rows).toHaveLength(41);
+      expect(rows.map((r) => r.key)).toContain("MSG-announcement_published");
       expect(rows.map((r) => r.key)).toContain("MSG-photo_album_ready");
       expect(rows.map((r) => r.key)).toContain("MSG-reminder_generic");
       // A message in no category cannot have a preference; a category outside
@@ -103,7 +105,7 @@ describe("notification_matrix — 08 §1", () => {
         `select key from public.notification_matrix()
           where category not in ('new_sessions','my_sessions','reminders','ratings','social',
                                  'recognition','certificates','moderation','proposals',
-                                 'admin_queue','account')`,
+                                 'admin_queue','account','announcements')`,
       );
       expect(bad).toEqual([]);
       // REQ-NTF-001: two channels and only two, and no message with neither.
