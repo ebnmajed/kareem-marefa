@@ -20,8 +20,9 @@
  * that goes to print. Not "the same design" — the same code path (DEC-017).
  */
 
-import { type BindingContext, EMPTY_BINDINGS, resolveColour, resolveRef, resolveText } from './bindings.js'
+import { type BindingContext, EMPTY_BINDINGS, normaliseBinding, resolveColour, resolveRef, resolveText } from './bindings.js'
 import type { DesignDocument, Layer, ManifestFont } from './model.js'
+import { PLATFORM_MARK_DATA_URI } from './platform-mark.js'
 import { qrSvg } from './qr.js'
 
 export interface RenderOptions {
@@ -165,12 +166,13 @@ function renderLayer(l: Layer, ctx: BindingContext): string {
     // logo, broken. The id is mapped through `ctx.assets` when the caller has
     // one; with none, `ref` is used exactly as before.
     const ref = resolveRef(ctx, l.image.assetId ?? l.image.binding)
-    const src = ref ? (ctx.assets?.[ref] ?? ref) : null
+    // ★ DEC-274: the ORG LOGO with no logo uploaded draws the platform mark, never the dashed placeholder — the
+    // placeholder exported into posters and every shared link's preview. The checks panel says the logo is missing.
+    const src = ref ? (ctx.assets?.[ref] ?? ref) : isOrgLogo(l.image.binding) ? PLATFORM_MARK_DATA_URI : null
     const focal = l.image.focal ? `;object-position:${l.image.focal.x * 100}% ${l.image.focal.y * 100}%` : ''
     return src
       ? `<img class="dr-layer" data-layer="${esc(l.id)}" src="${esc(src)}" style="${style};object-fit:${l.image.fit ?? 'contain'}${focal}" alt="">`
-      : // An unbound image is a marked placeholder too: an org that has not
-        // uploaded a logo must see that on the canvas, not discover it in print.
+      : // Any other unbound image is a marked placeholder, so it is seen on the canvas, not discovered in print.
         `<div class="dr-layer dr-placeholder" data-layer="${esc(l.id)}" data-placeholder="${esc(l.image.binding ?? 'image')}" style="${style}"></div>`
   }
 
@@ -272,4 +274,9 @@ ${css}
 <body style="margin:0;background:${bg}">
 ${html}
 </body></html>`
+}
+
+/** Whether an image layer is the org logo — the one binding that falls back to the platform mark (DEC-274). */
+export function isOrgLogo(binding: string | undefined): boolean {
+  return Boolean(binding) && normaliseBinding(binding!) === 'brand.logoAssetId'
 }

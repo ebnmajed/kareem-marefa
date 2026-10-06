@@ -10,6 +10,7 @@ import {
   ARABIC_UNICODE_RANGE,
   fontFaceCss,
   platformBrand,
+  PLATFORM_MARK_DATA_URI,
   renderDocumentToFragment,
   renderDocumentToHtml,
   type DesignDocument,
@@ -60,12 +61,31 @@ describe("REQ-DSG-006 — an unbound field is a marked placeholder, never an emp
     expect(html).not.toContain("dr-placeholder");
   });
 
-  it("an unbound IMAGE is marked too — an org with no logo must see it on the canvas", () => {
+  it("★ DEC-274: the ORG LOGO with no logo uploaded draws the platform mark, never the dashed box", () => {
     const { html } = renderDocumentToFragment(
       doc([{ id: "l_logo", kind: "image", frame: { x: 0, y: 0, w: 140, h: 140 }, image: { binding: "brand.logoAssetId" } }]),
       { fonts: [] },
     );
-    expect(html).toContain('data-placeholder="brand.logoAssetId"');
+    expect(html).not.toContain("dr-placeholder");
+    expect(html).toContain(`src="${PLATFORM_MARK_DATA_URI}"`);
+    expect(PLATFORM_MARK_DATA_URI.startsWith("data:image/png;base64,")).toBe(true);
+  });
+
+  it("an org's own logo wins over the mark", () => {
+    const { html } = renderDocumentToFragment(
+      doc([{ id: "l_logo", kind: "image", frame: { x: 0, y: 0, w: 140, h: 140 }, image: { binding: "{{brand.logoAssetId}}" } }]),
+      { fonts: [], bindings: { values: { "brand.logoAssetId": "asset-1" }, assets: { "asset-1": "data:image/png;base64,AAAA" } } },
+    );
+    expect(html).toContain('src="data:image/png;base64,AAAA"');
+    expect(html).not.toContain(PLATFORM_MARK_DATA_URI);
+  });
+
+  it("any OTHER unbound image is still a marked placeholder", () => {
+    const { html } = renderDocumentToFragment(
+      doc([{ id: "l_photo", kind: "image", frame: { x: 0, y: 0, w: 140, h: 140 }, image: { binding: "session.photo" } }]),
+      { fonts: [] },
+    );
+    expect(html).toContain('data-placeholder="session.photo"');
   });
 });
 

@@ -7,6 +7,7 @@ import {
   computeAutoFit,
   derive,
   domTextMeasurer,
+  isOrgLogo,
   ppiFindings,
   presetsForDocument,
   resolveText,
@@ -69,7 +70,9 @@ export type CheckFinding =
   | { kind: "ppi"; preset: PresetName; layerId: string; ppi: number; severity: "warn" | "block" }
   | { kind: AutoFitWarning; preset: PresetName; layerId: string }
   /** wave 23 (C4): the org's longest value for the layer's binding does not fit it. */
-  | { kind: "longest"; preset: PresetName; layerId: string; binding: string };
+  | { kind: "longest"; preset: PresetName; layerId: string; binding: string }
+  /** ★ DEC-274: the org has uploaded no logo, so the logo layer draws the platform's mark. Said, never blocking. */
+  | { kind: "noLogo"; preset: PresetName; layerId: string };
 
 type Finding = CheckFinding;
 
@@ -159,7 +162,17 @@ export function useCheckFindings({ document: doc, bindings, fontsReady, assetSiz
     };
   }, [doc, bindings, fontsReady, samples]);
 
-  const findings = useMemo(() => [...safeFindings, ...ppi, ...fitFindings], [safeFindings, ppi, fitFindings]);
+  // ★ DEC-274: an org logo layer with no logo to bind draws the platform mark — the canvas shows a real logo, so the
+  // missing upload is said here instead of by a dashed box.
+  const noLogo = useMemo<Finding[]>(
+    () =>
+      bindings["brand.logoAssetId"]
+        ? []
+        : doc.layers.flatMap((l) => (l.kind === "image" && !l.image.assetId && isOrgLogo(l.image.binding) ? [{ kind: "noLogo" as const, preset: "master" as const, layerId: l.id }] : [])),
+    [doc, bindings],
+  );
+
+  const findings = useMemo(() => [...noLogo, ...safeFindings, ...ppi, ...fitFindings], [noLogo, safeFindings, ppi, fitFindings]);
   return { findings, measuring: !fontsReady };
 }
 
@@ -218,7 +231,9 @@ export function ChecksPanel({ findings, measuring, onGoTo, layerNames = {}, show
               <li key={g.key}>
                 <Panel className="flex flex-col gap-2 text-body-sm text-fg-heading">
                 <p>
-                  {f.kind === "ppi"
+                  {f.kind === "noLogo"
+                    ? t.rich("noLogo", { layer, bdi: (c) => <bdi>{c}</bdi> })
+                    : f.kind === "ppi"
                     ? t.rich(f.severity === "block" ? "ppiBlock" : "ppiWarn", { layer, preset, ppi: formatNumber(g.ppi), bdi: (c) => <bdi>{c}</bdi> })
                     : f.kind === "safeArea"
                       ? t.rich("safeArea", { layer, preset, px: formatNumber(g.overflowPx), bdi: (c) => <bdi>{c}</bdi> })

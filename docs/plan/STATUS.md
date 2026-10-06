@@ -1,4 +1,4 @@
-**Last updated:** 2026-10-06 · **Branch:** `feat/share-metadata` · ★ **`DEC-273` / `0217`** — a shared session link previews its poster, its title and its description (the abstract, opened by the owner); the app's metadata completed (title template, manifest, web-app tags, hreflang). **`0216` merged as #97 (`11b8ddad`), production `0216`.** Next migration **`0218`**, next decision **`DEC-274`**. Before that: `DEC-272` / `0216` (template colours, no contrast lock).
+**Last updated:** 2026-10-06 · **Branch:** `fix/logo-and-camera` · ★ **`DEC-274`** — an org with no logo draws the platform mark (no more dashed box in posters and share previews); the camera allowed to this origin on every route, so adding a story works after sign-in without a reload. No migration. **`0217` merged as #98 (`2ed4c2ae`), production `0217`.** Next migration **`0218`**, next decision **`DEC-275`**. Before that: `DEC-273` / `0217` (share-link metadata).
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
