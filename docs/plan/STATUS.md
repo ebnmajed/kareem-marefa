@@ -1,4 +1,4 @@
-**Last updated:** 2026-10-06 · **Branch:** `feat/free-template-colours` · ★ **`DEC-272` / `0216`** — template colours fully editable with brand swatches; the brand kit has no contrast lock. **M32 merged as #96 (`af746e3c`), production `0215`.** Next migration **`0217`**, next decision **`DEC-273`**. **Before that:** **Before that:** **Before that:** **Before that:** 
+**Last updated:** 2026-10-06 · **Branch:** `feat/share-metadata` · ★ **`DEC-273` / `0217`** — a shared session link previews its poster, its title and its description (the abstract, opened by the owner); the app's metadata completed (title template, manifest, web-app tags, hreflang). **`0216` merged as #97 (`11b8ddad`), production `0216`.** Next migration **`0218`**, next decision **`DEC-274`**. Before that: `DEC-272` / `0216` (template colours, no contrast lock).
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 

@@ -57,8 +57,17 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   if (!platformConfigured()) return { robots: { index: false, follow: false } };
   const data = await card(id);
   if (!data) return { robots: { index: false, follow: false } };
-  const t = await getTranslations({ locale, namespace: "sessions.card" });
-  return buildPublicCardMetadata(data, { locale, origin: siteOrigin(), imageAlt: t("posterAlt") });
+  const [t, tType] = await Promise.all([
+    getTranslations({ locale, namespace: "sessions.card" }),
+    getTranslations({ locale, namespace: "sessions.eventType" }),
+  ]);
+  // ★ DEC-273: the image is the poster, its alt names the session, and the type's word leads the description.
+  return buildPublicCardMetadata(data, {
+    locale,
+    origin: siteOrigin(),
+    imageAlt: t("posterAltTitled", { session: data.title }),
+    eventTypeLabel: data.eventType ? tType(data.eventType) : null,
+  });
 }
 
 export default async function PublicSessionCardPage({ params }: { params: Promise<{ locale: string; id: string }> }) {

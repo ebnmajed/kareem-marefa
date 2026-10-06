@@ -7,6 +7,8 @@
 // perfectly in a browser and badly in WhatsApp.
 import { describe, expect, it } from "vitest";
 import {
+  ABSTRACT_EXCERPT_MAX,
+  abstractExcerpt,
   buildPublicCardMetadata,
   cardDescription,
   ogLocale,
@@ -87,7 +89,46 @@ describe("the description", () => {
   });
 });
 
+describe("★ the description with an abstract (DEC-273, REQ-SES-024)", () => {
+  const abstract = "كيف نكتب تقريرًا يقرؤه المدير حتى آخره:\nالبنية، والعناوين، والجملة الأولى.";
+
+  it("is the type, the date and the venue, then the abstract — the org is the site name, not repeated", () => {
+    const text = cardDescription({ ...card, abstract }, "ar", "ورشة");
+    expect(text.startsWith("ورشة · ")).toBe(true);
+    expect(text).toContain("قاعة الابتكار — كيف نكتب");
+    expect(text).not.toContain("نادي المعرفة");
+    expect(text).not.toContain("\n");
+  });
+
+  it("cuts a long abstract on a word, with «…», and leaves a short one whole", () => {
+    const long = "كلمة ".repeat(80);
+    const cut = abstractExcerpt(long)!;
+    expect(cut.length).toBeLessThanOrEqual(ABSTRACT_EXCERPT_MAX + 1);
+    expect(cut.endsWith("كلمة…")).toBe(true);
+    expect(abstractExcerpt("قصيرة.")).toBe("قصيرة.");
+    expect(abstractExcerpt("   ")).toBeNull();
+    expect(abstractExcerpt(null)).toBeNull();
+  });
+
+  it("is the same text in the description, og:description and twitter:description", () => {
+    const meta = build({ abstract });
+    expect((meta.openGraph as { description: string }).description).toBe(meta.description);
+    expect((meta.twitter as { description: string }).description).toBe(meta.description);
+  });
+});
+
 describe("the rest of the tags", () => {
+  it("★ links the other locale and a default, absolutely (hreflang), and names the other og:locale", () => {
+    const meta = build();
+    expect(meta.alternates?.languages).toEqual({
+      ar: `${ORIGIN}/ar/s/${card.id}`,
+      en: `${ORIGIN}/en/s/${card.id}`,
+      "x-default": `${ORIGIN}/ar/s/${card.id}`,
+    });
+    expect((meta.openGraph as { alternateLocale: string[] }).alternateLocale).toEqual(["en_US"]);
+    expect((build({}, "en").openGraph as { alternateLocale: string[] }).alternateLocale).toEqual(["ar_SA"]);
+  });
+
   it("names the ORG as the site, not the platform", () => {
     expect((build().openGraph as { siteName: string }).siteName).toBe("نادي المعرفة");
   });

@@ -52,6 +52,8 @@ export interface PublicCardMeta {
   hasImage: boolean;
   imageWidth: number | null;
   imageHeight: number | null;
+  /** ★ 0217 (DEC-273): the session's abstract — the shared link's description. */
+  abstract?: string | null;
 }
 
 export interface PublicCardMetaOptions {
@@ -59,6 +61,22 @@ export interface PublicCardMetaOptions {
   origin: string;
   /** The alt text for the image, translated by the caller. */
   imageAlt: string;
+  /** The event type's word («ورشة»), translated by the caller; it leads the description's facts line. */
+  eventTypeLabel?: string | null;
+}
+
+/** How much of the abstract a preview carries. WhatsApp shows about two lines and iMessage none; Facebook and
+ *  LinkedIn cut near 200 characters of the whole description, so the excerpt leaves room for the facts line. */
+export const ABSTRACT_EXCERPT_MAX = 160;
+
+/** The abstract as one line, cut on a word boundary with «…» when it is longer than `max`. */
+export function abstractExcerpt(abstract: string | null | undefined, max = ABSTRACT_EXCERPT_MAX): string | null {
+  const flat = (abstract ?? "").replace(/\s+/g, " ").trim();
+  if (!flat) return null;
+  if (flat.length <= max) return flat;
+  const cut = flat.slice(0, max);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s،,.؛:·—-]+$/u, "")}…`;
 }
 
 /** `ar` → `ar_SA`. The OG locale is a territory-qualified tag, not a language. */
@@ -72,14 +90,26 @@ export function ogLocale(locale: string): string {
  *  venue yet is not published, so in practice the venue is always there — but
  *  a description that reads «· · نادي المعرفة» because a part was null is the
  *  kind of thing that only ever shows up in somebody's WhatsApp. */
-export function cardDescription(card: PublicCardMeta, locale: string): string {
+export function cardDescription(card: PublicCardMeta, locale: string, eventTypeLabel?: string | null): string {
   const when = card.startsAt ? formatDateTime(card.startsAt, card.timeZone, locale) : null;
-  return [when, card.venueName, card.orgName].filter((part): part is string => Boolean(part && part.trim())).join(" · ");
+  const excerpt = abstractExcerpt(card.abstract);
+  // ★ With an abstract the org's name leaves the line — it is already `og:site_name` — so the words go to the session.
+  const facts = [eventTypeLabel, when, card.venueName, excerpt ? null : card.orgName]
+    .filter((part): part is string => Boolean(part && part.trim()))
+    .join(" · ");
+  return excerpt ? (facts ? `${facts} — ${excerpt}` : excerpt) : facts;
 }
 
-export function buildPublicCardMetadata(card: PublicCardMeta, { locale, origin, imageAlt }: PublicCardMetaOptions): Metadata {
+/** The two locales the card exists in, for `hreflang` and `og:locale:alternate`. */
+const CARD_LOCALES = ["ar", "en"] as const;
+
+export function buildPublicCardMetadata(card: PublicCardMeta, { locale, origin, imageAlt, eventTypeLabel }: PublicCardMetaOptions): Metadata {
   const url = `${origin}${publicCardPath(locale, card.id)}`;
-  const description = cardDescription(card, locale);
+  const description = cardDescription(card, locale, eventTypeLabel);
+  const languages = Object.fromEntries([
+    ...CARD_LOCALES.map((l) => [l, `${origin}${publicCardPath(l, card.id)}`]),
+    ["x-default", `${origin}${publicCardPath("ar", card.id)}`],
+  ]);
   // A session with no rendered poster falls back to the platform's own card
   // image rather than to no image at all: a preview with a picture is opened
   // and one without it mostly is not, and `/og.png` is a frozen 1200×630 that
@@ -99,7 +129,7 @@ export function buildPublicCardMetadata(card: PublicCardMeta, { locale, origin, 
     title: card.title,
     description,
     robots: { index: false, follow: false },
-    alternates: { canonical: url },
+    alternates: { canonical: url, languages },
     openGraph: {
       title: card.title,
       description,
@@ -109,6 +139,7 @@ export function buildPublicCardMetadata(card: PublicCardMeta, { locale, origin, 
       // brand the reader has no relationship with.
       siteName: card.orgName,
       locale: ogLocale(locale),
+      alternateLocale: CARD_LOCALES.filter((l) => l !== locale).map(ogLocale),
       type: "website",
       images: [image],
     },

@@ -655,6 +655,21 @@ whose points will be taken back and how many certificates revoked.
 - A moderator, a presenter and a member are refused by the database.
 - The deletion is audited with its title, its reason and what it took back.
 
+#### REQ-SES-024 — A shared session link previews its poster, its title and its description
+**Serves:** owner 2026-10-06 · `DEC-273` · `DEC-066` · `REQ-UIX-059` · `09` `SCR-007`
+The link a member shares — the public card, `/s/{id}` — previews in WhatsApp, iMessage, Slack, LinkedIn, X and
+Facebook as **the session's poster** (its `og` render, 1200 × 630; the platform's image when no render exists),
+**its title**, and **its description**: the event type, the date and the venue, then the abstract cut on a word at
+about 160 characters. The org is the site name. The tags are absolute, the other locale is linked (`hreflang`,
+`og:locale:alternate`), the image's alt names the session, and nothing is indexed. `DEC-066`'s allowlist is widened by
+the abstract and the event type and by nothing else. App-wide, a page that names itself reads «… · كريم معرفة» in the
+tab, the event page names its session, and the app installs to a home screen with its name, icon and colour.
+**Acceptance:**
+- `og:image` is the poster's `og` render, absolute; `og:title` is the title; `og:description`, `description` and
+  `twitter:description` are the same text and carry the abstract.
+- `session_public_card()` returns the abstract and the event type and no other new field.
+- A draft, a cancelled and a deleted session still preview nothing.
+
 ---
 
 ## 6. RSVP and waitlist — `RSV`
