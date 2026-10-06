@@ -43,14 +43,18 @@ export function SessionRowActions({
   actions,
   action,
   endsAt,
+  onDelete,
 }: {
   title: string;
   links: MenuItem[];
   actions: SessionAction[];
   action?: (prev: TransitionState, formData: FormData) => Promise<TransitionState>;
   endsAt: string | null;
+  /** ★ REQ-SES-023: opens the one delete confirm (`delete-sessions.tsx`), which the table owns. Any state may be deleted. */
+  onDelete?: () => void;
 }) {
   const t = useTranslations("admin.sessions");
+  const tDelete = useTranslations("admin.sessions.delete");
   const toast = useToast();
   const reasonId = useId();
   const [dialog, setDialog] = useState<"cancel" | "complete" | null>(null);
@@ -99,7 +103,7 @@ export function SessionRowActions({
             <MoreIcon />
           </IconButton>
         }
-        items={[...links, ...transitions]}
+        items={[...links, ...transitions, ...(onDelete ? [{ label: tDelete("rowAction"), tone: "error" as const, startsGroup: true, disabled: pending, onSelect: onDelete }] : [])]}
       />
 
       {action ? (

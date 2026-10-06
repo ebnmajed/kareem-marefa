@@ -1006,6 +1006,17 @@ one PR, one migration (`0213`).
 **Demonstrable:** an admin creates a ورشة and its poster is the workshop's; they switch it to ندوة and it re-renders;
 a customised poster stays as it is.
 
+## M32 — an admin deletes events · `DEC-271`
+
+The owner's ask: an admin deletes any event, one or many. One requirement, one PR, one migration (`0215`).
+
+| Work | Requirements | Track | PR |
+|---|---|---|---|
+| The soft delete, its reversals and revocations, the impact read; the row, bulk and hub controls | `REQ-SES-023` | lead | one |
+
+**Demonstrable:** an admin deletes a completed event; its attendees' balances drop by its points, their certificates
+verify as revoked, and the event is nowhere on a member's screen.
+
 ## 3. Dependencies
 
 ```mermaid
@@ -1061,6 +1072,7 @@ graph LR
 | **M29** | A colleague signs in and is already in their company; a new org issues a certificate with no setup; the code on the wall stays the same all day |
 | **M30** | An admin arranges a poster, nothing is written until they press «احفظ», and a closed tab offers the work back |
 | **M31** | An admin sets a session's event type to ورشة and its poster becomes the workshop's |
+| **M32** | An admin deletes a completed event and everything it awarded is taken back |
 
 ---
 

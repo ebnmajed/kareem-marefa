@@ -22,7 +22,9 @@ import { useToast } from "@/components/ui/toast";
 import type { DataTableColumn, MenuItem } from "@/components/ui";
 import type { SessionAction } from "@/lib/dal/sessions";
 import { useRouter } from "@/i18n/navigation";
-import type { BulkCancelState } from "./state";
+import { useSessionDeletion } from "@/components/admin/sessions/delete-sessions";
+import type { DeletionImpact } from "@/lib/dal/sessions";
+import type { BulkCancelState, DeleteState } from "./state";
 import { emptyBulkCancelState } from "./state";
 import type { TransitionState } from "./actions";
 import { SessionRowActions } from "./session-controls";
@@ -58,6 +60,8 @@ export function SessionsTable({
   actionsById,
   transitionActions,
   bulkCancel,
+  previewDelete,
+  runDelete,
 }: {
   mode: Mode;
   rows: ConsoleSessionRow[];
@@ -76,12 +80,23 @@ export function SessionsTable({
   /** One BOUND Server Action per row — a map, never a factory (a closure cannot cross into a client module). */
   transitionActions: Record<string, (prev: TransitionState, formData: FormData) => Promise<TransitionState>>;
   bulkCancel?: (prev: BulkCancelState, formData: FormData) => Promise<BulkCancelState>;
+  /** ★ REQ-SES-023 — an admin's only: what a delete takes back, and the delete itself (one or many). */
+  previewDelete?: (ids: string[]) => Promise<DeletionImpact | null>;
+  runDelete?: (prev: DeleteState, formData: FormData) => Promise<DeleteState>;
 }) {
   const t = useTranslations("admin.sessions");
   const tStatus = useTranslations("browse.status");
   const router = useRouter();
   const [selected, setSelected] = useState<string[]>([]);
   const admin = mode === "admin";
+  const tDelete = useTranslations("admin.sessions.delete");
+  // One confirm for the row and the selection. What failed stays selected, so the retry is one press away.
+  const deletion = useSessionDeletion({
+    preview: previewDelete ?? (async () => null),
+    run: runDelete ?? (async (prev) => prev),
+    onDone: (state) => setSelected((current) => current.filter((id) => state.failed.includes(id))),
+  });
+  const canDelete = admin && previewDelete !== undefined && runDelete !== undefined;
 
   const statusLabel = (phase: (typeof SESSION_STATUS_FILTERS)[number]) => tStatus(phase === "pending_schedule" ? "pendingSchedule" : phase);
   const monthLabel = (month: string) =>
@@ -101,7 +116,7 @@ export function SessionsTable({
   ];
 
   const rowMenu = (s: ConsoleSessionRow) => (
-    <SessionRowActions title={s.title} links={menuLinks(s)} actions={actionsById[s.id] ?? []} action={transitionActions[s.id]} endsAt={s.endsAt} />
+    <SessionRowActions title={s.title} links={menuLinks(s)} actions={actionsById[s.id] ?? []} action={transitionActions[s.id]} endsAt={s.endsAt} onDelete={canDelete ? () => deletion.open([{ id: s.id, title: s.title }]) : undefined} />
   );
 
   // A moderator's survey link is named «الاستبانة» and DESCRIBED by the title,
@@ -200,6 +215,11 @@ export function SessionsTable({
                     <Button type="button" variant="ghost" size="sm" onClick={() => setSelected([])}>
                       {t("bulkClear")}
                     </Button>
+                    {canDelete ? (
+                      <Button type="button" variant="danger" size="sm" onClick={() => deletion.open(rows.filter((r) => selected.includes(r.id)).map((r) => ({ id: r.id, title: r.title })))}>
+                        {tDelete("bulkAction")}
+                      </Button>
+                    ) : null}
                     {canCancelAll && bulkCancel ? <BulkCancel ids={selected} titles={rows.filter((r) => selected.includes(r.id)).map((r) => r.title)} action={bulkCancel} onResult={setSelected} /> : null}
                     <ExportDownloadButton
                       href={exportHref}
@@ -217,6 +237,8 @@ export function SessionsTable({
         }
         empty={{ title: empty, action: { label: t("listEmptyAction"), href: "/app/admin/proposals" }, size: "sm" }}
       />
+
+      {canDelete ? deletion.dialog : null}
 
       <Pager query={query} total={total} from={from} to={to} page={page} pageCount={pageCount} />
     </div>

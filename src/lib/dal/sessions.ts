@@ -1952,3 +1952,115 @@ export async function readPresenterProfiles(locale: string, memberIds: readonly 
 export function storyVenueFrom(row: Parameters<typeof venueFrom>[0]): EventVenue | null {
   return venueFrom(row);
 }
+
+// ── Deleting an event (REQ-SES-023, DEC-271, 0215) ──────────────────────────
+//
+// ★ Add-only. Authority is the three definer functions' (`assert_fresh_admin()`): an admin of the session's own org,
+// fresh against `claims_version`. Zod checks shape; nothing is decided here that the database does not decide again.
+// Nothing is erased: the row is marked deleted, RLS hides it from everyone, and what it awarded is reversed in the
+// ledgers and revoked on the certificates — the evidence stays (invariant 9).
+
+export const DELETE_SESSIONS_MAX = 200;
+export const DELETION_REASON_MAX = 300;
+
+const deletionIds = z.array(z.uuid()).min(1).max(DELETE_SESSIONS_MAX);
+const deletionReason = z.string().trim().max(DELETION_REASON_MAX).nullable();
+
+/** What a delete would take back, said in the confirm before anything moves. */
+export interface DeletionImpact {
+  /** Events among the ids that exist and are not already deleted. */
+  sessions: number;
+  /** Upcoming or running — cancelled first, so whoever reserved is told. */
+  toCancel: number;
+  /** Members whose points from these events are reversed. */
+  membersWithPoints: number;
+  /** Certificates revoked. */
+  certificates: number;
+}
+
+export type DeletionError = "refused" | "notFound" | "tooMany" | "invalid" | "failed";
+
+export interface DeletionDone {
+  status: "deleted" | "already";
+  cancelled: boolean;
+  pointsReversed: number;
+  companyPointsReversed: number;
+  certificatesRevoked: number;
+}
+
+export type DeleteSessionResult = ({ ok: true } & DeletionDone) | { ok: false; error: DeletionError };
+
+export type DeleteSessionsItem = ({ sessionId: string; ok: true } & DeletionDone) | { sessionId: string; ok: false; error: DeletionError };
+
+export type DeleteSessionsResult = { ok: true; items: DeleteSessionsItem[] } | { ok: false; error: DeletionError };
+
+/** The database's refusals, named: `42501` not an admin or stale claims; `P0002` no such session; `22023` over 200. */
+function deletionErrorOf(error: { code?: string; message?: string } | null | undefined): DeletionError {
+  const code = error?.code ?? "";
+  const message = error?.message ?? "";
+  if (code === "42501" || message.includes("not_an_admin") || message.includes("stale_claims")) return "refused";
+  if (code === "P0002" || message.includes("session_not_found")) return "notFound";
+  if (code === "22023" || message.includes("too_many")) return "tooMany";
+  return "failed";
+}
+
+type DeletionRow = { status?: string; cancelled?: boolean; points_reversed?: number; company_points_reversed?: number; certificates_revoked?: number };
+
+function deletionDone(row: DeletionRow): DeletionDone {
+  return {
+    status: row.status === "already" ? "already" : "deleted",
+    cancelled: row.cancelled === true,
+    pointsReversed: Number(row.points_reversed ?? 0),
+    companyPointsReversed: Number(row.company_points_reversed ?? 0),
+    certificatesRevoked: Number(row.certificates_revoked ?? 0),
+  };
+}
+
+/** `session_deletion_impact()` — read-only, admin only. `null` for anyone the database refuses or any malformed id. */
+export async function getDeletionImpact(locale: string, sessionIds: string[]): Promise<DeletionImpact | null> {
+  const parsed = deletionIds.safeParse([...new Set(sessionIds)]);
+  if (!parsed.success) return null;
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin") return null;
+  const { data, error } = await supabase.rpc("session_deletion_impact", { p_sessions: parsed.data });
+  if (error || !data) return null;
+  const d = data as { sessions?: number; to_cancel?: number; members_with_points?: number; certificates?: number };
+  return {
+    sessions: Number(d.sessions ?? 0),
+    toCancel: Number(d.to_cancel ?? 0),
+    membersWithPoints: Number(d.members_with_points ?? 0),
+    certificates: Number(d.certificates ?? 0),
+  };
+}
+
+/** `delete_session()` — one event. «already» is an answer, not an error: someone deleted it first. */
+export async function deleteSession(locale: string, sessionId: string, reason: string | null): Promise<DeleteSessionResult> {
+  const id = z.uuid().safeParse(sessionId);
+  const why = deletionReason.safeParse(reason);
+  if (!id.success || !why.success) return { ok: false, error: "invalid" };
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin") return { ok: false, error: "refused" };
+  const { data, error } = await supabase.rpc("delete_session", { p_session: id.data, p_reason: why.data || null });
+  if (error) return { ok: false, error: deletionErrorOf(error) };
+  return { ok: true, ...deletionDone((data ?? {}) as DeletionRow) };
+}
+
+/** `delete_sessions()` — many, answered per event; one failure never stops the others. */
+export async function deleteSessions(locale: string, sessionIds: string[], reason: string | null): Promise<DeleteSessionsResult> {
+  const unique = [...new Set(sessionIds)];
+  if (unique.length > DELETE_SESSIONS_MAX) return { ok: false, error: "tooMany" };
+  const ids = deletionIds.safeParse(unique);
+  const why = deletionReason.safeParse(reason);
+  if (!ids.success || !why.success) return { ok: false, error: "invalid" };
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin") return { ok: false, error: "refused" };
+  const { data, error } = await supabase.rpc("delete_sessions", { p_sessions: ids.data, p_reason: why.data || null });
+  if (error) return { ok: false, error: deletionErrorOf(error) };
+  const rows = (Array.isArray(data) ? data : []) as (DeletionRow & { session_id?: string; error?: string })[];
+  const items: DeleteSessionsItem[] = rows.map((r) => {
+    const sessionId = String(r.session_id ?? "");
+    if (r.status === "failed") return { sessionId, ok: false, error: deletionErrorOf({ message: r.error }) };
+    return { sessionId, ok: true, ...deletionDone(r) };
+  });
+  return { ok: true, items };
+}

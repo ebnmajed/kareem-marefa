@@ -6,8 +6,10 @@ import { SessionStatusBadge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton, SkeletonPageHeader } from "@/components/ui/skeleton";
 import { RenameAction } from "@/components/sessions/session-rename";
+import { DeleteSessionButton } from "@/components/admin/sessions/delete-sessions";
 import { getSessionHubHeader, RENAMEABLE_STATES } from "@/lib/dal/sessions";
 import { storedPhase } from "@/lib/session-status";
+import { previewDeletion, runDelete } from "../../actions";
 import { cancelFromHub, publishFromHub, renameFromHub } from "./actions";
 import { HubTabAction, type HubTab } from "./hub-tab-action";
 import { CancelAction, PublishAction } from "./lifecycle";
@@ -43,6 +45,18 @@ export async function HubHeader({ locale, sessionId, tabActions }: { locale: str
       <RenameAction action={renameFromHub.bind(null, locale as Locale, sessionId)} title={header.title} />
     ) : null;
 
+  // ★ REQ-SES-023 (0215): «احذف الفعالية», an admin's, in any state — the one confirm SCR-042 uses, then back to the
+  // list, because the hub no longer exists for anyone. The database refuses anyone but a fresh admin.
+  const remove =
+    header.viewerRole === "admin" ? (
+      <DeleteSessionButton
+        target={{ id: sessionId, title: header.title }}
+        preview={previewDeletion.bind(null, locale as Locale)}
+        run={runDelete.bind(null, locale as Locale)}
+        redirectTo="/app/admin/sessions"
+      />
+    ) : null;
+
   return (
     <PageHeader
       className="mb-4"
@@ -63,6 +77,7 @@ export async function HubHeader({ locale, sessionId, tabActions }: { locale: str
           }
           lifecycle={lifecycle}
           />
+          {remove}
         </>
       }
     />

@@ -3,11 +3,21 @@
 import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { createSessionDirect, createSessionFromProposal, directSessionInput, transitionSession, type SessionAction } from "@/lib/dal/sessions";
+import {
+  createSessionDirect,
+  createSessionFromProposal,
+  deleteSession,
+  deleteSessions,
+  directSessionInput,
+  getDeletionImpact,
+  transitionSession,
+  type DeletionImpact,
+  type SessionAction,
+} from "@/lib/dal/sessions";
 import { redirect } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
 import { formStateFrom, was, wasList, withErrors, withFormError, zodErrors } from "@/lib/form-state";
-import { SESSION_VALUE_FIELDS, type BulkCancelState, type CreateSessionState, type SessionField } from "./state";
+import { SESSION_VALUE_FIELDS, type BulkCancelState, type CreateSessionState, type DeleteState, type SessionField } from "./state";
 
 // SCR-042's Server Actions (REQ-PRO-007). Zod first, then the DAL.
 //
@@ -167,4 +177,59 @@ export async function runBulkCancel(locale: Locale, prev: BulkCancelState, formD
   }
   revalidatePath(`/${locale}/app/admin/sessions`);
   return { error: null, done, failed, attempt: prev.attempt + 1 };
+}
+
+/**
+ * ★ REQ-SES-023 (0215) — what a delete would take back, read for the confirm before anything moves. Admin only, in
+ * the database; `null` for anyone else or a malformed id, and the dialog then says it could not read it.
+ */
+export async function previewDeletion(locale: Locale, ids: string[]): Promise<DeletionImpact | null> {
+  const parsed = z.array(z.uuid()).min(1).max(200).safeParse(ids);
+  if (!parsed.success) return null;
+  return getDeletionImpact(locale, parsed.data);
+}
+
+/** The delete's shared body: one id → `delete_session()`, several → `delete_sessions()`, answered per event. */
+async function deleteForState(locale: Locale, prev: DeleteState, formData: FormData): Promise<DeleteState> {
+  const parsed = z
+    .object({ ids: z.array(z.uuid()).min(1).max(200), reason: z.string().trim().max(300) })
+    .safeParse({ ids: [...new Set(formData.getAll("ids").map(String))], reason: formData.get("reason")?.toString() ?? "" });
+  const base = { deleted: [] as string[], failed: [] as string[], pointsReversed: 0, certificatesRevoked: 0, attempt: prev.attempt + 1 };
+  if (!parsed.success) {
+    const tooMany = parsed.error.issues.some((i) => i.path[0] === "ids" && i.code === "too_big");
+    return { ...base, error: tooMany ? "tooMany" : "invalid" };
+  }
+  const { ids, reason } = parsed.data;
+  const why = reason.length > 0 ? reason : null;
+
+  if (ids.length === 1) {
+    const result = await deleteSession(locale, ids[0], why);
+    if (!result.ok) return { ...base, error: result.error, failed: ids };
+    return { ...base, error: null, deleted: ids, pointsReversed: result.pointsReversed, certificatesRevoked: result.certificatesRevoked };
+  }
+
+  const result = await deleteSessions(locale, ids, why);
+  if (!result.ok) return { ...base, error: result.error, failed: ids };
+  const state: DeleteState = { ...base, error: null };
+  for (const item of result.items) {
+    if (item.ok) {
+      state.deleted.push(item.sessionId);
+      state.pointsReversed += item.pointsReversed;
+      state.certificatesRevoked += item.certificatesRevoked;
+    } else state.failed.push(item.sessionId);
+  }
+  // An id the database never answered for is not «deleted».
+  for (const id of ids) if (!state.deleted.includes(id) && !state.failed.includes(id)) state.failed.push(id);
+  return state;
+}
+
+/** SCR-042's «احذف» and «احذف المحدّد». The deleted rows leave the list on the refresh. */
+export async function runDelete(locale: Locale, prev: DeleteState, formData: FormData): Promise<DeleteState> {
+  const state = await deleteForState(locale, prev, formData);
+  if (state.deleted.length > 0) {
+    revalidatePath(`/${locale}/app/admin/sessions`);
+    revalidatePath(`/${locale}/app`);
+    for (const id of state.deleted) revalidatePath(`/${locale}/app/sessions/${id}`);
+  }
+  return state;
 }

@@ -10468,3 +10468,30 @@ a doc edit, once after a rebase. `.githooks/pre-commit` now regenerates the tabl
 `docs/plan/`), adds it to the commit when it changed, and stops the commit on a real gap as CI would. `npm install`
 points git at `.githooks/` (`scripts/install-hooks.mjs`, which never fails an install). A rebase replays commits
 without hooks; the next ordinary commit repairs the table. `--no-verify` skips the hook; CI remains the gate.
+
+## DEC-271 — An admin deletes any event, one or many: it disappears for everyone, and what it awarded is taken back · `0215`
+
+- **Date:** 2026-10-06 · **Decided by:** the owner · **Requirement:** `REQ-SES-023` (new) · **Milestone:** M32 · **Migration:** `0215` · ★ amends `02-domain-model.md` (frozen) by three columns on `sessions`
+
+**Why it was deferred until now.** «Deleting a session with its awarded points» sat in every wave's «not this wave» since
+wave 12: the two points ledgers reference `sessions` with no action and are append-only, so the database refuses to
+delete a session that ever awarded anything, and every other child cascades — check-ins, ratings and the certificates
+whose verify links members hold would vanish without a trace.
+
+**The owner's rulings, asked and answered:**
+1. ★ **A deleted event is removed everywhere, and what it awarded is taken back** — chosen over «erase only untouched
+   events» and over «erase everything, history too». Its points are reversed (members' and companies', with a reversal
+   row each, keyed so nothing is taken twice), its certificates revoked through the audited path, its open reports
+   dismissed; an event that has not happened is cancelled first so its reservations are told. **Nothing is physically
+   erased**: `deleted_at` hides the row, and the ledgers and the audit log keep the evidence (invariant 9).
+2. ★ **One or many** — a row action, a bulk action on the selection, and the hub's own; one confirm that says, before
+   anything moves, what will be cancelled, whose points will be taken back and how many certificates revoked.
+
+**How «everywhere» is reached.** `sessions_read` hides a deleted row from every role, so everything read through the
+session goes with it. The two surfaces that read a session's content without it — photographs on a profile and story
+frames — ask `session_deleted()`. Content is deliberately NOT marked removed row by row: that would send every author a
+removal notice and write an audit row per item for content that was not at fault. Announcements already delete
+outright (`REQ-ADM-025`).
+
+- **Documents changed:** `01-prd.md` (`REQ-SES-023`), `14-roadmap.md` (M32), `15-backlog.md` (`STORY-SES-016`),
+  `03-permissions-rls.md`, `STATUS.md`

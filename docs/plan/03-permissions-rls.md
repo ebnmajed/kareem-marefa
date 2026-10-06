@@ -165,7 +165,7 @@ apart, and a change to what counts as a check-in changes all four at the same in
 | `members` | read (tier) | read (tier) | read (tier) | ✅ | — | — |
 | own profile | self ✅ | | | ✅ | — | — |
 | `proposals` | self ✅ | self ✅ | read | ✅ | — | — |
-| `sessions` | read published | read own + edit limited | read | ✅ | — | — |
+| `sessions` | read published | read own + edit limited | read | ✅ · ★ delete via `delete_session()` (`0215`) | — | — |
 | `session_state_transitions` | — | read own | read | read | — | — |
 | `rsvps` | self ✅ | read session's | read session's | ✅ | — | — |
 | `check_in_codes` | — | read own session | read | read | — | — |

@@ -639,6 +639,22 @@ announcement's family, never an event type.
 - A moderator, a presenter and a member are refused by the database.
 - Every existing session is a محاضرة, so every poster already rendered is unchanged.
 
+#### REQ-SES-023 — An admin deletes any event, one or many, and what it awarded is taken back
+**Serves:** owner 2026-10-06 · `DEC-271` · `REQ-SES-010` · `REQ-PTS-001` · `REQ-CRT-011` · `09` `SCR-042`, `SCR-043`
+An **مشرف المؤسسة** deletes any event — of any type and in any state — from the sessions table, one or a selection,
+or from the event's hub. A deleted event disappears for everyone, admins included: its page, its card, its story, its
+photographs on a member's profile, its place in the feed and in browse. What it awarded is taken back: every points
+row it earned is reversed (members' and companies'), every certificate it issued is revoked. An event that has not yet
+happened is cancelled first, so the members who reserved are told. **Nothing is physically erased** — the ledgers and
+the audit log keep their evidence (invariant 9). The confirmation says, before anything moves, what will be cancelled,
+whose points will be taken back and how many certificates revoked.
+**Acceptance:**
+- A deleted event is invisible to every role, and its public card answers not found.
+- Its points are reversed once — a second delete, or a later reversal, takes nothing twice.
+- Its certificates verify as revoked.
+- A moderator, a presenter and a member are refused by the database.
+- The deletion is audited with its title, its reason and what it took back.
+
 ---
 
 ## 6. RSVP and waitlist — `RSV`

@@ -11,7 +11,7 @@ import type { Locale } from "@/i18n/routing";
 import { getConsoleSessions } from "@/lib/dal/admin-sessions";
 import { listCategories, listNameableMembers } from "@/lib/dal/proposals";
 import { actionsFor, listSchedulableProposals } from "@/lib/dal/sessions";
-import { makeSessionDirectly, makeSessionFromProposal, runBulkCancel, runTransition } from "./actions";
+import { makeSessionDirectly, makeSessionFromProposal, previewDeletion, runBulkCancel, runDelete, runTransition } from "./actions";
 import { DirectSessionForm } from "./direct-session-form";
 import { SessionsTable } from "./sessions-table";
 
@@ -165,6 +165,9 @@ export default async function AdminSessionsPage({
           actionsById={actionsById}
           transitionActions={transitionActions}
           bulkCancel={admin ? runBulkCancel.bind(null, locale as Locale) : undefined}
+          // ★ REQ-SES-023 (0215): any event, one or many — the database refuses anyone but a fresh admin.
+          previewDelete={admin ? previewDeletion.bind(null, locale as Locale) : undefined}
+          runDelete={admin ? runDelete.bind(null, locale as Locale) : undefined}
         />
       </section>
     </>

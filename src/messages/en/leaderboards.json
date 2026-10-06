@@ -47,7 +47,8 @@
       "source": {
         "hosting": "Hosted a session",
         "attendance": "Company attendance share",
-        "presenting": "Company presenting share"
+        "presenting": "Company presenting share",
+        "reversal": "Points taken back"
       },
       "catalogue": {
         "heading": "What earns your company points?",
