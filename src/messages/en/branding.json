@@ -60,16 +60,6 @@
       "cardBody": "Text inside a card.",
       "posterGradientLabel": "Poster background"
     },
-    "contrast": {
-      "title": "Contrast",
-      "body": "Body text",
-      "muted": "Muted text",
-      "large": "Large text",
-      "ui": "UI element",
-      "pass": "Passes",
-      "fail": "Fails — {ratio}:1 (needs at least {threshold}:1)",
-      "ratioLabel": "Ratio {ratio}:1"
-    },
     "fonts": {
       "title": "Fonts",
       "headingLabel": "Display font",
@@ -104,15 +94,6 @@
       "invalid": "Check the values entered.",
       "notAdmin": "This action needs admin rights.",
       "badReference": "The selected logo or font is not valid.",
-      "statusContrast": "The database refused these colours: the status badges do not contrast enough with the background or surface.",
-      "statusContrastPair": {
-        "live_vs_light_canvas": "The database refused these colours: the «live» badge cannot be read on the light background.",
-        "live_vs_light_surface": "The database refused these colours: the «live» badge cannot be read on the light surface.",
-        "ended_vs_light_canvas": "The database refused these colours: the «ended» badge cannot be read on the light background.",
-        "ended_vs_light_surface": "The database refused these colours: the «ended» badge cannot be read on the light surface.",
-        "live_on_dark_vs_dark_canvas": "The database refused these colours: the «live» badge cannot be read on the dark background.",
-        "live_on_dark_vs_dark_surface": "The database refused these colours: the «live» badge cannot be read on the dark surface."
-      },
       "unknown": "Something went wrong. Try again."
     }
   }

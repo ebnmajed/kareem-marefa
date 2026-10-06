@@ -1997,6 +1997,7 @@ before publishing.
 **Serves:** DEC-008 · A40 · A25
 **هوية المؤسسة** — logo, colours, fonts — feeds the designer's templates, the certificates and the
 email templates. Changing a colour or a face is **one edit in one place**.
+★ **Amended by `DEC-272` (the owner, 2026-10-06): a template colour may be ANY colour.** The brand colours are the editor's quick-select swatches — a swatch stays linked, so a brand-kit edit still repaints every template that chose it — and any other colour is picked freely and stays as picked. The brand kit saves any palette: the status-badge contrast lock is removed.
 ★ **Amended by `DEC-201` §1 (the owner, 2026-09-30): the brand kit no longer restyles the app.** The
 app wears one visual language, «ساحة اللعب» (`REQ-UIX-049`), and a per-org app theme is incompatible
 with a fixed direction; an org's identity inside the app is its companies' team colours

@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 // always the one nothing reads. A change to a hex in the stylesheet fails here.
 //
 // ★ It is also the seam M13 extends. `branding` adds these pairs to
-// `checkContrast()`'s set and makes `save_brand_kit()` REFUSE a palette on
+// `checkContrast()`'s set and made `save_brand_kit()` REFUSE (until 0216, DEC-272, which removed the lock) a palette on
 // which a status badge fails AA (`16` §16.6) — because an org may override
 // `light_canvas` and `light_surface` to any `^#[0-9a-f]{6}$` string
 // (`0068_brand_kits.sql:69-70`: a regex, and no other constraint) while these

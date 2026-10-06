@@ -3,8 +3,6 @@
 import { useId, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import {
-  BRAND_COLOUR_TOKENS,
-  DESIGN_COLOUR_NAMES,
   FOCAL_GRID,
   focalOf,
   type AlignAxis,
@@ -26,7 +24,8 @@ import { Select } from "@/components/ui/select";
 import { Tabs } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { formatNumber } from "@/components/sessions/numerals";
-import { bind, bindPath, colourPath, FOCAL_NAMES, focalChecked, nextBackground, type ArrangeOp, type GroupOp, type TransformOp } from "@/components/designer/inspector-ops";
+import { ColourControl } from "@/components/designer/colour-control";
+import { bind, FOCAL_NAMES, focalChecked, nextBackground, type ArrangeOp, type GroupOp, type TransformOp } from "@/components/designer/inspector-ops";
 
 export type { ArrangeOp, GroupOp, TransformOp };
 
@@ -41,7 +40,9 @@ export type { ArrangeOp, GroupOp, TransformOp };
 //   · ★ align operates on the DOCUMENT's axis (DEC-096): the buttons hand «start/centre/end» to the runtime, which
 //     knows nothing of this screen's locale — an Arabic poster aligned from an English console stores the same bytes.
 //   · a text's alignment is stored logically and LABELLED from the document's direction (يمين is start on an RTL page).
-//   · letter-spacing is not editable (A30); a colour is a brand TOKEN by name, never a picker (REQ-DSG-021).
+//   · letter-spacing is not editable (A30). ★ A colour may be ANY value (DEC-272, the owner, 2026-10-06): the brand
+//     kit's colours — and the design's own — are one-tap swatches that stay linked as `{{brand.*}}` bindings, beside a
+//     picker and a `#rrggbb` field that store the literal (`colour-control.tsx`).
 //   · the binding is chosen by its Arabic name, never typed as a path (DEC-149 §4).
 
 export interface InspectorProps {
@@ -70,6 +71,9 @@ export interface InspectorProps {
   /** The tab on screen, when the editor drives it («{ } ربط» opens النص). */
   tab?: string;
   onTabChange?: (tab: string) => void;
+  /* ── DEC-272, optional ── */
+  /** The resolved brand values (`brand.canvas` → `#…`), so a brand swatch is painted the org's colour. */
+  colourValues?: Record<string, string>;
 }
 
 type Tab = "text" | "position" | "effects" | "image" | "shape" | "qr";
@@ -110,6 +114,7 @@ export function Inspector({
   bindingChoices,
   tab,
   onTabChange,
+  colourValues,
 }: InspectorProps) {
   const t = useTranslations("designer.inspector");
   const tp = useTranslations("designer.properties");
@@ -126,7 +131,7 @@ export function Inspector({
       <div className="flex flex-col">
         <p className="pb-3 text-body-sm text-fg-muted">{t("documentHint")}</p>
         <Section title={t("sections.background")}>
-          <BackgroundControl document={doc} canEdit={canEdit} onDocument={onDocument} />
+          <BackgroundControl document={doc} canEdit={canEdit} onDocument={onDocument} colourValues={colourValues} />
         </Section>
       </div>
     );
@@ -253,8 +258,8 @@ export function Inspector({
           </Select>
         </Field>
         {number(tp("fontSize"), layer.font.size, (n) => onPatchLayer(layer.id, { font: { ...layer.font, size: Math.max(1, n) } } as Partial<Layer>), 1, 1)}
-        {/* ★ A token, never a hex (REQ-DSG-021) — the brand check and 0055's guard refuse anything else. */}
-        <TokenSelect label={tp("colour")} value={layer.color ?? bind("fgHeading")} disabled={disabled} onValue={(color) => onPatchLayer(layer.id, { color } as Partial<Layer>)} />
+        {/* ★ Any colour, the brand's as linked swatches (DEC-272; `0195` dropped the database's token-only guard). */}
+        <ColourControl label={tp("colour")} value={layer.color ?? bind("fgHeading")} disabled={disabled} values={colourValues} onValue={(color) => onPatchLayer(layer.id, { color } as Partial<Layer>)} />
         <fieldset className="flex flex-col gap-2 border-0 p-0">
           <legend className="text-label text-fg-heading">{tp("align")}</legend>
           <div className="flex flex-wrap gap-2">
@@ -371,7 +376,7 @@ export function Inspector({
     : current === "effects" ? effectsBody
     : current === "image" && layer.kind === "image" && onFocal ? <ImageSection layer={layer} locked={locked} canEdit={canEdit} onPatchLayer={onPatchLayer} onFocal={onFocal} preset={focalPreset} />
     : current === "shape" && layer.kind === "shape" ? (
-      <TokenSelect label={tp("fill")} value={layer.shape.fill ?? bind("surface")} disabled={disabled} onValue={(fill) => onPatchLayer(layer.id, { shape: { ...layer.shape, fill } } as Partial<Layer>)} />
+      <ColourControl label={tp("fill")} value={layer.shape.fill ?? bind("surface")} disabled={disabled} values={colourValues} onValue={(fill) => onPatchLayer(layer.id, { shape: { ...layer.shape, fill } } as Partial<Layer>)} />
     )
     : current === "qr" && layer.kind === "qr" ? (
       <p className="text-body-sm text-fg-heading">
@@ -448,16 +453,26 @@ function Disclosure({ title, children }: { title: string; children: ReactNode })
 
 
 /**
- * The document's background — solid or DEC-127's gradient, in brand tokens
- * only. The angle is the RTL source's; the renderer mirrors it for LTR, so
+ * The document's background — solid or DEC-127's gradient, in any colour
+ * (DEC-272), the brand's as linked swatches. The angle is the RTL source's; the renderer mirrors it for LTR, so
  * nothing here ever writes a mirrored angle.
  */
-function BackgroundControl({ document: doc, canEdit, onDocument }: { document: DesignDocument; canEdit: boolean; onDocument: (next: DesignDocument) => void }) {
+function BackgroundControl({
+  document: doc,
+  canEdit,
+  onDocument,
+  colourValues,
+}: {
+  document: DesignDocument;
+  canEdit: boolean;
+  onDocument: (next: DesignDocument) => void;
+  colourValues?: Record<string, string>;
+}) {
   const t = useTranslations("designer.inspector.background");
   const bg = doc.background ?? { type: "solid" as const, color: bind("canvas") };
 
-  const tokenSelect = (label: string, value: string, onValue: (next: string) => void) => (
-    <TokenSelect label={label} value={value} disabled={!canEdit} onValue={onValue} />
+  const colourControl = (label: string, value: string, onValue: (next: string) => void) => (
+    <ColourControl label={label} value={value} disabled={!canEdit} values={colourValues} onValue={onValue} />
   );
 
   const setType = (type: string) => {
@@ -474,13 +489,13 @@ function BackgroundControl({ document: doc, canEdit, onDocument }: { document: D
         </Select>
       </Field>
       {bg.type === "solid"
-        ? tokenSelect(t("colour"), bg.color, (color) => onDocument({ ...doc, background: { type: "solid", color } }))
+        ? colourControl(t("colour"), bg.color, (color) => onDocument({ ...doc, background: { type: "solid", color } }))
         : (
             <>
-              {tokenSelect(t("from"), bg.stops[0]?.color ?? bind("surface"), (color) =>
+              {colourControl(t("from"), bg.stops[0]?.color ?? bind("surface"), (color) =>
                 onDocument({ ...doc, background: { ...bg, stops: [{ ...bg.stops[0], color }, ...bg.stops.slice(1)] } }),
               )}
-              {tokenSelect(t("to"), bg.stops[bg.stops.length - 1]?.color ?? bind("canvasRaise"), (color) =>
+              {colourControl(t("to"), bg.stops[bg.stops.length - 1]?.color ?? bind("canvasRaise"), (color) =>
                 onDocument({ ...doc, background: { ...bg, stops: [...bg.stops.slice(0, -1), { ...bg.stops[bg.stops.length - 1], color }] } }),
               )}
               <Field label={t("angle")} hint={t("angleHint")}>
@@ -501,7 +516,6 @@ function BackgroundControl({ document: doc, canEdit, onDocument }: { document: D
               </Field>
             </>
           )}
-      <p className="text-body-sm text-fg-muted">{t("tokenNote")}</p>
     </>
   );
 }
@@ -685,42 +699,5 @@ function ImageSection({
         </fieldset>
       )}
     </>
-  );
-}
-
-/**
- * A brand colour, chosen by NAME from the brand kit's tokens — never a picker,
- * never a hex (REQ-DSG-021). Shared by the background, a text's colour and a
- * shape's fill, so the rule lives once.
- */
-function TokenSelect({ label, value, disabled, onValue }: { label: string; value: string; disabled: boolean; onValue: (next: string) => void }) {
-  const t = useTranslations("designer.inspector.background");
-  const current = colourPath(value);
-  return (
-    <Field label={label}>
-      <Select value={current ?? value} disabled={disabled} onChange={(e) => onValue(bindPath(e.target.value))}>
-        {/* A legacy colour that is not a token stays visible as what it is,
-            so the admin can see it and replace it — never silently lost. */}
-        {current === null ? <option value={value}>{value}</option> : null}
-        {/* ★ Two groups, because there are two namespaces (wave 24). The org's
-            kit first — it is what most layers should follow — and the design's
-            own constants second, so a baseline poster's ground is reachable
-            after «انسخ لتعدّل». An option's value is the full PATH. */}
-        <optgroup label={t("groups.brand")}>
-          {BRAND_COLOUR_TOKENS.map((name) => (
-            <option key={name} value={`brand.${name}`}>
-              {t(`tokens.${name}`)}
-            </option>
-          ))}
-        </optgroup>
-        <optgroup label={t("groups.design")}>
-          {DESIGN_COLOUR_NAMES.map((name) => (
-            <option key={name} value={`design.${name}`}>
-              {t(`designTokens.${name}`)}
-            </option>
-          ))}
-        </optgroup>
-      </Select>
-    </Field>
   );
 }

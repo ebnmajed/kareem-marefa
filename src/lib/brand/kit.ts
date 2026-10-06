@@ -5,7 +5,6 @@ import { fillBrandDefaults } from "./defaults";
 
 export type { BrandKit, BrandColourSet, BrandFontRef, BrandLogo, SaveBrandKitInput } from "./schema";
 export { brandColourSet, brandKit, brandFontRef, brandLogo, hexColour, saveBrandKitInput } from "./schema";
-export { checkContrast, contrastRatio, AA_THRESHOLD, type ContrastCheck, type ContrastUse } from "./contrast";
 export { fillBrandDefaults } from "./defaults";
 
 // The org brand kit, read side — DEC-008, REQ-DSG-021, 06 §8.3, 02 §4.13.

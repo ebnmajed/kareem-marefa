@@ -320,7 +320,13 @@ test("★ SC 2.5.7 — every operation wave 13 added to the canvas is performed 
   done = saved(page);
   // ★ LEDGER (wave 27, PR D): since 8b001852 (wave 24, the `design.*` namespace) the colour select's options carry their
   // namespace — `brand.fgMuted`, not `fgMuted`. Selector moved; what is stored is unchanged.
-  await inspector(page).getByLabel("لون النص", { exact: true }).selectOption("brand.fgMuted");
+  // ★ LEDGER (DEC-272, 2026-10-06): the colour is no longer a select — the brand's colours are one-tap swatches in a
+  // radiogroup under the «لون النص» fieldset. Selector moved; what is stored is unchanged (`{{brand.fgMuted}}`).
+  await inspector(page)
+    .getByRole("group", { name: "لون النص", exact: true })
+    .getByRole("radiogroup", { name: "ألوان الهوية" })
+    .getByRole("radio", { name: "اللون الخافت", exact: true })
+    .click();
   await done;
   expect((await storedLayer(added.id)).color).toBe("{{brand.fgMuted}}");
 

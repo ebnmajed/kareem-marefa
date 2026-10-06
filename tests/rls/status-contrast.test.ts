@@ -2,7 +2,8 @@
 // TypeScript twin — wave 11 (DEC-166 §2), `supabase/proposed/branding/
 // 0003_status_contrast_guard.sql`.
 //
-// `save_brand_kit()`'s new guard has to run IN THE DATABASE (16 §16.6: "that
+// ★ 0216 (DEC-272): `save_brand_kit()` no longer refuses on contrast — the owner removed the lock; these functions
+// remain as a measure. When it was added, `save_brand_kit()`'s guard had to run IN THE DATABASE (16 §16.6: "that
 // is REQ-NFR-007 at the one place it can actually be enforced"), so
 // `public.wcag_relative_luminance()`/`wcag_contrast_ratio()` are a THIRD copy
 // of the WCAG 2.x §1.4.3 formula `src/lib/brand/contrast.ts` and

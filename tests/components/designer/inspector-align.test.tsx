@@ -105,7 +105,9 @@ describe("DEC-096 — align follows the DOCUMENT's axis, never the console's", (
         expect(en.stored, `${doc.direction} ${axis} ${key}`).toBe(ar.stored);
       }
     }
-  });
+    // ★ LEDGER (DEC-272): twenty-four mounts of the inspector, each now drawing the colour control's seventeen swatches —
+    // ~1 s alone, past vitest's 5 s default under the full parallel run. A timeout, not an expectation, changed.
+  }, 20_000);
 
   it("the inspector is accessible — every group named, every control labelled", async () => {
     const messages = { ...arDesigner, ...arUi };

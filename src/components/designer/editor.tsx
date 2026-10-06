@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { BRAND_COLOUR_TOKENS, DESIGN_COLOUR_NAMES, fieldsFor, fingerprintSource, paintOrder, PRESETS, resolveColour, toPhysical, type DesignDocument, type FocalPoint, type Layer, type PresetName } from "@kareem/designer-runtime";
 import { DesignerCanvas } from "@/components/designer/canvas";
 import { useDesignerEditorState } from "@/components/designer/editor-state";
 import { Inspector } from "@/components/designer/inspector";
+import { normaliseHex } from "@/components/designer/colour-control";
 import { bindPath, colourPath } from "@/components/designer/inspector-ops";
 import { ChecksPanel, checkRowCount } from "@/components/designer/checks-panel";
 import { LayersPanel } from "@/components/designer/layers-panel";
@@ -617,6 +618,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
               onFocal={s.focal}
               focalPreset={onSource ? undefined : preset}
               bindingChoices={{ ...bindingChoices, ...qrNames }}
+              colourValues={props.bindings}
               {...(layerTab && layerTab.id === (selected?.id ?? null) ? { tab: layerTab.tab } : {})}
               onTabChange={(tab) => setLayerTab({ id: selected?.id ?? null, tab })}
               {...(canEdit ? { onDuplicate: s.duplicate, onDelete: s.askDelete } : {})}
@@ -831,22 +833,33 @@ function LayerToolbar({
   );
 }
 
-/** A brand colour by NAME, never a picker (REQ-DSG-021) — its swatch beside it, painted from the resolved value as a
- *  style (never a class); the select's value is the token's name. The panel's control is `TokenSelect`. */
+/** The toolbar's colour (DEC-272): the brand's and the design's colours by NAME in the select — each stays a linked
+ *  binding — and ANY colour from the native picker that is also the swatch, storing the literal. A literal colour is the
+ *  select's «لون مخصّص» option, its code beside it in `<bdi dir="ltr">`. The panel's control is `ColourControl`. */
 function ToolbarToken({ label, value, values, onValue }: { label: string; value: string; values: Record<string, string>; onValue: (next: string) => void }) {
   const t = useTranslations("designer.inspector.background");
   const tk = useTranslations("designer.inspector.background.tokens");
   const td = useTranslations("designer.inspector.background.designTokens");
+  const tc = useTranslations("designer.inspector.colour");
   const current = colourPath(value);
+  // ★ The swatch resolves through the RUNTIME (wave 24), which consults the context and then the design's own
+  // constants — `design.*` is in no render context by construction, so `values[path]` alone would paint it empty.
+  const resolved = resolveColour({ values }, value, "");
+  const hex = normaliseHex(resolved);
   return (
     <span className="flex shrink-0 items-center gap-1.5">
-      {/* ★ The swatch resolves through the RUNTIME (wave 24), which consults the
-          context and then the design's own constants — `design.*` is in no
-          render context by construction, so `values[path]` alone would paint
-          the swatch empty for every colour on a baseline poster. */}
-      <span aria-hidden="true" className="size-5 shrink-0 rounded-sm border border-edge" style={{ background: current ? resolveColour({ values }, value, "transparent") : undefined }} />
-      <Select aria-label={label} value={current ?? value} onChange={(e) => onValue(bindPath(e.target.value))} className="w-32! shrink-0">
-        {current === null ? <option value={value}>{value}</option> : null}
+      <span className="relative inline-flex size-7 shrink-0 overflow-clip rounded-sm border border-edge bg-team" style={hex ? ({ "--team": hex } as CSSProperties) : undefined}>
+        {/* ui-lint-disable-next-line field — a floating toolbar has no room for a <Field>; the picker is named by its aria-label and the panel's ColourControl carries the labelled hex field */}
+        <input
+          type="color"
+          aria-label={`${label} · ${tc("picker")}`}
+          value={hex ?? "#000000"}
+          onChange={(e) => onValue(e.target.value.toLowerCase())}
+          className="absolute inset-0 size-full cursor-pointer opacity-0"
+        />
+      </span>
+      <Select aria-label={label} value={current ?? value} onChange={(e) => (/^(brand|design)\./.test(e.target.value) ? onValue(bindPath(e.target.value)) : undefined)} className="w-32! shrink-0">
+        {current === null ? <option value={value}>{`${tc("customOption")} · \u2066${value}\u2069`}</option> : null}
         <optgroup label={t("groups.brand")}>
           {BRAND_COLOUR_TOKENS.map((name) => (
             <option key={name} value={`brand.${name}`}>

@@ -1,7 +1,7 @@
-// WCAG 2.2 AA contrast — SCR-059 shows the ratio beside every colour pair
-// and REFUSES a save below the threshold, rather than warning (branding
-// agent definition, §"SCR-059"). Pure maths, no Supabase — importable from
-// both the server action and the client-side live preview.
+// WCAG 2.2 AA contrast — pure maths, no Supabase. ★ SCR-059 no longer shows
+// or enforces it (DEC-272, the owner, 2026-10-06: the brand kit's colours are
+// the org's, with no lock); the test suites keep using it to measure the
+// product's own tokens.
 
 /** sRGB hex → relative luminance (WCAG 2.x, §1.4.3's formula). */
 function relativeLuminance(hex: string): number {
