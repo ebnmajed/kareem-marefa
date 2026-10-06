@@ -275,38 +275,33 @@ const saveKitWith = (tx: Tx, light: Record<string, string>, dark: Record<string,
     JSON.stringify(dark),
   ]);
 
-describe("POL-save_brand_kit.status_contrast_refused", () => {
-  it("a light palette whose canvas equals --color-live is refused 55000, no row written", async () => {
+// ★ 0216 (DEC-272, the owner's ruling «remove it entirely»): the contrast lock is gone — a palette on which a status
+// badge would read below 4.5:1 now SAVES, light and dark alike, and nothing is refused for colour.
+describe("POL-save_brand_kit.no_contrast_lock", () => {
+  it("★ a light palette whose canvas equals --color-live saves (it was refused 55000 before 0216)", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
       await tx.as(f.a.admin.claims);
-      // #8a5a1f is globals.css's own --color-live (:51) — contrast against
-      // itself is exactly 1:1, nowhere near 4.5:1.
-      const badLight = { ...LIGHT, canvas: "#8a5a1f" };
-      let detail: string | undefined;
-      try {
-        await saveKitWith(tx, badLight, DARK);
-      } catch (e) {
-        expect((e as { code?: string }).code).toBe("55000");
-        detail = (e as { detail?: string }).detail;
-      }
-      // The failing pair's key, so the screen's toast can name the field —
-      // never a bare "failed", see actions.ts's mapping.
-      expect(detail).toBe("live_vs_light_canvas");
-
-      await tx.asOwner();
-      const rows = await tx.q(`select id from public.brand_kits where org_id = $1`, [f.a.id]);
-      expect(rows).toEqual([]);
+      const [row] = await saveKitWith(tx, { ...LIGHT, canvas: "#8a5a1f" }, DARK);
+      expect(row.org_id).toBe(f.a.id);
     });
   });
 
-  it("the same failure on surface alone (canvas untouched) is refused too", async () => {
+  it("a surface equal to --color-ended saves", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
       await tx.as(f.a.admin.claims);
-      // #5b6780 is globals.css's own --color-ended (:54).
-      const badLight = { ...LIGHT, surface: "#5b6780" };
-      expect(await errorCode(() => saveKitWith(tx, badLight, DARK))).toBe("55000");
+      const [row] = await saveKitWith(tx, { ...LIGHT, surface: "#5b6780" }, DARK);
+      expect(row.org_id).toBe(f.a.id);
+    });
+  });
+
+  it("a dark canvas equal to --color-live-on-dark saves", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.as(f.a.admin.claims);
+      const [row] = await saveKitWith(tx, LIGHT, { ...DARK, canvas: "#d2a86b" });
+      expect(row.org_id).toBe(f.a.id);
     });
   });
 });
@@ -328,21 +323,6 @@ describe("POL-save_brand_kit.status_contrast_accepted", () => {
   });
 });
 
-describe("POL-save_brand_kit.status_contrast_dark", () => {
-  it("a dark palette whose dark_canvas equals --color-live-on-dark is refused; one far from it saves", async () => {
-    await withTx(async (tx) => {
-      const f = await setup(tx);
-      await tx.as(f.a.admin.claims);
-      // #d2a86b is globals.css's own --color-live-on-dark (:53).
-      const badDark = { ...DARK, canvas: "#d2a86b" };
-      expect(await errorCode(() => saveKitWith(tx, LIGHT, badDark))).toBe("55000");
-
-      // DARK (#0a0a0a canvas, #1a1a1a surface) is far from #d2a86b and saves.
-      const [row] = await saveKitWith(tx, LIGHT, DARK);
-      expect(row.org_id).toBe(f.a.id);
-    });
-  });
-});
 
 describe("POL-reset_brand_kit.admin_only", () => {
   it("a moderator is refused; an admin's reset deletes the row and is audited", async () => {
