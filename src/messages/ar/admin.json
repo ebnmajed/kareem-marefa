@@ -201,7 +201,31 @@
       "bulkCancelFailed": "{count, plural, zero {} one {تعذّر إلغاء جلسة واحدة} two {تعذّر إلغاء جلستين} few {تعذّر إلغاء {value} جلسات} many {تعذّر إلغاء {value} جلسة} other {تعذّر إلغاء {value} جلسة}}",
       "completeConfirmTitle": "إنهاء «<t>{title}</t>»؟",
       "completeConfirmAction": "أنهِ الجلسة",
-      "rowActionsGroup": "إجراءات الجلسة"
+      "rowActionsGroup": "إجراءات الجلسة",
+      "delete": {
+        "rowAction": "احذف",
+        "bulkAction": "احذف المحدّد",
+        "hubAction": "احذف الفعالية",
+        "titleOne": "حذف «<t>{title}</t>»؟",
+        "titleMany": "{count, plural, zero {حذف الفعاليات؟} one {حذف فعالية واحدة؟} two {حذف فعاليتين؟} few {حذف {value} فعاليات؟} many {حذف {value} فعالية؟} other {حذف {value} فعالية؟}}",
+        "toCancel": "{count, plural, zero {} one {ستُلغى فعالية قادمة ويُبلَّغ من حجز} two {ستُلغى فعاليتان قادمتان ويُبلَّغ من حجز} few {ستُلغى {value} فعاليات قادمة ويُبلَّغ من حجز} many {ستُلغى {value} فعالية قادمة ويُبلَّغ من حجز} other {ستُلغى {value} فعالية قادمة ويُبلَّغ من حجز}}",
+        "members": "{count, plural, zero {} one {ستُسحب نقاط عضو واحد} two {ستُسحب نقاط عضوين} few {ستُسحب نقاط {value} أعضاء} many {ستُسحب نقاط {value} عضوًا} other {ستُسحب نقاط {value} عضو}}",
+        "certificates": "{count, plural, zero {} one {ستُلغى شهادة واحدة} two {ستُلغى شهادتان} few {ستُلغى {value} شهادات} many {ستُلغى {value} شهادة} other {ستُلغى {value} شهادة}}",
+        "impactLoading": "جارٍ حساب ما سيُسحب…",
+        "impactFailed": "تعذّرت قراءة ما سيُسحب.",
+        "reasonLabel": "السبب",
+        "confirm": "احذف",
+        "pending": "جارٍ الحذف…",
+        "keep": "تراجع",
+        "close": "إغلاق",
+        "done": "{count, plural, zero {لم تُحذف أي فعالية} one {حُذفت الفعالية} two {حُذفت فعاليتان} few {حُذفت {value} فعاليات} many {حُذفت {value} فعالية} other {حُذفت {value} فعالية}}",
+        "donePoints": "سُحبت نقاطها",
+        "doneCertificates": "{count, plural, zero {} one {أُلغيت شهادة واحدة} two {أُلغيت شهادتان} few {أُلغيت {value} شهادات} many {أُلغيت {value} شهادة} other {أُلغيت {value} شهادة}}",
+        "failedNamed": "تعذّر حذف: {list}",
+        "refused": "لا تملك صلاحية الحذف.",
+        "tooMany": "حدّد 200 فعالية على الأكثر.",
+        "failed": "تعذّر الحذف — حاول مرة أخرى."
+      }
     },
     "venues": {
       "title": "الأماكن",
@@ -669,7 +693,8 @@
           "presenter_removed": "إزالة مُقدِّم من جلسة",
           "certificate_mode_changed": "تغيير وضع الشهادات لجلسة",
           "renamed": "تغيير اسم جلسة",
-          "event_type_changed": "تغيير نوع الفعالية لجلسة"
+          "event_type_changed": "تغيير نوع الفعالية لجلسة",
+          "deleted": "حذف فعالية"
         },
         "storage": {
           "prefix_violation": "مخالفة في مسارات التخزين"

@@ -145,6 +145,18 @@ const LEDGER_SOURCE_AR: Record<string, string> = {
   manual_adjustment: "تعديل يدوي",
   reversal: "عكس قيد",
 };
+/**
+ * ★ 0215 (REQ-SES-023): the sessions among these that still exist for the caller. `sessions_read` hides a deleted
+ * session from everyone, admins included; a row of a deleted event's activity (a reservation, a check-in, a rating
+ * aggregate) is not exported. Points and certificates keep theirs: a reversal and a revoked certificate are evidence.
+ */
+async function liveSessionIds(supabase: Awaited<ReturnType<typeof sessionClient>>["supabase"], orgId: string, rows: readonly unknown[]): Promise<Set<string>> {
+  if (rows.length === 0) return new Set();
+  // The org's sessions, not an `in (…)` of every row's id — that list has no bound and would outgrow a URL.
+  const found = await readAll("sessions (live)", (from, to) => supabase.from("sessions").select("id").eq("org_id", orgId).order("id").range(from, to));
+  return new Set((found ?? []).map((s) => (s as { id: string }).id));
+}
+
 const CERT_KIND_AR: Record<string, string> = { attendance: "حضور", presenter: "تقديم", achievement: "إنجاز" };
 
 const ATTENDANCE_HEADERS_AR = (timeZone: string) => ["الاسم", "حالة الحجز", "سجَّل حضوره", whenHeader("وقت الوصول", timeZone), "طريقة التسجيل", "علامة يدوية"];
@@ -333,7 +345,8 @@ export async function exportRsvpsCsv(locale: string): Promise<string | null> {
   );
   const prefs = await getOrgPrefs(locale);
 
-  const rows = (data ?? []).map((r) => {
+  const live = await liveSessionIds(supabase, session.orgId, data ?? []);
+  const rows = (data ?? []).filter((r) => live.has(r.session_id as string)).map((r) => {
     const s = (r as unknown as { sessions: { title: string } | null }).sessions;
     const m = (r as unknown as { members: { display_name: string | null } | null }).members;
     return [
@@ -373,7 +386,8 @@ export async function exportAllAttendanceCsv(locale: string): Promise<string | n
   );
   const prefs = await getOrgPrefs(locale);
 
-  const rows = (data ?? []).map((r) => {
+  const live = await liveSessionIds(supabase, session.orgId, data ?? []);
+  const rows = (data ?? []).filter((r) => live.has(r.session_id as string)).map((r) => {
     const s = (r as unknown as { sessions: { title: string } | null }).sessions;
     const m = (r as unknown as { members: { display_name: string | null } | null }).members;
     return [
@@ -413,7 +427,8 @@ export async function exportRatingsCsv(locale: string): Promise<string | null> {
   );
   const num = (n: number) => formatNumber(n);
 
-  const rows = (data ?? []).map((r) => {
+  const live = await liveSessionIds(supabase, session.orgId, data ?? []);
+  const rows = (data ?? []).filter((r) => live.has(r.session_id as string)).map((r) => {
     const s = (r as unknown as { sessions: { title: string } | null }).sessions;
     return [s?.title ?? "", num(r.rating_count as number), num(r.session_avg as number), num(r.presenter_avg as number)];
   });

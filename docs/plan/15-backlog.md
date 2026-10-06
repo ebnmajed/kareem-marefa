@@ -1929,6 +1929,14 @@ category; a trigger queues `publish_announcement` at the time, and the job sends
 screen and the «create» chooser. Done when a scheduled announcement appears and notifies at its time, a moved time
 moves the send, and an edit after it went live sends nothing.
 
+#### STORY-SES-016 — An admin deletes events, one or many
+**Covers:** `REQ-SES-023` · **M32** · **M** · lead
+`sessions.deleted_at`; `sessions_read`, `photos_read` and story visibility hide a deleted event; `delete_session()`
+and `delete_sessions()`, admin only and audited — cancel first if it has not happened, reverse the points, revoke the
+certificates, dismiss its open reports; `session_deletion_impact()` for the confirm. Done when a completed event with
+points and certificates is deleted, every balance drops by what it gave, its certificates verify as revoked, and a
+member sees it nowhere.
+
 #### STORY-SES-015 — A session has an event type, and its poster follows it
 **Covers:** `REQ-SES-022` · **M31** · **M** · lead
 An enum `event_type` and a column `sessions.event_type` defaulting to `talk`; `set_event_type()`, admin only and

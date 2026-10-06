@@ -206,6 +206,9 @@ export async function listCommentReportQueue(locale: string, state: ReportState)
   for (const [commentId, group] of groups) {
     const c = commentById.get(commentId);
     if (!c) continue;
+    // ★ 0215 (REQ-SES-023): a deleted event's session is hidden from everyone, so its title does not come back — its
+    // comments are not a moderator's business any more (its open reports were dismissed with it).
+    if (!sessionTitles.has(c.session_id)) continue;
     const oldestFirst = [...group].sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));
     // Closed: the decision, read from the row that recorded it — the closed read is ordered by `resolved_at`, so the
     // group's first row is the latest decision (never «the last row» by insertion time).
@@ -587,7 +590,8 @@ async function frameQueueItems(supabase: Supabase, now: number): Promise<{ taked
   const items = (kind: PhotoQueueKind, groups: Map<string, { who: string; at: string }[]>): PhotoQueueItem[] =>
     [...groups].flatMap(([id, group]) => {
       const f = byId.get(id);
-      if (!f) return [];
+      // ★ 0215 (REQ-SES-023): a frame of a deleted event leaves the queue with it.
+      if (!f || !sessionTitles.has(f.session_id)) return [];
       return [
         {
           photoId: `${FRAME_SEGMENT}${id}`,

@@ -83,6 +83,19 @@ export interface PointsHistory {
   timeZone: string;
 }
 
+/**
+ * ★ REQ-SES-023 (0215): which of these sessions the caller can still see. A deleted event is hidden by `sessions_read`
+ * from everyone, but `missed_attendance_days()` and `capped_award_explanations()` are definer reads that do not ask —
+ * so an explanation for an event that no longer exists (its awards already reversed) is dropped here, never drawn.
+ */
+async function visibleSessionIds(supabase: Awaited<ReturnType<typeof sessionClient>>["supabase"], ids: string[]): Promise<Set<string>> {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return new Set();
+  const { data, error } = await supabase.from("sessions").select("id").in("id", unique);
+  if (error) throw new Error(`sessions (visible): ${error.message}`);
+  return new Set(((data ?? []) as { id: string }[]).map((r) => r.id));
+}
+
 // ★ wave 20 (DEC-218, the lead's exception to add-only for these lines): the month was computed in UTC here while it
 // claimed to be «the org's own month» — a row at 23:30 in Riyadh on the last day of a month fell into the next one.
 // The bounds are the org's now: `orgMonthRange()`, below, which the rebuilt `getPointsLedger()` reads too.
@@ -172,7 +185,10 @@ export async function getPointsHistory(locale: string, filters: PointsHistoryFil
     day_starts_at: string;
   };
   const missedBySession = new Map<string, MissedAttendance>();
-  for (const r of (missedRes.data ?? []) as MissedRow[]) {
+  const missedRows = (missedRes.data ?? []) as MissedRow[];
+  const missedVisible = await visibleSessionIds(supabase, missedRows.map((r) => r.session_id));
+  for (const r of missedRows) {
+    if (!missedVisible.has(r.session_id)) continue;
     if (filters.sessionId && r.session_id !== filters.sessionId) continue;
     if (range && (r.session_completed_at < range.gte || r.session_completed_at >= range.lt)) continue;
     const existing = missedBySession.get(r.session_id);
@@ -1002,8 +1018,13 @@ export async function getPointsLedger(locale: string, opts: { sessionId?: string
     (!sessionId || sid === sessionId) && (!range || (at >= range.gte && at < range.lt)) && (!oldest || at >= oldest);
 
   type MissedRow = { session_id: string; session_title: string; session_completed_at: string; day_count: number; day_position: number; day_starts_at: string };
+  type CappedRow = { session_id: string; rule_key: string; cap_per_session: number; first_unpaid_at: string };
+  const missedRows = (missedRes.data ?? []) as MissedRow[];
+  const cappedRows = (cappedRes.data ?? []) as CappedRow[];
+  const visible = await visibleSessionIds(supabase, [...missedRows, ...cappedRows].map((r) => r.session_id));
   const missedBySession = new Map<string, MissedAttendance>();
-  for (const r of (missedRes.data ?? []) as MissedRow[]) {
+  for (const r of missedRows) {
+    if (!visible.has(r.session_id)) continue;
     if (!inView(r.session_completed_at, r.session_id)) continue;
     const day = { position: r.day_position, startsAt: r.day_starts_at };
     const existing = missedBySession.get(r.session_id);
@@ -1013,9 +1034,8 @@ export async function getPointsLedger(locale: string, opts: { sessionId?: string
 
   const rules = (rulesRes.data ?? []) as Array<{ action_key: string; points: number; enabled: boolean; reason_ar: string; cap_per_session: number | null }>;
   const reasonOf = new Map(rules.map((r) => [r.action_key, r.reason_ar]));
-  type CappedRow = { session_id: string; rule_key: string; cap_per_session: number; first_unpaid_at: string };
-  const caps: CapExplanation[] = ((cappedRes.data ?? []) as CappedRow[])
-    .filter((r) => inView(r.first_unpaid_at, r.session_id))
+  const caps: CapExplanation[] = cappedRows
+    .filter((r) => visible.has(r.session_id) && inView(r.first_unpaid_at, r.session_id))
     .map((r) => ({
       sessionId: r.session_id,
       sessionTitle: titleById.get(r.session_id) ?? null,

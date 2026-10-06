@@ -201,7 +201,31 @@
       "bulkCancelFailed": "{count, plural, =0 {} one {1 could not be cancelled} other {{value} could not be cancelled}}",
       "completeConfirmTitle": "Complete “<t>{title}</t>”?",
       "completeConfirmAction": "Complete the session",
-      "rowActionsGroup": "Session actions"
+      "rowActionsGroup": "Session actions",
+      "delete": {
+        "rowAction": "Delete",
+        "bulkAction": "Delete selected",
+        "hubAction": "Delete event",
+        "titleOne": "Delete “<t>{title}</t>”?",
+        "titleMany": "{count, plural, one {Delete one event?} other {Delete {value} events?}}",
+        "toCancel": "{count, plural, =0 {} one {One upcoming event is cancelled and everyone who reserved is told} other {{value} upcoming events are cancelled and everyone who reserved is told}}",
+        "members": "{count, plural, =0 {} one {Points are taken back from one member} other {Points are taken back from {value} members}}",
+        "certificates": "{count, plural, =0 {} one {One certificate is revoked} other {{value} certificates are revoked}}",
+        "impactLoading": "Working out what is taken back…",
+        "impactFailed": "Could not read what would be taken back.",
+        "reasonLabel": "Reason",
+        "confirm": "Delete",
+        "pending": "Deleting…",
+        "keep": "Keep",
+        "close": "Close",
+        "done": "{count, plural, =0 {No event was deleted} one {Event deleted} other {{value} events deleted}}",
+        "donePoints": "points taken back",
+        "doneCertificates": "{count, plural, =0 {} one {one certificate revoked} other {{value} certificates revoked}}",
+        "failedNamed": "Could not delete: {list}",
+        "refused": "You are not allowed to delete events.",
+        "tooMany": "Select 200 events at most.",
+        "failed": "Could not delete — try again."
+      }
     },
     "venues": {
       "title": "Venues",
@@ -669,7 +693,8 @@
           "presenter_removed": "Presenter removed from a session",
           "certificate_mode_changed": "Session certificate mode changed",
           "renamed": "Session renamed",
-          "event_type_changed": "Session event type changed"
+          "event_type_changed": "Session event type changed",
+          "deleted": "Event deleted"
         },
         "storage": {
           "prefix_violation": "Storage path violation"

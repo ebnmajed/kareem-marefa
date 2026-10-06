@@ -30,7 +30,7 @@ export async function CompanyPointsBreakdownSection({ breakdown, locale, timeZon
   }
 
   const sourceLabel = (source: string) =>
-    source === "company_hosting" ? t("source.hosting") : source === "company_attendance_pct" ? t("source.attendance") : t("source.presenting");
+    source === "reversal" ? t("source.reversal") : source === "company_hosting" ? t("source.hosting") : source === "company_attendance_pct" ? t("source.attendance") : t("source.presenting");
   const enabled = breakdown.catalogue.filter((entry) => entry.enabled);
 
   return (
@@ -67,6 +67,13 @@ export async function CompanyPointsBreakdownSection({ breakdown, locale, timeZon
                 title={sourceLabel(row.source)}
                 meta={
                   <>
+                    {/* ★ 0215: a reversal says why — «حُذفت الفعالية» or the admin's reason — its event may be gone. */}
+                    {row.source === "reversal" ? (
+                      <>
+                        <bdi>{row.reason}</bdi>
+                        {" · "}
+                      </>
+                    ) : null}
                     {row.sessionTitle ? (
                       <>
                         <bdi>{row.sessionTitle}</bdi>

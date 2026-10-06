@@ -224,7 +224,8 @@ export interface CompanyLedgerRow {
   occurredAt: string;
   amount: number;
   reason: string;
-  source: "company_hosting" | "company_attendance_pct" | "company_presenting_pct";
+  /** ★ `reversal` (0215, REQ-SES-023): an award taken back — its `reason` says why, its event may no longer exist. */
+  source: "company_hosting" | "company_attendance_pct" | "company_presenting_pct" | "reversal";
   sessionId: string | null;
   sessionTitle: string | null;
   meta: { attended?: number; presenting?: number; active_members?: number; percent?: number } | null;

@@ -35,3 +35,6 @@ export const emptyCreateState: CreateSessionState = emptyFormState<SessionField>
 export const emptyTransitionState: TransitionState = { error: null, done: false };
 
 export const emptyBulkCancelState: BulkCancelState = { error: null, done: [], failed: [], attempt: 0 };
+
+// ★ The delete's round trip (REQ-SES-023, 0215) lives beside the dialog that reads it, so the hub uses the same one.
+export { emptyDeleteState, type DeleteError, type DeleteState } from "@/components/admin/sessions/delete-state";

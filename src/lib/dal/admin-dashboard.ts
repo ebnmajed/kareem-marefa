@@ -146,7 +146,8 @@ export async function getAdminDashboardData(locale: string, nowDate: Date = new 
     supabase.from("points_ledger").select("amount, occurred_at").eq("org_id", session.orgId),
     supabase
       .from("session_presenters")
-      .select("member_id, accepted, members(id, display_name)")
+      // ★ 0215 (REQ-SES-023): `!inner` drops a slot whose session `sessions_read` hides — a deleted event counts for nobody.
+      .select("member_id, accepted, members(id, display_name), sessions!inner(id)")
       .eq("org_id", session.orgId)
       .eq("accepted", true),
     supabase.from("sessions").select("category_id, categories(id, name)").eq("org_id", session.orgId).not("category_id", "is", null),
@@ -239,7 +240,7 @@ export async function getAdminDashboardData(locale: string, nowDate: Date = new 
   // to accepted=true and joins `members`, and company is one hop further.
   const { data: companyPresenterRows, error: compErr } = await supabase
     .from("session_presenters")
-    .select("members!inner(company_id, companies(id, name))")
+    .select("members!inner(company_id, companies(id, name)), sessions!inner(id)")
     .eq("org_id", session.orgId)
     .eq("accepted", true);
   if (compErr) throw new Error(`session_presenters: ${compErr.message}`);
