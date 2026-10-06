@@ -1,4 +1,4 @@
-**Last updated:** 2026-10-06 · **Branch:** `fix/logo-and-camera` · ★ **`DEC-274`** — an org with no logo draws the platform mark (no more dashed box in posters and share previews); the camera allowed to this origin on every route, so adding a story works after sign-in without a reload. No migration. **`0217` merged as #98 (`2ed4c2ae`), production `0217`.** Next migration **`0218`**, next decision **`DEC-275`**. Before that: `DEC-273` / `0217` (share-link metadata).
+**Last updated:** 2026-10-06 · **Branch:** `fix/org-deletion-history` · ★ **`DEC-275` / `0218`** — an org's deletion was blocked by another org's settings history naming one of its members, so the platform admin's login stayed bound to a deleted org and could not join another; fixed. **#99 merged (`8fc85667`), production `0217`.** Next migration **`0219`**, next decision **`DEC-276`**. Before that: `DEC-274` (platform mark, camera).
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 

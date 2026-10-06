@@ -10571,3 +10571,23 @@ And a race: the capture's video element mounts in a dialog portal a render after
 left the preview black. The stream is now attached by a callback ref, whichever arrives first.
 
 - **Documents changed:** `STATUS.md`
+
+## DEC-275 — An org's deletion is never blocked by another org's history, so a platform admin can join an org again · `0218`
+
+- **Date:** 2026-10-06 · **Decided by:** the owner («fix the super admin thing») · **Amends:** nothing; repairs `REQ-ADM-003`'s deletion · **Migration:** `0218`
+
+**The ask:** the super admin «can't be part of an organisation» although `DEC-268` / `0214` allowed it.
+
+**What was wrong, measured on production.** 0214 works. The owner's login was bound to their member row in «يمان», an org
+they deleted on 2026-10-05 — and `JOB-delete_org` had failed 13 times on `scoring_config_history_actor_id_fkey`. One login
+binds one member row (`members.auth_user_id` is unique, A2), so while the deleted org survived, the owner's invitation to
+«مجموعة شبه الجزيرة» (an unbound row) could never bind. The 16 blocking history rows belonged to «مجموعة شبه الجزيرة»: the
+owner had CREATED that org as platform admin, its seeded settings were written under their session, and the history
+triggers recorded `auth_member_id()` — their member row in «يمان» — as the actor of another org's change.
+
+**The fix (`0218`):** `actor_id` is `on delete set null`, and a `before insert` trigger keeps an actor only when they belong
+to the row's own org. No data fix: the stuck job's next retry deletes «يمان», and at the owner's next sign-in
+`provision_member()` binds the waiting row. The census of every non-cascading reference to the deleted org's members
+found this one and no other.
+
+- **Documents changed:** `03-permissions-rls.md`, `STATUS.md`
