@@ -6,7 +6,8 @@
 // public site and the sign-in pages still may not — their header is what it was, byte for byte.
 import { expect, test } from "@playwright/test";
 
-const REFUSED = "camera=(), microphone=(), geolocation=()";
+// ★ DEC-274: one policy on every route. The policy is fixed when a document loads and the app is reached by
+// client-side navigation from sign-in, so a route-scoped grant left the camera refused inside the app.
 const APP = "camera=(self), microphone=(self), geolocation=()";
 
 // On the UNCONFIGURED build (DEC-038, CI's «platform unconfigured» job) the proxy answers every platform path — sign-in
@@ -14,10 +15,10 @@ const APP = "camera=(self), microphone=(self), geolocation=()";
 // public routes can be asked there. They are the half that must never change, and they are asked on both builds.
 const UNCONFIGURED = process.env.E2E_PLATFORM_UNCONFIGURED === "1";
 
-test("the public routes and sign-in keep the camera refused", async ({ request }) => {
+test("★ the public routes and sign-in carry the same policy as the app, so navigating in keeps the camera", async ({ request }) => {
   for (const path of UNCONFIGURED ? ["/ar", "/en", "/ar/register"] : ["/ar", "/en", "/ar/register", "/ar/sign-in", "/ar/legal/privacy"]) {
     const response = await request.get(path, { maxRedirects: 0 });
-    expect(response.headers()["permissions-policy"], path).toBe(REFUSED);
+    expect(response.headers()["permissions-policy"], path).toBe(APP);
   }
 });
 
@@ -29,5 +30,5 @@ test("an /app path allows the camera and the microphone to this origin only, and
   expect(response.headers()["permissions-policy"]).toBe(APP);
   const landed = await request.get("/ar/app");
   expect(landed.url()).toContain("/sign-in");
-  expect(landed.headers()["permissions-policy"]).toBe(REFUSED);
+  expect(landed.headers()["permissions-policy"]).toBe(APP);
 });

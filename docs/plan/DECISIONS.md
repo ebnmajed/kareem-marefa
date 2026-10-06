@@ -10547,3 +10547,27 @@ because `DEC-066` kept the abstract inside the org, and `session_public_card()` 
 
 - **Documents changed:** `01-prd.md` (`REQ-SES-024`), `03-permissions-rls.md` (`POL-sessions.public_card.abstract`),
   `14-roadmap.md` (M33), `15-backlog.md` (`STORY-SES-017`), `STATUS.md`
+
+## DEC-274 — An org with no logo draws the platform's mark; the camera is allowed to this origin on every route
+
+- **Date:** 2026-10-06 · **Decided by:** the owner · **Amends:** `REQ-DSG-006` (for the org logo alone), `REQ-STO-011`'s header · **Migration:** none
+
+**1. «The logo doesn't seem to load».** Measured on production: an org that uploaded a logo (مجموعة شبه الجزيرة) renders
+it; the demo org has none, and the renderer drew `REQ-DSG-006`'s dashed placeholder — meant for the canvas — into the
+exported poster and so into every shared link's preview. **Asked and answered: the platform logo.** An image layer bound
+to `brand.logoAssetId` with nothing to bind draws the platform mark (`PLATFORM_MARK_DATA_URI`, a 376 × 512 PNG generated
+from `docs/design/assets/brand/logo/png/logo-512.png` — PNG, never SVG, invariant 11); an org's own logo always wins;
+every other unbound image keeps the placeholder. The checks panel says «لم يُرفع شعار مؤسستك بعد» on the logo layer, so the
+missing upload is still seen before export. **No parity golden moves** (0.000 %); the forty-one baseline HTML hashes in
+`designer-derive-untouched.test.ts` re-pin for this one reason, and the seven uploaded-poster hashes do not move.
+Existing posters re-render with the mark the next time each regenerates.
+
+**2. «An issue for the camera access when wanting to add a story».** `proxy.ts` sent `camera=(self)` on `/app` paths and
+`camera=()` everywhere else. A Permissions-Policy is fixed when a **document** loads, and the app is reached by client-side
+navigation from sign-in and from the public pages: a document that loaded as `/ar/sign-in` kept `camera=()` inside the
+app, and `getUserMedia` failed with `NotAllowedError` before any prompt until a reload. **One policy on every route now:
+`camera=(self), microphone=(self), geolocation=()`** — still no third party, and the browser still asks the person.
+And a race: the capture's video element mounts in a dialog portal a render after the stream can resolve, so a quick grant
+left the preview black. The stream is now attached by a callback ref, whichever arrives first.
+
+- **Documents changed:** `STATUS.md`

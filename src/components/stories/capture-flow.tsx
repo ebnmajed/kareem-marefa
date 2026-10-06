@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import type { StoryCaptureMode, StoryCaptureState } from "@/components/ui";
@@ -45,6 +45,19 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
   const locale = useLocale();
   const router = useRouter();
   const live = useRef<HTMLVideoElement | null>(null);
+  /** The live preview's element, given the stream WHENEVER either arrives first. ★ The capture is a dialog whose
+   *  content mounts in a portal a render after this component, so a stream that resolved quickly (a permission
+   *  already granted) found no element and the preview stayed black (DEC-274). A callback ref closes that race. */
+  const attach = useCallback((el: HTMLVideoElement | null) => {
+    live.current = el;
+    if (!el || !stream.current || el.srcObject === stream.current) return;
+    try {
+      el.srcObject = stream.current;
+      void el.play?.()?.catch(() => undefined);
+    } catch {
+      // An element that refuses the stream is not a refused camera: the shutter still works from `live`.
+    }
+  }, []);
   const stream = useRef<MediaStream | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const started = useRef(0);
@@ -81,7 +94,7 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
         if (cancelled) return s.getTracks().forEach((tr) => tr.stop());
         stream.current = s;
         setCameraError(null);
-        if (live.current) live.current.srcObject = s;
+        attach(live.current);
       })
       .catch((e: unknown) => {
         if (!cancelled) setCameraError(e instanceof DOMException ? e.name : "failed");
@@ -91,7 +104,7 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
       stream.current?.getTracks().forEach((tr) => tr.stop());
       stream.current = null;
     };
-  }, [facing, draft]);
+  }, [facing, draft, attach]);
 
   // The elapsed figure while recording, and the stop at the limit.
   useEffect(() => {
@@ -230,7 +243,7 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
         <video src={draftUrl} playsInline controls className="h-full w-full object-contain" />
       )
     ) : (
-      <video ref={live} autoPlay muted playsInline data-camera-error={cameraError ?? undefined} className="h-full w-full object-cover" />
+      <video ref={attach} autoPlay muted playsInline data-camera-error={cameraError ?? undefined} className="h-full w-full object-cover" />
     );
 
   const denied = cameraError !== null && !draft && state === "idle";
