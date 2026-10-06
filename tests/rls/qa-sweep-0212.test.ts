@@ -1,8 +1,8 @@
 // 0212 — the QA sweep's database findings (DEC-265) and the owner's rulings (DEC-266). Each case is run for the person
 // the change refuses AND for the person it must still serve, so a fix that narrows too far fails here too.
 //
-//   POL-claims.inactive_carries_no_org · POL-auth_hook.platform_admin_is_never_a_member ·
-//   POL-members.no_platform_admin · POL-realtime.session_insert_dropped · POL-org_domains.not_another_orgs ·
+//   POL-claims.inactive_carries_no_org · POL-auth_hook.platform_admin_may_be_member (0214) ·
+//   POL-realtime.session_insert_dropped · POL-org_domains.not_another_orgs ·
 //   POL-photos.download_staff_only · POL-materials_storage.read_by_path · POL-materials_storage.delete_unrecorded
 
 import { afterAll, describe, expect, it } from "vitest";
@@ -11,7 +11,6 @@ import { seed } from "./fixture";
 
 afterAll(() => pool.end());
 
-const INVALID = "22023";
 
 async function hook(tx: Tx, userId: string) {
   const [{ out }] = await tx.q<{ out: { claims: { app_metadata: Record<string, unknown> } } }>(
@@ -75,23 +74,30 @@ describe("POL-claims.inactive_carries_no_org", () => {
   });
 });
 
-describe("POL-auth_hook.platform_admin_is_never_a_member", () => {
-  it("★ a platform admin with a member row (from before the ruling) gets no member claims", async () => {
+// ★ 0214 (DEC-268) reverses 0212's «a platform admin is never a member»: the owner had asked for the opposite.
+describe("POL-auth_hook.platform_admin_may_be_member", () => {
+  it("★ a platform admin with a member row gets that row's claims, and keeps platform_admin", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       await tx.asOwner();
-      await tx.q(`alter table public.members disable trigger members_not_platform_admin`);
-      await tx.q(`insert into public.members (org_id, auth_user_id, email, display_name, org_role) values ($1, $2, $3, 'مشرف المنصة', 'admin')`, [
-        f.a.id,
-        f.platformAdmin.authUserId,
-        f.platformAdmin.email,
-      ]);
-      await tx.q(`alter table public.members enable trigger members_not_platform_admin`);
+      const [{ id }] = await tx.q<{ id: string }>(
+        `insert into public.members (org_id, auth_user_id, email, display_name, org_role) values ($1, $2, $3, 'مشرف المنصة', 'admin') returning id`,
+        [f.a.id, f.platformAdmin.authUserId, f.platformAdmin.email],
+      );
       const app = await hook(tx, f.platformAdmin.authUserId);
-      expect(app.platform_admin).toBe(true);
-      expect(app.org_id).toBeUndefined();
-      expect(app.member_id).toBeUndefined();
-      expect(app.org_role).toBeUndefined();
+      expect(app).toMatchObject({ platform_admin: true, org_id: f.a.id, member_id: id, org_role: "admin", status: "active" });
+    });
+  });
+
+  it("★ provision_member() provisions a platform admin whose address an org lists, like anyone else", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await tx.asOwner();
+      const [{ domain }] = await tx.q<{ domain: string }>(`select split_part($1, '@', 2) as domain`, [f.platformAdmin.email]);
+      await tx.q(`insert into public.org_domains (org_id, domain) values ($1, $2) on conflict do nothing`, [f.a.id, domain]);
+      await tx.as({ sub: f.platformAdmin.authUserId, platform_admin: true });
+      const [{ out }] = await tx.q<{ out: { status: string; org_id?: string } }>(`select public.provision_member() as out`);
+      expect(out).toMatchObject({ status: "provisioned", org_id: f.a.id });
     });
   });
 
@@ -99,41 +105,7 @@ describe("POL-auth_hook.platform_admin_is_never_a_member", () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       await tx.asOwner();
-      const app = await hook(tx, f.a.admin.authUserId);
-      expect(app).toMatchObject({ org_id: f.a.id, member_id: f.a.admin.memberId, org_role: "admin", status: "active" });
-    });
-  });
-
-  it("★ provision_member() never provisions a platform admin: it answers no_match and writes no row", async () => {
-    await withTx(async (tx) => {
-      const f = await seed(tx);
-      await tx.as({ sub: f.platformAdmin.authUserId, platform_admin: true });
-      expect(await tx.q(`select public.provision_member() as out`)).toEqual([{ out: { status: "no_match" } }]);
-      await tx.asOwner();
-      expect(await tx.q(`select id from public.members where auth_user_id = $1`, [f.platformAdmin.authUserId])).toEqual([]);
-    });
-  });
-});
-
-describe("POL-members.no_platform_admin", () => {
-  it("★ a row for a platform admin's address is refused, whoever writes it", async () => {
-    await withTx(async (tx) => {
-      const f = await seed(tx);
-      await tx.asOwner();
-      expect(
-        await errorCode(() => tx.q(`insert into public.members (org_id, email, org_role) values ($1, $2, 'member')`, [f.a.id, f.platformAdmin.email.toUpperCase()])),
-      ).toBe(INVALID);
-      // Binding an existing row to a platform admin's auth user is refused too.
-      expect(await errorCode(() => tx.q(`update public.members set auth_user_id = $2 where id = $1`, [f.a.members[1].memberId, f.platformAdmin.authUserId]))).toBe(INVALID);
-    });
-  });
-
-  it("an ordinary address is added as before", async () => {
-    await withTx(async (tx) => {
-      const f = await seed(tx);
-      await tx.asOwner();
-      const rows = await tx.q(`insert into public.members (org_id, email, org_role) values ($1, 'new.person@kareem-one.example', 'member') returning id`, [f.a.id]);
-      expect(rows).toHaveLength(1);
+      expect(await hook(tx, f.a.admin.authUserId)).toMatchObject({ org_id: f.a.id, member_id: f.a.admin.memberId, org_role: "admin", status: "active" });
     });
   });
 });
