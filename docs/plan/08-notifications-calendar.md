@@ -99,6 +99,15 @@ the category it belongs to for preferences.
 In-app only: no mail design is added, so the designed email keys are unmoved. The album's «ready» is also a state on
 the event page's photo slot, read from `photo_albums`, so it survives a reload; this message only points at it.
 
+### 1.8 Announcements (`REQ-ADM-025`, `DEC-267`, migration `0213`)
+
+| Trigger | `MSG-*` | To | Channels | Optional? | Category |
+|---|---|---|---|---|---|
+| An org announcement goes live — now, or at its scheduled time | `MSG-announcement_published` | every active member of the org | in-app, email | yes | `announcements` |
+
+Sent **once**, by `JOB-publish_announcement` at the announcement's time; moving the time before it is sent moves the
+send, and an edit after it is sent never sends it again. Its mail is the `announcement` design family's.
+
 ### 1.7 The seventeen a member cannot switch off
 
 > **Corrected under DEC-047:** the heading said eleven; the list below has always had seventeen keys and the list is authoritative (`REQ-NTF-003` names four and says "certain notifications"). Migration `0026`'s matrix carries all seventeen and `tests/rls/notify-contract.test.ts` pins them by name.
@@ -138,6 +147,7 @@ Everything else is optional, including every reminder.
 | `proposals` | المقترحات | on |
 | `admin_queue` | قائمة عمل المشرف | on (admins/moderators only) |
 | `account` | الحساب | on (not switchable) |
+| `announcements` | الإعلانات | on — ★ `0213`, `DEC-267` |
 
 A member turns a category off **per channel** — email off, in-app on, is the common case. A
 non-optional message ignores the preference **on both channels**, and the preferences screen shows

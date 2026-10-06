@@ -10390,3 +10390,41 @@ Also found and left for a decision: `registrations` still grants `TRUNCATE` to `
 **Not changed, and still owed:** `registrations`' leftover `TRUNCATE` grant (invariant 2 — the owner's); an append-only trigger on `audit_log`; `assert_fresh_admin()` in the definer functions that trust a claim's role.
 
 - **Documents changed:** `03-permissions-rls.md` (`org_domains`, the realtime send policy, §6.9), `STATUS.md`
+
+## DEC-267 — Event types, org announcements, and a session page whose read mode is a member's: the owner's rulings of 2026-10-06 · `0213`
+
+- **Date:** 2026-10-06 · **Decided by:** the owner · **Requirements:** `REQ-SES-022`, `REQ-ADM-025` (new) · **Milestone:** M31 · **Migration:** `0213` · **Branch:** `feat/session-types` · ★ amends `02-domain-model.md` (frozen) by two columns, one enum and one column on `feed_announcements`
+
+**Why.** The baseline library has had five poster families since `0061` — محاضرة, ورشة, ندوة, لقاء, إعلان — and nothing could
+use four of them: `02` had no type on a session, `poster_render_context()` resolved `talk` alone, and its comment's «the
+admin picks one on SCR-043» described a choice no screen ever offered. Announcements had a table since `0164` and a
+member's feed that reads it, and no way to write one (`DEC-206` §3 had put the authoring screen out of scope).
+
+**The rulings:**
+
+1. ★ **«Event type» is the name, in the code and on every screen** («نوع الفعالية»). Four types name a session:
+   محاضرة (`talk`), ورشة (`workshop`), ندوة (`panel`), لقاء (`meetup`). A member proposing picks one; an admin chooses
+   at creation and changes it on الجدولة (`set_event_type()`, admin only, audited). A session with none chosen is a
+   محاضرة, so every existing poster is drawn from the template it was drawn from.
+2. ★ **The automatic poster follows the type** — the org's template of that family, falling back to its talk. Changing
+   the type of a session whose poster is live regenerates it; a customised or uploaded poster is never touched
+   (`DEC-012`'s asymmetry, unchanged).
+3. ★ **«إعلان» is chosen by an admin alone, and it is not a session.** On the admin's «create» it stands beside the four
+   and opens an **org-wide announcement**: its text, when it goes live (now or later) and an optional end. Asked how it
+   should be stored and shown, the owner chose: **its own announcement** (on `feed_announcements`, not a session row
+   with seats and check-in), **shown in the feed and sent to every member as a notification** when it goes live — in
+   the app and by email, under a new preference category **الإعلانات** a member may switch off. It is sent **once**:
+   moving the time before it is sent moves the send; an edit after it is sent never sends it again.
+4. ★ **Everything editable on the event page is behind «تعديل»** — read mode is exactly a member's page: the poster and
+   album downloads, the «إدارة الجلسة» links, attendee faces (a member's count instead), the presenter's ratings block
+   and a staff-only add control joined the settings, uploaders and re-scope chips `DEC-266` had already moved.
+
+**Left as they are, each the owner's call:** «شاشة التقديم» stays the action card's primary for staff and a presenter
+in read mode — the session matrix decides it and it is how a live session is run; and in read mode staff still see a
+material whose phase a member could not yet see, because the row comes from the DAL as staff's.
+
+**What `0213` found in `0164`:** an `update` policy on `feed_announcements` with no `update` grant behind it — invariant
+6's failure, latent because nothing had ever edited one. The grant names the three columns the screen writes.
+
+- **Documents changed:** `01-prd.md` (`REQ-SES-022`, `REQ-ADM-025`), `14-roadmap.md` (M31), `15-backlog.md`
+  (`STORY-SES-015`, `STORY-ADM-014`), `STATUS.md`

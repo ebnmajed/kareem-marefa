@@ -993,6 +993,19 @@ loses a closed laptop's edits is worse than the autosave it replaced, so the loc
 control with changes and choose each of the three answers in turn; ★ they close the tab without saving, reopen the
 document and are offered their edits; ★ no parity golden moved. **The acceptance is the owner's.**
 
+## M31 — a session has an event type · `DEC-267`
+
+The owner's ask: the poster library names four kinds of session, and nothing let a session be one. One requirement,
+one PR, one migration (`0213`).
+
+| Work | Requirements | Track | PR |
+|---|---|---|---|
+| The type, its function, the poster lookup and hook; the proposal form, the direct form, الجدولة | `REQ-SES-022` | lead | one |
+| «إعلان» on «create»: the announcements screen, the schedule, the send and its category | `REQ-ADM-025` | lead | one |
+
+**Demonstrable:** an admin creates a ورشة and its poster is the workshop's; they switch it to ندوة and it re-renders;
+a customised poster stays as it is.
+
 ## 3. Dependencies
 
 ```mermaid
@@ -1047,6 +1060,7 @@ graph LR
 | **M27** | An admin adds a personal-domain address, assigns them as a presenter before they have signed in, and then they sign in and are already on the session |
 | **M29** | A colleague signs in and is already in their company; a new org issues a certificate with no setup; the code on the wall stays the same all day |
 | **M30** | An admin arranges a poster, nothing is written until they press «احفظ», and a closed tab offers the work back |
+| **M31** | An admin sets a session's event type to ورشة and its poster becomes the workshop's |
 
 ---
 
