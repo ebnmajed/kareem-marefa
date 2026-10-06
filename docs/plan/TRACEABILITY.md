@@ -68,7 +68,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 |---|---|---|---|---|---|---|---|
 | `REQ-ADM-001` | `ENT-platform_admins` | — | `SCR-080` `SCR-083` `SCR-085` | — | — | `STORY-ADM-001` | M8 |
 | `REQ-ADM-002` | `ENT-brand_kits` `ENT-impersonation_sessions` `ENT-platform_admins` | `POL-super_admin.no_data_plane` | `SCR-057` `SCR-059` `SCR-080` +2 | `JOB-expire_impersonation` | — | `STORY-ADM-002` | M8 |
-| `REQ-ADM-003` | `ENT-brand_kits` `ENT-impersonation_sessions` | — | `SCR-043` `SCR-045` `SCR-057` +6 | — | — | `STORY-ADM-001` | M8 |
+| `REQ-ADM-003` | `ENT-brand_kits` `ENT-impersonation_sessions` | — | `SCR-043` `SCR-045` `SCR-057` +6 | `JOB-delete_org` | — | `STORY-ADM-001` | M8 |
 | `REQ-ADM-004` | — | — | `SCR-011` `SCR-040` `SCR-043` +5 | — | — | `STORY-ADM-003` | M7 |
 | `REQ-ADM-005` | — | — | `SCR-040` `SCR-042` | — | — | `STORY-ADM-004` | M7 |
 | `REQ-ADM-006` | — | `POL-categories.update.admin` `POL-companies.update.admin` +1 | `SCR-046` | — | — | `STORY-ADM-004` | M7 |
