@@ -106,9 +106,14 @@ describe("POL-sessions.public_card.anon", () => {
       // span this row already gives, and no key to join to anything. A boolean
       // «running now» would disclose less and put `betweenDays()` in SQL as well —
       // two implementations of one rule is how the defect happened.
+      // ★ 0217 (DEC-273, the owner's ruling): `abstract` and `event_type` are the third and fourth — so a shared
+      // link previews «the title and the description». Admitted here, the guard's way; no presenter, capacity,
+      // seat, comment, material or attendee count follows them.
       expect(Object.keys(row).sort()).toEqual(
-        ["day_count", "days", "ends_at", "og_height", "og_path", "og_width", "org_name", "starts_at", "time_zone", "title", "venue_name"].sort(),
+        ["abstract", "day_count", "days", "ends_at", "event_type", "og_height", "og_path", "og_width", "org_name", "starts_at", "time_zone", "title", "venue_name"].sort(),
       );
+      expect(typeof row.abstract).toBe("string");
+      expect(row.event_type).toBe("talk");
       expect(row.day_count).toBe(1);
       const days = row.days as Record<string, unknown>[];
       expect(days).toHaveLength(1);
@@ -282,6 +287,21 @@ describe("POL-storage.exports.public_card", () => {
       await tx.asOwner();
       const [survivor] = await tx.q<{ n: string }>(`select count(*) as n from storage.objects where bucket_id = 'exports' and name = $1`, [ogPath]);
       expect(Number(survivor.n), "the og.png object survives an anonymous delete").toBe(1);
+    });
+  });
+});
+
+describe("POL-sessions.public_card.abstract", () => {
+  it("★ 0217 (DEC-273): the row carries the session's own abstract and event type — read through the definer, not a grant", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      const s = f.m2.a.published;
+      await tx.q(`update public.sessions set abstract = 'نبذة للمعاينة', event_type = 'workshop' where id = $1`, [s]);
+      await tx.asAnon();
+      const [row] = await card(tx, s);
+      expect(row).toMatchObject({ abstract: "نبذة للمعاينة", event_type: "workshop" });
+      // anon still has no read of `sessions` itself: the two fields leave only through the card.
+      expect(await errorCode(() => tx.q(`select abstract from public.sessions where id = $1`, [s]))).toBe(PERMISSION_DENIED);
     });
   });
 });

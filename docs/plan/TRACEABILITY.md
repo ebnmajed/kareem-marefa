@@ -8,9 +8,9 @@
 
 | Artifact | Count |
 |---|---|
-| Requirements (`REQ-*`) | **457** |
+| Requirements (`REQ-*`) | **458** |
 | Entities (`ENT-*`) | **90** |
-| Stories (`STORY-*`) | **283** |
+| Stories (`STORY-*`) | **284** |
 | Screens cited (`SCR-*`) | 60 |
 | Jobs cited (`JOB-*`) | 45 |
 | Messages cited (`MSG-*`) | 24 |
@@ -455,6 +455,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-SES-021` | `ENT-sessions` | — | `SCR-043` `SCR-045` `SCR-083` | — | — | `STORY-SES-014` | M29 |
 | `REQ-SES-022` | — | — | `SCR-042` `SCR-043` | — | — | `STORY-SES-015` | M31 |
 | `REQ-SES-023` | — | — | `SCR-042` `SCR-043` | — | — | `STORY-SES-016` | M32 |
+| `REQ-SES-024` | — | `POL-sessions.public_card.abstract` | `SCR-007` | — | — | `STORY-SES-017` | M33 |
 
 ### STO
 

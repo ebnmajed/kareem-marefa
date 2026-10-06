@@ -165,6 +165,7 @@
       "signIn": "سجّل الدخول لحجز مقعدك",
       "signInEnded": "سجّل الدخول لعرض الجلسة",
       "posterAlt": "ملصق الجلسة",
+      "posterAltTitled": "ملصق «{session}»",
       "unavailableTitle": "هذه الجلسة غير متاحة",
       "unavailableBody": "قد يكون الرابط غير صحيح، أو أن الجلسة ليست معروضة للعامة.",
       "unavailableBack": "إلى الصفحة الرئيسية"

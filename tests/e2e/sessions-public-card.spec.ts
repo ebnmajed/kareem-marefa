@@ -145,9 +145,11 @@ test("a signed-out visitor sees the six public fields and nothing else", async (
   await expect(page.getByText(venueName)).toBeVisible();
   await expect(page.getByText(orgName).first()).toBeVisible();
 
-  // ★ What was NOT opened. The abstract and the venue's address are not in
-  // the function's return type, so they cannot reach this page — this asserts
-  // the consequence rather than trusting it.
+  // ★ What the BODY does not draw. The venue's address is not in the function's
+  // return type, so it cannot reach this page — this asserts the consequence
+  // rather than trusting it. ★ 0217 (DEC-273) opened the abstract to the link's
+  // PREVIEW (`og:description`, below); the card's body is drawn from its
+  // artboard and does not print it.
   await expect(page.locator("body")).not.toContainText("نبذة لا تظهر على البطاقة العامة");
   await expect(page.locator("body")).not.toContainText("شارع لا يظهر");
   // REQ-SES-008: no stream link, no join affordance, anywhere on the card.
@@ -175,7 +177,7 @@ test("a signed-out visitor sees the six public fields and nothing else", async (
   await page.screenshot({ path: `.qa-shots/rtl/scr-012-public-card-390-rtl-${test.info().project.name}.png`, fullPage: true });
 });
 
-test("the Open Graph tags are absolute and carry the date and the venue", async ({ request }) => {
+test("the Open Graph tags are absolute and carry the title, the date, the venue and the abstract", async ({ request }) => {
   needsPromotion();
   const html = await (await request.get(`/ar/s/${publishedId}`)).text();
 
@@ -183,7 +185,13 @@ test("the Open Graph tags are absolute and carry the date and the venue", async 
   expect(meta(html, "og:locale")).toBe("ar_SA");
   expect(meta(html, "og:site_name")).toBe(orgName);
   expect(meta(html, "og:description")).toContain(venueName);
-  expect(meta(html, "og:description")).toContain(orgName);
+  // ★ DEC-273: the description is the session's — its abstract — and the org is the site name, not repeated.
+  expect(meta(html, "og:description")).toContain("نبذة لا تظهر على البطاقة العامة");
+  expect(meta(html, "description")).toBe(meta(html, "og:description"));
+  expect(meta(html, "twitter:description")).toBe(meta(html, "og:description"));
+  expect(meta(html, "og:image:alt")).toBe("ملصق «كيف نكتب تقريرًا يُقرأ»");
+  expect(meta(html, "og:locale:alternate")).toBe("en_US");
+  expect(html).toMatch(new RegExp(`<link rel="alternate" hrefLang="en" href="https?://[^"]+/en/s/${publishedId}"`));
   expect(meta(html, "twitter:card")).toBe("summary_large_image");
 
   const image = meta(html, "og:image");

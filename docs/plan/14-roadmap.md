@@ -1017,6 +1017,18 @@ The owner's ask: an admin deletes any event, one or many. One requirement, one P
 **Demonstrable:** an admin deletes a completed event; its attendees' balances drop by its points, their certificates
 verify as revoked, and the event is nowhere on a member's screen.
 
+## M33 — a shared link previews the session · `DEC-273`
+
+The owner's ask: the sharing link's metadata — the poster, the title, the description, and everything around it.
+One requirement, one PR, one migration (`0217`).
+
+| Work | Requirements | Track | PR |
+|---|---|---|---|
+| The card function's two fields; the card's tags; the app's title template, manifest and web-app tags | `REQ-SES-024` | lead | one |
+
+**Demonstrable:** a member shares a ورشة's link in WhatsApp and it previews as the poster, the title and the
+abstract.
+
 ## 3. Dependencies
 
 ```mermaid
@@ -1073,6 +1085,7 @@ graph LR
 | **M30** | An admin arranges a poster, nothing is written until they press «احفظ», and a closed tab offers the work back |
 | **M31** | An admin sets a session's event type to ورشة and its poster becomes the workshop's |
 | **M32** | An admin deletes a completed event and everything it awarded is taken back |
+| **M33** | A shared session link previews as its poster, its title and its abstract |
 
 ---
 

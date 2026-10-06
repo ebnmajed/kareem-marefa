@@ -1937,6 +1937,14 @@ certificates, dismiss its open reports; `session_deletion_impact()` for the conf
 points and certificates is deleted, every balance drops by what it gave, its certificates verify as revoked, and a
 member sees it nowhere.
 
+#### STORY-SES-017 — A shared session link previews its poster, title and description
+**Covers:** `REQ-SES-024` · **M33** · **S** · lead
+`session_public_card()` gains `abstract` and `event_type` (`0217`); the card's metadata leads with the type, the date
+and the venue, then the abstract; `hreflang` and `og:locale:alternate`; an alt that names the session; the layout's
+title template, manifest, Apple web-app and format-detection tags; the event page's tab title. Done when the public
+card's HTML carries the poster, the title and the abstract, absolutely, and the RLS allowlist admits the two fields
+and no other.
+
 #### STORY-SES-015 — A session has an event type, and its poster follows it
 **Covers:** `REQ-SES-022` · **M31** · **M** · lead
 An enum `event_type` and a column `sessions.event_type` defaulting to `talk`; `set_event_type()`, admin only and

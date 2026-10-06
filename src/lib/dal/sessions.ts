@@ -1649,6 +1649,10 @@ export interface PublicSessionCard {
   hasImage: boolean;
   imageWidth: number | null;
   imageHeight: number | null;
+  /** ★ 0217 (DEC-273, REQ-SES-024): the abstract and the event type, opened to a link-holder so a shared link
+   *  previews «the title and the description». Null only before main's app meets the new schema. */
+  abstract: string | null;
+  eventType: EventType | null;
 }
 
 interface PublicCardRow {
@@ -1663,6 +1667,8 @@ interface PublicCardRow {
   og_path: string | null;
   og_width: number | null;
   og_height: number | null;
+  abstract?: string | null;
+  event_type?: string | null;
 }
 
 async function publicCardRow(id: string): Promise<PublicCardRow | null> {
@@ -1701,6 +1707,8 @@ export async function getPublicSessionCard(id: string): Promise<PublicSessionCar
     hasImage: Boolean(row.og_path),
     imageWidth: row.og_width,
     imageHeight: row.og_height,
+    abstract: row.abstract ?? null,
+    eventType: row.event_type ? eventTypeOf(row.event_type) : null,
   };
 }
 

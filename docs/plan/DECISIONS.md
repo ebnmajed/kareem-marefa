@@ -10519,3 +10519,31 @@ selector».
    `save_brand_kit()` without the check; `status_contrast_failure()` remains as a measure that refuses nothing).
 
 - **Documents changed:** `01-prd.md` (`REQ-DSG-021`), `STATUS.md`
+
+## DEC-273 — A shared session link previews its poster, its title and its description; the app's metadata is complete · `0217`
+
+- **Date:** 2026-10-06 · **Decided by:** the owner · **Amends:** `DEC-066`'s allowlist (by two fields) · **Migration:** `0217`
+
+**The ask:** «the metadata for the sharing link of the sessions built, the image is the poster and the text is the title
+and the description and all the bells and whistles related to the metadata for the app».
+
+**What was there, measured.** The link the share button copies is already the public card (`/s/{id}`), because the
+event page is behind sign-in and a crawler gets the redirect. Its `og:image` was already the poster's `og` render through
+`/api/s/{id}/og` (`0080`), and its title the session's. **The description was not the session's**: «date · venue · org»,
+because `DEC-066` kept the abstract inside the org, and `session_public_card()` did not return it.
+
+**The rulings:**
+1. **The abstract and the event type are public to a link-holder** — the owner's «the text is the title and the
+   description». `0217` re-creates `session_public_card()` with the two fields trailing; nothing else joins the
+   allowlist (no presenter, capacity, seat, comment, material or attendee count). The card's **body** does not print the
+   abstract: it is drawn from its artboard, and only the preview changed.
+2. **The description** is «type · date · venue — abstract», the abstract flattened to one line and cut on a word near 160
+   characters with «…»; the org is `og:site_name` and is not repeated. Without an abstract it is the old line.
+3. **The bells:** `hreflang` and `og:locale:alternate` on the card; an alt that names the session; a title template
+   («… · كريم معرفة») for pages that name themselves — the public home names none and is unchanged; the event page's tab
+   says its session (members only, no redirect from the metadata); `manifest.webmanifest` (Arabic, RTL, the ink colour,
+   the existing icons); Apple web-app and format-detection tags; the layout's `og:locale` territory-qualified.
+4. **Not indexed**, as before: previews work, search does not find the card.
+
+- **Documents changed:** `01-prd.md` (`REQ-SES-024`), `03-permissions-rls.md` (`POL-sessions.public_card.abstract`),
+  `14-roadmap.md` (M33), `15-backlog.md` (`STORY-SES-017`), `STATUS.md`

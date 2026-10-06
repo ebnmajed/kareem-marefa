@@ -50,18 +50,28 @@ export async function generateMetadata({
 
   const title = t("title");
   const description = t("description");
+  const siteName = locale === "ar" ? "كريم معرفة" : "Knowledge Kareem";
 
   return {
     metadataBase: new URL(siteUrl),
-    title,
+    // ★ DEC-273: a page that names itself reads «… · كريم معرفة» in the tab; a page that does not — the public
+    // home among them — keeps the full title exactly as before.
+    title: { default: title, template: `%s · ${siteName}` },
     description,
+    applicationName: siteName,
     robots: { index: false, follow: false },
+    manifest: "/manifest.webmanifest",
+    appleWebApp: { capable: true, title: siteName, statusBarStyle: "black-translucent" },
+    // iOS would turn a date or a session code into a phone link.
+    formatDetection: { telephone: false, email: false, address: false },
     openGraph: {
       title,
       description,
       url: `/${locale}`,
-      siteName: locale === "ar" ? "كريم معرفة" : "Knowledge Kareem",
-      locale,
+      siteName,
+      // A territory-qualified tag, as the public card says it (`ogLocale()`).
+      locale: locale === "en" ? "en_US" : "ar_SA",
+      alternateLocale: locale === "en" ? ["ar_SA"] : ["en_US"],
       type: "website",
       images: [ogImage],
     },

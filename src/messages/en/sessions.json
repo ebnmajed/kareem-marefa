@@ -165,6 +165,7 @@
       "signIn": "Sign in to reserve your seat",
       "signInEnded": "Sign in to view the session",
       "posterAlt": "Session poster",
+      "posterAltTitled": "Poster for “{session}”",
       "unavailableTitle": "This session isn't available",
       "unavailableBody": "The link may be wrong, or the session isn't shown publicly.",
       "unavailableBack": "Go to the home page"

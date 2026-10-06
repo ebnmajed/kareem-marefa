@@ -1,4 +1,5 @@
-import { Suspense, type ReactNode } from "react";
+import { cache, Suspense, type ReactNode } from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { affordancesFor, rateAllowed } from "@/components/checkin/session-matrix";
@@ -38,7 +39,7 @@ import { getRsvpPanelData } from "@/lib/dal/rsvp";
 import { getAttendanceRulePoints } from "@/lib/dal/search";
 import { getSessionStory } from "@/lib/dal/stories";
 import { canAddToStory } from "@/lib/dal/story-frames";
-import { requireSession } from "@/lib/dal/session";
+import { getSessionState, requireSession } from "@/lib/dal/session";
 import { isCompanyAttendanceRuleEnabled } from "@/lib/dal/leaderboards";
 import { getEventAttendeeFaces, getEventFigures, getSessionForEvent, getViewerCompany, listSessionDays, type EventSession } from "@/lib/dal/sessions";
 import { canGrantOn, closingSoon, sessionPhase, type SessionPhase, type ViewerRelation } from "@/lib/session-status";
@@ -75,6 +76,19 @@ const ORDER: Record<"open" | "live" | "ended", Gated[]> = {
 
 const ratingRelations: ViewerRelation[] = ["attended", "presenter", "staff"];
 
+// ★ One read per request for the page and its metadata (React's `cache`, which spans both in one render).
+const eventSession = cache(getSessionForEvent);
+
+/** The browser tab says the session's title (DEC-273). A visitor who is not a member gets the layout's default and
+ *  no redirect here — the page's own `requireSession()` redirects, carrying `?next=` (REQ-AUT-005). Private: the
+ *  layout's `noindex` stands, and the link that is SHARED is the public card's, `/s/{id}`, whose tags preview it. */
+export async function generateMetadata({ params }: { params: Promise<{ locale: string; id: string }> }): Promise<Metadata> {
+  const { locale, id } = await params;
+  if ((await getSessionState()).kind !== "member") return {};
+  const session = await eventSession(locale, id).catch(() => null);
+  return session ? { title: session.title } : {};
+}
+
 export default async function EventPage({
   params,
   searchParams,
@@ -88,7 +102,7 @@ export default async function EventPage({
   // The auth boundary at the data, carrying the page back after sign-in (REQ-AUT-005).
   const [me, session, rsvp, days, t] = await Promise.all([
     requireSession(locale, `/${locale}/app/sessions/${id}`),
-    getSessionForEvent(locale, id),
+    eventSession(locale, id),
     getRsvpPanelData(locale, id),
     listSessionDays(locale, id),
     getTranslations("sessions.event"),
