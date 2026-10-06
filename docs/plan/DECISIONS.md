@@ -10419,7 +10419,7 @@ member's feed that reads it, and no way to write one (`DEC-206` §3 had put the 
    album downloads, the «إدارة الجلسة» links, attendee faces (a member's count instead), the presenter's ratings block
    and a staff-only add control joined the settings, uploaders and re-scope chips `DEC-266` had already moved.
 
-**Left as they are, each the owner's call:** «شاشة التقديم» stays the action card's primary for staff and a presenter
+**Kept as they are — the owner ruled both on 2026-10-06:** «شاشة التقديم» stays the action card's primary for staff and a presenter
 in read mode — the session matrix decides it and it is how a live session is run; and in read mode staff still see a
 material whose phase a member could not yet see, because the row comes from the DAL as staff's.
 
