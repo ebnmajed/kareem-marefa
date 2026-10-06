@@ -12,7 +12,7 @@
 | Entities (`ENT-*`) | **90** |
 | Stories (`STORY-*`) | **282** |
 | Screens cited (`SCR-*`) | 60 |
-| Jobs cited (`JOB-*`) | 44 |
+| Jobs cited (`JOB-*`) | 45 |
 | Messages cited (`MSG-*`) | 24 |
 
 ## Cross-cutting requirements
@@ -90,7 +90,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-ADM-022` | — | — | `SCR-046` | — | — | `STORY-ADM-010` `STORY-UIX-083` | M24 |
 | `REQ-ADM-023` | — | — | `SCR-043` `SCR-046` `SCR-047` +3 | — | — | `STORY-ADM-011` | M24 |
 | `REQ-ADM-024` | `ENT-company_domains` `ENT-org_domains` `ENT-sessions` | — | `SCR-021` `SCR-045` `SCR-048` +1 | — | — | `STORY-ADM-012` | M29 |
-| `REQ-ADM-025` | — | — | `SCR-042` `SCR-043` | — | — | `STORY-ADM-014` | M31 |
+| `REQ-ADM-025` | — | — | `SCR-042` `SCR-043` | `JOB-publish_announcement` | — | `STORY-ADM-014` | M31 |
 
 ### AUT
 
