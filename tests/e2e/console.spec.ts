@@ -176,7 +176,9 @@ test("phone: the rail is a sheet that keeps the six groups, and it closes on nav
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
-test("a moderator's rail holds exactly REQ-ADM-020's six destinations", async ({ context, page }, testInfo) => {
+// ★ Wave 22 (DEC-230 §3, DEC-231 §5): «التعليقات» left the rail — comment reports moved into «البلاغات» and
+// `/moderation/comments` redirects there — so a moderator reaches five, not six.
+test("a moderator's rail holds exactly REQ-ADM-020's five destinations", async ({ context, page }, testInfo) => {
   await signIn(context, "moderator");
   await goto(page, "/ar/app/admin/sessions");
   let scope = page.getByRole("navigation", { name: RAIL });
@@ -184,11 +186,12 @@ test("a moderator's rail holds exactly REQ-ADM-020's six destinations", async ({
     await page.getByRole("button", { name: "فتح قائمة الإدارة" }).click();
     scope = page.getByRole("dialog", { name: RAIL });
   }
-  await expect(scope.getByRole("link")).toHaveCount(6);
-  for (const name of ["الجلسات", "الاستبانات", "التعليقات", "الصور", "البلاغات", "سجل التدقيق"]) {
+  await expect(scope.getByRole("link")).toHaveCount(5); // ★ Wave 22 (DEC-230): five — «التعليقات» retired.
+  for (const name of ["الجلسات", "الاستبانات", "الصور", "البلاغات", "سجل التدقيق"]) {
     await expect(scope.getByRole("link", { name, exact: true })).toBeVisible();
   }
-  for (const name of ["لوحة التحكم", "المقترحات", "الأعضاء", "القوالب", "الإعدادات"]) {
+  // ★ Wave 22 (DEC-230): «التعليقات» is gone for every role; «الإعلانات» (REQ-ADM-025, DEC-267) is admin only.
+  for (const name of ["لوحة التحكم", "المقترحات", "الأعضاء", "القوالب", "الإعدادات", "التعليقات", "الإعلانات"]) {
     await expect(scope.getByRole("link", { name, exact: true })).toHaveCount(0);
   }
   const width = testInfo.project.name === "phone" ? "390" : "1280";

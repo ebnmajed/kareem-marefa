@@ -204,7 +204,9 @@ test("a three-day workshop attended in full pays ONE award, and the history says
   await page.goto("/ar/app/me/points");
   await expect(page.getByRole("heading", { name: "نقاطي", level: 1 })).toBeVisible();
 
-  const history = page.locator("#history");
+  // ★ DEC-145 / DEC-204: a hard load can stream a second, hidden copy of the page outside `#main` (`div[hidden][id^="S:"]`),
+  // `#history` included — the history is asked for inside `#main`, where there is exactly one.
+  const history = page.locator("#main #history");
   // ONE row for three days, not three. The catalogue below repeats
   // check_in's own reasonAr, so the locator is scoped to the history.
   await expect(history.locator("li")).toHaveCount(1);
@@ -213,7 +215,8 @@ test("a three-day workshop attended in full pays ONE award, and the history says
   // …and nothing to explain.
   await expect(history.getByText("لم تُحتسب نقاط الحضور")).toHaveCount(0);
   // The balance reconciles to points_balances through the page's own Stat.
-  await expect(page.locator("strong", { hasText: "20" })).toBeVisible();
+  // ★ DEC-145 / DEC-204: scoped to `#main` — a hard load's streamed hidden copy carries the same figure.
+  await expect(page.locator("#main").locator("strong", { hasText: "20" })).toBeVisible();
 
   await capture(page, "three-day-full");
 });
@@ -226,7 +229,9 @@ test("★ missing one day earns nothing, and the history NAMES the day rather th
   await runCompletion(workshopId, memberId);
 
   await page.goto("/ar/app/me/points");
-  const history = page.locator("#history");
+  // ★ DEC-145 / DEC-204: a hard load can stream a second, hidden copy of the page outside `#main` (`div[hidden][id^="S:"]`),
+  // `#history` included — the history is asked for inside `#main`, where there is exactly one.
+  const history = page.locator("#main #history");
 
   // No attendance award: REQ-SES-017's «partial attendance earns nothing».
   await expect(history.locator("li", { hasText: "تسجيل حضور مؤكَّد" })).toHaveCount(0);
@@ -262,7 +267,9 @@ test("★ a ONE-DAY session's history is what it was: an award at check-in, and 
   await db.query(`select public.award_points('check_in', $1, 'check_in', $2, $3)`, [memberId, rows[0].id, oneDayId]);
 
   await page.goto("/ar/app/me/points");
-  const history = page.locator("#history");
+  // ★ DEC-145 / DEC-204: a hard load can stream a second, hidden copy of the page outside `#main` (`div[hidden][id^="S:"]`),
+  // `#history` included — the history is asked for inside `#main`, where there is exactly one.
+  const history = page.locator("#main #history");
   await expect(history.locator("li")).toHaveCount(1);
   await expect(history.locator("li", { hasText: "تسجيل حضور مؤكَّد" })).toContainText("+20");
   await expect(history.getByText(/جلسة يوم واحد/)).toBeVisible();

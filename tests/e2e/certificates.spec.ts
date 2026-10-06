@@ -226,12 +226,14 @@ test("★ REQ-CRT-007 / REQ-CRT-009: /verify takes the code and refuses the seri
   // try. Serials are consecutive by design (DEC-010), so one that resolved
   // would hand over the whole register.
   await page.goto(`/ar/verify/${encodeURIComponent(cert.serial)}`);
-  await expect(page.getByText("لم نعثر على شهادة بهذا الرمز.")).toBeVisible();
+  // ★ Wave 26 (SCR-006 rebuilt from Verify.dc.html, REQ-UIX-115, DEC-248): one sentence, «لا توجد شهادة بهذا الرمز».
+  await expect(page.getByText("لا توجد شهادة بهذا الرمز", { exact: true })).toBeVisible();
   await expect(page.getByText(RECIPIENT)).toHaveCount(0);
 
   // An unknown code of the right shape: the SAME page, word for word.
   await page.goto("/ar/verify/aB3-_xYz9QwErTyUiOpAsDfG");
-  await expect(page.getByText("لم نعثر على شهادة بهذا الرمز.")).toBeVisible();
+  // ★ Wave 26 (REQ-UIX-115): the same sentence as the serial's.
+  await expect(page.getByText("لا توجد شهادة بهذا الرمز", { exact: true })).toBeVisible();
   await review(page, "scr-006-verify-not-found");
 });
 
@@ -264,7 +266,8 @@ test("★ REQ-CRT-011: a revoked certificate still resolves — as ملغاة, a
   const stranger = await anon.newPage();
   await stranger.setViewportSize(PHONE);
   await stranger.goto(`/ar/verify/${cert.verification_code}`);
-  await expect(stranger.getByRole("status")).toHaveText("هذه الشهادة ملغاة.");
+  // ★ Wave 26 (SCR-006 rebuilt, REQ-UIX-115): the answer is two words, «شهادة ملغاة».
+  await expect(stranger.getByRole("status")).toHaveText("شهادة ملغاة");
   // The document is not deleted and an old printed copy keeps resolving, so
   // the name is still there — the REASON is what must not be.
   await expect(stranger.getByText(RECIPIENT).first()).toBeVisible();
@@ -312,7 +315,8 @@ test("★ REQ-CRT-004: `review` HOLDS — the recipient sees nothing until an ad
   // between them: `certs_read_self_or_admin` refuses `held` and allows
   // `issued`, and nothing in the page changed — only the row did.
   await memberPage.goto("/ar/app/me/certificates");
-  await expect(memberPage.getByText(cert.serial)).toBeVisible();
+  // DEC-145: scoped to `#main` — a hard load can stream a hidden second copy of the list outside it.
+  await expect(memberPage.locator("#main").getByText(cert.serial)).toBeVisible();
   await expect(memberPage.locator("#main").getByText("صالحة")).toHaveCount(0); // ★ wave 20: no status word on a valid certificate (DEC-216 §2.1)
   await review(memberPage, "scr-023-certificates");
   await member.close();

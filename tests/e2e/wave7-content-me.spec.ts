@@ -34,7 +34,6 @@ let db: pg.Client;
 let orgId = "";
 let domain = "";
 let memberEmail = "";
-let companyId = "";
 const userIds: string[] = [];
 
 test.beforeAll(async ({}, testInfo) => {
@@ -51,11 +50,8 @@ test.beforeAll(async ({}, testInfo) => {
   orgId = rows[0].id;
   await db.query(`insert into public.org_settings (org_id) values ($1)`, [orgId]);
   await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
-  const { rows: companyRows } = await db.query<{ id: string }>(
-    `insert into public.companies (org_id, name) values ($1, 'شركة الاختبار') returning id`,
-    [orgId],
-  );
-  companyId = companyRows[0].id;
+  // ★ Wave 27 (DEC-254 §2): the company has no domain, so nobody is placed in it — the member stays «بلا شركة».
+  await db.query(`insert into public.companies (org_id, name) values ($1, 'شركة الاختبار')`, [orgId]);
 
   memberEmail = `member@${domain}`;
   const { data, error } = await admin.auth.admin.createUser({
@@ -131,7 +127,9 @@ test("the hub's tab strip, the profile's empty state, a field error, and the sav
 
   // Populated + saved: fill every field and submit.
   await page.getByLabel("الاسم", { exact: false }).fill("عضو الملف المُحدَّث");
-  await page.getByLabel("الشركة", { exact: false }).selectOption({ label: "شركة الاختبار" });
+  // ★ Wave 27 (DEC-254 §2.5, REQ-PRF-012): a member's company follows their email domain — edit mode has no company
+  // control, and the save never sends the column.
+  await expect(main.getByLabel("الشركة", { exact: false })).toHaveCount(0);
   await page.getByLabel("المسمى الوظيفي", { exact: false }).fill("مهندس حلول");
   await page.getByLabel("نبذة", { exact: false }).fill("أعمل على المنصة التعليمية.");
   await page.getByRole("button", { name: "حفظ" }).click();
@@ -146,9 +144,11 @@ test("the hub's tab strip, the profile's empty state, a field error, and the sav
   // the just-saved company never reached the DOM even once `value()` itself
   // computed correctly (fixed by keying the field on its own value).
   // ★ wave 20: read mode shows the saved company by name (no select is on the page), and the row holds its id.
-  await expect(main.getByRole("region", { name: "ملفي" }).getByText("شركة الاختبار")).toBeVisible();
-  const { rows: saved } = await db.query<{ company_id: string }>(`select company_id from public.members where email = $1`, [memberEmail]);
-  expect(saved[0]?.company_id).toBe(companyId);
+  // ★ Wave 27 (DEC-254 §2.5, REQ-PRF-012): this domain names no company, so read mode says «بلا شركة» and the row
+  // still holds none — the profile save did not write the column.
+  await expect(main.getByRole("region", { name: "ملفي" }).getByText("بلا شركة", { exact: true })).toBeVisible();
+  const { rows: saved } = await db.query<{ company_id: string | null }>(`select company_id from public.members where email = $1`, [memberEmail]);
+  expect(saved[0]?.company_id).toBeNull();
   await capture(page, "populated-saved");
 
   // The tab strip is real navigation — every route stays reachable, and a

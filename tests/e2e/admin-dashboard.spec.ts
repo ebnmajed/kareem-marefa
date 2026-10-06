@@ -261,8 +261,11 @@ test("REQ-ADM-004: every figure is correct and the built ones click through", as
 
   // Click-through: the attention row for proposals goes to the real review queue.
   await attention.getByRole("link", { name: "مقترحات بانتظار قرار" }).click();
-  await expect(page.getByRole("heading", { name: "مراجعة المقترحات", level: 1 })).toBeVisible();
-  await expect(page.getByText("مقترح بانتظار المراجعة")).toBeVisible();
+  // ★ Wave 21 (SCR-041 rebuilt, DEC-227): the queue's h1 is the artboard's «المقترحات».
+  await expect(page.getByRole("heading", { name: "المقترحات", level: 1, exact: true })).toBeVisible();
+  // ★ Wave 21 (SCR-041 as a split view, DEC-227): the proposal is a row of the queue AND the open detail beside it —
+  // asked for as the queue's link.
+  await expect(page.getByRole("link", { name: /مقترح بانتظار المراجعة/ })).toBeVisible();
 
   await page.goBack();
   await overview.getByRole("link", { name: "حجوزات مؤكَّدة" }).click();
@@ -279,7 +282,8 @@ test("REQ-ADM-004: every figure is correct and the built ones click through", as
   // ★ Wave 21 (L3, a selector): the pipeline's counts ARE its links — each
   // opens the proposals — so «عرض القائمة — مسار المقترحات» is gone.
   await pipeline.getByRole("link", { name: /بانتظار المراجعة/ }).click();
-  await expect(page.getByRole("heading", { name: "مراجعة المقترحات", level: 1 })).toBeVisible();
+  // ★ Wave 21 (SCR-041 rebuilt, DEC-227): the queue's h1 is the artboard's «المقترحات».
+  await expect(page.getByRole("heading", { name: "المقترحات", level: 1, exact: true })).toBeVisible();
 
   await page.goBack();
   await page.getByRole("link", { name: "المُقدِّم الأول" }).click();
