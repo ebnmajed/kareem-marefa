@@ -1,0 +1,54 @@
+{
+  "announcements": {
+    "title": "الإعلانات",
+    "new": "إعلان جديد",
+    "editTitle": "عدّل الإعلان",
+    "closeEditor": "أغلق",
+    "columnBody": "الإعلان",
+    "columnPublish": "النشر",
+    "columnExpires": "ينتهي",
+    "columnActions": "إجراءات",
+    "noExpiry": "—",
+    "status": {
+      "scheduled": "مجدول",
+      "live": "منشور",
+      "ended": "منتهٍ"
+    },
+    "announced": "أُرسل",
+    "empty": "لا إعلانات بعد.",
+    "moreActions": "مزيد من الإجراءات على «<t>{excerpt}</t>»",
+    "edit": "عدّل",
+    "delete": "احذف",
+    "deleteTitle": "حذف «<t>{excerpt}</t>»؟",
+    "deleteBody": "يختفي من الصفحة الرئيسية لكل الأعضاء. لا يمكن التراجع.",
+    "deleteBodyScheduled": "لن يُنشر ولن يصل إشعاره لأحد. لا يمكن التراجع.",
+    "deleteAction": "احذف الإعلان",
+    "cancel": "تراجع",
+    "close": "إغلاق",
+    "deleted": "حُذف الإعلان.",
+    "notWritten": "لم يُحفظ — حاول مرة أخرى.",
+    "save": "احفظ",
+    "saving": "جارٍ الحفظ…",
+    "saved": "حُفظ الإعلان.",
+    "errorSummaryTitle": "يرجى تصحيح الأخطاء التالية:",
+    "form": {
+      "body": "النص",
+      "counter": "<bdi>{used}</bdi> / <bdi>{max}</bdi>",
+      "publish": "النشر",
+      "publishNow": "الآن",
+      "publishAt": "في موعد",
+      "publishAtLabel": "موعد النشر",
+      "expiresAt": "ينتهي",
+      "sent": "وصل إشعاره للأعضاء، والتعديل لا يعيد إرساله."
+    },
+    "errors": {
+      "bodyRequired": "اكتب نص الإعلان.",
+      "bodyTooLong": "النص أطول من 500 حرف.",
+      "publishAtRequired": "اختر موعد النشر.",
+      "publishAtPast": "اختر موعدًا لم يمضِ.",
+      "expiresBeforePublish": "اختر انتهاءً بعد موعد النشر.",
+      "expiresPast": "اختر انتهاءً لم يمضِ.",
+      "failed": "تعذّر الحفظ — حاول مرة أخرى."
+    }
+  }
+}

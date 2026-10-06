@@ -72,6 +72,8 @@ export const DESIGN_FOR: Readonly<Record<string, DesignFamily>> = {
   "MSG-presenter_assigned": "announcement",
   "MSG-proposal_approved": "announcement",
   "MSG-copresenter_invited": "announcement",
+  // ★ 0213 (REQ-ADM-025, DEC-267): an org's own announcement going live — no session, so the card drops.
+  "MSG-announcement_published": "announcement",
 
   "MSG-reminder_7d": "reminder",
   "MSG-reminder_1d": "reminder",
@@ -114,6 +116,7 @@ const COPY: Readonly<Record<string, Copy>> = {
   "MSG-session_published": { heading: "جلسة جديدة", body: "نُشرت جلسة جديدة قد تهمّك.", action: { label: "اعرض الجلسة", urlBinding: "url" } },
   "MSG-presenter_assigned": { heading: "أُسندت إليك جلسة", body: "تجد موعدها ومكانها وتفاصيلها كاملة في صفحة الجلسة.", action: { label: "اعرض الجلسة", urlBinding: "url" } },
   "MSG-proposal_approved": { heading: "قُبل مقترحك", body: "قُبل مقترحك «{{title}}». سنتواصل معك لتحديد الموعد والمكان.", action: { label: "اعرض المقترح", urlBinding: "url" } },
+  "MSG-announcement_published": { heading: "إعلان", body: "{{body}}", action: { label: "افتح المنصة", urlBinding: "url" } },
   "MSG-copresenter_invited": { heading: "دعوة للمشاركة في التقديم", body: "دعاك {{inviter}} للمشاركة في تقديم جلسة «{{title}}».", action: { label: "اعرض المقترح", urlBinding: "url" } },
 
   "MSG-reminder_7d": { heading: "جلستك بعد أسبوع", body: "{{day}}", action: { label: "اعرض الجلسة", urlBinding: "url" } },

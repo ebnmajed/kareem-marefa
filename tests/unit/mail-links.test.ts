@@ -64,7 +64,8 @@ describe("★ with an origin, the link is absolute and names the right page", ()
     }
     // Twenty-one of twenty-five, which is the count `08` §3.2 implies and the
     // pinned files show ending on a blank line.
-    expect(Object.keys(ROUTE_FOR)).toHaveLength(21);
+    // 22 since 0213: MSG-announcement_published lands on the home feed (REQ-ADM-025).
+    expect(Object.keys(ROUTE_FOR)).toHaveLength(22);
   });
 });
 

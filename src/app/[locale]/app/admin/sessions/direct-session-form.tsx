@@ -4,6 +4,8 @@ import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
+import { RadioGroup } from "@/components/ui/radio-group";
+import { DEFAULT_EVENT_TYPE, EVENT_TYPES, type EventType } from "@/components/sessions/event-type";
 import { Field } from "@/components/ui/field";
 import { FormSummary } from "@/components/ui/form-summary";
 import { Input } from "@/components/ui/input";
@@ -26,7 +28,7 @@ import { emptyCreateState, SESSION_FIELDS, SESSION_REQUIRED_FIELDS, type CreateS
 // multi-select member combobox (`REQ-UIX-008`), and the field ids the suites
 // pin («direct-title» …).
 
-const LABEL_KEY: Record<SessionField, string> = {
+const LABEL_KEY: Record<Exclude<SessionField, "eventType">, string> = {
   title: "titleLabel",
   abstract: "abstractLabel",
   categoryId: "categoryLabel",
@@ -36,6 +38,8 @@ const LABEL_KEY: Record<SessionField, string> = {
 };
 
 const FIELD_ID: Record<SessionField, string> = {
+  // `ui/radio-group`'s fieldset carries `id={name}` — the summary's link lands on its first radio.
+  eventType: "eventType",
   title: "direct-title",
   abstract: "direct-abstract",
   categoryId: "direct-category",
@@ -48,12 +52,16 @@ export function DirectSessionForm({
   action,
   categories,
   members,
+  defaultEventType = DEFAULT_EVENT_TYPE,
 }: {
   action: (prev: CreateSessionState, formData: FormData) => Promise<CreateSessionState>;
   categories: { id: string; name: string }[];
   members: { id: string; displayName: string | null }[];
+  /** REQ-SES-022: the type «create» was opened for; a talk otherwise. */
+  defaultEventType?: EventType;
 }) {
   const t = useTranslations("admin.sessions");
+  const tType = useTranslations("sessions.eventType");
   // The level labels are `proposals.propose`'s own copy, read (`sessions`' namespace).
   const tp = useTranslations("proposals.propose");
   const [state, formAction, pending] = useActionState(action, emptyCreateState);
@@ -61,7 +69,7 @@ export function DirectSessionForm({
   const required = (field: SessionField) => SESSION_REQUIRED_FIELDS.includes(field);
   const summary = summaryErrors(state, {
     fields: SESSION_FIELDS,
-    label: (field) => t(LABEL_KEY[field]),
+    label: (field) => (field === "eventType" ? tType("label") : t(LABEL_KEY[field])),
     message: (key) => t(`errors.${key}`),
     fieldId: (field) => FIELD_ID[field],
   });
@@ -71,6 +79,16 @@ export function DirectSessionForm({
     <form action={formAction} noValidate className="max-w-2xl space-y-6">
       {hasAttempted(state) ? <FormSummary key={state.attempt} title={t("errorSummaryTitle")} errors={summary} /> : null}
       {state.formError ? <FormAlert>{t(`errors.${state.formError}`)}</FormAlert> : null}
+
+      {/* REQ-SES-022: «نوع الفعالية», the four types, a talk unless chosen. */}
+      <RadioGroup
+        name="eventType"
+        appearance="chips"
+        legend={tType("label")}
+        defaultValue={was(state, "eventType") || defaultEventType}
+        options={EVENT_TYPES.map((type) => ({ value: type, label: tType(type) }))}
+        error={err("eventType")}
+      />
 
       <Field id="direct-title" label={t("titleLabel")} required={required("title")} error={err("title")}>
         <Input name="title" defaultValue={was(state, "title")} maxLength={150} />

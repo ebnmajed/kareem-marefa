@@ -31,6 +31,8 @@ export const ADMIN_NAV: readonly (readonly AdminNavLeaf[])[] = [
     { key: "proposals", href: "/app/admin/proposals", adminOnly: true, built: true },
     // SCR-044: a moderator sees this item — the page branches on role (a read-only, attendance-focused list).
     { key: "sessions", href: "/app/admin/sessions", adminOnly: false, built: true },
+    // ★ 0213 (REQ-ADM-025, DEC-267): an org's announcements — admin only, as 0164's write policies are.
+    { key: "announcements", href: "/app/admin/announcements", adminOnly: true, built: true },
     // SCR-065: both staff roles, as `assert_survey_staff()` enforces.
     { key: "surveys", href: "/app/admin/surveys", adminOnly: false, built: true },
   ],

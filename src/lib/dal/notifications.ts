@@ -24,6 +24,7 @@ export type NotifyChannel = "in_app" | "email";
 
 export const CATEGORIES = [
   "new_sessions",
+  "announcements",
   "my_sessions",
   "reminders",
   "ratings",

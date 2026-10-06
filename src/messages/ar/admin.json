@@ -11,6 +11,7 @@
         "dashboard": "لوحة التحكم",
         "proposals": "المقترحات",
         "sessions": "الجلسات",
+        "announcements": "الإعلانات",
         "surveys": "الاستبانات",
         "venues": "الأماكن",
         "categories": "التصنيفات",
@@ -172,6 +173,8 @@
       "count": "{count, plural, zero {لا جلسات} one {جلسة واحدة} two {جلستان} few {{value} جلسات} many {{value} جلسة} other {{value} جلسة}}",
       "newSession": "جلسة جديدة",
       "newSessionShort": "جديدة",
+      "createMenu": "إنشاء",
+      "createAnnouncement": "إعلان",
       "newRegionTitle": "جلسة جديدة",
       "filterStatus": "الحالة: {value}",
       "filterCategory": "التصنيف: {value}",
@@ -667,7 +670,8 @@
           "presenter_added": "إضافة مُقدِّم إلى جلسة",
           "presenter_removed": "إزالة مُقدِّم من جلسة",
           "certificate_mode_changed": "تغيير وضع الشهادات لجلسة",
-          "renamed": "تغيير اسم جلسة"
+          "renamed": "تغيير اسم جلسة",
+          "event_type_changed": "تغيير نوع الفعالية لجلسة"
         },
         "storage": {
           "prefix_violation": "مخالفة في مسارات التخزين"
@@ -717,6 +721,11 @@
           "retired": "إحالة قالب للتقاعد",
           "restored": "إعادة قالب للخدمة",
           "published": "نشر إصدار قالب"
+        },
+        "announcement": {
+          "created": "كتابة إعلان",
+          "changed": "تعديل إعلان",
+          "deleted": "حذف إعلان"
         }
       },
       "domains": {
@@ -772,7 +781,8 @@
         "category": "تصنيف",
         "report": "بلاغ",
         "survey_template": "قالب استبانة",
-        "design_template": "قالب تصميم"
+        "design_template": "قالب تصميم",
+        "announcement": "إعلان"
       },
       "kinds": {
         "log": "إجراء",

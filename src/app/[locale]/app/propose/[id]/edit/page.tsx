@@ -60,6 +60,7 @@ export default async function EditProposalPage({ params }: { params: Promise<{ l
         categories={categories}
         allowDraft={allowDraft}
         initial={{
+          eventType: proposal.eventType,
           title: proposal.title,
           abstract: proposal.abstract,
           categoryId: proposal.categoryId,

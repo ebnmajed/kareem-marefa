@@ -20,8 +20,9 @@ import {
 const KEYS = Object.keys(DEFAULT_TEMPLATES);
 
 describe("★ REQ-NTF-014 — every message key resolves to a design", () => {
-  it("all 25, and the map is exactly the template table", () => {
-    expect(KEYS).toHaveLength(25);
+  // 26 since 0213 (REQ-ADM-025, DEC-267): MSG-announcement_published, an org's announcement.
+  it("all 26, and the map is exactly the template table", () => {
+    expect(KEYS).toHaveLength(26);
     const mapped = Object.keys(DESIGN_FOR).sort();
     expect(mapped).toEqual([...KEYS].sort());
     for (const key of KEYS) expect(platformDesign(key), key).not.toBeNull();

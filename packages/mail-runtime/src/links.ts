@@ -45,6 +45,9 @@ export const ROUTE_FOR: Readonly<Record<string, Route>> = {
   "MSG-proposal_changes": proposal,
   "MSG-copresenter_invited": proposal,
 
+  // ★ 0213 (REQ-ADM-025): an org announcement — it lives on the member's home feed, which is where the link lands.
+  "MSG-announcement_published": own("/app"),
+
   // §1.2–1.4 the session itself. A reminder, a change, a promotion off the
   // waitlist and a new-materials notice all want the event page: it carries
   // the day, the venue, the check-in and the materials in one place.

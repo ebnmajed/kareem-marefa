@@ -56,11 +56,12 @@ export default async function ProposalPage({
   setRequestLocale(locale);
   const { created, updated } = await searchParams;
 
-  const [proposal, prefs, t, tp] = await Promise.all([
+  const [proposal, prefs, t, tp, tType] = await Promise.all([
     getProposal(locale, id),
     getOrgPrefs(locale),
     getTranslations("proposals.proposal"),
     getTranslations("proposals.propose"),
+    getTranslations("sessions.eventType"),
   ]);
   if (!proposal) notFound();
   const [session, viewer] = await Promise.all([proposal.state === "approved" ? getProposalSession(locale, proposal.id) : null, requireSession(locale)]);
@@ -210,6 +211,12 @@ export default async function ProposalPage({
           <bdi>{proposal.title}</bdi>
         </h2>
         <ul className="flex flex-wrap gap-1.5">
+          {/* REQ-SES-022: the event type the proposer picked. */}
+          {proposal.eventType ? (
+            <li>
+              <TagChip label={tType(proposal.eventType)} />
+            </li>
+          ) : null}
           {proposal.categoryName ? (
             <li>
               <TagChip label={proposal.categoryName} />

@@ -163,7 +163,8 @@ test("…and the report lands on SCR-051's «بلاغات الصور», the repo
 test("REQ-EVT-014: staff remove a comment on the event page with a reason; its report closes; the triggers record it", async ({ context, page }) => {
   test.skip(test.info().project.name !== "phone", "the 390 review — the phone project");
   await signIn(context, emails.mod);
-  await goto(page, `/ar/app/sessions/${sessionId}`);
+  // DEC-267: staff's removal is a management control, behind «تعديل» — opened in edit mode.
+  await goto(page, `/ar/app/sessions/${sessionId}?edit=1`);
   const main = page.locator("#main");
   await main.getByRole("button", { name: "إزالة" }).click();
   const dialog = page.getByRole("dialog", { name: "إزالة تعليق خالد الغامدي؟" });

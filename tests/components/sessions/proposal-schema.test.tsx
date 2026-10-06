@@ -64,7 +64,8 @@ describe("proposalInput — REQ-PRO-001", () => {
 
   it("is exactly the nine fields REQ-PRO-002 lists for this story", () => {
     expect(Object.keys(proposalInput.shape).sort()).toEqual(
-      ["abstract", "adminNotes", "categoryId", "expectedDurationMinutes", "level", "targetAudience", "title"].sort(),
+      // REQ-SES-022 (0213) adds the event type — a kind of event, not a schedule.
+      ["abstract", "adminNotes", "categoryId", "eventType", "expectedDurationMinutes", "level", "targetAudience", "title"].sort(),
     );
   });
 

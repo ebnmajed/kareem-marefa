@@ -62,6 +62,16 @@ export function EditOnly({ children }: { children: ReactNode }) {
   return useShowsEditOnly() ? <>{children}</> : null;
 }
 
+/**
+ * The other half of a pair: renders its children only in READ mode inside a provider — what a member sees where
+ * edit mode draws something richer in its place (the count in words where staff see faces). Outside a provider it
+ * renders nothing, because `EditOnly` beside it then shows the richer half: the page as it was before the mode.
+ */
+export function ReadOnly({ children }: { children: ReactNode }) {
+  const mode = useContext(EditModeContext);
+  return mode !== null && !mode.editing ? <>{children}</> : null;
+}
+
 /** The one toggle: «تعديل» in read mode, «تم» in edit mode. Its name says what pressing it does. */
 export function EditModeToggle({ editLabel, doneLabel, editingStatus, readingStatus }: { editLabel: string; doneLabel: string; editingStatus: string; readingStatus: string }) {
   const mode = useContext(EditModeContext);

@@ -247,7 +247,13 @@
       "reopen": "أُعيد فتحها",
       "presenterAdded": "أُضيف مُقدِّم",
       "presenterRemoved": "أُزيل مُقدِّم",
-      "renamed": "تغيّر الاسم"
+      "renamed": "تغيّر الاسم",
+      "eventTypeChanged": "تغيّر نوع الفعالية"
+    },
+    "eventType": {
+      "save": "احفظ",
+      "saved": "حُفظ نوع الفعالية.",
+      "failed": "تعذّر الحفظ — حاول مرة أخرى."
     }
   }
 }

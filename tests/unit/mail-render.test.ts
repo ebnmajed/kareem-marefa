@@ -26,7 +26,7 @@ describe("REQ-NTF-002 — every email row of the matrix has an Arabic template",
   const defining = readdirSync(migrationsDir)
     .filter((f) => f.endsWith(".sql"))
     .sort()
-    .filter((f) => /function public\.notification_matrix\(\)/.test(readFileSync(join(migrationsDir, f), "utf8")));
+    .filter((f) => /function public\.notification_matrix\(\)/i.test(readFileSync(join(migrationsDir, f), "utf8")));
   const sql = readFileSync(join(migrationsDir, defining[defining.length - 1]!), "utf8");
   const matrix = [...sql.matchAll(/\('(MSG-[a-z0-9_]+)',\s*'[a-z_]+',\s*(true|false),\s*(true|false),\s*(true|false)\s*\)/g)].map((m) => ({
     key: m[1],
@@ -36,7 +36,8 @@ describe("REQ-NTF-002 — every email row of the matrix has an Arabic template",
 
   it("parsed the matrix out of the migration at all", () => {
     // 40 since 0156: MSG-photo_album_ready, in-app only (DEC-182), so no template is owed.
-    expect(matrix).toHaveLength(40);
+    // 41 since 0213: MSG-announcement_published (REQ-ADM-025), in-app and email — its template is owed and written.
+    expect(matrix).toHaveLength(41);
   });
 
   it("has a subject and a body for every message with an email channel", () => {

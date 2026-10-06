@@ -16,6 +16,7 @@ import { RadioGroup } from "@/components/ui/radio-group";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { emptyFormState, hasAttempted, summaryErrors, was, wasList } from "@/lib/form-state";
+import { DEFAULT_EVENT_TYPE, EVENT_TYPES } from "@/components/sessions/event-type";
 import { PROPOSAL_FIELDS, emptyProposeState, type ProposalField, type ProposeState } from "./state";
 
 // SCR-017's form — rebuilt from `Propose.dc.html` (REQ-UIX-067, DEC-213, DEC-214), written after the old file was
@@ -46,7 +47,7 @@ export type ProposalFormCategory = { id: string; name: string };
 export type ProposalFormMember = { id: string; displayName: string | null; jobTitle: string | null; teamColor?: string | null };
 
 /** Which catalogue key names each field in the summary. */
-const LABEL_KEY: Record<ProposalField, string> = {
+const LABEL_KEY: Record<Exclude<ProposalField, "eventType">, string> = {
   title: "form.titleLabel",
   abstract: "form.abstractLabel",
   categoryId: "form.categoryLabel",
@@ -88,6 +89,7 @@ export function ProposalForm({
   earn?: ReactNode;
 } & ProposalFormMode) {
   const t = useTranslations("proposals.propose");
+  const tType = useTranslations("sessions.eventType");
   const tUi = useTranslations("ui.field");
   const [state, formAction, pending] = useActionState(
     action,
@@ -146,7 +148,11 @@ export function ProposalForm({
   ) as Partial<Record<ProposalField, string>>;
   const summary = summaryErrors(
     { ...state, errors: shown },
-    { fields: PROPOSAL_FIELDS, label: (field) => t(LABEL_KEY[field]), message: (key) => t(`errors.${key}`) },
+    {
+      fields: PROPOSAL_FIELDS,
+      label: (field) => (field === "eventType" ? tType("label") : t(LABEL_KEY[field])),
+      message: (key) => t(`errors.${key}`),
+    },
   );
 
   // Which control the member pressed, so `pending` appears on THAT one: `useFormStatus` cannot tell two submit
@@ -202,6 +208,18 @@ export function ProposalForm({
 
       <section aria-labelledby={SECTION_TOPIC} className="flex flex-col gap-4">
         {heading(SECTION_TOPIC, 1, t("form.sectionTopic"))}
+
+        {/* REQ-SES-022: «نوع الفعالية» — four chips, a talk unless chosen. Keyed on the round trip so React's form reset
+            lands on the value that came back, never on the one it mounted with. */}
+        <RadioGroup
+          key={`eventType-${state.attempt}`}
+          name="eventType"
+          legend={tType("label")}
+          appearance="chips"
+          options={EVENT_TYPES.map((type) => ({ value: type, label: tType(type) }))}
+          defaultValue={was(state, "eventType") || DEFAULT_EVENT_TYPE}
+          error={err("eventType")}
+        />
 
         <Field id="title" label={t("form.titleLabel")} hint={t("form.titleHint")} error={err("title")} required={required("title")}>
           <Input name="title" required maxLength={PROPOSAL_LIMITS.titleMax} defaultValue={was(state, "title")} aria-describedby="title-count" {...validating("title")} />

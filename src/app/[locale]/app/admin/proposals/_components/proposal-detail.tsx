@@ -22,11 +22,12 @@ import { MaterialLink } from "./material-link";
 
 export async function ProposalDetail({ locale, proposal }: { locale: string; proposal: ProposalForReview }) {
   // The org's clock, never the reader's (OQ-018).
-  const [t, tLevel, tDuration, tKind, prefs, edits, materials, session] = await Promise.all([
+  const [t, tLevel, tDuration, tKind, tType, prefs, edits, materials, session] = await Promise.all([
     getTranslations("proposals.review"),
     getTranslations("proposals.propose.form"),
     getTranslations("proposals.propose"),
     getTranslations("materials.list.kind"),
+    getTranslations("sessions.eventType"),
     getOrgPrefs(locale),
     getProposalEdits(locale, proposal.id),
     getProposalMaterialsPageData(locale, proposal.id),
@@ -76,6 +77,12 @@ export async function ProposalDetail({ locale, proposal }: { locale: string; pro
       </header>
 
       <ul className="flex flex-wrap gap-2">
+        {/* REQ-SES-022: the proposer's event type, read only — the session made from it starts as this type. */}
+        {proposal.eventType ? (
+          <li>
+            <TagChip label={tType(proposal.eventType)} />
+          </li>
+        ) : null}
         {proposal.categoryName ? (
           <li>
             <TagChip label={proposal.categoryName} />

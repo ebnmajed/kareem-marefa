@@ -1,0 +1,54 @@
+{
+  "announcements": {
+    "title": "Announcements",
+    "new": "New announcement",
+    "editTitle": "Edit the announcement",
+    "closeEditor": "Close",
+    "columnBody": "Announcement",
+    "columnPublish": "Publishing",
+    "columnExpires": "Ends",
+    "columnActions": "Actions",
+    "noExpiry": "—",
+    "status": {
+      "scheduled": "Scheduled",
+      "live": "Published",
+      "ended": "Ended"
+    },
+    "announced": "Sent",
+    "empty": "No announcements yet.",
+    "moreActions": "More actions on “<t>{excerpt}</t>”",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteTitle": "Delete “<t>{excerpt}</t>”?",
+    "deleteBody": "It leaves every member's home page. This cannot be undone.",
+    "deleteBodyScheduled": "It will not be published and nobody will be notified. This cannot be undone.",
+    "deleteAction": "Delete the announcement",
+    "cancel": "Cancel",
+    "close": "Close",
+    "deleted": "The announcement was deleted.",
+    "notWritten": "Not saved — try again.",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "The announcement was saved.",
+    "errorSummaryTitle": "Please correct the following:",
+    "form": {
+      "body": "Text",
+      "counter": "<bdi>{used}</bdi> / <bdi>{max}</bdi>",
+      "publish": "Publishing",
+      "publishNow": "Now",
+      "publishAt": "At a time",
+      "publishAtLabel": "Publishing time",
+      "expiresAt": "Ends",
+      "sent": "Members have been notified; editing it does not notify them again."
+    },
+    "errors": {
+      "bodyRequired": "Write the announcement's text.",
+      "bodyTooLong": "The text is longer than 500 characters.",
+      "publishAtRequired": "Choose the publishing time.",
+      "publishAtPast": "Choose a time that has not passed.",
+      "expiresBeforePublish": "Choose an end after the publishing time.",
+      "expiresPast": "Choose an end that has not passed.",
+      "failed": "Could not save — try again."
+    }
+  }
+}

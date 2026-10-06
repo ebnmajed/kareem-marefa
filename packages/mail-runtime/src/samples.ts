@@ -112,6 +112,7 @@ const PROPOSAL = "22222222-2222-4222-8222-222222222222";
 const COMMENT = "33333333-3333-4333-8333-333333333333";
 const RSVP = "44444444-4444-4444-8444-444444444444";
 const CERTIFICATE = "55555555-5555-4555-8555-555555555555";
+const ANNOUNCEMENT = "66666666-6666-4666-8666-666666666666";
 
 // Verbatim in the shape `select jsonb_build_object('startsAt', s.starts_at)`
 // produces against the local database — microseconds, offset and all. 15:00
@@ -137,6 +138,8 @@ export const SAMPLE_CASES: readonly SampleCase[] = [
 
   // ── 08 §1.2 sessions ─────────────────────────────────────────────────────
   { id: "MSG-session_published", key: "MSG-session_published", payload: { session_id: SESSION, title: TITLE, startsAt: AT, venue: VENUE } },
+  // `0213`'s publish_announcement(): announcement_id and the admin's text, nothing else.
+  { id: "MSG-announcement_published", key: "MSG-announcement_published", payload: { announcement_id: ANNOUNCEMENT, body: "يسعدنا أن نعلن عن افتتاح قاعة الابتكار الجديدة في الطابق الثالث، وهي متاحة للحجز من الأسبوع القادم." } },
   { id: "MSG-presenter_assigned", key: "MSG-presenter_assigned", payload: { session_id: SESSION, title: TITLE, startsAt: AT, venue: VENUE } },
   // `0111`'s sessions_notify(): the session's own window and first venue in the
   // headline, and `changes` for what moved. The second entry's two values are

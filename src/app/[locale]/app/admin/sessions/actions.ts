@@ -48,6 +48,9 @@ function errorKey(field: SessionField, code: string, empty: boolean): string {
       return "languageRequired";
     case "presenterIds":
       return "presentersInvalid";
+    // REQ-SES-022: the four radios always send one of the enum's values; anything else was not this form.
+    case "eventType":
+      return "failed";
     default:
       return "failed";
   }
@@ -64,6 +67,7 @@ export async function makeSessionDirectly(locale: Locale, prev: CreateSessionSta
   const state: CreateSessionState = { ...captured, lists: { presenterIds } };
 
   const raw = {
+    eventType: was(state, "eventType") || "talk",
     title: was(state, "title"),
     abstract: was(state, "abstract"),
     categoryId: was(state, "categoryId"),

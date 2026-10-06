@@ -18,7 +18,8 @@ export type BulkCancelState = { error: string | null; done: string[]; failed: st
  * form moved onto `lib/form-state`'s shared model, so its state is now a
  * plain `FormState<SessionField>` like every other rebuilt form.
  */
-export const SESSION_FIELDS = ["title", "abstract", "categoryId", "level", "language", "presenterIds"] as const;
+// `eventType` first: the form opens on it (REQ-SES-022).
+export const SESSION_FIELDS = ["eventType", "title", "abstract", "categoryId", "level", "language", "presenterIds"] as const;
 export type SessionField = (typeof SESSION_FIELDS)[number];
 
 /** The scalars. `presenterIds` is a list and is captured separately. */

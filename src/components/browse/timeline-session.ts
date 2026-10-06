@@ -1,5 +1,6 @@
 import { checkInWindowAllowed } from "@/components/checkin/session-matrix";
 import type { SessionLanguage, SessionLevel, SessionState } from "@/lib/dal/sessions";
+import { eventTypeOf, type EventType } from "@/components/sessions/event-type";
 import { closingSoon, seatState, sessionPhase, type DayWindow, type SeatState, type SessionPhase } from "@/lib/session-status";
 
 // One session card's DTO, and the two pure steps that build it — `16` §6.4,
@@ -36,6 +37,8 @@ export interface TimelineSession {
   timeZone: string;
   categoryId: string | null;
   categoryName: string | null;
+  /** REQ-SES-022 (add-only): the event type — a word on the row. */
+  eventType?: EventType;
   venueName: string | null;
   level: SessionLevel;
   language: SessionLanguage;
@@ -79,7 +82,7 @@ export const TIMELINE_STATES: SessionState[] = ["published", "in_progress", "com
 // «جارية» on the Thursday of a Wednesday-and-Friday workshop — and whether to
 // say a range at all. A SINGLE session still goes through `listSessionDays()`.
 export const TIMELINE_SESSION_COLUMNS =
-  "id, title, state, level, language, category_id, venue_id, starts_at, ends_at, duration_minutes, time_zone, capacity, rsvp_deadline_at, allow_walk_ins, check_in_open, custom_venue_name, categories(name), venues(name), session_days(id, position, starts_at, ends_at, check_in_open)";
+  "id, title, state, level, language, event_type, category_id, venue_id, starts_at, ends_at, duration_minutes, time_zone, capacity, rsvp_deadline_at, allow_walk_ins, check_in_open, custom_venue_name, categories(name), venues(name), session_days(id, position, starts_at, ends_at, check_in_open)";
 
 export type PresenterEntry = { memberId: string; displayName: string | null; companyId: string | null; avatarUrl?: string | null };
 export type TagEntry = { label: string; normalised: string };
@@ -162,6 +165,7 @@ export function toTimelineCandidate(row: Record<string, unknown>, ctx: Candidate
     timeZone: (row.time_zone as string | null) ?? ctx.orgTimeZone,
     categoryId: (row.category_id as string | null) ?? null,
     categoryName: (row.categories as { name: string } | null)?.name ?? null,
+    eventType: eventTypeOf(row.event_type),
     venueId: (row.venue_id as string | null) ?? null,
     venueName: (row.venues as { name: string } | null)?.name ?? (row.custom_venue_name as string | null) ?? null,
     level: row.level as SessionLevel,
@@ -201,6 +205,7 @@ export function finishTimelineSession(c: TimelineCandidate, extras: CardExtras, 
     timeZone: c.timeZone,
     categoryId: c.categoryId,
     categoryName: c.categoryName,
+    eventType: c.eventType,
     venueName: c.venueName,
     level: c.level,
     language: c.language,

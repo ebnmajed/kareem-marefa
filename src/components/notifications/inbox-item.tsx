@@ -18,8 +18,9 @@ import type { InboxGroup } from "@/components/notifications/inbox-groups";
 //
 // ★ UNREAD IS NEVER COLOUR ALONE (N9, SC 1.4.1): the dot and the fill are drawn, and «غير مقروء» is in the text.
 
+// ★ 0213 (REQ-ADM-025): an org announcement carries no title — its detail line is the admin's own text.
 function payloadTitle(payload: Record<string, unknown>): string | null {
-  const value = payload.title ?? payload.session_title ?? payload.name;
+  const value = payload.title ?? payload.session_title ?? payload.name ?? payload.body;
   return typeof value === "string" && value.trim() !== "" ? value : null;
 }
 

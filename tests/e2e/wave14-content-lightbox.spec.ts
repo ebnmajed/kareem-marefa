@@ -137,8 +137,10 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
-async function openEventPage(page: Page) {
-  await page.goto(`/ar/app/sessions/${sessionId}`);
+// ★ Staff open the page in edit mode (`?edit=1`): their downloads are behind «تعديل» (the owner's ruling,
+// `sessions/edit-mode.tsx`); a member's page ignores the flag.
+async function openEventPage(page: Page, edit = false) {
+  await page.goto(`/ar/app/sessions/${sessionId}${edit ? "?edit=1" : ""}`);
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
 }
 
@@ -241,7 +243,7 @@ test("★ DEC-266: a member sees the photograph and is offered no download; the 
 test("★ REQ-ADM-021: staff's lightbox offers a route, which audits and 303s to a short-lived signed URL; a hidden photo's route bounces back", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
   await signIn(context, modEmail);
-  await openEventPage(page);
+  await openEventPage(page, true);
 
   await page.locator("#main").getByRole("button", { name: "افتح الصورة 1 من 3", exact: true }).click();
   const link = page.getByRole("dialog").getByRole("link", { name: "تنزيل الصورة", exact: true });

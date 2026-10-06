@@ -162,6 +162,10 @@ export interface PhotosPageData {
    *  required: every existing fixture predates it, and `gallery.test.tsx` mocks this module with
    *  `getPhotosPageData` alone, so the album is part of this one read rather than a second one. */
   album?: PhotoAlbumState | null;
+  /** True when the viewer may add a photograph ONLY because they are staff (not checked in, not a presenter) — the
+   *  event page's edit mode then draws the add control behind «تعديل», as a member would not see it. OPTIONAL and
+   *  add-only, for the same reason as `album`: absent reads as false. */
+  uploadAsStaffOnly?: boolean;
 }
 
 const DEFAULT_IMAGE_LIMIT_MB = 20;
@@ -230,6 +234,7 @@ export const getPhotosPageData = cache(async (locale: string, sessionId: string)
   return {
     photos,
     canUpload: !!checkedIn || !!presents || isStaff,
+    uploadAsStaffOnly: isStaff && !checkedIn && !presents,
     isStaff,
     myMemberId: session.memberId,
     imageLimitMb: (settings?.limit_image_mb as number | undefined) ?? DEFAULT_IMAGE_LIMIT_MB,

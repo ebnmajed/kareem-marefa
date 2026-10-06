@@ -136,8 +136,10 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
-async function openEventPage(page: Page) {
-  await page.goto(`/ar/app/sessions/${sessionId}`);
+// ★ Staff open the page in edit mode (`?edit=1`): their downloads are behind «تعديل» (the owner's ruling,
+// `sessions/edit-mode.tsx`); a member's page ignores the flag.
+async function openEventPage(page: Page, edit = false) {
+  await page.goto(`/ar/app/sessions/${sessionId}${edit ? "?edit=1" : ""}`);
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
 }
 
@@ -145,7 +147,7 @@ test("★ «تنزيل الكل» returns at once; the real worker writes the zi
   test.setTimeout(180_000);
   await page.setViewportSize(PHONE);
   await signIn(context, staffEmail);
-  await openEventPage(page);
+  await openEventPage(page, true);
   const main = page.locator("#main");
 
   // Returns at once: the POST's own response, measured, and the page already says «نُجهّز».

@@ -300,7 +300,8 @@ test("a moderator: the hub's address lands on attendance, and the schedule is no
 test("an accepted presenter: the download on the event page, and no way into the hub", async ({ page, context }) => {
   await signIn(context, emails.sara);
   await page.setViewportSize(PHONE);
-  await page.goto(`/ar/app/sessions/${sessionId}`);
+  // ★ Edit mode (the owner's ruling): a presenter's download is behind «تعديل», so the page is opened in it.
+  await page.goto(`/ar/app/sessions/${sessionId}?edit=1`);
   await settle(page);
   const primary = main(page).getByRole("link", { name: "تنزيل الملصق" });
   await expect(primary).toHaveCount(1);
@@ -338,7 +339,7 @@ test("a member who neither presents nor manages sees no download", async ({ page
 test("back from a refused download, the page says so beside the control", async ({ page, context }) => {
   await signIn(context, emails.sara);
   await page.setViewportSize(PHONE);
-  await page.goto(`/ar/app/sessions/${sessionId}?download=failed`);
+  await page.goto(`/ar/app/sessions/${sessionId}?download=failed&edit=1`);
   await settle(page);
   const alert = main(page).getByRole("alert").filter({ hasText: "تعذّر التنزيل. حاول مرة أخرى." });
   await expect(alert).toBeVisible();

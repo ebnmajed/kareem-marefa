@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { pageSessions, parseSessionQuery, sessionsHref } from "@/components/admin/sessions/session-query";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { EVENT_TYPES, isEventType } from "@/components/sessions/event-type";
+import { Button } from "@/components/ui/button";
+import { ChevronIcon } from "@/components/ui/icons";
+import { Menu } from "@/components/ui/menu";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import type { Locale } from "@/i18n/routing";
@@ -23,7 +26,7 @@ import { SessionsTable } from "./sessions-table";
 // member gets the page-level `notFound()`, the streamed contract (`DEC-134`).
 // The layout never gates. The page renders nothing of the console frame.
 //
-// «جلسة جديدة» is a LINK to `?new=1`, which renders the creation region on the
+// «إنشاء» is a menu (0213): each event type is a LINK to `?new=1&type=<type>`, which renders the creation region on the
 // server above the table: the approved proposals waiting to become sessions,
 // one press each (`REQ-PRO-007`, `DEC-228` §3.11), and the direct form — so
 // both work without JS.
@@ -39,12 +42,13 @@ export default async function AdminSessionsPage({
   setRequestLocale(locale);
   const sp = await searchParams;
 
-  const [data, t] = await Promise.all([getConsoleSessions(locale), getTranslations("admin.sessions")]);
+  const [data, t, tTypes] = await Promise.all([getConsoleSessions(locale), getTranslations("admin.sessions"), getTranslations("sessions.eventType")]);
   if (data === null) notFound();
   const admin = data.role === "admin";
   const creating = admin && sp.new === "1";
 
   const query = parseSessionQuery(sp);
+  const newHref = `${sessionsHref(query)}${sessionsHref(query).includes("?") ? "&" : "?"}new=1`;
   const slice = pageSessions(data.rows, query);
   const months = [...new Set(data.rows.map((r) => r.monthKey).filter((m): m is string => m !== null))].sort().reverse();
 
@@ -69,10 +73,21 @@ export default async function AdminSessionsPage({
         title={t("title")}
         actions={
           admin ? (
-            <ButtonLink href={`${sessionsHref(query)}${sessionsHref(query).includes("?") ? "&" : "?"}new=1#new-session`} size="md">
-              <span className="hidden md:inline">{t("newSession")}</span>
-              <span className="md:hidden">{t("newSessionShort")}</span>
-            </ButtonLink>
+            // ★ 0213 (REQ-SES-022, REQ-ADM-025, DEC-267): «إنشاء» is one control — the four event types open the direct
+            // form with the type chosen (`?type=`, read by the form), and «إعلان» opens the announcements screen's
+            // create form, because an announcement is not a session.
+            <Menu
+              align="end"
+              trigger={
+                <Button type="button" size="md" iconEnd={<ChevronIcon direction="down" />}>
+                  {t("createMenu")}
+                </Button>
+              }
+              items={[
+                ...EVENT_TYPES.map((type) => ({ label: tTypes(type), href: `${newHref}&type=${type}#new-session` })),
+                { label: t("createAnnouncement"), href: "/app/admin/announcements?new=1#announcement-editor", startsGroup: true },
+              ]}
+            />
           ) : null
         }
       />
@@ -118,7 +133,13 @@ export default async function AdminSessionsPage({
           </Panel>
           <Panel>
             <h3 className="mb-4 text-label text-fg-heading">{t("directTitle")}</h3>
-            <DirectSessionForm action={makeSessionDirectly.bind(null, locale as Locale)} categories={categories} members={members} />
+            <DirectSessionForm
+              action={makeSessionDirectly.bind(null, locale as Locale)}
+              categories={categories}
+              members={members}
+              // The type «إنشاء» was opened with (`?type=`); anything else is a talk.
+              defaultEventType={typeof sp.type === "string" && isEventType(sp.type) ? sp.type : undefined}
+            />
           </Panel>
         </section>
       ) : null}
