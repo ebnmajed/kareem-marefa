@@ -399,8 +399,7 @@
         "already_signed_in": "They have signed in — deactivate with a reason instead of removing.",
         "no_addresses": "Enter at least one email address.",
         "company_other_org": "That company does not belong to your organisation.",
-        "company_deactivated": "This company is deactivated.",
-        "platform_admin": "This address belongs to a platform admin, who is never an organisation's member."
+        "company_deactivated": "This company is deactivated."
       },
       "columnLevel": "Level",
       "columnPoints": "Points",
@@ -443,8 +442,7 @@
           "already_a_member": "already a member",
           "not_an_address": "not an email address",
           "role_not_allowed": "that role is not available here",
-          "failed": "could not be added",
-          "platform_admin": "Platform admin"
+          "failed": "could not be added"
         },
         "reportLabel": "What happened to each address"
       },

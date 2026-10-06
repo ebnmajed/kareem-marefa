@@ -10428,3 +10428,23 @@ material whose phase a member could not yet see, because the row comes from the 
 
 - **Documents changed:** `01-prd.md` (`REQ-SES-022`, `REQ-ADM-025`), `14-roadmap.md` (M31), `15-backlog.md`
   (`STORY-SES-015`, `STORY-ADM-014`), `STATUS.md`
+
+## DEC-268 — A platform admin may also be a member of an organisation and use the app as one · `0214` · reverses `DEC-266` ruling 2
+
+- **Date:** 2026-10-06 · **Decided by:** the owner · **Reverses:** `DEC-266` ruling 2 and `0212` §2 · **Migration:** `0214`
+
+**What happened.** The owner asked to «fix the superadmin issue as they are not allowed to be a member in the
+organisation and use the app as a member» — a fix to the inability. The lead read it as a rule to enforce, and `0212`
+built the opposite: no member claims for a platform admin, never provisioned, a member row refused. The owner, asked,
+confirmed the reading was wrong («Yes fix it»).
+
+**The ruling.** A platform admin may also hold a member row in an org and use the app as that member — or as that org's
+admin, if the row says so. `0214` restores `0211`'s behaviour exactly: the token hook writes their member claims, the
+provisioning function treats them as anyone else, and the trigger refusing their row is dropped. Impersonation is
+unchanged and still replaces the claims while it lasts. **`DEC-014` and invariant 8 stand**: the platform role itself
+reads no org's data and no policy gains a disjunct — a member row gives exactly that row's access to that one org.
+
+**Lesson recorded:** an instruction that can be read as «fix X's inability» or «enforce X's prohibition» is asked
+back before it becomes a migration; a migration on production is only ever undone by another.
+
+- **Documents changed:** `STATUS.md`
