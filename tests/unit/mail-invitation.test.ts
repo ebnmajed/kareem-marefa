@@ -21,9 +21,10 @@ const render = () =>
   });
 
 describe("★ REQ-NTF-017 — it is transactional, not a matrix message", () => {
-  it("is absent from the template table and from DESIGN_FOR, which stay at 25", () => {
-    expect(Object.keys(DEFAULT_TEMPLATES)).toHaveLength(25);
-    expect(Object.keys(DESIGN_FOR)).toHaveLength(25);
+  // 26 since 0213 (REQ-ADM-025): MSG-announcement_published is a matrix message; the invitation still is not.
+  it("is absent from the template table and from DESIGN_FOR, which stay at 26", () => {
+    expect(Object.keys(DEFAULT_TEMPLATES)).toHaveLength(26);
+    expect(Object.keys(DESIGN_FOR)).toHaveLength(26);
     expect(DEFAULT_TEMPLATES).not.toHaveProperty(KEY);
     expect(DESIGN_FOR).not.toHaveProperty(KEY);
     // So a key lookup could never find it — which is why the worker passes the document itself.

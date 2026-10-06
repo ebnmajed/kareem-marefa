@@ -4,7 +4,8 @@ import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getTranslations } from "next-intl/server";
-import { addSessionPresenter, publishSession, removeSessionPresenter, scheduleInput, scheduleSession } from "@/lib/dal/sessions";
+import { addSessionPresenter, publishSession, removeSessionPresenter, scheduleInput, scheduleSession, setEventType } from "@/lib/dal/sessions";
+import { EVENT_TYPES } from "@/components/sessions/event-type";
 import type { Locale } from "@/i18n/routing";
 import { formStateFrom, was, withErrors, withFormError } from "@/lib/form-state";
 import { CUSTOM_VENUE, atZone, checkDays, checkRelations, dayEnd, deadlineFor, followingEnd, type DeadlinePreset } from "./rules";
@@ -290,4 +291,27 @@ export async function removePresenter(locale: Locale, sessionId: string, memberI
     return { error: t("failed") };
   }
   revalidatePresenters(locale, sessionId);
+}
+
+/**
+ * «نوع الفعالية» on الجدولة's edit mode — REQ-SES-022. Its own action, beside the schedule's: the type is written by
+ * `set_event_type()` (an admin's, audited) and never by `schedule_session()`, so neither save moves the other.
+ */
+export async function saveEventType(
+  locale: Locale,
+  sessionId: string,
+  type: string,
+): Promise<{ ok: true } | { ok: false; error: "not_an_admin" | "stale_claims" | "session_not_found" | "failed" }> {
+  const parsed = z.object({ sessionId: z.uuid(), type: z.enum(EVENT_TYPES) }).strict().safeParse({ sessionId, type });
+  if (!parsed.success) return { ok: false, error: "failed" };
+  try {
+    const result = await setEventType(locale, parsed.data.sessionId, parsed.data.type);
+    if (!result.ok) return { ok: false, error: result.error };
+    revalidatePath(`/${locale}/app/admin/sessions/${sessionId}/schedule`);
+    revalidatePath(`/${locale}/app/sessions/${sessionId}`);
+    return { ok: true };
+  } catch (e) {
+    unstable_rethrow(e);
+    return { ok: false, error: "failed" };
+  }
 }

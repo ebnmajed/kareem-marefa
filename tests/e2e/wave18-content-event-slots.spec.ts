@@ -197,7 +197,8 @@ test("★ live: the add tile first in the grid, the takedown in the lightbox, th
   await grid.getByRole("button", { name: /^افتح الصورة 1 من / }).click();
   const dialog = page.getByRole("dialog", { name: "صور الجلسة" });
   await expect(dialog.getByRole("button", { name: "احذف الصور التي أظهر فيها" })).toBeVisible();
-  await expect(dialog.getByRole("link", { name: "تنزيل الصورة" })).toBeVisible();
+  // DEC-266: a member sees the photograph and is offered no download.
+  await expect(dialog.getByRole("link", { name: "تنزيل الصورة" })).toHaveCount(0);
   await shot(page, "live-lightbox", 390);
 });
 

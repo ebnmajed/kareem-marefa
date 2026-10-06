@@ -12,13 +12,15 @@ const label = (key: string) => `label:${key}`;
 const keysOf = (groups: { key: string }[][]) => groups.flat().map((l) => l.key);
 
 describe("the console rail (DEC-226)", () => {
-  it("is six ruled groups of twenty leaves, in the artboard's order — 4 · 4 · 3 · 3 · 3 · 3", () => {
-    expect(ADMIN_NAV.map((g) => g.length)).toEqual([4, 4, 3, 3, 3, 3]);
+  // twenty-one since 0213 (REQ-ADM-025): «الإعلانات» joins the first group, after the sessions.
+  it("is six ruled groups of twenty-one leaves, in the artboard's order — 5 · 4 · 3 · 3 · 3 · 3", () => {
+    expect(ADMIN_NAV.map((g) => g.length)).toEqual([5, 4, 3, 3, 3, 3]);
   });
 
-  it("renders nineteen to an admin, each with its label — moderationComments is unbuilt since DEC-230 §3", () => {
+  it("renders twenty to an admin, each with its label — moderationComments is unbuilt since DEC-230 §3", () => {
     const groups = adminRailGroups("admin", label);
-    expect(groups.flat()).toHaveLength(19);
+    expect(groups.flat()).toHaveLength(20);
+    expect(keysOf(groups)).toContain("announcements");
     expect(keysOf(groups)).not.toContain("moderationComments");
     for (const link of groups.flat()) expect(link.label).toBe(`label:${link.key}`);
   });
@@ -37,12 +39,12 @@ describe("the console rail (DEC-226)", () => {
     const table = ADMIN_NAV.map((g) => g.map((leaf) => (leaf.key === "venues" ? { ...leaf, built: false } : leaf)));
     // the filter is the function's, so prove it on a table with one unbuilt leaf
     const built = table.flat().filter((l) => l.built).length;
-    expect(built).toBe(18);
+    expect(built).toBe(19);
     // wave 22: exactly one leaf is unbuilt in the table itself — the merged moderation queue (DEC-230 §3)
     expect(ADMIN_NAV.flat().filter((l) => !l.built).map((l) => l.key)).toEqual(["moderationComments"]);
   });
 
-  it("names exactly the twenty admin.shell.nav keys, in both languages — nothing orphaned", () => {
+  it("names exactly the twenty-one admin.shell.nav keys, in both languages — nothing orphaned", () => {
     const keys = ADMIN_NAV.flat().map((l) => l.key).sort();
     expect(Object.keys(ar.admin.shell.nav).sort()).toEqual(keys);
     expect(Object.keys(en.admin.shell.nav).sort()).toEqual(keys);

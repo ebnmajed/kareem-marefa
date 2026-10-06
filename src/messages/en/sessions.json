@@ -241,6 +241,13 @@
       "refusedDeadline": "Could not reserve: reservations for this session have closed.",
       "refusedNotOpen": "Could not reserve: this session is not taking reservations now.",
       "refusedUnknown": "Could not reserve. Try again in a moment."
+    },
+    "eventType": {
+      "label": "Event type",
+      "talk": "Talk",
+      "workshop": "Workshop",
+      "panel": "Panel",
+      "meetup": "Meetup"
     }
   }
 }

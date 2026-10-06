@@ -62,6 +62,10 @@
         "name": "New sessions",
         "hint": "A session was published, or a booking window opened for you early."
       },
+      "announcements": {
+        "name": "Announcements",
+        "hint": "An announcement your organisation publishes to every member."
+      },
       "my_sessions": {
         "name": "My sessions",
         "hint": "Anything about a seat you hold: confirmation, waitlist, check-in, materials added afterwards."
@@ -146,7 +150,8 @@
       "MSG-account_deactivated": "Your account was deactivated",
       "MSG-calendar_disconnected": "Your calendar was disconnected",
       "MSG-export_ready": "Your data is ready to download",
-      "MSG-photo_album_ready": "Session photos are ready to download"
+      "MSG-photo_album_ready": "Session photos are ready to download",
+      "MSG-announcement_published": "New announcement"
     },
     "admin": {
       "emails": {

@@ -77,6 +77,8 @@ function captureProposal(prev: ProposeState, formData: FormData): { state: Propo
 
   const duration = was(state, "expectedDurationMinutes").trim();
   const raw = {
+    // REQ-SES-022: the four radios always send one; a talk when none arrived.
+    eventType: was(state, "eventType") || "talk",
     title: was(state, "title"),
     abstract: was(state, "abstract"),
     categoryId: was(state, "categoryId"),

@@ -14,6 +14,8 @@ import { emptyFormState, type FormState } from "@/lib/form-state";
  * it is read with `getAll()` rather than `get()`.
  */
 export const PROPOSAL_FIELDS = [
+  // REQ-SES-022: «نوع الفعالية» opens section 1.
+  "eventType",
   "title",
   "abstract",
   "categoryId",

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { PhotoLightbox, type LightboxPhoto } from "@/components/photos/lightbox";
 import { ReportPhotoButton } from "@/components/photos/report-photo-button";
 import { TakedownButton } from "@/components/photos/takedown-button";
+import { useShowsEditOnly } from "@/components/sessions/edit-mode";
 
 // The event page's album — the lightbox with «احذف الصور التي أظهر فيها» beside the download, for the photograph on
 // screen (REQ-EVT-012, DEC-209). A client component so the per-photograph control is a render function the lightbox
@@ -26,10 +27,13 @@ export function PhotoAlbum({
   canDownload?: boolean;
   children: ReactNode;
 }) {
+  // ★ Edit mode (the owner's ruling, `sessions/edit-mode.tsx`): staff's «تنزيل الصورة» is behind «تعديل» on the event
+  // page; outside a provider it is as before.
+  const showsEditOnly = useShowsEditOnly();
   return (
     <PhotoLightbox
       photos={photos}
-      canDownload={canDownload}
+      canDownload={canDownload && showsEditOnly}
       extra={(photo) => (
         <>
           {reportable[photo.id] ? (

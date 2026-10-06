@@ -5,6 +5,7 @@ import { sessionClient } from "@/lib/dal/session";
 import { avatarHref } from "@/lib/dal/avatars";
 import { getSessionPoster } from "@/lib/dal/posters";
 import type { SessionState } from "@/lib/session-status";
+import { EVENT_TYPES, eventTypeOf, type EventType } from "@/components/sessions/event-type";
 
 // Proposals — REQ-PRO-001 … REQ-PRO-008, 02 §4.3, 03 §5.2.
 //
@@ -54,6 +55,8 @@ export interface ProposalSummary {
   /** The category's id, so an edit can pre-select it. */
   categoryId: string;
   level: ProposalLevel;
+  /** REQ-SES-022 (0213): the event type the proposer picked; the session made from it starts as this type. */
+  eventType: EventType;
   state: ProposalState;
   /** The admin's written reason on a rejection or a change-request (REQ-PRO-005). Read-only here. */
   decisionReason: string | null;
@@ -88,6 +91,8 @@ export const proposalInput = z
     targetAudience: z.string().trim().max(300).nullable(),
     expectedDurationMinutes: z.int().min(15).max(480).nullable(),
     adminNotes: z.string().trim().max(2000).nullable(),
+    /** REQ-SES-022: «نوع الفعالية» — a talk unless the proposer chose otherwise. */
+    eventType: z.enum(EVENT_TYPES).default("talk"),
   })
   .strict();
 export type ProposalInput = z.infer<typeof proposalInput>;
@@ -185,6 +190,8 @@ export async function createProposal(
     p_admin_notes: input.adminNotes,
     p_co_presenters: coPresenterIds,
     p_submit: submit,
+    // 0213's trailing parameter, by name.
+    p_event_type: input.eventType ?? "talk",
   });
   if (error || !data) throw new Error(`create_proposal: ${error?.message ?? "no id"}`);
   return { id: data as string, state: submit ? "submitted" : "draft" };
@@ -235,7 +242,7 @@ async function presentersOf(
   });
 }
 
-const PROPOSAL_COLUMNS = "id, title, abstract, proposer_id, category_id, level, state, decision_reason, expected_duration_minutes, created_at, updated_at, categories(name)";
+const PROPOSAL_COLUMNS = "id, title, abstract, proposer_id, category_id, level, event_type, state, decision_reason, expected_duration_minutes, created_at, updated_at, categories(name)";
 
 type ProposalRow = {
   id: string;
@@ -244,6 +251,7 @@ type ProposalRow = {
   proposer_id: string;
   category_id: string;
   level: string;
+  event_type?: string | null;
   state: string;
   decision_reason: string | null;
   expected_duration_minutes: number | null;
@@ -264,6 +272,7 @@ function toSummary(row: ProposalRow, presenters: ProposalPresenter[], viewerId: 
     categoryName: category?.name ?? null,
     categoryId: row.category_id,
     level: row.level as ProposalLevel,
+    eventType: eventTypeOf(row.event_type),
     state: row.state as ProposalState,
     decisionReason: row.decision_reason,
     expectedDurationMinutes: row.expected_duration_minutes,
@@ -338,6 +347,7 @@ export async function updateProposal(locale: string, id: string, input: Proposal
       target_audience: input.targetAudience,
       expected_duration_minutes: input.expectedDurationMinutes,
       admin_notes: input.adminNotes,
+      event_type: input.eventType ?? "talk",
       state: submit ? "submitted" : "draft",
     })
     .eq("id", id)
@@ -609,6 +619,8 @@ export interface ProposalForReview {
   state: ProposalState;
   categoryName: string | null;
   level: ProposalLevel;
+  /** REQ-SES-022: read-only here — the proposer's choice. */
+  eventType: EventType;
   expectedDurationMinutes: number | null;
   targetAudience: string | null;
   adminNotes: string | null;
@@ -647,6 +659,7 @@ export async function getProposalForReview(locale: string, id: string): Promise<
     state: row.state as ProposalState,
     categoryName: category?.name ?? null,
     level: row.level as ProposalLevel,
+    eventType: eventTypeOf(row.event_type),
     expectedDurationMinutes: row.expected_duration_minutes,
     targetAudience: row.target_audience,
     adminNotes: row.admin_notes,

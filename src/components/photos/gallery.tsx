@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 import { AlbumControl } from "@/components/photos/album-control";
 import { PhotoDownloadNotice } from "@/components/photos/download-notice";
@@ -6,6 +7,7 @@ import { LightboxOpenFirst, type LightboxPhoto } from "@/components/photos/light
 import { PhotoGrid } from "@/components/photos/photo-grid";
 import { UploadWidget } from "@/components/photos/upload-widget";
 import type { RescopeOption } from "@/components/materials/rescope-chip";
+import { EditOnly } from "@/components/sessions/edit-mode";
 import { dayLabel, dayShortLabel } from "@/components/sessions/day-label";
 import type { SlotProps, SlotSummary } from "@/components/sessions/slots";
 import { getPhotosPageData, type PhotoSummary } from "@/lib/dal/photos";
@@ -32,28 +34,39 @@ export async function Photos({ sessionId, locale, phase }: SlotProps & { phase?:
     getTranslations("photos.album"),
     getTranslations("photos.download"),
   ]);
-  const { photos, canUpload, isStaff, myMemberId, imageLimitMb, days: rawDays, timeZone, album } = await getPhotosPageData(locale, sessionId);
+  const { photos, canUpload, uploadAsStaffOnly, isStaff, myMemberId, imageLimitMb, days: rawDays, timeZone, album } = await getPhotosPageData(locale, sessionId);
   if (photos.length === 0 && !canUpload) return null;
   const days = rawDays ?? [];
   const live = phase === "live";
+  // ★ Edit mode (the owner's ruling, `sessions/edit-mode.tsx`): what staff alone may do here — add a photograph
+  // without having attended, «تنزيل الكل» — is drawn behind «تعديل»; read mode is what a member sees.
+  const staffOnly = (node: ReactNode) => (node && uploadAsStaffOnly ? <EditOnly>{node}</EditOnly> : node);
 
-  const tile = canUpload && live ? <UploadWidget locale={locale} sessionId={sessionId} imageLimitMb={imageLimitMb} variant="tile" /> : undefined;
-  const pill = canUpload && !live ? <UploadWidget locale={locale} sessionId={sessionId} imageLimitMb={imageLimitMb} variant="pill" /> : null;
-  const notice = canUpload ? (
-    <div className="flex flex-col gap-1 text-caption text-fg-muted">
-      <p>{t("notice")}</p>
-      <p>{tUpload.rich("requirement", { limitMb: imageLimitMb, bdi: (chunks) => <bdi>{chunks}</bdi> })}</p>
-    </div>
-  ) : null;
+  const tile = canUpload && live ? staffOnly(<UploadWidget locale={locale} sessionId={sessionId} imageLimitMb={imageLimitMb} variant="tile" />) : undefined;
+  const pill = canUpload && !live ? staffOnly(<UploadWidget locale={locale} sessionId={sessionId} imageLimitMb={imageLimitMb} variant="pill" />) : null;
+  const notice = canUpload
+    ? staffOnly(
+        <div className="flex flex-col gap-1 text-caption text-fg-muted">
+          <p>{t("notice")}</p>
+          <p>{tUpload.rich("requirement", { limitMb: imageLimitMb, bdi: (chunks) => <bdi>{chunks}</bdi> })}</p>
+        </div>,
+      )
+    : null;
 
   const visible = photos.filter((p) => !p.hiddenAt);
-  const topRow =
+  const albumRow =
     isStaff || visible.length > 0 ? (
       <div className="flex flex-wrap items-center justify-between gap-3">
         {visible.length > 0 ? <LightboxOpenFirst label={tLightbox("openAlbum")} /> : <span />}
-        {isStaff ? <AlbumControl t={tAlbum} sessionId={sessionId} locale={locale} album={album ?? null} visibleCount={visible.length} timeZone={timeZone ?? "Asia/Riyadh"} /> : null}
+        {isStaff ? (
+          <EditOnly>
+            <AlbumControl t={tAlbum} sessionId={sessionId} locale={locale} album={album ?? null} visibleCount={visible.length} timeZone={timeZone ?? "Asia/Riyadh"} />
+          </EditOnly>
+        ) : null}
       </div>
     ) : null;
+  // With nothing a member can open, the row holds only the staff control — drawn in edit mode alone.
+  const topRow = albumRow && visible.length === 0 ? <EditOnly>{albumRow}</EditOnly> : albumRow;
 
   const scopes = (): { groups: { dayId: string | null; heading: string; items: PhotoSummary[]; short: string }[]; options: RescopeOption[] } => {
     const sessionScope = tDays("sessionScope");
@@ -109,6 +122,10 @@ function reportable(photos: PhotoSummary[], me: string): Record<string, "open" |
 
 /** The page's gate and the sub-nav's count — the same `cache()`d read. */
 export async function photosSummary({ sessionId, locale }: SlotProps): Promise<SlotSummary> {
-  const { photos, canUpload } = await getPhotosPageData(locale, sessionId);
-  return { visible: photos.length > 0 || canUpload, count: photos.length, outstanding: null };
+  const { photos, canUpload, uploadAsStaffOnly } = await getPhotosPageData(locale, sessionId);
+  const visible = photos.length > 0 || canUpload;
+  // What a member would see here: a visible photograph, or the add control they may use themselves. Without either,
+  // the section is staff's alone (hidden photographs, the staff-only add) and drawn in edit mode alone.
+  const memberSees = photos.some((p) => !p.hiddenAt) || (canUpload && !uploadAsStaffOnly);
+  return { visible, count: photos.length, outstanding: null, ...(visible && !memberSees ? { editOnly: true } : {}) };
 }

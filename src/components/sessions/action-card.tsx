@@ -4,6 +4,7 @@ import { RsvpReserve, RsvpStatus, reserveMomentLabels } from "@/components/check
 import { reserveSeatAction } from "@/components/checkin/actions";
 import { AwardState } from "@/components/checkin/award-state";
 import { AddToCalendar } from "@/components/calendar/add-to-calendar";
+import { EditOnly } from "@/components/sessions/edit-mode";
 import { EventMeta } from "@/components/sessions/event-meta";
 import { MomentPart, ReserveMoment, ReserveRefused } from "@/components/sessions/moment-reserve";
 import { formatDate, formatNumber } from "@/components/sessions/numerals";
@@ -190,50 +191,55 @@ export async function ActionCard(props: ActionCardProps) {
           ) : null}
 
           {/* «تنزيل الملصق» (REQ-DSG-027, DEC-178) — for staff and the session's own presenters, through the audited route. */}
+          {/* ★ Edit mode (the owner's ruling): staff and presenters' tools are behind «تعديل» — read mode is the member's card. */}
           {session.viewerIsStaff || session.viewerIsPresenter ? (
-            <div className="lg:basis-full">
-              <Suspense fallback={null}>
-                <SessionDownload sessionId={session.id} locale={locale} placement="event" />
-              </Suspense>
-            </div>
+            <EditOnly>
+              <div className="lg:basis-full">
+                <Suspense fallback={null}>
+                  <SessionDownload sessionId={session.id} locale={locale} placement="event" />
+                </Suspense>
+              </div>
+            </EditOnly>
           ) : null}
 
           {session.viewerIsStaff || hostViewSecondary ? (
-            <nav aria-label={t("actions.staffHeading")} className="border-t border-edge pt-3 lg:basis-full">
-              <p className="text-caption text-fg-muted" aria-hidden="true">
-                {t("actions.staffHeading")}
-              </p>
-              <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-body-sm">
-                {hostViewSecondary ? (
-                  <li>
-                    <Link href={`/app/sessions/${session.id}/host`} className="text-fg-heading underline underline-offset-4">
-                      {t("hostView")}
-                    </Link>
-                  </li>
-                ) : null}
-                {session.viewerIsStaff && props.isAdmin ? (
-                  <li>
-                    <Link href={`/app/admin/sessions/${session.id}/schedule`} className="text-fg-heading underline underline-offset-4">
-                      {t("manageSchedule")}
-                    </Link>
-                  </li>
-                ) : null}
-                {session.viewerIsStaff ? (
-                  <li>
-                    <Link href={`/app/admin/sessions/${session.id}/attendance`} className="text-fg-heading underline underline-offset-4">
-                      {t("manageAttendance")}
-                    </Link>
-                  </li>
-                ) : null}
-                {session.viewerIsStaff && props.isAdmin ? (
-                  <li>
-                    <Link href={`/app/admin/sessions/${session.id}/certificates`} className="text-fg-heading underline underline-offset-4">
-                      {t("manageCertificates")}
-                    </Link>
-                  </li>
-                ) : null}
-              </ul>
-            </nav>
+            <EditOnly>
+              <nav aria-label={t("actions.staffHeading")} className="border-t border-edge pt-3 lg:basis-full">
+                <p className="text-caption text-fg-muted" aria-hidden="true">
+                  {t("actions.staffHeading")}
+                </p>
+                <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-body-sm">
+                  {hostViewSecondary ? (
+                    <li>
+                      <Link href={`/app/sessions/${session.id}/host`} className="text-fg-heading underline underline-offset-4">
+                        {t("hostView")}
+                      </Link>
+                    </li>
+                  ) : null}
+                  {session.viewerIsStaff && props.isAdmin ? (
+                    <li>
+                      <Link href={`/app/admin/sessions/${session.id}/schedule`} className="text-fg-heading underline underline-offset-4">
+                        {t("manageSchedule")}
+                      </Link>
+                    </li>
+                  ) : null}
+                  {session.viewerIsStaff ? (
+                    <li>
+                      <Link href={`/app/admin/sessions/${session.id}/attendance`} className="text-fg-heading underline underline-offset-4">
+                        {t("manageAttendance")}
+                      </Link>
+                    </li>
+                  ) : null}
+                  {session.viewerIsStaff && props.isAdmin ? (
+                    <li>
+                      <Link href={`/app/admin/sessions/${session.id}/certificates`} className="text-fg-heading underline underline-offset-4">
+                        {t("manageCertificates")}
+                      </Link>
+                    </li>
+                  ) : null}
+                </ul>
+              </nav>
+            </EditOnly>
           ) : null}
         </MomentPart>
       </section>
@@ -291,7 +297,8 @@ async function LiveCount({ session, figures, faces }: { session: EventSession; f
             : t("attendingNow", { count, value: formatNumber(count) })}
         </span>
       </p>
-      {faces.length > 0 ? <AttendeeStack label={t("whoAttends")} people={faces.map((f) => ({ memberId: f.memberId, displayName: f.displayName, src: f.avatarUrl, teamColor: f.teamColor }))} countLabel={t("attendedCount", { count, value: formatNumber(count) })} size={24} /> : null}
+      {/* Who is here is staff's and presenters' (A33 rule 3) — and, since edit mode, behind «تعديل»: read mode keeps the count. */}
+      {faces.length > 0 ? <EditOnly><AttendeeStack label={t("whoAttends")} people={faces.map((f) => ({ memberId: f.memberId, displayName: f.displayName, src: f.avatarUrl, teamColor: f.teamColor }))} countLabel={t("attendedCount", { count, value: formatNumber(count) })} size={24} /></EditOnly> : null}
     </div>
   );
 }

@@ -55,6 +55,12 @@ export const DEFAULT_TEMPLATES: Readonly<Record<string, EmailTemplate>> = {
     subject: "جلسة جديدة: {{title}}",
     body: `${greeting}\n\nنُشرت جلسة جديدة:\n\n«{{title}}»\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\n{{url}}`,
   },
+  // ★ 0213 (REQ-ADM-025, DEC-267): an org admin's announcement, sent once when it goes live. `{{body}}` is the admin's
+  // own text, ≤ 500 characters (0164's check).
+  "MSG-announcement_published": {
+    subject: "إعلان من {{org}}",
+    body: `${greeting}\n\n{{body}}\n\n{{url}}`,
+  },
   "MSG-presenter_assigned": {
     subject: "أُسندت إليك جلسة — {{title}}",
     body: `${greeting}\n\nأُسندت إليك جلسة «{{title}}».\n\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\nتجد تفاصيلها كاملة في صفحة الجلسة.\n\n{{url}}`,

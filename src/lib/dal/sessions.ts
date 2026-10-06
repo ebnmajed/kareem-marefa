@@ -6,6 +6,7 @@ import { avatarHref } from "@/lib/dal/avatars";
 import { readAll } from "@/lib/dal/admin-paging";
 import { createServerClient } from "@/lib/supabase/server";
 import { PROPOSAL_LIMITS } from "@/components/sessions/proposal-rules";
+import { EVENT_TYPES, eventTypeOf, type EventType } from "@/components/sessions/event-type";
 import { sessionPhase, viewerRelation as deriveRelation, type DayWindow, type ViewerRelation } from "@/lib/session-status";
 
 // Sessions — REQ-SES-001 … REQ-SES-013, REQ-PRO-007, 02 §4.3, §6.2, 03 §5.2c/d.
@@ -32,6 +33,10 @@ export type SessionState =
   | "cancelled";
 
 export type SessionLevel = "introductory" | "intermediate" | "advanced";
+
+// ★ REQ-SES-022 (0213): the event type. The list lives beside the forms that offer it (a client module); the DAL
+// re-exports it so a server reader names one source.
+export { EVENT_TYPES, DEFAULT_EVENT_TYPE, isEventType, eventTypeOf, type EventType } from "@/components/sessions/event-type";
 export type SessionLanguage = "ar" | "en";
 
 export interface SessionPresenterDto {
@@ -219,6 +224,8 @@ export const directSessionInput = z
     level: z.enum(["introductory", "intermediate", "advanced"]),
     language: z.enum(["ar", "en"]),
     presenterIds: z.array(z.uuid()).max(10),
+    /** REQ-SES-022: the admin's choice on «create»; a talk when none is made. */
+    eventType: z.enum(EVENT_TYPES).default("talk"),
   })
   .strict();
 export type DirectSessionInput = z.infer<typeof directSessionInput>;
@@ -243,7 +250,37 @@ export async function createSessionDirect(locale: string, input: DirectSessionIn
     p_presenters: input.presenterIds,
   });
   if (error || !data) throw new Error(`create_session: ${error?.message ?? "no id"}`);
+  // ★ REQ-SES-022: `create_session()` starts a direct session as a talk; the admin's other choice is applied
+  // through the one audited writer, in the same action.
+  const type = input.eventType ?? "talk";
+  if (type !== "talk") {
+    const { error: tErr } = await supabase.rpc("set_event_type", { p_session: data as string, p_type: type });
+    if (tErr) throw new Error(`set_event_type: ${tErr.message}`);
+  }
   return data as string;
+}
+
+// ── The event type (REQ-SES-022, 0213) ──────────────────────────────────────
+
+export const EVENT_TYPE_ERRORS = ["not_an_admin", "stale_claims", "session_not_found", "failed"] as const;
+export type EventTypeError = (typeof EVENT_TYPE_ERRORS)[number];
+export type EventTypeResult = { ok: true; eventType: EventType } | { ok: false; error: EventTypeError };
+
+const eventTypeChange = z.object({ sessionId: z.uuid(), type: z.enum(EVENT_TYPES) }).strict();
+
+/**
+ * Changes a session's event type — `set_event_type()`, an admin's alone (`assert_fresh_admin()`), audited
+ * `session.event_type_changed` with the old and the new type. A live poster regenerates from the new type's
+ * template by the database's own hook; a customised or uploaded one is left alone.
+ */
+export async function setEventType(locale: string, sessionId: string, type: EventType): Promise<EventTypeResult> {
+  const parsed = eventTypeChange.safeParse({ sessionId, type });
+  if (!parsed.success) return { ok: false, error: "session_not_found" };
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("set_event_type", { p_session: parsed.data.sessionId, p_type: parsed.data.type });
+  if (!error) return { ok: true, eventType: parsed.data.type };
+  const known = EVENT_TYPE_ERRORS.find((e) => e !== "failed" && error.message.includes(e));
+  return { ok: false, error: known ?? "failed" };
 }
 
 // ── Scheduling (SCR-043, REQ-SES-001, REQ-SES-002) ──────────────────────────
@@ -1103,6 +1140,8 @@ export interface EventSession {
   language: SessionLanguage;
   categoryId: string | null;
   categoryName: string | null;
+  /** REQ-SES-022 (add-only): the event type, a chip in the hero. */
+  eventType?: EventType;
   /** The hero's «60 دقيقة» chip. The end time stays authoritative (OQ-001). */
   durationMinutes: number | null;
   tags: EventSessionTag[];
@@ -1185,7 +1224,7 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
   const { data, error } = await supabase
     .from("sessions")
     .select(
-      "id, title, abstract, state, level, language, category_id, duration_minutes, starts_at, ends_at, time_zone, capacity, rsvp_deadline_at, cancellation_cutoff_at, cancellation_reason, allow_walk_ins, check_in_open, custom_venue_name, custom_venue_address, custom_venue_map_url, categories(name), venues(name, address, map_url)",
+      "id, title, abstract, state, level, language, event_type, category_id, duration_minutes, starts_at, ends_at, time_zone, capacity, rsvp_deadline_at, cancellation_cutoff_at, cancellation_reason, allow_walk_ins, check_in_open, custom_venue_name, custom_venue_address, custom_venue_map_url, categories(name), venues(name, address, map_url)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -1271,6 +1310,7 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
     language: row.language as SessionLanguage,
     categoryId: (row.category_id as string) ?? null,
     categoryName: (row.categories as { name: string } | null)?.name ?? null,
+    eventType: eventTypeOf(row.event_type),
     durationMinutes: (row.duration_minutes as number) ?? null,
     tags,
     startsAt: (row.starts_at as string) ?? null,
@@ -1780,6 +1820,8 @@ export interface ScheduleReadPresenter {
 /** What SCR-043's read mode needs beyond `getSessionForSchedule()` — the card's last rows and the side column. */
 export interface ScheduleRead {
   certificateMode: CertificateMode;
+  /** REQ-SES-022 (add-only): the event type, read on الجدولة and changed there. */
+  eventType: EventType;
   /** The proposal it came from, for the log's «اعتُمد المقترح» → SCR-041 (REQ-PRO-009's content, one tap away). */
   proposalId: string | null;
   /** Accepted and pending; a declined row is not a presenter. In the order they joined. */
@@ -1797,7 +1839,7 @@ export async function getScheduleRead(locale: string, sessionId: string): Promis
   const { session, supabase } = await sessionClient(locale);
   if (session.role !== "admin") return null;
   const [row, people, confirmed, waitlisted, settings] = await Promise.all([
-    supabase.from("sessions").select("certificate_mode, proposal_id").eq("id", sessionId).maybeSingle(),
+    supabase.from("sessions").select("certificate_mode, proposal_id, event_type").eq("id", sessionId).maybeSingle(),
     supabase.from("session_presenters").select("member_id, accepted, declined_at, created_at").eq("session_id", sessionId).order("created_at").order("member_id"),
     supabase.from("rsvps").select("id", { count: "exact", head: true }).eq("session_id", sessionId).eq("status", "confirmed"),
     supabase.from("rsvps").select("id", { count: "exact", head: true }).eq("session_id", sessionId).eq("status", "waitlisted"),
@@ -1811,6 +1853,7 @@ export async function getScheduleRead(locale: string, sessionId: string): Promis
   const profiles = await presenterProfiles(supabase, rows.map((p) => p.member_id as string));
   return {
     certificateMode: row.data.certificate_mode as CertificateMode,
+    eventType: eventTypeOf(row.data.event_type),
     proposalId: (row.data.proposal_id as string | null) ?? null,
     presenters: rows.map((p) => {
       const profile = profiles.get(p.member_id as string);
@@ -1853,6 +1896,8 @@ const SESSION_LOG_ACTIONS = [
   "session.presenter_removed",
   // wave 27 (DEC-255): the lead's trigger, before publication only.
   "session.renamed",
+  // REQ-SES-022 (0213): set_event_type()'s audit row.
+  "session.event_type_changed",
 ] as const;
 
 /**

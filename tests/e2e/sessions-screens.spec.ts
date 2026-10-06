@@ -547,7 +547,8 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
 
   // REQ-RAT-004, the D36 boundary: the presenter reads an aggregate, never a
   // name and never an attributed score. `member` is this session's presenter.
-  await member.goto(`/ar/app/sessions/${sessionId}`);
+  // ★ Edit mode (the owner's ruling): the presenter's aggregate is behind «تعديل», so the page is opened in it.
+  await member.goto(`/ar/app/sessions/${sessionId}?edit=1`);
   await streamed(member);
   await expect(member.getByRole("heading", { name: "التقييم" })).toBeVisible();
   // Scoped to the ratings SECTION, not the page: she also commented, and a

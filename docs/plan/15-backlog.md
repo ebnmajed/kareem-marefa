@@ -1922,6 +1922,20 @@ A control beside the hub's `h1`, a DAL write through `0010`'s column grant, and 
 `session.renamed`. Done when the audit row carries both titles, a moderator is refused by the database, and the plan's
 table of what each downstream surface does is proven line by line.
 
+#### STORY-ADM-014 — An admin schedules an org announcement and every member is told
+**Covers:** `REQ-ADM-025` · **M31** · **M** · lead
+`feed_announcements` gains `announced_at` and its missing update grant; `MSG-announcement_published` in its own
+category; a trigger queues `publish_announcement` at the time, and the job sends once. The console's announcements
+screen and the «create» chooser. Done when a scheduled announcement appears and notifies at its time, a moved time
+moves the send, and an edit after it went live sends nothing.
+
+#### STORY-SES-015 — A session has an event type, and its poster follows it
+**Covers:** `REQ-SES-022` · **M31** · **M** · lead
+An enum `event_type` and a column `sessions.event_type` defaulting to `talk`; `set_event_type()`, admin only and
+audited; the poster lookup reading the session's event type; the poster hook regenerating a live poster on a type change; the type chosen on the direct-creation
+form and changed on الجدولة. Done when a session switched from محاضرة to ورشة re-renders in the workshop colourway, a
+detached poster does not move, and a moderator is refused.
+
 #### STORY-CRT-010 — The certificate mode defaults to `review`
 **Covers:** `REQ-CRT-018` · **M29** · **S** · lead · PR A
 One `alter table … set default`. Done when a session created and completed without a visit to `SCR-045` holds its

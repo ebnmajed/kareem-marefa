@@ -247,7 +247,13 @@
       "reopen": "Reopened",
       "presenterAdded": "Presenter added",
       "presenterRemoved": "Presenter removed",
-      "renamed": "Renamed"
+      "renamed": "Renamed",
+      "eventTypeChanged": "Event type changed"
+    },
+    "eventType": {
+      "save": "Save",
+      "saved": "Event type saved.",
+      "failed": "Couldn't save — try again."
     }
   }
 }

@@ -5,6 +5,7 @@ import { formatDate, formatNumber, formatTime, sameDay } from "@/components/sess
 import { Avatar } from "@/components/ui/avatar";
 import { SessionStatusBadge } from "@/components/ui/badge";
 import { Card, CardActions, CardBody, CardMedia } from "@/components/ui/card";
+import { TagChip } from "@/components/ui/tag-chip";
 import type { TimelineSession } from "@/lib/dal/search";
 
 // One session as browse draws it — SCR-011's row card, rebuilt in wave 18 from
@@ -32,7 +33,7 @@ import type { TimelineSession } from "@/lib/dal/search";
 // (`CardMedia dimmed`, DEC-123): the badge is never dimmed.
 
 export async function SessionRow({ session, locale, points, now = new Date() }: { session: TimelineSession; locale: string; points: number | null; now?: Date }) {
-  const [t, tDays] = await Promise.all([getTranslations("browse"), getTranslations("sessions.days")]);
+  const [t, tDays, tType] = await Promise.all([getTranslations("browse"), getTranslations("sessions.days"), getTranslations("sessions.eventType")]);
   const ended = session.phase === "ended" || session.phase === "cancelled";
   const lead = session.presenters[0];
   const others = Math.max(0, session.presenters.length - 1);
@@ -72,8 +73,10 @@ export async function SessionRow({ session, locale, points, now = new Date() }: 
     <Card density="compact" href={`/app/sessions/${session.id}`}>
       <CardMedia src={session.posterUrl} placeholderFrom={session.title} aspect="4/5" dimmed={ended} />
       <CardBody className="gap-1">
-        <div>
+        <div className="flex flex-wrap items-center gap-1.5">
           <SessionStatusBadge phase={session.phase} seat={session.phase === "open" ? session.seat : undefined} closingSoon={session.closingSoon} size="sm" />
+          {/* REQ-SES-022: the event type, a word beside the state. */}
+          {session.eventType ? <TagChip label={tType(session.eventType)} /> : null}
         </div>
         <h3 className="text-body font-bold leading-snug text-fg-heading">
           <bdi>{session.title}</bdi>

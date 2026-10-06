@@ -199,7 +199,7 @@ export function ScheduleForm({
    * wave 21 (add-only): the rows of the read card this form is the edit twin of that it does not edit — the
    * presenters (their own forms, outside this one) and the certificate (SCR-045 is its one writer, DEC-178).
    */
-  readRows?: { presenters: React.ReactNode; certificate: React.ReactNode };
+  readRows?: { presenters: React.ReactNode; certificate: React.ReactNode; eventType?: React.ReactNode };
   /**
    * wave 21 (add-only): the read card's address. A save that lands goes back there (`?saved=1` / `?published=1`),
    * and «إلغاء» is a link to it. Absent, the form stays where it is, as before.
@@ -212,6 +212,7 @@ export function ScheduleForm({
   // the same words. A second «اليوم الثاني» in `schedule.json` is exactly the
   // drift the contract exists to stop.
   const tDays = useTranslations("sessions.days");
+  const tType = useTranslations("sessions.eventType");
   const tUi = useTranslations("ui");
   // ★ Back to the read card from INSIDE the action wrapper, never from an effect on `state` (`review-card`'s lesson):
   // the redirect follows the result that earned it, once. A refused publish (`formError`) stays here, on the form.
@@ -512,6 +513,8 @@ export function ScheduleForm({
         mode="edit"
         emptyValue={t("read.empty")}
         rows={[
+          // REQ-SES-022: the event type's own control and its own save (`event-type-control.tsx`), first as in the read card.
+          ...(readRows?.eventType ? [{ id: "eventType", label: tType("label"), value: readRows.eventType }] : []),
           {
             id: "when",
             label: t("read.rows.when"),

@@ -76,14 +76,15 @@ async function signIn(context: BrowserContext, email: string) {
 const main = (page: Page) => page.locator("#main");
 const SHOTS = process.env.E2E_SHOTS_DIR ?? ".qa-shots/rtl";
 
-test("the gallery: twenty-five cards, the chips, the two actions — at 1280 and at 390", async ({ context, page }) => {
+test("the gallery: a card per message, the chips, the two actions — at 1280 and at 390", async ({ context, page }) => {
   await signIn(context, adminEmail);
   const phone = test.info().project.name === "phone";
   if (!phone) await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/ar/app/admin/emails");
   await expect(main(page).getByRole("heading", { level: 1, name: "البريد" })).toBeVisible();
   const cards = main(page).getByRole("list", { name: "رسائل البريد" }).getByRole("listitem");
-  await expect(cards).toHaveCount(25);
+  // 25, plus MSG-announcement_published (0213, DEC-267).
+  await expect(cards).toHaveCount(26);
   await expect(cards.first()).toContainText("التصميم الافتراضي");
   await expect(main(page).getByRole("group", { name: "أنواع الرسائل" }).getByRole("link").first()).toContainText("الكل");
   await expect(main(page).getByRole("link", { name: "سجل الإرسال", exact: true })).toHaveAttribute("href", /\?view=log$/);

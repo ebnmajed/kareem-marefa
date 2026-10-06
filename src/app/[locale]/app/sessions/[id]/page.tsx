@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { affordancesFor, rateAllowed } from "@/components/checkin/session-matrix";
 import { Comments, commentsSummary } from "@/components/event/comments";
-import { Ratings } from "@/components/event/ratings";
+import { Ratings, ratingsSummary } from "@/components/event/ratings";
 import { Materials, materialsSummary } from "@/components/materials/list";
 import { Photos, photosSummary } from "@/components/photos/gallery";
 import { BookmarkButton } from "@/components/search/bookmark-button";
@@ -141,6 +141,8 @@ export default async function EventPage({
     materials: gates.materials ? materialsSummary(slot) : undefined,
     photos: gates.photos ? photosSummary(slot) : undefined,
     discussion: gates.discussion ? commentsSummary(slot) : undefined,
+    // The presenter's aggregate alone is edit-mode content, so the section is too (`ratingsSummary`).
+    rating: gates.rating ? ratingsSummary(slot) : undefined,
   };
 
   const shareUrl = CARD_STATES.includes(session.state) ? `${siteOrigin()}${publicCardPath(locale, session.id)}` : null;
@@ -239,7 +241,7 @@ export default async function EventPage({
     ),
     rating: (
       <Suspense key="rating" fallback={<SectionSkeleton />}>
-        <EventSection id="rating" title={titles.rating} gate={gates.rating}>
+        <EventSection id="rating" title={titles.rating} gate={gates.rating} summary={summaries.rating}>
           <Ratings {...slot} />
         </EventSection>
       </Suspense>

@@ -59,7 +59,8 @@ describe("notification_bindings — REQ-NTF-012's declaration", () => {
       await setup(tx);
       const rows = await tx.q<{ key: string; binding: string }>(`select key, binding from public.notification_bindings()`);
       const emailKeys = await tx.q<{ key: string }>(`select key from public.notification_matrix() where email`);
-      expect(emailKeys).toHaveLength(25);
+      // 25, plus MSG-announcement_published (0213, DEC-267).
+      expect(emailKeys).toHaveLength(26);
 
       const byKey = new Map<string, string[]>();
       for (const r of rows) byKey.set(r.key, [...(byKey.get(r.key) ?? []), r.binding]);

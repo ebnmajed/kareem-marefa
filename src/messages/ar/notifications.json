@@ -62,6 +62,10 @@
         "name": "جلسات جديدة",
         "hint": "جلسة نُشرت، أو نافذة حجز فُتحت لك قبل غيرك."
       },
+      "announcements": {
+        "name": "الإعلانات",
+        "hint": "إعلان تنشره مؤسستك للأعضاء جميعًا."
+      },
       "my_sessions": {
         "name": "جلساتي",
         "hint": "ما يخص مقعدًا حجزته: تأكيده، انتظارك، تسجيل حضورك، مواد أُضيفت بعد الجلسة."
@@ -146,7 +150,8 @@
       "MSG-account_deactivated": "أُوقف حسابك",
       "MSG-calendar_disconnected": "فُصل تقويمك",
       "MSG-export_ready": "بياناتك جاهزة للتحميل",
-      "MSG-photo_album_ready": "ملف صور الجلسة جاهز للتنزيل"
+      "MSG-photo_album_ready": "ملف صور الجلسة جاهز للتنزيل",
+      "MSG-announcement_published": "إعلان جديد"
     },
     "admin": {
       "emails": {

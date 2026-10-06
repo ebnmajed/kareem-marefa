@@ -1,4 +1,5 @@
 import { getTranslations } from "next-intl/server";
+import { EditOnly, ReadOnly } from "@/components/sessions/edit-mode";
 import { formatNumber } from "@/components/sessions/numerals";
 import { AttendeeStack } from "@/components/ui/attendee-stack";
 import type { EventAttendeeFace, EventSession } from "@/lib/dal/sessions";
@@ -64,7 +65,15 @@ export async function EventAside({
             {t("whoAttends")}
           </h2>
           {faces.length > 0 ? (
-            <AttendeeStack label={t("whoAttends")} people={faces.map((f) => ({ memberId: f.memberId, displayName: f.displayName, src: f.avatarUrl, teamColor: f.teamColor }))} countLabel={countLabel} />
+            // Faces in edit mode only; read mode is the member's count in words (the owner's ruling, `edit-mode.tsx`).
+            <>
+              <EditOnly>
+                <AttendeeStack label={t("whoAttends")} people={faces.map((f) => ({ memberId: f.memberId, displayName: f.displayName, src: f.avatarUrl, teamColor: f.teamColor }))} countLabel={countLabel} />
+              </EditOnly>
+              <ReadOnly>
+                <p className="text-body-sm text-fg-heading">{countLabel}</p>
+              </ReadOnly>
+            </>
           ) : (
             <p className="text-body-sm text-fg-heading">{countLabel}</p>
           )}

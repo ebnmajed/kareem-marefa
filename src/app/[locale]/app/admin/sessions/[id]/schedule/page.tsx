@@ -18,6 +18,7 @@ import { ScheduleCertificateMode } from "@/components/sessions/schedule-certific
 import { checkInCeiling } from "@/lib/session-status";
 import { getScheduleContent, getScheduleRead, getSessionForSchedule, getSessionLog, listSessionPresentersForAdmin, listVenues } from "@/lib/dal/sessions";
 import { addPresenter, removePresenter, saveSchedule } from "./actions";
+import { EventTypeControl } from "./event-type-control";
 import { PresentersRow } from "./presenters-row";
 import { followingEnd } from "./rules";
 import { ScheduleForm } from "./schedule-form";
@@ -70,6 +71,7 @@ const LOG_KEY: Record<string, string> = {
   "session.presenter_added": "presenterAdded",
   "session.presenter_removed": "presenterRemoved",
   "session.renamed": "renamed",
+  "session.event_type_changed": "eventTypeChanged",
 };
 
 export default async function SchedulePage({
@@ -83,7 +85,7 @@ export default async function SchedulePage({
   setRequestLocale(locale);
   const editing = query.edit !== undefined;
 
-  const [session, read, content, venues, presenters, members, t, tDays, certDesign, certEligible, certFaces, certSerial] = await Promise.all([
+  const [session, read, content, venues, presenters, members, t, tDays, tType, certDesign, certEligible, certFaces, certSerial] = await Promise.all([
     getSessionForSchedule(locale, id),
     getScheduleRead(locale, id),
     getScheduleContent(locale, id),
@@ -93,6 +95,7 @@ export default async function SchedulePage({
     listMembersForAdmin(locale),
     getTranslations("schedule"),
     getTranslations("sessions.days"),
+    getTranslations("sessions.eventType"),
     // DEC-256: the certificate mode's control, SCR-045's own, needs SCR-045's preflight — the same four reads, read only.
     // A failed read leaves the row reading its sentence; it never takes the schedule tab down.
     getCertificateDesign(locale, id).catch(() => null),
@@ -266,7 +269,12 @@ export default async function SchedulePage({
             published={LIVE_STATES.has(session.state)}
             proposalDurationMinutes={content.proposal?.expectedDurationMinutes ?? null}
             doneHref={here}
-            readRows={{ presenters: <PresentersRow presenters={read.presenters} />, certificate }}
+            readRows={{
+              presenters: <PresentersRow presenters={read.presenters} />,
+              certificate,
+              // REQ-SES-022: its own save; a cancelled session reads its type and changes nothing.
+              eventType: cancelled ? tType(read.eventType) : <EventTypeControl locale={locale as Locale} sessionId={session.id} eventType={read.eventType} />,
+            }}
             initial={{
               startsAt: localValue(session.startsAt, zone),
               durationMinutes: session.durationMinutes?.toString() ?? "",
@@ -332,6 +340,7 @@ export default async function SchedulePage({
           label={t("read.label")}
           emptyValue={t("read.empty")}
           rows={[
+            { id: "eventType", label: tType("label"), value: tType(read.eventType) },
             { id: "when", label: t("read.rows.when"), value: when },
             { id: "where", label: t("read.rows.where"), value: where },
             { id: "capacity", label: t("read.rows.capacity"), value: session.capacity !== null ? <bdi>{formatNumber(session.capacity)}</bdi> : null },

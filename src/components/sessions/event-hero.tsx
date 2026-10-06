@@ -45,9 +45,10 @@ export interface EventHeroProps {
 }
 
 export async function EventHero({ session, phase, seat, closingSoon, dayCount, points, locale, story }: EventHeroProps) {
-  const [t, tDays, tPoster, poster] = await Promise.all([
+  const [t, tDays, tType, tPoster, poster] = await Promise.all([
     getTranslations("sessions.event"),
     getTranslations("sessions.days"),
+    getTranslations("sessions.eventType"),
     getTranslations("designer.poster"),
     getSessionPoster(locale, session.id).catch(() => null),
   ]);
@@ -102,6 +103,8 @@ export async function EventHero({ session, phase, seat, closingSoon, dayCount, p
               <SessionStatusBadge phase={phase} seat={seat} closingSoon={closingSoon} />
               {/* No desktop artboard draws it (DEC-251 §4.7 rules it in); one wrapper switches it by width (DEC-111). */}
               {story ? <span className="hidden lg:inline-flex">{story}</span> : null}
+              {/* REQ-SES-022: the event type — a word, before the level. */}
+              {session.eventType ? <TagChip label={tType(session.eventType)} /> : null}
               <TagChip label={t(`level.${session.level}`)} />
               <TagChip label={session.language === "ar" ? t("languageAr") : t("languageEn")} />
               {/* The length: only `EventDesktop.dc.html` draws it (the phone's three chips fit one row at 390) —

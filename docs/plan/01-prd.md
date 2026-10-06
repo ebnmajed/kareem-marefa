@@ -623,6 +623,22 @@ with the old and the new title.
 - An empty title, or one over the length a proposal's title allows, is refused at the field.
 - The proposal the session was made from keeps its own title.
 
+#### REQ-SES-022 — A session has an event type, and its automatic poster is that type's
+**Serves:** owner 2026-10-06 · `DEC-267` · `REQ-DSG-002` · `REQ-DSG-026` · `09` `SCR-042`, `SCR-043`
+Every **جلسة** has a **نوع الفعالية** (event type — the owner's name, in the code and on every screen): محاضرة,
+ورشة, ندوة or لقاء — the four poster families of the baseline library that name a kind of event. An
+**مشرف المؤسسة** chooses it when creating a session and changes it on the session hub's الجدولة. A session with no
+choice made is a محاضرة. The automatic poster (`REQ-DSG-002`'s «تلقائي») is drawn from the org's template of the
+session's event type, and falls back to the محاضرة template when the org has none of that type. «إعلان» is an
+announcement's family, never an event type.
+**Acceptance:**
+- A new session, created directly or from a proposal, is a محاضرة unless the admin chose otherwise.
+- Changing the event type of a session whose poster is live regenerates it from the new type's template; a customised
+  or uploaded poster is never touched.
+- The change is audited with the old and the new type.
+- A moderator, a presenter and a member are refused by the database.
+- Every existing session is a محاضرة, so every poster already rendered is unchanged.
+
 ---
 
 ## 6. RSVP and waitlist — `RSV`
@@ -2619,6 +2635,21 @@ moves until the admin confirms. Removing a domain unplaces nobody.
 - The confirmation's two numbers equal what the save then does.
 - A save that moves nobody saves without asking.
 - Adding and removing a domain, and each member moved by it, is answerable in the audit log (`REQ-ADM-023`).
+
+
+#### REQ-ADM-025 — An admin writes an org announcement, schedules it, and every member is told when it goes live
+**Serves:** owner 2026-10-06 · `DEC-267` · `REQ-UIX-056` · `REQ-NTF-002` · `09` `SCR-042`
+On the admin's «create», **إعلان** stands beside the four event types (`REQ-SES-022`) and is **not a session**: it is an
+org-wide announcement — its text, when it goes live (now or a date and time), and when it ends (optional). An
+**مشرف المؤسسة** alone writes, edits and deletes one. When it goes live it appears in every member's home feed, and
+every active member is notified once, in the app and by email, under the preference category **الإعلانات**, which a
+member may switch off.
+**Acceptance:**
+- A scheduled announcement is invisible to members until its time, and gone after its end.
+- It is sent once, at its time; moving the time before it is sent moves the send; editing it after it is sent never
+  sends it again.
+- A moderator and a member cannot write, edit or delete one; a member never sees a scheduled one.
+- A member who switched الإعلانات off receives no notification on that channel.
 
 ---
 

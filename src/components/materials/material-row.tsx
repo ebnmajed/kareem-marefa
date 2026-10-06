@@ -4,7 +4,7 @@ import { rescopeMaterialAction } from "@/components/materials/actions";
 import { phaseLabelKey } from "@/components/materials/phase-label";
 import { RescopeChip, type RescopeOption } from "@/components/materials/rescope-chip";
 import { SettingsForm } from "@/components/materials/settings-form";
-import { EditOnly } from "@/components/sessions/edit-mode";
+import { EditOnly, ReadOnly } from "@/components/sessions/edit-mode";
 import { Badge } from "@/components/ui/badge";
 import { ChevronIcon, DownloadIcon, ImageIcon, LinkIcon } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
@@ -61,12 +61,30 @@ function Head({ tile, title, meta, trailing }: { tile: React.ReactNode; title: s
 }
 
 export function MaterialRow({ m, sessionId, locale, canManage, scope, playbackUrl, t }: MaterialRowProps) {
+  // DEC-266 (the owner's ruling): a member never downloads a material's original file — the viewer and the player
+  // are theirs, the file is presenters' and staff's. `allow_download` no longer reaches a member's row.
+  // ★ Edit mode (the owner's ruling, `sessions/edit-mode.tsx`): that the file can be downloaded is a manager's fact,
+  // so a manager's row says it in edit mode and says what a member's says in read mode.
+  const managerDownload = canManage && m.allowDownload;
+  if (managerDownload) {
+    return (
+      <>
+        <EditOnly>
+          <MaterialRowBody m={m} sessionId={sessionId} locale={locale} canManage={canManage} scope={scope} playbackUrl={playbackUrl} t={t} downloadable />
+        </EditOnly>
+        <ReadOnly>
+          <MaterialRowBody m={m} sessionId={sessionId} locale={locale} canManage={canManage} scope={scope} playbackUrl={playbackUrl} t={t} downloadable={false} />
+        </ReadOnly>
+      </>
+    );
+  }
+  return <MaterialRowBody m={m} sessionId={sessionId} locale={locale} canManage={canManage} scope={scope} playbackUrl={playbackUrl} t={t} downloadable={false} />;
+}
+
+function MaterialRowBody({ m, sessionId, locale, canManage, scope, playbackUrl, t, downloadable }: MaterialRowProps & { downloadable: boolean }) {
   const phase = t(phaseLabelKey(m.phase, m.sessionDayId));
   const join = (...parts: (string | null)[]) => parts.filter(Boolean).join(" · ");
   const ready = m.renderStatus === "ready";
-  // DEC-266 (the owner's ruling): a member never downloads a material's original file — the viewer and the player
-  // are theirs, the file is presenters' and staff's. `allow_download` no longer reaches a member's row.
-  const downloadable = canManage && m.allowDownload;
 
   let row: React.ReactNode;
   if (m.kind === "pdf" && ready) {

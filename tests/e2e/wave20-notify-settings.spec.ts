@@ -76,7 +76,8 @@ async function capture(page: Page, state: string) {
   await page.screenshot({ path: join(SHOTS, `wave20-notify-settings-${state}-390.png`), fullPage: true });
 }
 
-const OPTIONAL = ["new_sessions", "my_sessions", "reminders", "ratings", "social", "recognition", "proposals"];
+// `announcements` joins in 0213 (DEC-267): a member may switch an org announcement's mail off too.
+const OPTIONAL = ["new_sessions", "my_sessions", "reminders", "ratings", "social", "recognition", "proposals", "announcements"];
 
 const prefs = async () =>
   (

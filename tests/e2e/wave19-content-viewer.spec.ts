@@ -348,11 +348,13 @@ test("an admin's download is audited, and offered even with download off (DEC-21
   await shoot(page, "admin", 1280);
 });
 
-test("a member who may download is not told the download is audited", async ({ context, page }) => {
+// ★ DEC-266 (the owner's ruling): a member never downloads a material's original — the viewer is theirs, with download
+// on or off — so they are offered no control and told nothing about an audit.
+test("a member reads the material and is offered no download, download on or off", async ({ context, page }) => {
   await page.setViewportSize(DESKTOP);
   await signIn(context, emails.member);
   await open(page, "open");
-  await expect(main(page).getByRole("button", { name: "تحميل", exact: true })).toBeVisible();
+  await expect(main(page).getByRole("button", { name: "تحميل", exact: true })).toHaveCount(0);
   await expect(main(page).getByText("سيُسجَّل هذا التحميل في سجل التدقيق.")).toHaveCount(0);
 });
 
