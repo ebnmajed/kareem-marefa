@@ -10447,4 +10447,14 @@ reads no org's data and no policy gains a disjunct — a member row gives exactl
 **Lesson recorded:** an instruction that can be read as «fix X's inability» or «enforce X's prohibition» is asked
 back before it becomes a migration; a migration on production is only ever undone by another.
 
+## DEC-269 — «أضف إلى القصة» on the event page
+
+- **Date:** 2026-10-06 · **Decided by:** the owner · **Requirement:** `REQ-STO-011` (unchanged) · **No migration**
+
+The viewer's «أضف» is the only door to a story's capture, and it needs a story to open: a live session has none until
+the story job writes its first frame, about a minute in, and after the end only while a frame is still visible. The
+owner asked for a door on the session page itself. `AddToStory` opens the same `CaptureFlow`, drawn only when
+`story_capture_open()` answers yes for the viewer — checked in, from the start until 24 hours after the end, not
+cancelled — and every capture route still re-derives that gate. Closing the capture refreshes the page.
+
 - **Documents changed:** `STATUS.md`
