@@ -1,4 +1,4 @@
-**Last updated:** 2026-10-06 · **Branch:** `feat/story-add-on-event-page` · ★ **`DEC-269`** — «أضف إلى القصة» on the event page. ★ **`DEC-268` / `0214` merged as #92 (`e1dc7d0f`)** — a platform admin may also be a member; production `0214`. **M31 merged as #91, production `0213` then.** Next migration **`0215`**, next decision **`DEC-270`**. **Before that:** 
+**Last updated:** 2026-10-06 · **Branch:** `chore/trace-pre-commit` · ★★ **2026-10-06 closed out**: QA sweep #90 (`0212`); M31 event types and announcements #91 (`0213`); a platform admin may also be a member #92 (`0214`, `DEC-268`); «أضف إلى القصة» on the event page #93 (`DEC-269`); the stale signed-in e2e specs brought up to date #94; a pre-commit hook keeping `TRACEABILITY.md` in step (`DEC-270`). **Production `0214`.** Next migration **`0215`**, next decision **`DEC-271`**. **Owed:** a quiet-machine re-baseline of `budgets.spec.ts` (LCP noise, not drift). **Before that:** **Before that:** 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
