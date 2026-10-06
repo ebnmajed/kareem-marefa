@@ -171,13 +171,15 @@ test("2 · it is set as the default for its kind — one of three, حضور · �
   expect(rows, "set default writes exactly one row").toHaveLength(1);
 });
 
-test("3 · the session is put in review mode on SCR-045 and completed — the certificates are held", async ({ page, context }) => {
+// ★ Wave 27 (REQ-CRT-018, DEC-254 §4, `0201`): a new session's mode is already `review`, so SCR-045 shows it selected
+// and has nothing to save — the walk now proves a session never touched there completes with held certificates.
+test("3 · the session is in review mode by default on SCR-045 and completed — the certificates are held", async ({ page, context }) => {
   await page.setViewportSize(DESKTOP);
   await signIn(context, emails.admin);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/certificates`);
-  await main(page).getByRole("radiogroup", { name: "من يستحق شهادة، ومتى" }).getByRole("radio", { name: "تُجهَّز وتبقى محجوزة حتى تُطلقها" }).check();
-  await main(page).getByRole("button", { name: "احفظ الوضع", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "ثبّت الوضع", exact: true }).click();
+  await expect(main(page).getByRole("radiogroup", { name: "من يستحق شهادة، ومتى" }).getByRole("radio", { name: "تُجهَّز وتبقى محجوزة حتى تُطلقها" })).toBeChecked();
+  // ★ Wave 27 (REQ-CRT-018): the default is the stored mode, so «احفظ الوضع» has nothing to save.
+  await expect(main(page).getByRole("button", { name: "احفظ الوضع", exact: true })).toBeDisabled();
   await expect.poll(async () => (await db.query(`select certificate_mode from public.sessions where id = $1`, [sessionId])).rows[0].certificate_mode).toBe("review");
   await shot(page, "3a-review-mode");
 

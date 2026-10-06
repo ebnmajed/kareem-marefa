@@ -188,18 +188,32 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   await boss.goto("/ar/app/admin/venues");
   await streamed(boss);
   await expect(boss.getByRole("heading", { level: 1 })).toHaveText("الأماكن");
-  await boss.getByLabel("الاسم").fill("قاعة الابتكار");
-  await boss.getByLabel("العنوان").fill("الدور الثالث، مبنى الإدارة");
-  await boss.getByLabel("السعة").fill("30");
-  await boss.getByRole("button", { name: "أضف المكان" }).click();
+  // ★ Wave 22 (SCR-046 rebuilt from AdminVenues.dc.html, REQ-UIX-093, DEC-232 §5.5): the form is behind «مكان جديد»,
+  // a link to `?new=1` that opens it in a sheet, and its submit is «احفظ».
+  // The empty table offers the same link; the primary is the page header's.
+  const newVenue = boss.locator("#main header").getByRole("link", { name: "مكان جديد" });
+  const newVenueBox = (await newVenue.boundingBox())!;
+  expect(newVenueBox.height, "scr-046-venues: the primary action must be at least 44 px tall").toBeGreaterThanOrEqual(44);
+  await newVenue.click();
+  const venueSheet = boss.getByRole("dialog", { name: "مكان جديد" });
+  await venueSheet.getByLabel("الاسم").fill("قاعة الابتكار");
+  await venueSheet.getByLabel("العنوان").fill("الدور الثالث، مبنى الإدارة");
+  await venueSheet.getByLabel("السعة").fill("30");
+  await venueSheet.getByRole("button", { name: "احفظ" }).click();
+  await expect(boss.getByRole("dialog")).toHaveCount(0);
   // Wave 7: the venues list is `ui/data-table`, which renders a desktop table
   // AND a phone card list and hides one with CSS — the role queries skip the
   // hidden one, a bare getByText does not (console's rebuild, `1fdf521`).
   await expect(boss.getByRole("table").or(boss.getByRole("list")).getByText("قاعة الابتكار")).toBeVisible();
   // REQ-SES-006: there is no delete control at all, and the page says why.
   await expect(boss.getByRole("button", { name: /احذف/ })).toHaveCount(0);
-  await expect(boss.getByText(/لا يمكن حذف مكان/)).toBeVisible();
-  await review(boss, "scr-046-venues", "أضف المكان");
+  // ★ Wave 22 (REQ-UIX-093, DEC-NEXT-25 — no explainer copy): the sentence saying why is gone; the row's ⋯ offers
+  // «عطّل» and nothing that deletes.
+  await boss.locator("#main").getByRole("button", { name: "مزيد من الإجراءات على قاعة الابتكار" }).filter({ visible: true }).click();
+  await expect(boss.getByRole("menuitem", { name: "عطّل" })).toBeVisible();
+  await expect(boss.getByRole("menuitem", { name: /احذف|حذف/ })).toHaveCount(0);
+  await boss.keyboard.press("Escape");
+  await review(boss, "scr-046-venues");
 
   // ── SCR-018 · my proposal ─────────────────────────────────────────────────
   const member = await phone(page, memberEmail);
@@ -219,8 +233,14 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   // ── SCR-041 → approve ─────────────────────────────────────────────────────
   await boss.goto("/ar/app/admin/proposals");
   await streamed(boss);
-  await boss.getByRole("button", { name: "اعتمد المقترح" }).first().click();
-  await expect(boss.getByRole("heading", { name: title })).toHaveCount(0);
+  // ★ Wave 21 (SCR-041 rebuilt as a split view, REQ-UIX-088, DEC-227): under `lg` the queue is the page and a proposal
+  // opens at its own route, in a region named by its title; the decision is «اعتمد» and answers «سُجّل قرارك».
+  await boss.locator("#main").getByRole("list", { name: "المقترحات" }).getByRole("link", { name: new RegExp(title) }).click();
+  await boss.waitForURL(/\/app\/admin\/proposals\/[0-9a-f-]{36}/);
+  const proposal = boss.locator("#main").getByRole("region", { name: title });
+  await proposal.getByRole("button", { name: "اعتمد", exact: true }).click();
+  await expect(boss.getByRole("status")).toContainText("سُجّل قرارك", { timeout: 15_000 });
+  await expect.poll(async () => (await db.query<{ state: string }>(`select state from public.proposals where org_id = $1 and title = $2`, [orgId, title])).rows[0].state).toBe("approved");
 
   // ── SCR-042 · sessions ────────────────────────────────────────────────────
   // ★ Wave 21 (L7, `console`'s for the wave): «جاهزة للجدولة» lives behind
@@ -248,6 +268,10 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   // opens as soon as the fields are filled, not after a save.
   await boss.goto(`/ar/app/admin/sessions/${sessionId}/schedule`);
   await streamed(boss);
+  // ★ Wave 21 (SCR-043 read by default, REQ-UIX-089, ledger L21-S5): the tab opens as the read card; «عدّل» is the
+  // way into the form.
+  await boss.locator("#main").getByRole("link", { name: "عدّل" }).click();
+  await boss.waitForURL(/\/schedule\?edit/);
   // Incomplete first: REQ-SES-001's gate, naming what is missing.
   await expect(boss.getByText("لا يمكن النشر بعد — ينقص:")).toBeVisible();
   await expect(boss.getByRole("button", { name: "انشر الجلسة" })).toBeDisabled();

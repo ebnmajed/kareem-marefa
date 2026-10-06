@@ -85,33 +85,42 @@ async function signIn(context: BrowserContext) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
-test("a member lands on the home, with the company nudge", async ({ context, page }) => {
+// ★ Wave 27 (DEC-254 §2.5, DEC-255, REQ-PRF-012): a member's company follows their email domain, so the home no
+// longer nudges one with none to choose — the case now proves nothing asks.
+test("a member lands on the home, and nothing asks them to choose a company", async ({ context, page }) => {
   await signIn(context);
   await page.goto("/ar/app");
   // ★ wave 18 (DEC-205 §2, REQ-UIX-055): home is the feed and `/app` is its own page; the timeline
   // is `/app/sessions`' alone. The address stays, and the heading is the home's.
   await expect(page).toHaveURL(/\/ar\/app$/);
   await expect(page.locator("#main").getByRole("heading", { level: 1 })).toHaveText("الرئيسية");
-  await expect(page.getByRole("status")).toContainText("اختر شركتك");
+  // ★ Wave 27 (DEC-254 §2.5): no company nudge — a missing company refuses nothing.
+  await expect(page.getByText("اختر شركتك", { exact: false })).toHaveCount(0);
 });
 
 test("a member updates their profile through the action and the column grant", async ({ context, page }) => {
   await signIn(context);
   await page.goto("/ar/app/me");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("ملفي");
-  // Interact after hydration: this test is about the action and the column
-  // grant. Since wave 7 the form is `useActionState` (content's T1), so the
-  // confirmation is the form's own status line, not a `?saved=1` redirect.
+  const main = page.locator("#main");
+  // ★ Wave 20 (SCR-021 rebuilt, REQ-UIX-071): the hub's h1 is «حسابي» and «ملفي» its h2; the profile is read by
+  // default and edited through «عدّل ملفك» (`/app/me?edit`).
+  await expect(main.getByRole("heading", { level: 1 })).toHaveText("حسابي");
+  await expect(main.getByRole("heading", { level: 2, name: "ملفي" })).toBeVisible();
+  // Interact after hydration: this test is about the action and the column grant.
   await page.waitForLoadState("networkidle");
-  await page.getByLabel("الشركة").selectOption({ label: "شركة الاختبار" });
-  await page.getByLabel("المسمى الوظيفي").fill("مهندسة برمجيات");
-  await page.getByLabel("نبذة").fill("أحب مشاركة المعرفة.");
-  await page.getByRole("button", { name: "حفظ" }).click();
-  await expect(page.getByRole("status")).toContainText("تم الحفظ");
-  await expect(page.getByLabel("المسمى الوظيفي")).toHaveValue("مهندسة برمجيات");
-  // The nudge is gone now that a company is set.
+  await main.getByRole("link", { name: "عدّل ملفك" }).click();
+  await expect(page).toHaveURL(/\/ar\/app\/me\?edit/);
+  // ★ Wave 27 (DEC-254 §2.5, REQ-PRF-012): the company follows the email domain — no company control to fill.
+  await expect(main.getByLabel("الشركة", { exact: false })).toHaveCount(0);
+  await main.getByLabel("المسمى الوظيفي", { exact: false }).fill("مهندسة برمجيات");
+  await main.getByLabel("نبذة", { exact: false }).fill("أحب مشاركة المعرفة.");
+  await main.getByRole("button", { name: "حفظ" }).click();
+  // ★ Wave 20: «تم الحفظ» is a toast, and the page returns to read mode — the saved value is a row.
+  await expect(page.getByText("تم الحفظ", { exact: true })).toBeVisible();
+  await expect(main.getByRole("region", { name: "ملفي" }).getByText("مهندسة برمجيات")).toBeVisible();
+  // ★ Wave 27 (DEC-254 §2.5): the home never nudged for a company again, before or after the save.
   await page.goto("/ar/app");
-  await expect(page.getByRole("status")).toHaveCount(0);
+  await expect(page.getByText("اختر شركتك", { exact: false })).toHaveCount(0);
 });
 
 test("another member's profile renders at the member tier", async ({ context, page }) => {

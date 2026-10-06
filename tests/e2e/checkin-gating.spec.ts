@@ -152,5 +152,7 @@ test("a confirmed member sees the calendar, the tasks heading, and the check-in 
   await expect(page.getByRole("menuitem", { name: "تقويم Google" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("heading", { name: "مهام ما قبل الجلسة" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "تسجيل الحضور" })).toBeVisible();
+  // ★ Wave 18 PR B (SCR-012 rebuilt, DEC-206): under `lg` the same primary is drawn twice — on the action card and in
+  // the phone's bottom `action-bar` — so the phone resolves two links and desktop one; the first is the card's.
+  await expect(page.getByRole("link", { name: "تسجيل الحضور" }).first()).toBeVisible();
 });

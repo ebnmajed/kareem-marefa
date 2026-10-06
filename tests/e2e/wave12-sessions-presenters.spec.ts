@@ -143,8 +143,11 @@ async function signIn(context: BrowserContext) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
-/** The section, found from `#main` (DEC-145). */
-const section = (page: Page) => page.locator("#main").locator('section[aria-labelledby="presenters"]');
+/**
+ * ★ Wave 21 (SCR-043 read by default, REQ-UIX-089, DEC-228 §4.4): the presenters are a row of the read card, and
+ * «غيّر» opens a sheet titled «المُقدِّمون» holding the same section — the section is that sheet now.
+ */
+const section = (page: Page) => page.getByRole("dialog", { name: "المُقدِّمون" });
 
 /**
  * A full page from the top, for a state of the page; the viewport alone, for
@@ -174,7 +177,9 @@ async function open(page: Page, sessionId: string) {
   await page.setViewportSize(PHONE);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/schedule`);
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
-  await expect(section(page).getByRole("heading", { level: 2, name: /المُقدِّمون/ })).toBeVisible();
+  // ★ Wave 21 (DEC-228 §4.4): the row «المُقدِّمون» on the read card, and its «غيّر» opening the sheet.
+  await page.locator("#main").locator("dt", { hasText: "المُقدِّمون" }).locator("xpath=following-sibling::dd[1]").getByRole("button", { name: "غيّر", exact: true }).click();
+  await expect(section(page)).toBeVisible();
 }
 
 const row = async (session: string, member: string) =>
@@ -188,7 +193,7 @@ test("one presenter is never offered for removal; adding assigns at once", async
   await expect(s.getByText("سارة العتيبي")).toBeVisible();
   await expect(s.getByRole("button", { name: /^أزل/ })).toHaveCount(0);
   await expect(s.getByText("للجلسة مُقدِّم واحد على الأقل دائمًا، فلا يُزال آخرهم.")).toBeVisible();
-  await capture(page, "one");
+  await capture(page, "one", { dialog: true }); // ★ Wave 21: in a sheet — a viewport shot
 
   await s.getByRole("combobox", { name: /أضف مُقدِّمًا/ }).fill("خالد");
   await page.getByRole("option", { name: /خالد الشهري/ }).click();
@@ -199,9 +204,10 @@ test("one presenter is never offered for removal; adding assigns at once", async
   await expect(s.getByRole("button", { name: "أزل خالد الشهري من المُقدِّمين" })).toBeVisible();
   expect(await row(draftId, ids.khalid)).toEqual({ accepted: true, declined_at: null });
 
-  const axe = await new AxeBuilder({ page }).include('#main section[aria-labelledby="presenters"]').withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
+  // ★ Wave 21 (DEC-228 §4.4): the section lives in the sheet, so the audit is scoped to it.
+  const axe = await new AxeBuilder({ page }).include('[role="dialog"]').withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
   expect(axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
-  await capture(page, "added");
+  await capture(page, "added", { dialog: true }); // ★ Wave 21: in a sheet — a viewport shot
 });
 
 test("removing asks, names her, and deletes — never a decline", async ({ page, context }) => {
@@ -239,8 +245,9 @@ test("on a completed session: points are named, and a checked-in member is refus
   await expect(s.getByText("سجّل هذا العضو حضوره في الجلسة. أزل حضوره أولًا من صفحة الحضور، ثم أضفه مُقدِّمًا.")).toBeVisible();
   await expect(s.getByRole("combobox", { name: /أضف مُقدِّمًا/ })).toHaveAttribute("aria-invalid", "true");
   expect(await row(completedId, ids.nora)).toBeUndefined();
-  await capture(page, "refused");
+  await capture(page, "refused", { dialog: true }); // ★ Wave 21: in a sheet — a viewport shot
 
   await s.getByRole("button", { name: "أزل خالد الشهري من المُقدِّمين" }).click();
-  await expect(page.getByRole("dialog")).toContainText("وتُسحب نقاط تقديمه بقيد معاكس.");
+  // ★ Wave 21 (DEC-228 §4.4): the confirm opens over the presenters' sheet, so it is asked for by its own name.
+  await expect(page.getByRole("dialog", { name: "إزالة خالد الشهري من مُقدِّمي الجلسة؟" })).toContainText("وتُسحب نقاط تقديمه بقيد معاكس.");
 });
