@@ -1,0 +1,24 @@
+#!/bin/sh
+# Keeps docs/plan/TRACEABILITY.md in step with the plan on every commit (DEC-270).
+#
+# CI's «plan gates» job fails when the committed table differs from what scripts/traceability.mjs generates — it did
+# twice on 2026-10-06, once after a doc edit and once after a rebase (a rebase replays commits without hooks, so the
+# next ordinary commit is the one that repairs it). The script takes ~0.1 s and reads only docs/plan/, so it runs every
+# time: it regenerates the table, adds it to this commit if it changed, and stops the commit on a real gap exactly as CI
+# would. `git commit --no-verify` skips it.
+
+root=$(git rev-parse --show-toplevel) || exit 0
+cd "$root" || exit 0
+[ -f scripts/traceability.mjs ] || exit 0
+
+if ! out=$(node scripts/traceability.mjs 2>&1); then
+  echo "$out" >&2
+  echo "pre-commit: the traceability gate failed — fix the gaps above (CI's «plan gates» would refuse them too)." >&2
+  exit 1
+fi
+
+if ! git diff --quiet -- docs/plan/TRACEABILITY.md; then
+  git add docs/plan/TRACEABILITY.md
+  echo "pre-commit: regenerated docs/plan/TRACEABILITY.md and added it to this commit."
+fi
+exit 0

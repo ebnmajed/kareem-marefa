@@ -39,7 +39,7 @@
     "lockfile": "node scripts/lockfile.mjs",
     "db:reset": "node scripts/db-reset.mjs",
     "seed:dev": "node scripts/seed-dev.mjs",
-    "prepare": "npm run build -w @kareem/storage-paths && npm run build -w @kareem/designer-runtime && npm run build -w @kareem/mail-runtime"
+    "prepare": "npm run build -w @kareem/storage-paths && npm run build -w @kareem/designer-runtime && npm run build -w @kareem/mail-runtime && node scripts/install-hooks.mjs"
   },
   "dependencies": {
     "@kareem/fonts": "0.1.0",

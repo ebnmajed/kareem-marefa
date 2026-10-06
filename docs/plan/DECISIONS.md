@@ -10458,3 +10458,13 @@ owner asked for a door on the session page itself. `AddToStory` opens the same `
 cancelled — and every capture route still re-derives that gate. Closing the capture refreshes the page.
 
 - **Documents changed:** `STATUS.md`
+
+## DEC-270 — A pre-commit hook keeps the traceability table in step
+
+- **Date:** 2026-10-06 · **Decided by:** the owner · **No migration**
+
+CI's «plan gates» job failed twice on 2026-10-06 because the committed `TRACEABILITY.md` lagged the plan — once after
+a doc edit, once after a rebase. `.githooks/pre-commit` now regenerates the table on every commit (≈0.1 s, reading only
+`docs/plan/`), adds it to the commit when it changed, and stops the commit on a real gap as CI would. `npm install`
+points git at `.githooks/` (`scripts/install-hooks.mjs`, which never fails an install). A rebase replays commits
+without hooks; the next ordinary commit repairs the table. `--no-verify` skips the hook; CI remains the gate.
