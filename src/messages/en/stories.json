@@ -1,7 +1,10 @@
 {
   "stories": {
     "ring": {
-      "seen": "Seen"
+      "seen": "Seen",
+      "add": "Your story",
+      "addLabel": "Add to a session's story",
+      "choose": "Which session's story?"
     },
     "age": {
       "now": "Now",

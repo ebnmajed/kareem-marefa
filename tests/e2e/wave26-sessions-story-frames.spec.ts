@@ -220,7 +220,8 @@ for (const width of [390, 1280] as const) {
     await home(page, desktop);
     const row = page.getByRole("list", { name: "جلسات اليوم وما حوله" });
     await expect(row).toBeVisible();
-    const names = await row.getByRole("button").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label") ?? ""));
+    // DEC-278: «قصتك» may lead the row; the order asserted is the STORY rings' — the ones with a state.
+    const names = await row.locator("button[data-state]").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label") ?? ""));
     expect(names[0]).toContain(T.live.slice(0, 12)); // live first (REQ-STO-006)
     expect(names.some((n) => n.includes(T.seen.slice(0, 12)))).toBe(true);
     expect(names.some((n) => n.includes(T.cancelled))).toBe(false); // REQ-STO-018
@@ -233,14 +234,16 @@ for (const width of [390, 1280] as const) {
   test(`${width}: every generated frame kind, as the viewer shows it`, async ({ context, page }, testInfo) => {
     test.skip(only(testInfo.project.name), "one width per project");
     await signIn(context);
-    const next = async (dialog: ReturnType<Page["getByRole"]>) => dialog.getByRole("button", { name: "الإطار التالي" }).click();
+    // DEC-278: previous, next and pause are not drawn — the frame is tapped (the end third, the left in RTL), and the
+    // clock is held with Space, the keyboard's pause.
+    const next = async (dialog: ReturnType<Page["getByRole"]>) => dialog.locator("[data-story-taps]").click({ position: { x: 40, y: 420 } });
 
     // The upcoming story: published · registration opened · registration closed · starts soon.
     await home(page, desktop);
     await ring(page, T.soon).click();
     let dialog = page.getByRole("dialog");
     await expect(dialog).toContainText("جلسة جديدة");
-    await dialog.getByRole("button", { name: "أوقف مؤقتًا" }).click();
+    await page.keyboard.press("Space");
     await shot(page, `frame-published-${width}`);
     await next(dialog);
     await expect(dialog).toContainText("التسجيل مفتوح");
@@ -257,7 +260,7 @@ for (const width of [390, 1280] as const) {
     await home(page, desktop);
     await ring(page, T.live).click();
     dialog = page.getByRole("dialog");
-    await dialog.getByRole("button", { name: "أوقف مؤقتًا" }).click();
+    await page.keyboard.press("Space");
     await next(dialog);
     await expect(dialog).toContainText("جارية الآن");
     await expect(dialog).toContainText("واحد في القاعة");
@@ -269,7 +272,7 @@ for (const width of [390, 1280] as const) {
     await home(page, desktop);
     await ring(page, T.done).click();
     dialog = page.getByRole("dialog");
-    await dialog.getByRole("button", { name: "أوقف مؤقتًا" }).click();
+    await page.keyboard.press("Space");
     await expect(dialog).toContainText("ريم الشهري");
     await shot(page, `frame-photo-${width}`);
     await next(dialog);
@@ -288,7 +291,7 @@ for (const width of [390, 1280] as const) {
     await home(page, desktop);
     await ring(page, T.done).click();
     dialog = page.getByRole("dialog");
-    await dialog.getByRole("button", { name: "أوقف مؤقتًا" }).click();
+    await page.keyboard.press("Space");
     await next(dialog);
     await expect(dialog).toContainText("اكتملت");
     await expect(dialog).toContainText("5");

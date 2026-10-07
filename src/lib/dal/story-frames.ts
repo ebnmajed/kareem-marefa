@@ -84,6 +84,16 @@ export async function canAddToStory(locale: string, sessionIds: string[]): Promi
   return Object.fromEntries(answers);
 }
 
+/** «أضف قصتك» on the home's ring row (DEC-278): the sessions whose story the caller may add to now — newest first. A
+ *  session with no frame yet has no ring, so the row asks `story_capture_sessions()` (0219) rather than the feed. A
+ *  hint, never the rule: every capture door re-derives `story_capture_open()`. */
+export async function listStoryCaptureSessions(locale: string): Promise<{ sessionId: string; title: string }[]> {
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.rpc("story_capture_sessions");
+  if (error) throw new Error(`story_capture_sessions: ${error.message}`);
+  return ((data ?? []) as { session_id: string; title: string }[]).map((r) => ({ sessionId: r.session_id, title: r.title }));
+}
+
 // ─── the capture: a photograph rides the album's own job ─────────────────────────────────────────────────────────
 
 export const completeStoryPhotoInput = z.object({

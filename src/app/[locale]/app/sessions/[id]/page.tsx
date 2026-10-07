@@ -134,9 +134,10 @@ export default async function EventPage({
     phase === "open" || phase === "live" ? teamForRule(locale) : Promise.resolve(null),
     // «شاهد القصة» (REQ-STO-008): only while live, and only for a story the feed returns — a frame I may see now.
     phase === "live" ? getSessionStory(locale, id).catch(() => null) : Promise.resolve(null),
-    // «أضف إلى القصة» (REQ-STO-011, DEC-269): from the start until a day after the end, for a checked-in member — the
-    // database's own gate, asked only in the phases it can answer yes.
-    phase === "live" || phase === "ended" ? canAddToStory(locale, [id]).then((r) => r[id] === true).catch(() => false) : Promise.resolve(false),
+    // «أضف إلى القصة» (REQ-STO-011, DEC-269, DEC-278): from a day before the start until a day after the end, for a
+    // member who reserved or checked in, a presenter or staff — the database's own gate, asked only in the phases it can
+    // answer yes.
+    phase === "open" || phase === "live" || phase === "ended" ? canAddToStory(locale, [id]).then((r) => r[id] === true).catch(() => false) : Promise.resolve(false),
   ]);
   // «قيّم الجلسة» only to someone who may and has not yet (REQ-RAT-001, REQ-RAT-003).
   const canRate = rateAllowed(session, relation) && canGrantOn(session, "rate") && Boolean(eligibility?.eligible) && !eligibility?.existing;

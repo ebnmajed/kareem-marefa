@@ -46,27 +46,49 @@ async function jobs(tx: Tx, task: string, key: string) {
 const audits = (tx: Tx, action: string, subject: string) =>
   tx.q<{ n: number }>(`select count(*)::int as n from public.audit_log where action = $1 and subject_id = $2`, [action, subject]).then((r) => r[0].n);
 
+/** DEC-278: members[0] presents the fixture's session; with that row gone they are a member with no tie to it. */
+async function outsider(tx: Tx, f: Awaited<ReturnType<typeof prepare>>) {
+  await tx.asOwner();
+  await tx.q(`delete from public.session_presenters where session_id = $1 and member_id = $2`, [f.m2.a.published, f.a.members[0].memberId]);
+  return f.a.members[0];
+}
+
 const gate = (tx: Tx, session: string) => tx.q<{ open: boolean }>(`select public.story_capture_open($1) as open`, [session]).then((r) => r[0].open);
 
 describe("RPC-story_capture_open — the server's «أضف» (REQ-STO-011)", () => {
-  it("a checked-in member inside the window ✓; the presenter, staff and an unchecked member ✗", async () => {
+  // ★ DEC-278 (a ledger line): the presenter and staff were ✗ (wave 26) and are ✓ now; so is a member who reserved.
+  it("a checked-in member, the presenter, staff and a member who reserved ✓; a member with no tie, or waitlisted, ✗", async () => {
     await withTx(async (tx) => {
       const f = await prepare(tx);
-      await tx.as(f.a.members[1].claims);
-      expect(await gate(tx, f.m2.a.published)).toBe(true);
-      for (const who of [f.a.members[0], f.a.admin, f.a.mod]) {
+      for (const who of [f.a.members[1], f.a.members[0], f.a.admin, f.a.mod]) {
         await tx.as(who.claims);
-        expect(await gate(tx, f.m2.a.published)).toBe(false);
+        expect(await gate(tx, f.m2.a.published)).toBe(true);
       }
+      const nobody = await outsider(tx, f);
+      await tx.as(nobody.claims);
+      expect(await gate(tx, f.m2.a.published)).toBe(false);
+      await tx.asOwner();
+      await tx.q(`insert into public.rsvps (org_id, session_id, member_id, status, waitlist_position) values ($1, $2, $3, 'waitlisted', 1)`, [f.a.id, f.m2.a.published, nobody.memberId]);
+      await tx.as(nobody.claims);
+      expect(await gate(tx, f.m2.a.published)).toBe(false);
+      await tx.asOwner();
+      await tx.q(`update public.rsvps set status = 'confirmed', waitlist_position = null where session_id = $1 and member_id = $2`, [f.m2.a.published, nobody.memberId]);
+      await tx.as(nobody.claims);
+      expect(await gate(tx, f.m2.a.published)).toBe(true);
     });
   });
 
-  it("before the start ✗, at the end + 24 h ✗, a second before ✓", async () => {
+  // ★ DEC-278 (a ledger line): the window opens 24 hours BEFORE the start, no longer at it.
+  it("more than 24 h before the start ✗, inside 24 h before ✓, at the end + 24 h ✗, a second before ✓", async () => {
     await withTx(async (tx) => {
       const f = await prepare(tx);
-      await tx.q(`update public.session_days set starts_at = now() + interval '1 minute', ends_at = now() + interval '2 hours' where session_id = $1`, [f.m2.a.published]);
+      await tx.q(`update public.session_days set starts_at = now() + interval '24 hours 1 minute', ends_at = now() + interval '26 hours' where session_id = $1`, [f.m2.a.published]);
       await tx.as(f.a.members[1].claims);
       expect(await gate(tx, f.m2.a.published)).toBe(false);
+      await tx.asOwner();
+      await tx.q(`update public.session_days set starts_at = now() + interval '23 hours', ends_at = now() + interval '25 hours' where session_id = $1`, [f.m2.a.published]);
+      await tx.as(f.a.members[1].claims);
+      expect(await gate(tx, f.m2.a.published)).toBe(true);
       await tx.asOwner();
       await tx.q(`update public.session_days set starts_at = now() - interval '26 hours', ends_at = now() - interval '24 hours' where session_id = $1`, [f.m2.a.published]);
       await tx.as(f.a.members[1].claims);
@@ -78,7 +100,7 @@ describe("RPC-story_capture_open — the server's «أضف» (REQ-STO-011)", () 
     });
   });
 
-  it("a cancelled session and another org's session ✗ (a removed check-in is has_checked_in()'s own case, 0087)", async () => {
+  it("a cancelled session, a draft and another org's session ✗ (a removed check-in is has_checked_in()'s own case, 0087)", async () => {
     await withTx(async (tx) => {
       const f = await prepare(tx);
       await tx.as(f.b.admin.claims);
@@ -87,6 +109,39 @@ describe("RPC-story_capture_open — the server's «أضف» (REQ-STO-011)", () 
       await tx.q(`update public.sessions set state = 'cancelled', cancelled_at = now(), cancellation_reason = 'تعذّر' where id = $1`, [f.m2.a.published]);
       await tx.as(f.a.members[1].claims);
       expect(await gate(tx, f.m2.a.published)).toBe(false);
+    });
+    await withTx(async (tx) => {
+      const f = await prepare(tx);
+      await tx.as(f.a.admin.claims);
+      expect(await gate(tx, f.m2.a.draft)).toBe(false);
+    });
+  });
+
+  it("RPC-story_capture_sessions: the sessions the caller may add to now — the reserved member's, not an outsider's", async () => {
+    await withTx(async (tx) => {
+      const f = await prepare(tx);
+      const list = () => tx.q<{ session_id: string }>(`select session_id from public.story_capture_sessions()`).then((r) => r.map((x) => x.session_id));
+      await tx.as(f.a.members[1].claims);
+      expect(await list()).toContain(f.m2.a.published);
+      const nobody = await outsider(tx, f);
+      await tx.as(nobody.claims);
+      expect(await list()).not.toContain(f.m2.a.published);
+      await tx.as(f.b.admin.claims);
+      expect(await list()).not.toContain(f.m2.a.published);
+    });
+  });
+
+  it("POL-photos_storage_write_story: a member who only reserved puts the story photo on the album's path; an outsider cannot", async () => {
+    await withTx(async (tx) => {
+      const f = await prepare(tx);
+      const nobody = await outsider(tx, f);
+      const put = () => tx.q(`insert into storage.objects (bucket_id, name) values ('photos', $1)`, [`${f.a.id}/sessions/${f.m2.a.published}/photos/${crypto.randomUUID()}.jpg`]);
+      await tx.as(nobody.claims);
+      expect(await errorCode(put)).toBe("42501");
+      await tx.asOwner();
+      await tx.q(`insert into public.rsvps (org_id, session_id, member_id, status) values ($1, $2, $3, 'confirmed')`, [f.a.id, f.m2.a.published, nobody.memberId]);
+      await tx.as(nobody.claims);
+      await put();
     });
   });
 });
@@ -109,7 +164,7 @@ describe("RPC-initiate_story_photo — the album's own job, with a caption", () 
     await withTx(async (tx) => {
       const f = await prepare(tx);
       const photo = crypto.randomUUID();
-      await tx.as(f.a.members[0].claims);
+      await tx.as((await outsider(tx, f)).claims);
       expect(await errorCode(() => tx.q(`select public.initiate_story_photo($1, $2, $3, 'jpeg', 1000)`, [photo, f.m2.a.published, path(f.a.id, f.m2.a.published, photo)]))).toBe("42501");
       expect(await jobs(tx, "process_photo", `photo:${photo}`)).toEqual([]);
     });
@@ -169,7 +224,8 @@ describe("RPC-begin_story_video / record_story_video / fail_story_video", () => 
     await withTx(async (tx) => {
       const f = await prepare(tx);
       const frame = crypto.randomUUID();
-      await tx.as(f.a.admin.claims);
+      // DEC-278 (a ledger line): staff are inside the gate now — the outsider is a member with no tie to the session.
+      await tx.as((await outsider(tx, f)).claims);
       expect(await errorCode(() => tx.q(`select public.begin_story_video($1, $2, $3, 1000)`, [frame, f.m2.a.published, source(f.a.id, f.m2.a.published, frame)]))).toBe("42501");
       await tx.as(f.a.members[1].claims);
       expect(await errorCode(() => tx.q(`select public.begin_story_video($1, $2, $3, 1000)`, [frame, f.m2.a.published, source(f.a.id, f.m2.a.published, crypto.randomUUID())]))).toBe("22023");
@@ -391,13 +447,17 @@ describe("POL-story_media_write — the PUT, under the capture gate", () => {
     });
   });
 
-  it("the presenter, staff and an unchecked member are refused", async () => {
+  // ★ DEC-278 (a ledger line): the presenter and staff are inside the gate now; a member with no tie is refused.
+  it("the presenter and staff put a source; a member with no tie is refused", async () => {
     await withTx(async (tx) => {
       const f = await withPolicy(tx);
       for (const who of [f.a.members[0], f.a.admin]) {
         await tx.as(who.claims);
-        expect(await errorCode(() => put(tx, `${f.a.id}/sessions/${f.m2.a.published}/frames/${crypto.randomUUID()}/source.mp4`))).toBe("42501");
+        await put(tx, `${f.a.id}/sessions/${f.m2.a.published}/frames/${crypto.randomUUID()}/source.mp4`);
       }
+      const nobody = await outsider(tx, f);
+      await tx.as(nobody.claims);
+      expect(await errorCode(() => put(tx, `${f.a.id}/sessions/${f.m2.a.published}/frames/${crypto.randomUUID()}/source.mp4`))).toBe("42501");
     });
   });
 });

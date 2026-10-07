@@ -10636,3 +10636,62 @@ parts were already separate. Fixed the same way, with the owner's yes, and `wave
 effective opacity on both projects (it failed on desktop before the fix, passes after).
 
 - **Documents changed:** `STATUS.md`
+
+## DEC-278 — Stories behave as Instagram's: the whole screen, no drawn controls, instant reactions, members who reserved may post, and the photographs they show are small · `0219`
+
+- **Date:** 2026-10-07 · **Decided by:** the owner · **Amends:** `DEC-251` §4.7 (the viewer's always-visible previous / next / pause discs — `DEC-093`'s seventh place) and `REQ-STO-011`'s gate («checked in, from the start») · **Migration:** `0219`
+- **Serves:** `REQ-STO-005`, `REQ-STO-007`, `REQ-STO-009`, `REQ-STO-010`, `REQ-STO-011`, `REQ-STO-012`
+
+**The ask:** «fix the story posts, it doesn't cover the whole screen on the phone and it is finicky and adding reactions to
+it takes time so the user thinks they didn't click and they click it again, also there is no need for the controls on
+the story (right, left, pause etc..) since it is the same as snapchat and instagram stories so the users are expecting
+this behavior and it takes valuable space. Also add the ability for the user to upload their own. Also a bug on the
+phone when a user clicks on a story it lags a lot. Also … the title is duplicated». On who may upload, the owner chose
+**session stories, wider** — anyone who reserved or attended, from a day before until a day after; still moderated.
+
+**1. The whole screen.** The viewer was capped at 390 px, a gutter either side on every wider phone. It is now capped at
+the screen's height × 5/8 — a phone always fills its width; a desktop gets the viewer centred at phone proportions
+(`REQ-STO-009`), with no wide-screen-only class.
+
+**2. No drawn controls.** Previous, next and pause are no longer drawn over the frame: a tap on the start third goes
+back (and from a story's first frame to the previous story), elsewhere forward; a hold pauses and the header and the
+reaction row step away; a sideways swipe moves between stories; a swipe down closes; close stays drawn. **`DEC-093` is
+not dropped but met differently**: a tap is a single pointer, never a path-based gesture, so SC 2.5.7 is met by the tap
+itself; the three buttons remain real for a keyboard and a screen reader, visually hidden until focused, with ← → Home
+End Space Escape unchanged.
+
+**3. «Finicky» — measured, two causes.** The layer lost a press whose finger slid off it (`pointerleave` cancelled it); it
+is now captured, and a press that drifted past 12 px without being a swipe does nothing rather than a stray tap. And the
+row holding the (now hidden) buttons spanned the frame's middle and would have swallowed every tap there — it passes
+pointers through.
+
+**4. Reactions are optimistic.** A tap shows the press and the count at once; the server follows, only the newest tap's
+answer is applied, a refusal puts the frame back. And views no longer fire one Server Action per frame — Server Actions
+run one at a time per client, so every reaction waited behind those writes; views are batched every 4 s and on close.
+
+**5. The lag — measured on production.** Every photograph on production (8, uploaded 2026-09-29) predates wave 26's
+1080 px `story` derivative, so story and recap frames loaded the stripped originals: **PNGs of 0.8 – 9.4 MB, three to a
+recap**. `JOB-backfill_story_derivatives` (hourly) makes the derivative for any photograph under 30 days old that lacks
+one, through two service-role functions in `0219`. Beside it: a published frame uses the poster's 9:16 `story` export
+(≈ 31 KB WebP) rather than the master, never a PDF; the next frame's picture is fetched while the current one shows. A
+4×-throttled trace (`wave26-content-story-walks`, `@trace`) holds opening a story to a budget — 178 ms to the first frame,
+87 ms of long tasks on the seeded text frames; the photographs' weight is what the backfill removes, and only production
+carries it.
+
+**6. The duplicated title.** A published frame drew the session's title, date and place over a rendered poster that
+already carries them. A rendered poster is now the frame alone, its words its `alt`; with no poster the text frame is
+unchanged.
+
+**7. Members post their own.** `story_capture_open()` now admits a member with a **confirmed** reservation, the session's
+accepted presenters and staff, as well as one who checked in, from **24 h before** the first start until 24 h after the
+last end; never a draft, a waitlisted member, a cancelled session or another org. Every door reads the one function, so
+the story-media write policy, `initiate_story_photo()` and `begin_story_video()` widen with it. A story photograph is PUT
+on the album's path, whose policy admits only checked-in members, presenters and staff — so `photos_storage_write_story`,
+a second permissive insert policy under the story's gate, admits that path; it opens no album upload
+(`initiate_photo_processing()` keeps its own gate). The home's ring row leads with **«قصتك»** whenever the member may add
+to a session's story — through `story_capture_sessions()`, since a session with no frame has no ring — opening the capture
+at once, or a sheet asking which session; the event page's «أضف إلى القصة» is asked from the «open» phase too.
+★ **A consequence, accepted by the ruling:** a story photograph is an album photograph (`DEC-251` §4.2), so a member who
+reserved and posts before the session adds to its album and earns the album's photo award under its cap.
+
+- **Documents changed:** `03-permissions-rls.md`, `11-background-jobs.md`, `STATUS.md`

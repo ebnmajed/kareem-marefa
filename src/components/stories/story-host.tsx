@@ -25,6 +25,27 @@ import type { StoryFrame } from "@/lib/dal/stories";
 const REACTIONS: readonly StoryReactionKind[] = ["heart", "fire", "clap", "idea"];
 const GLYPH: Record<StoryReactionKind, string> = { heart: "❤️", fire: "🔥", clap: "👏", idea: "💡" };
 
+const VIEWS_FLUSH_MS = 4000;
+
+type ReactionEntry = PreparedStories["reactions"][string];
+
+/** The entry with the member's reaction moved to `mine` — the old one's count down, the new one's up. */
+function withMine(entry: ReactionEntry, mine: StoryReactionKind | null): ReactionEntry {
+  const totals = { ...entry.totals };
+  if (entry.mine) totals[entry.mine] = Math.max(0, totals[entry.mine] - 1);
+  if (mine) totals[mine] += 1;
+  return { totals, mine };
+}
+
+/** The pictures a frame draws — what is worth fetching before it is shown. */
+function frameImages(frame: StoryFrame, media: PreparedStories["media"]): string[] {
+  if (frame.kind === "published") return frame.posterUrl ? [frame.posterUrl] : [];
+  if (frame.kind === "photo") return media.photos[frame.photoId] ? [media.photos[frame.photoId]] : [];
+  if (frame.kind === "recap") return frame.photoIds.map((id) => media.photos[id]).filter(Boolean);
+  if (frame.kind === "video") return media.videos[frame.id]?.posterUrl ? [media.videos[frame.id].posterUrl] : [];
+  return [];
+}
+
 function initial(name: string | null | undefined): string {
   return (name ?? "").trim().charAt(0) || "·";
 }
@@ -39,7 +60,8 @@ export function useStoryHost(prepared: PreparedStories) {
   const [lastIndex, setLastIndex] = useState(0);
   const opener = useRef<HTMLElement | null>(null);
   const [reactions, setReactions] = useState(prepared.reactions);
-  const [pendingReaction, setPendingReaction] = useState<string | null>(null);
+  // The newest tap per frame: an older answer arriving after a newer tap is ignored (DEC-278).
+  const reactionSeq = useRef(new Map<string, number>());
   const [seen, setSeen] = useState(() => new Set(sessions.flatMap((s) => s.frames.filter((f) => f.seen).map((f) => f.id))));
   const [capture, setCapture] = useState<string | null>(null);
   const [report, setReport] = useState<{ frameId: string; error: string | null } | null>(null);
@@ -58,13 +80,39 @@ export function useStoryHost(prepared: PreparedStories) {
     }
     inFlight.current = false;
   }, [locale]);
+  // ★ BATCHED ON A TIMER, NOT PER FRAME (DEC-278). Server Actions run one at a time per client, so a view written the
+  // moment each frame appeared stood in front of every reaction tapped on it — the «I tapped and nothing happened» the
+  // owner saw. Views wait a few seconds and leave together, and always on close.
+  const flushTimer = useRef<number | null>(null);
+  // ★ The next frame's picture is fetched while this one shows (DEC-278), so a tap forward never waits on the network.
+  const preloaded = useRef(new Set<string>());
+  const preload = useCallback(
+    (frame: StoryFrame | undefined) => {
+      if (!frame) return;
+      for (const url of frameImages(frame, media)) {
+        if (preloaded.current.has(url)) continue;
+        preloaded.current.add(url);
+        const img = new Image();
+        img.decoding = "async";
+        img.src = url;
+      }
+    },
+    [media],
+  );
   const onFrameShown = useCallback(
-    (_storyId: string, frameId: string) => {
+    (storyId: string, frameId: string) => {
+      const si = sessions.findIndex((x) => x.sessionId === storyId);
+      const fi = si < 0 ? -1 : sessions[si].frames.findIndex((x) => x.id === frameId);
+      if (fi >= 0) preload(sessions[si].frames[fi + 1] ?? sessions[si + 1]?.frames[sessions[si + 1].firstUnseenIndex]);
       setSeen((prev) => (prev.has(frameId) ? prev : new Set(prev).add(frameId)));
       queue.current.push(frameId);
-      void flush();
+      if (flushTimer.current === null)
+        flushTimer.current = window.setTimeout(() => {
+          flushTimer.current = null;
+          void flush();
+        }, VIEWS_FLUSH_MS);
     },
-    [flush],
+    [flush, preload, sessions],
   );
 
   // One ref per video frame: the viewer's clock reads the element (REQ-STO-007's «a video its length»).
@@ -74,20 +122,22 @@ export function useStoryHost(prepared: PreparedStories) {
     return refs;
   }, [sessions]);
 
+  // ★ OPTIMISTIC (DEC-278): the tap shows at once — the press and the count — and the server follows. A reaction is the
+  // member's own and uncontended (one per member per frame, REQ-STO-010), so drawing it before the answer misstates
+  // nothing; a refusal puts the frame back as it was. Only the newest tap's answer is applied.
   const react = useCallback(
     async (frameId: string, kind: string) => {
-      const current = reactions[frameId]?.mine ?? null;
-      const next = current === kind ? null : (kind as StoryReactionKind);
-      setPendingReaction(frameId);
+      const before = reactions[frameId] ?? { totals: { heart: 0, fire: 0, clap: 0, idea: 0 }, mine: null };
+      const next = before.mine === kind ? null : (kind as StoryReactionKind);
+      const seq = (reactionSeq.current.get(frameId) ?? 0) + 1;
+      reactionSeq.current.set(frameId, seq);
+      setReactions((prev) => ({ ...prev, [frameId]: withMine(prev[frameId] ?? before, next) }));
       const result = await setStoryReactionAction(locale, frameId, next);
-      setPendingReaction(null);
-      if ("error" in result) return;
+      if (reactionSeq.current.get(frameId) !== seq) return;
       setReactions((prev) => {
-        const entry = prev[frameId] ?? { totals: { heart: 0, fire: 0, clap: 0, idea: 0 }, mine: null };
-        const totals = { ...entry.totals };
-        if (entry.mine) totals[entry.mine] = Math.max(0, totals[entry.mine] - 1);
-        if (result.mine) totals[result.mine] += 1;
-        return { ...prev, [frameId]: { totals, mine: result.mine } };
+        const entry = prev[frameId] ?? before;
+        if ("error" in result) return { ...prev, [frameId]: before };
+        return result.mine === entry.mine ? prev : { ...prev, [frameId]: withMine(entry, result.mine) };
       });
     },
     [locale, reactions],
@@ -133,7 +183,7 @@ export function useStoryHost(prepared: PreparedStories) {
           action: visible
             ? { label: f.action.kind === "download_materials" ? t("action.downloadMaterials") : t("action.openSession"), href: f.action.href }
             : undefined,
-          reactions: visible ? { label: t("viewer.reactions"), items, onToggle: (k: string) => void react(f.id, k), pending: pendingReaction === f.id } : undefined,
+          reactions: visible ? { label: t("viewer.reactions"), items, onToggle: (k: string) => void react(f.id, k) } : undefined,
           moderation:
             attendee && visible
               ? {
@@ -165,12 +215,18 @@ export function useStoryHost(prepared: PreparedStories) {
 
   const open = useCallback((index: number, from: HTMLElement | null) => {
     opener.current = from;
+    const s = sessions[index];
+    preload(s?.frames[s.firstUnseenIndex]);
     setLastIndex(index);
     setOpenAt(index);
-  }, []);
+  }, [preload, sessions]);
 
   const close = useCallback(() => {
     setOpenAt(null);
+    if (flushTimer.current !== null) {
+      window.clearTimeout(flushTimer.current);
+      flushTimer.current = null;
+    }
     void flush();
     router.refresh();
   }, [flush, router]);
@@ -217,7 +273,16 @@ export function useStoryHost(prepared: PreparedStories) {
           <Button type="submit">{t("moderation.report")}</Button>
         </form>
       </Sheet>
-      {capture ? <CaptureFlow sessionId={capture} onClose={() => setCapture(null)} /> : null}
+      {capture ? (
+        <CaptureFlow
+          sessionId={capture}
+          onClose={() => {
+            setCapture(null);
+            // A posted frame shows as «processing» in the story: read the rings again.
+            router.refresh();
+          }}
+        />
+      ) : null}
       {/* Said once, when there is something to say — never an empty status region at rest on the home. */}
       {notice ? (
         <p role="status" className="sr-only">
@@ -227,5 +292,11 @@ export function useStoryHost(prepared: PreparedStories) {
     </>
   );
 
-  return { open, elements, seen, frameAge: (at: string) => frameAge(t, at, now) };
+  /** Opens the capture for a session — «أضف قصتك» on the ring row (DEC-278). */
+  const startCapture = useCallback((sessionId: string) => {
+    setOpenAt(null);
+    setCapture(sessionId);
+  }, []);
+
+  return { open, startCapture, elements, seen, frameAge: (at: string) => frameAge(t, at, now) };
 }

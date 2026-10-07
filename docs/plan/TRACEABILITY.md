@@ -12,7 +12,7 @@
 | Entities (`ENT-*`) | **90** |
 | Stories (`STORY-*`) | **284** |
 | Screens cited (`SCR-*`) | 60 |
-| Jobs cited (`JOB-*`) | 45 |
+| Jobs cited (`JOB-*`) | 46 |
 | Messages cited (`MSG-*`) | 24 |
 
 ## Cross-cutting requirements
@@ -465,14 +465,14 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-STO-002` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-001` | M28 |
 | `REQ-STO-003` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-007` | M28 |
 | `REQ-STO-004` | `ENT-story_frames` | — | `SCR-010` | `JOB-generate_story_frames` | — | `STORY-STO-001` | M28 |
-| `REQ-STO-005` | `ENT-story_reactions` | — | `SCR-010` | — | — | `STORY-STO-003` | M28 |
+| `REQ-STO-005` | `ENT-story_reactions` | — | `SCR-010` | `JOB-backfill_story_derivatives` | — | `STORY-STO-003` | M28 |
 | `REQ-STO-006` | `ENT-story_views` | — | `SCR-010` | — | — | `STORY-STO-002` | M28 |
-| `REQ-STO-007` | — | — | `SCR-010` | — | — | `STORY-STO-003` | M28 |
+| `REQ-STO-007` | — | — | `SCR-010` | `JOB-backfill_story_derivatives` | — | `STORY-STO-003` | M28 |
 | `REQ-STO-008` | — | — | `SCR-012` | — | — | `STORY-STO-002` | M28 |
-| `REQ-STO-009` | — | — | `SCR-010` | — | — | `STORY-STO-003` | M28 |
-| `REQ-STO-010` | `ENT-story_views` | `POL-reports.story_frame` `POL-story_frame_takedowns.read` +3 | `SCR-010` | — | — | `STORY-STO-003` `STORY-STO-007` | M28 |
-| `REQ-STO-011` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-004` | M28 |
-| `REQ-STO-012` | `ENT-story_frames` | — | `SCR-010` | `JOB-transcode_story_video` | — | `STORY-STO-004` | M28 |
+| `REQ-STO-009` | — | — | `SCR-010` | `JOB-backfill_story_derivatives` | — | `STORY-STO-003` | M28 |
+| `REQ-STO-010` | `ENT-story_views` | `POL-reports.story_frame` `POL-story_frame_takedowns.read` +3 | `SCR-010` | `JOB-backfill_story_derivatives` | — | `STORY-STO-003` `STORY-STO-007` | M28 |
+| `REQ-STO-011` | `ENT-story_frames` | — | `SCR-010` | `JOB-backfill_story_derivatives` | — | `STORY-STO-004` | M28 |
+| `REQ-STO-012` | `ENT-story_frames` | — | `SCR-010` | `JOB-backfill_story_derivatives` `JOB-transcode_story_video` | — | `STORY-STO-004` | M28 |
 | `REQ-STO-013` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-004` | M28 |
 | `REQ-STO-014` | `ENT-photo_takedowns` `ENT-story_frame_takedowns` `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-005` | M28 |
 | `REQ-STO-015` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-005` | M28 |

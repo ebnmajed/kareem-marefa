@@ -295,7 +295,8 @@ export interface SessionPosterData {
 
 /** The preset each surface asks for. `og` is 1200×630 and reads at about
  *  600 px in an email client; a browse card wants the square. */
-export type PosterVariant = "master" | "square" | "og" | "landscape";
+// ★ `story` (add-only, DEC-278): the 9:16 export, drawn whole in a session's story frame on a phone.
+export type PosterVariant = "master" | "square" | "og" | "landscape" | "story";
 
 /**
  * The poster for one session. `null` when the session has none — which the
@@ -332,7 +333,12 @@ async function loadSessionPoster(locale: string, sessionId: string, variant: Pos
     total = current.length;
     ready = current.filter((a) => a.status === "ready").length;
 
-    const match = current.find((a) => a.preset === variant && a.status === "ready" && a.storage_path) ?? current.find((a) => a.status === "ready" && a.storage_path);
+    // An IMAGE, never the PDF a print preset also writes (an <img> cannot draw it): the variant asked for, the smaller
+    // file first; else the master; else any ready image (DEC-278).
+    const images = current.filter((a) => a.status === "ready" && a.storage_path && a.format !== "pdf");
+    const byWeight = (a: PosterArtifactRow, b: PosterArtifactRow) => (a.byte_size ?? Infinity) - (b.byte_size ?? Infinity);
+    const match =
+      images.filter((a) => a.preset === variant).sort(byWeight)[0] ?? images.filter((a) => a.preset === "master").sort(byWeight)[0] ?? images[0];
     if (match?.storage_path) {
       imageUrl = await signExportUrl(locale, match.storage_path);
       width = match.width_px;

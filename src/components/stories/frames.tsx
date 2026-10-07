@@ -18,8 +18,8 @@ import type { StoryMediaHrefs } from "@/lib/dal/story-frames";
 // when the session has no team colour. Ink on each of the seven passes AA (tests/unit/story-team-ground.test.ts). The
 // viewer's own chrome — segments, header, controls — stays bone on its two scrims, as the boards draw it.
 //
-// ★ A CONTROL NEVER COVERS CONTENT: a text frame's body is inset 3.5 rem on both inline sides, clearing the viewer's two
-// 44 px «السابق / التالي» discs at the edges, so the longest title wraps inside them.
+// ★ NOTHING IS DRAWN AT THE EDGES ANY MORE (DEC-278): the viewer's «السابق / التالي» discs are gone, so a text frame's
+// body takes the screen with the ordinary 1.5 rem gutter.
 
 type T = ReturnType<typeof useTranslations>;
 
@@ -58,8 +58,8 @@ function ground(session: StorySession): { frame: string; pill: string; tile: str
     : { frame: "bg-raised text-fg-heading", pill: "bg-canvas text-fg-heading", tile: "bg-canvas/40" };
 }
 
-/** Clear of the viewer's two 44 px discs (0.5 rem gutter + 2.75 rem disc). */
-const INSET = "px-14";
+/** The ordinary gutter — no control sits at the frame's edges (DEC-278). */
+const INSET = "px-6";
 
 function Person({ person, line }: { person: { memberId: string; name: string | null; avatarUrl: string | null; teamColor: string | null } | null; line: string }) {
   return (
@@ -113,12 +113,19 @@ export function FrameBody({
 
   switch (frame.kind) {
     case "published":
+      // ★ A RENDERED POSTER IS THE FRAME, ALONE (DEC-278). It already carries the title, the date and the place, and the
+      // text drawn over it printed the title twice (the owner's screenshot). The 9:16 story export when there is one —
+      // a phone's own shape — else the master, whole, never cropped (REQ-UIX-026). Its words are the poster's alt.
+      if (frame.posterUrl) {
+        return (
+          <div className={`relative h-full ${g.frame}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- a signed URL; the poster whole, never cropped */}
+            <img src={frame.posterUrl} alt={session.title} decoding="async" className="absolute inset-0 h-full w-full object-contain" />
+          </div>
+        );
+      }
       return (
         <div className={`relative h-full ${g.frame}`}>
-          {frame.posterUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- a signed URL; the poster whole, never cropped (REQ-UIX-026)
-            <img src={frame.posterUrl} alt="" className="absolute inset-0 h-full w-full object-contain" />
-          ) : null}
           <div className={`relative flex h-full flex-col justify-end gap-2.5 ${INSET} pb-32`}>
             <span className={`self-start rounded-pill px-3.5 py-1.5 text-label font-bold ${g.pill}`}>{t("frame.published")}</span>
             <h2 className="font-display text-h2 font-extrabold leading-snug">
@@ -184,7 +191,7 @@ export function FrameBody({
         <div className="relative h-full bg-void">
           {url ? (
             // eslint-disable-next-line @next/next/no-img-element -- a signed URL; never cropped (REQ-UIX-026). The caption is drawn below, so alt="" — never read twice.
-            <img src={url} alt="" className="absolute inset-0 h-full w-full object-contain" />
+            <img src={url} alt="" decoding="async" className="absolute inset-0 h-full w-full object-contain" />
           ) : null}
           <div className="absolute inset-x-4 bottom-24 flex flex-col gap-2">
             <Person person={frame.uploader} line={frameAge(t, frame.triggeredAt, now)} />
@@ -264,7 +271,7 @@ export function FrameBody({
             <div className="grid grid-cols-3 gap-1.5">
               {photos.map((url) => (
                 // eslint-disable-next-line @next/next/no-img-element -- signed URLs; the strip's crop is deliberate
-                <img key={url} src={url} alt="" className="aspect-square w-full rounded-field object-cover" />
+                <img key={url} src={url} alt="" decoding="async" className="aspect-square w-full rounded-field object-cover" />
               ))}
             </div>
           ) : null}

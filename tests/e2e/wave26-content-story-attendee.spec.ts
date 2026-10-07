@@ -165,7 +165,8 @@ async function settle(page: Page, path: string) {
 
 async function openStory(page: Page) {
   await settle(page, "/ar/app");
-  await page.click('#main ul[aria-label="جلسات اليوم وما حوله"] > li:first-child button');
+  // DEC-278: «قصتك» may lead the row now — the first STORY ring is the first one with a state.
+  await page.click('#main ul[aria-label="جلسات اليوم وما حوله"] button[data-state]');
   await expect(page.locator("[data-story-viewer]")).toBeVisible();
 }
 
@@ -178,7 +179,7 @@ test("«أضف» is the checked-in attendee's alone; a gallery photograph goes t
   await context.clearCookies();
   await signIn(context, email.attendee);
   await openStory(page);
-  await page.click('[data-story-viewer] button:has-text("أضف")');
+  await page.click('[data-story-viewer] button[aria-label="أضف"]');
   const capture = page.locator("[data-story-capture]");
   await expect(capture).toBeVisible();
   await expect(capture.getByRole("radio", { name: "فيديو" })).toBeVisible();
@@ -206,7 +207,7 @@ test("★★ a video recorded and stopped by TAPS alone — page.click() on the 
   await page.setViewportSize(PHONE);
   await signIn(context, email.attendee);
   await openStory(page);
-  await page.click('[data-story-viewer] button:has-text("أضف")');
+  await page.click('[data-story-viewer] button[aria-label="أضف"]');
   const capture = page.locator("[data-story-capture]");
   await expect(capture).toBeVisible();
 
@@ -235,7 +236,8 @@ test("a report hides a video frame at once, and SCR-051 lists it and plays it", 
   await openStory(page);
   const viewer = page.locator("[data-story-viewer]");
   for (let i = 0; i < 10 && (await viewer.locator("[data-frame-id]").getAttribute("data-frame-id")) !== videoFrame; i++) {
-    await page.click('[data-story-viewer] button[aria-label="الإطار التالي"]');
+    // DEC-278: the frame is the control — a tap at the end third (the left, in RTL) is next.
+    await page.click("[data-story-viewer] [data-story-taps]", { position: { x: 40, y: 420 } });
   }
   await expect(viewer.locator("[data-frame-id]")).toHaveAttribute("data-frame-id", videoFrame);
   await page.screenshot({ path: join(SHOTS, "wave26-content-story-attendee-video-390.png") });

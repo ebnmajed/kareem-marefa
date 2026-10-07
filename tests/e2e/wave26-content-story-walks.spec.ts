@@ -125,40 +125,52 @@ const rings = (page: Page) => page.locator("#main").getByRole("list", { name: "�
 const viewer = (page: Page) => page.locator("[data-story-viewer]");
 const frameId = (page: Page) => viewer(page).locator("[data-frame-id]").getAttribute("data-frame-id");
 
-test("★★ a story walked end to end with page.click() ALONE — next, previous, pause, react, close, and the ring turns seen", async ({ context, page }) => {
+// ★ DEC-278 (ledger lines): the owner ruled the viewer behaves as Instagram's — previous, next and pause are no longer
+// drawn. The single-pointer walk is now TAPS ON THE FRAME (`page.click()` at a position, still nothing else), and pause
+// is the keyboard walk's Space and the gestures' hold.
+const tapFrame = (page: Page, where: "next" | "previous") =>
+  page.click("[data-story-viewer] [data-story-taps]", { position: { x: where === "next" ? 60 : 340, y: 420 } });
+
+test("★★ a story walked end to end with page.click() ALONE — taps forward and back, react, and the ring turns seen", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
   await signIn(context, email.member);
   await openHome(page);
 
-  const first = rings(page).getByRole("button").first();
+  const first = rings(page).locator("button[data-state]").first();
   await expect(first).toHaveAttribute("aria-haspopup", "dialog");
   await page.click('#main ul[aria-label="جلسات اليوم وما حوله"] > li:first-child button');
   await expect(viewer(page)).toBeVisible();
   await page.screenshot({ path: join(SHOTS, "wave26-content-story-open-390.png") });
 
-  // Pause and resume by the button — a hold is never the only way (DEC-093).
-  await page.click('[data-story-viewer] button[aria-label="أوقف مؤقتًا"]');
-  await expect(viewer(page).getByRole("button", { name: "تابِع" })).toHaveAttribute("aria-pressed", "true");
-  await page.screenshot({ path: join(SHOTS, "wave26-content-story-paused-390.png") });
-  await page.click('[data-story-viewer] button[aria-label="تابِع"]');
+  // ★ The viewer fills the phone's width (DEC-278): no gutter either side.
+  const box = (await viewer(page).locator("[data-frame-id]").boundingBox())!;
+  expect(Math.round(box.width)).toBe(PHONE.width);
+  // Nothing is drawn over the frame but close: previous, next and pause are not visible.
+  for (const name of ["الإطار التالي", "الإطار السابق", "أوقف مؤقتًا"]) expect((await viewer(page).getByRole("button", { name }).boundingBox())?.width ?? 0).toBeLessThanOrEqual(1);
 
-  // One reaction, by a click.
+  // ★ One reaction, by a click — pressed AT ONCE, before the server answers (DEC-278: the owner tapped twice because it
+  // took a round trip). The server action is held back to prove the press does not wait on it.
+  await page.route("**/*", async (route) => {
+    if (route.request().headers()["next-action"]) await new Promise((done) => setTimeout(done, 1500));
+    await route.continue().catch(() => {});
+  });
   await page.click('[data-story-viewer] button[data-kind="clap"]');
-  await expect(viewer(page).locator('button[data-kind="clap"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(viewer(page).locator('button[data-kind="clap"]')).toHaveAttribute("aria-pressed", "true", { timeout: 300 });
+  await page.unrouteAll({ behavior: "ignoreErrors" });
 
   // Next, then back, then forward through every frame of both stories until the run closes itself.
   const start = await frameId(page);
-  await page.click('[data-story-viewer] button[aria-label="الإطار التالي"]');
+  await tapFrame(page, "next");
   const second = await frameId(page);
   expect(second).not.toBe(start);
-  await page.click('[data-story-viewer] button[aria-label="الإطار السابق"]');
+  await tapFrame(page, "previous");
   expect(await frameId(page)).toBe(start);
 
   const seenIds = new Set<string>();
   for (let step = 0; step < 20 && (await viewer(page).count()) > 0; step++) {
     const id = await frameId(page);
     if (id) seenIds.add(id);
-    await page.click('[data-story-viewer] button[aria-label="الإطار التالي"]');
+    await tapFrame(page, "next");
   }
   await expect(viewer(page)).toHaveCount(0);
   expect(seenIds.size).toBeGreaterThanOrEqual(6);
@@ -175,7 +187,7 @@ test("★★ the same story walked with the KEYBOARD alone — ← → Home End 
   await openHome(page);
 
   // Tab until the first ring has focus — no click anywhere.
-  const ring = rings(page).getByRole("button").first();
+  const ring = rings(page).locator("button[data-state]").first();
   for (let i = 0; i < 60 && !(await ring.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press("Tab");
   await expect(ring).toBeFocused();
   await page.keyboard.press("Enter");
@@ -208,7 +220,7 @@ test("the gestures, as enhancements: a tap on the start third goes back, a hold 
   await page.setViewportSize(PHONE);
   await signIn(context, email.member);
   await openHome(page);
-  await rings(page).getByRole("button").first().click();
+  await rings(page).locator("button[data-state]").first().click();
   const box = (await viewer(page).locator("[data-story-taps]").boundingBox())!;
   const y = box.y + box.height / 2;
 
@@ -221,12 +233,56 @@ test("the gestures, as enhancements: a tap on the start third goes back, a hold 
   await page.mouse.move(box.x + box.width / 2, y);
   await page.mouse.down();
   await page.waitForTimeout(400);
-  await expect(viewer(page).getByText("متوقفة")).toBeVisible();
+  // ★ DEC-278: a hold pauses and the chrome steps away, as Instagram's does.
+  await expect(viewer(page).locator("[data-frame-id]")).toHaveAttribute("data-paused", "true");
+  const header = viewer(page).getByRole("button", { name: "إغلاق" }).locator("xpath=..");
+  await expect(header).toHaveCSS("opacity", "0");
   await page.mouse.up();
+  await expect(header).toHaveCSS("opacity", "1");
+
+  // A sideways swipe moves to the next story — in RTL, a swipe to the right.
+  const storyTitle = () => viewer(page).locator("bdi").first().textContent();
+  const before = await storyTitle();
+  await page.mouse.move(box.x + box.width * 0.3, y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.8, y, { steps: 4 });
+  await page.mouse.up();
+  expect(await storyTitle()).not.toBe(before);
 
   await page.mouse.move(box.x + box.width / 2, box.y + 200);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2, box.y + 400, { steps: 4 });
   await page.mouse.up();
   await expect(viewer(page)).toHaveCount(0);
+});
+
+// ★ DEC-278 — «when a user clicks on a story it lags a lot». Opening a story on a 4× throttled phone: the time from the
+// tap to the first frame on screen, and the main thread's long tasks in the two seconds after. Printed for the record
+// and held to a budget, so a regression shows as a failure, not as a phone that feels slow.
+test("@trace opening a story on a 4× throttled phone: the frame appears promptly and the main thread stays free", async ({ context, page, browser }) => {
+  test.skip(browser.browserType().name() !== "chromium", "CDP throttling is Chromium's");
+  await page.setViewportSize(PHONE);
+  await signIn(context, email.member);
+  await page.addInitScript(() => {
+    const w = window as unknown as { __long: number[] };
+    w.__long = [];
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries()) w.__long.push(e.duration);
+    }).observe({ type: "longtask", buffered: false });
+  });
+  await openHome(page);
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+  await page.evaluate(() => ((window as unknown as { __long: number[] }).__long.length = 0));
+  const t0 = Date.now();
+  await rings(page).locator("button[data-state]").first().click();
+  await expect(viewer(page).locator("[data-frame-id]")).toBeVisible();
+  const toFrame = Date.now() - t0;
+  await page.waitForTimeout(2000);
+  const long = await page.evaluate(() => (window as unknown as { __long: number[] }).__long);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+  const total = long.reduce((a, b) => a + b, 0);
+  console.log(`[story-open trace] to first frame ${toFrame} ms · long tasks ${long.length}, total ${Math.round(total)} ms, longest ${Math.round(Math.max(0, ...long))} ms`);
+  expect(toFrame).toBeLessThan(1000);
+  expect(total).toBeLessThan(400);
 });

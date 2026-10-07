@@ -15,11 +15,15 @@ import { usePlayPortal } from "@/components/ui/scope-portal";
 // same viewer centred at phone width with NOTHING added (REQ-STO-009). It renders every state from props and reads
 // nothing: no DAL, no session, no catalogue — the frame's body arrives as a slot, the strings as `labels`.
 //
-// ★★ EVERY GESTURE HAS A PLAIN ALTERNATIVE AND A KEY (DEC-093, SC 2.5.7 — which is NOT SC 2.1.1, and which axe never
-// catches). The gestures are enhancements laid over a layer the controls sit above:
-//   tap the start third → previous, elsewhere → next   «الإطار السابق» / «الإطار التالي», always visible, 44 px · ← → Home End
-//   hold (≥ 220 ms) → pause, release → resume          the pause button, `aria-pressed`, 44 px                 · Space
-//   swipe down (> 80 px) → close                        the close button, 44 px                                 · Escape
+// ★★ IT BEHAVES AS INSTAGRAM'S AND SNAPCHAT'S DO (DEC-278, the owner's ruling, amending DEC-251 §4.7's visible discs):
+// the whole frame is the control, and nothing is drawn over it that a member already knows how to do.
+//   tap the start third → previous, elsewhere → next   · ← → Home End
+//   hold (≥ 220 ms) → pause, the chrome steps away     · Space
+//   swipe sideways (> 60 px) → the next or previous story
+//   swipe down (> 80 px) → close                        the close button stays — the one way out a member looks for · Escape
+// ★ A TAP IS A SINGLE POINTER, never a path-based gesture, so SC 2.5.7 is met by the tap itself; the swipes are
+// enhancements over taps and keys. Previous, next and pause remain REAL buttons for a keyboard and a screen reader —
+// visually hidden until focused, never drawn over the frame.
 // The arrows follow the READING direction: in RTL «next» lies to the left, so ← is next (the lightbox's rule).
 //
 // ★ THE CLOCK. A photo or text frame runs its `durationMs`; a video frame passes its element as `media` and the clock
@@ -32,6 +36,9 @@ import { usePlayPortal } from "@/components/ui/scope-portal";
 
 const HOLD_MS = 220;
 const SWIPE_DOWN_PX = 80;
+const SWIPE_SIDE_PX = 60;
+/** A press that moved less than this is a tap, wherever it lifted. */
+const TAP_SLOP_PX = 12;
 const RESTART_AFTER_MS = 1500;
 
 /** One frame's clock and the segments row. Remounted per frame (and per restart) by its key, so it never carries a
@@ -146,6 +153,10 @@ function usePrefersReducedMotion(): boolean {
 }
 
 const CONTROL = "inline-flex size-11 shrink-0 items-center justify-center rounded-pill bg-chrome text-fg-heading hover:bg-hover";
+/** A control the keyboard and a screen reader reach, drawn only while it holds focus (DEC-278). Its 44 px disc is
+ *  focus-only too: a `size-11` beside `sr-only` out-weighed it and left the disc drawn. */
+const FOCUS_CONTROL =
+  "sr-only focus-visible:not-sr-only focus-visible:inline-flex focus-visible:size-11 focus-visible:shrink-0 focus-visible:items-center focus-visible:justify-center focus-visible:rounded-pill focus-visible:bg-chrome focus-visible:text-fg-heading focus-visible:pointer-events-auto";
 
 export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, returnFocusTo, paused: heldOutside = false, labels }: StoryViewerProps) {
   const rtl = Direction.useDirection() === "rtl";
@@ -213,9 +224,25 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
   }, [story, stories, pos, goTo, onClose]);
 
   const previous = useCallback(() => {
-    if (elapsedRef.current > RESTART_AFTER_MS || pos.f === 0) goTo(pos.s, pos.f);
-    else goTo(pos.s, pos.f - 1);
-  }, [pos, goTo]);
+    if (elapsedRef.current > RESTART_AFTER_MS) goTo(pos.s, pos.f);
+    else if (pos.f > 0) goTo(pos.s, pos.f - 1);
+    // At a story's first frame, a tap back opens the previous story where it starts — Instagram's rule.
+    else if (pos.s > 0) goTo(pos.s - 1, startOf(pos.s - 1));
+    else goTo(pos.s, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- startOf reads `stories`
+  }, [pos, goTo, stories]);
+
+  const nextStory = useCallback(() => {
+    if (pos.s < stories.length - 1) goTo(pos.s + 1, startOf(pos.s + 1));
+    else onClose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- startOf reads `stories`
+  }, [pos, stories, goTo, onClose]);
+
+  const previousStory = useCallback(() => {
+    if (pos.s > 0) goTo(pos.s - 1, startOf(pos.s - 1));
+    else goTo(pos.s, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- startOf reads `stories`
+  }, [pos, stories, goTo]);
 
   if (!story || !frame) return null;
   // `paused` from outside: a sheet the caller opened over the viewer (a report) holds the clock without pressing pause.
@@ -247,6 +274,9 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
   }
 
   function onPointerDown(event: PointerEvent<HTMLDivElement>) {
+    // Captured, so a finger that slides off the layer mid-swipe still lifts here — the old `pointerleave` cancel lost
+    // those swipes, and a tap that grazed an edge did nothing («finicky», the owner's word).
+    event.currentTarget.setPointerCapture?.(event.pointerId);
     const timer = window.setTimeout(() => setHeld(true), HOLD_MS);
     pointer.current = { x: event.clientX, y: event.clientY, at: performance.now(), timer };
   }
@@ -266,6 +296,13 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
       onClose();
       return;
     }
+    if (Math.abs(dx) > SWIPE_SIDE_PX && Math.abs(dx) > Math.abs(dy)) {
+      // The content follows the finger: in RTL the next story comes in from the left, so a swipe to the right.
+      if (dx > 0 === rtl) nextStory();
+      else previousStory();
+      return;
+    }
+    if (Math.hypot(dx, dy) > TAP_SLOP_PX) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const fromStart = rtl ? rect.right - event.clientX : event.clientX - rect.left;
     if (fromStart < rect.width / 3) previous();
@@ -306,7 +343,7 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
             data-frame-id={frame.id}
             data-paused={pauseOn || undefined}
             style={teamColour ? ({ "--team": teamColour } as CSSProperties) : undefined}
-            className="relative flex h-full w-full max-w-[24.375rem] flex-col overflow-hidden bg-void pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
+            className="relative flex h-full w-full flex-col overflow-hidden bg-void max-w-[calc(100dvh*0.625)] pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
           >
             {/* The frame, under everything. Keyed so a change of frame remounts it — and slides it in, motion allowed. */}
             <div key={`${frame.id}:${restart}`} className="absolute inset-0 motion-safe:animate-[story-frame-in_var(--dur-base)_var(--ease-out)]">
@@ -327,7 +364,6 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
               onPointerDown={onPointerDown}
               onPointerUp={onPointerUp}
               onPointerCancel={onPointerCancel}
-              onPointerLeave={onPointerCancel}
               onContextMenu={(e) => e.preventDefault()}
             />
 
@@ -343,14 +379,11 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
                 elapsedRef={elapsedRef}
                 onDone={next}
               />
-              {/* The header as `StoryLive.dc.html` draws it: the session's avatar ringed in BONE (the lead's ruling: on a
-                  frame whose ground IS the team colour a team ring would vanish; the ring row on 010 carries the team),  the TITLE with the meta line
-                  under it («presenter · company · age»), close at the inline-end. «أضف» and pause (DEC-093) sit on a row of
-                  their own under it at the inline-end, so the title keeps the width the board gives it at 390 and every
-                  control keeps its 44 px. ★ The title is one line in a MARK-SAFE box: the ellipsis needs the clip on the
-                  text's own block, so that block carries padding-block and the body line-height — tashkeel above and below
-                  falls inside the box it is clipped to, never outside it. */}
-              <div className="flex items-center gap-2.5">
+              {/* The header: the session's avatar ringed in bone, the title and the meta line, then «المزيد» (an attendee's
+                  frame: «أزلني» · «بلّغ»), «أضف» and close at the inline-end — one row, so the frame keeps the screen
+                  (DEC-278). It steps away while the frame is held, as Instagram's does. ★ The title is one line in a
+                  MARK-SAFE box: the clip is on the text's own block, which carries padding-block and the body line-height. */}
+              <div className={`flex items-center gap-2 ${held ? "opacity-0" : ""}`}>
                 <span
                   aria-hidden
                   className="inline-flex size-9 shrink-0 items-center justify-center rounded-pill border-[3px] border-fg-heading bg-surface font-display text-body font-extrabold"
@@ -359,16 +392,8 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col">
                   <bdi className="block truncate py-1 text-body-sm font-bold leading-[1.7]">{story.title}</bdi>
-                  {meta ? <bdi className="block text-caption text-fg-muted">{meta}</bdi> : null}
+                  {meta ? <bdi className="block truncate text-caption text-fg-muted">{meta}</bdi> : null}
                 </span>
-                <RadixDialog.Close aria-label={labels.close} className={CONTROL}>
-                  <CloseIcon aria-hidden />
-                </RadixDialog.Close>
-              </div>
-              {/* The second row: «أضف», «المزيد» (an attendee's frame: «أزلني» · «بلّغ») and pause — every control of the
-                  header that the board does not draw, kept off the bottom row so the four reactions and the one action
-                  fit on one line at 390 and never cover a caption. */}
-              <div className="flex items-center justify-end gap-2">
                 {frame.moderation ? (
                   <Menu
                     align="end"
@@ -381,34 +406,42 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
                   />
                 ) : null}
                 {story.onAdd ? (
-                  <button type="button" onClick={story.onAdd} className={`${CONTROL} w-auto gap-1.5 px-3 text-label font-bold`}>
+                  <button type="button" onClick={story.onAdd} aria-label={labels.add} className={CONTROL}>
                     <PlusIcon aria-hidden />
-                    {labels.add}
                   </button>
                 ) : null}
-                <button type="button" aria-pressed={pauseOn} aria-label={pauseOn ? labels.resume : labels.pause} onClick={() => setPaused((p) => !p)} className={CONTROL}>
-                  {pauseOn ? <PlayIcon aria-hidden /> : <PauseIcon aria-hidden />}
-                </button>
+                <RadixDialog.Close aria-label={labels.close} className={CONTROL}>
+                  <CloseIcon aria-hidden />
+                </RadixDialog.Close>
               </div>
-              {pauseOn ? (
-                <span className="self-center rounded-pill bg-chrome px-3 py-1 text-caption font-bold">{labels.paused}</span>
-              ) : null}
             </div>
 
-            {/* Previous and next: ALWAYS visible tap targets at the two edges, mid-height (DEC-093). */}
+            {/* Previous, pause and next for a keyboard and a screen reader: real buttons, drawn only while focused, so
+                nothing covers the frame for the touch a member already knows (DEC-278). */}
+            {/* ★ `pointer-events-none`: this row spans the frame's middle, and without it every tap there landed on the row
+                instead of the gestures' layer beneath. Only a focused button takes a pointer. */}
             <div className="pointer-events-none relative z-10 flex flex-1 items-center justify-between px-2">
-              <button type="button" aria-label={labels.previous} onClick={previous} className={`${CONTROL} pointer-events-auto`}>
+              <button type="button" aria-label={labels.previous} onClick={previous} className={FOCUS_CONTROL}>
                 <ChevronIcon direction="back" aria-hidden />
               </button>
+              <button
+                type="button"
+                aria-pressed={pauseOn}
+                aria-label={pauseOn ? labels.resume : labels.pause}
+                onClick={() => setPaused((p) => !p)}
+                className={FOCUS_CONTROL}
+              >
+                {pauseOn ? <PlayIcon aria-hidden /> : <PauseIcon aria-hidden />}
+              </button>
               <p aria-live="polite" className="sr-only">
-                {labels.position(pos.f + 1, total)}
+                {pauseOn ? labels.paused : labels.position(pos.f + 1, total)}
               </p>
-              <button type="button" aria-label={labels.next} onClick={next} className={`${CONTROL} pointer-events-auto`}>
+              <button type="button" aria-label={labels.next} onClick={next} className={FOCUS_CONTROL}>
                 <ChevronIcon direction="forward" aria-hidden />
               </button>
             </div>
 
-            <div className="relative z-10 flex items-center gap-2 px-4">
+            <div className={`relative z-10 flex items-center gap-2 px-4 ${held ? "opacity-0" : ""}`}>
               {frame.reactions ? (
                 <ReactionBar label={frame.reactions.label} items={frame.reactions.items} onToggle={frame.reactions.onToggle} pending={frame.reactions.pending} className="flex-nowrap! gap-1.5!" />
               ) : null}

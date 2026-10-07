@@ -177,7 +177,8 @@ for (const width of [390, 1280] as const) {
     await expect(dialog).toContainText("جلسة جديدة"); // the first unseen frame: the publication
     await expect(dialog).toContainText("سارة القحطاني"); // the session's presenter, at member tier
 
-    await dialog.getByRole("button", { name: "الإطار التالي" }).click();
+    // DEC-278: the frame itself is the control — a tap at the end third (the left, in RTL) is next.
+    await dialog.locator("[data-story-taps]").click({ position: { x: 40, y: 420 } });
     await expect(dialog).toContainText("جارية الآن");
     await expect(dialog).toContainText("واحد في القاعة"); // a count, never who (A33)
     await capture(page, `open-${width}`);
