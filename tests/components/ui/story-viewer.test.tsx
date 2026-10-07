@@ -48,8 +48,10 @@ const shown = () => document.querySelector("[data-frame-id]")?.getAttribute("dat
 
 afterEach(() => vi.useRealTimers());
 
-describe("DEC-093 — every gesture has a visible control that is not a gesture", () => {
-  it("next and previous are always-visible buttons, each 44 px, named", async () => {
+// ★ DEC-278 (ledger lines): the owner ruled the viewer behaves as Instagram's — previous, next and pause are no longer
+// DRAWN over the frame. They stay real buttons for a keyboard and a screen reader, visually hidden until focused.
+describe("the keyboard's and the screen reader's controls — real buttons, hidden until focused (DEC-278)", () => {
+  it("next and previous are buttons, each 44 px, named — and drawn only while focused", async () => {
     const user = userEvent.setup();
     render(<Harness />);
     const dialog = screen.getByRole("dialog");
@@ -58,7 +60,15 @@ describe("DEC-093 — every gesture has a visible control that is not a gesture"
     expect(shown()).toBe("a-2");
     await user.click(within(dialog).getByRole("button", { name: "الإطار السابق" }));
     expect(shown()).toBe("a-1");
-    for (const name of ["الإطار التالي", "الإطار السابق", "أوقف مؤقتًا", "إغلاق"]) expect(within(dialog).getByRole("button", { name })).toHaveClass("size-11");
+    expect(within(dialog).getByRole("button", { name: "إغلاق" })).toHaveClass("size-11");
+    // The 44 px disc is drawn on focus only — a bare `size-11` beside `sr-only` out-weighed it and left the disc drawn.
+    for (const name of ["الإطار التالي", "الإطار السابق", "أوقف مؤقتًا"]) {
+      const button = within(dialog).getByRole("button", { name });
+      expect(button).toHaveClass("sr-only", "focus-visible:not-sr-only", "focus-visible:size-11");
+      expect(button).not.toHaveClass("size-11");
+    }
+    // Close is the one control a member looks for, so it is drawn.
+    expect(within(dialog).getByRole("button", { name: "إغلاق" })).not.toHaveClass("sr-only");
   });
 
   it("pause is a button that says its state, and swaps its name", async () => {
@@ -174,6 +184,38 @@ describe("the gestures — enhancements over the controls", () => {
     render(<Harness />);
     tap(100);
     expect(shown()).toBe("a-2");
+    tap(350);
+    expect(shown()).toBe("a-1");
+  });
+
+  it("a sideways swipe moves between stories — in RTL a swipe to the right is the next story", () => {
+    render(<Harness />);
+    const layer = document.querySelector("[data-story-taps]") as HTMLElement;
+    fireEvent.pointerDown(layer, { clientX: 100, clientY: 400 });
+    fireEvent.pointerUp(layer, { clientX: 220, clientY: 410 });
+    expect(shown()).toBe("b-2");
+    fireEvent.pointerDown(layer, { clientX: 220, clientY: 400 });
+    fireEvent.pointerUp(layer, { clientX: 100, clientY: 405 });
+    expect(shown()).toBe("a-1");
+  });
+
+  it("a press that drifted past the slop and was not a swipe does nothing — never a stray tap", () => {
+    render(<Harness />);
+    const layer = document.querySelector("[data-story-taps]") as HTMLElement;
+    layer.getBoundingClientRect = () => ({ left: 0, right: 390, top: 0, bottom: 844, width: 390, height: 844, x: 0, y: 0, toJSON: () => ({}) });
+    fireEvent.pointerDown(layer, { clientX: 100, clientY: 400 });
+    fireEvent.pointerUp(layer, { clientX: 130, clientY: 430 });
+    expect(shown()).toBe("a-1");
+  });
+
+  it("back at a story's first frame opens the previous story where it starts", () => {
+    render(<Harness />);
+    const layer = document.querySelector("[data-story-taps]") as HTMLElement;
+    fireEvent.pointerDown(layer, { clientX: 100, clientY: 400 });
+    fireEvent.pointerUp(layer, { clientX: 220, clientY: 400 });
+    expect(shown()).toBe("b-2");
+    tap(350);
+    expect(shown()).toBe("b-1");
     tap(350);
     expect(shown()).toBe("a-1");
   });

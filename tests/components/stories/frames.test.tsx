@@ -97,10 +97,11 @@ describe("the ring's shape — no fifth state (DEC-251 §4.5)", () => {
 describe("`StoryLive.dc.html` — the live frame as drawn", () => {
   const live: StoryFrame = { ...base, id: "l", kind: "live", checkedInCount: 23, venueName: "قاعة الرياض", endsAt: "2026-10-05T16:30:00Z" };
 
-  it("stands on the TEAM ground with ink text, centred both ways, clear of the two discs", () => {
+  // DEC-278 (a ledger line): the viewer draws no discs at the edges any more, so the frame keeps the ordinary gutter.
+  it("stands on the TEAM ground with ink text, centred both ways, with the ordinary gutter", () => {
     const { container } = show(live);
     const root = container.firstElementChild as HTMLElement;
-    expect(root).toHaveClass("bg-team", "text-on-team", "items-center", "justify-center", "text-center", "px-14");
+    expect(root).toHaveClass("bg-team", "text-on-team", "items-center", "justify-center", "text-center", "px-6");
     // The title's `text-h1` colours itself from --fg-heading, so the ground re-points it at the ink.
     expect(root).toHaveClass("[--fg-heading:var(--color-on-team)]");
   });
@@ -122,5 +123,27 @@ describe("`StoryLive.dc.html` — the live frame as drawn", () => {
     );
     expect(document.querySelector(".bg-raised")).not.toBeNull();
     expect(document.querySelector(".bg-team")).toBeNull();
+  });
+});
+
+// DEC-278 — the owner's screenshot: a published frame printed the session's title twice, once on the poster and once
+// over it. A rendered poster is now the frame alone; with no poster the frame still says what it is in text.
+describe("the published frame", () => {
+  const published = (posterUrl: string | null): StoryFrame => ({ ...base, id: "pub", kind: "published", startsAt: "2026-10-14T13:30:00Z", venueName: "قاعة الرياض", posterUrl });
+
+  it("with a rendered poster: the poster alone, named by the title — no title drawn over it", () => {
+    const { container } = show(published("https://x.test/story.webp"));
+    const img = container.querySelector("img")!;
+    expect(img).toHaveAttribute("src", "https://x.test/story.webp");
+    expect(img).toHaveAttribute("alt", session.title);
+    expect(img).toHaveClass("object-contain");
+    expect(screen.queryByRole("heading")).toBeNull();
+    expect(container.textContent).not.toContain(session.title);
+  });
+
+  it("with no poster: the title, once, in text", () => {
+    const { container } = show(published(null));
+    expect(container.querySelector("img")).toBeNull();
+    expect(screen.getAllByRole("heading", { name: session.title })).toHaveLength(1);
   });
 });

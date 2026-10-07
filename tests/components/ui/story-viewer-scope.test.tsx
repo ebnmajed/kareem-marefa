@@ -67,7 +67,9 @@ describe("StoryViewer inside the scope", () => {
     show();
     expect(viewer()).toHaveClass("bg-canvas");
     expect(viewer().querySelector("[data-frame-id]")).toHaveClass("bg-void");
-    expect(viewer().querySelector('button[aria-label="الإطار التالي"]')).toHaveClass("bg-chrome");
+    expect(viewer().querySelector('button[aria-label="إغلاق"]')).toHaveClass("bg-chrome");
+    // DEC-278 (a ledger line): «التالي» is drawn on focus only, and on the chrome token then.
+    expect(viewer().querySelector('button[aria-label="الإطار التالي"]')).toHaveClass("focus-visible:bg-chrome");
   });
 
   it("the only motion is the frame's slide, motion-safe, through the lead's keyframe and the duration token; nothing scales on hover", () => {
@@ -78,10 +80,13 @@ describe("StoryViewer inside the scope", () => {
     for (const el of viewer().querySelectorAll("[class]")) expect(el.getAttribute("class")).not.toMatch(/hover:scale|transition/);
   });
 
-  it("from lg the same viewer, centred at phone width — no class that only a wide screen draws", () => {
+  // ★ DEC-278 (a ledger line): the cap was a fixed 390 px, which left a gutter on every phone wider than that («it
+  // doesn't cover the whole screen»). It is now the screen's own height × 5/8 — a phone is always taller than that, so it
+  // fills the width; a desktop gets the same viewer centred at phone proportions. Still no wide-screen-only class.
+  it("the same viewer at every width: full width on a phone, centred at phone proportions on a wide screen — no class that only a wide screen draws", () => {
     show();
     const frame = viewer().querySelector("[data-frame-id]")!;
-    expect(frame).toHaveClass("max-w-[24.375rem]");
+    expect(frame).toHaveClass("w-full", "max-w-[calc(100dvh*0.625)]");
     for (const el of viewer().querySelectorAll("[class]")) expect(el.getAttribute("class")).not.toMatch(/\b(?:lg|xl|md):(?!hidden)/);
   });
 

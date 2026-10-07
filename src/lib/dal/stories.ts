@@ -298,7 +298,7 @@ export const getStoryFeed = cache(async (locale: string): Promise<StoryFeed> => 
           .order("created_at", { ascending: true })
           .order("id", { ascending: true })
       : Promise.resolve({ data: [], error: null }),
-    Promise.all(publishedSessions.map(async (id) => [id, (await getSessionPoster(locale, id))?.imageUrl ?? null] as const)),
+    Promise.all(publishedSessions.map(async (id) => [id, (await getSessionPoster(locale, id, "story"))?.imageUrl ?? null] as const)),
   ]);
   if (recapPhotos.error) throw new Error(`photos (recap): ${recapPhotos.error.message}`);
   const liveCountByFrame = new Map(liveCounts);

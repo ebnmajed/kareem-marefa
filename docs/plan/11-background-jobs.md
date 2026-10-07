@@ -352,6 +352,16 @@ gap** does not know the task, so the job waits in its queue and the frame stays 
 Enqueued by the `story_frames_purge` trigger when a video frame is removed or deleted, key `story_purge:{frame}`.
 Deletes everything under the frame's prefix in `story-media`. Idempotent: an empty prefix is success.
 
+#### `JOB-backfill_story_derivatives` ★ DEC-278
+**Serves:** `REQ-STO-012` · `0219` · the lead
+Cron, hourly (`15 * * * *`). A photograph uploaded before wave 26 has no 1080 px `story` derivative, so its story frame
+and a recap's strip loaded the stripped original — production's were PNGs of up to 9 MB and opening a story on a phone
+stalled on them. Asks `public.story_derivatives_wanted(20)` (service_role only) for the photographs under 30 days old
+still without one, makes each with `process_photo`'s own `renderStoryDerivative()` from the stored object, writes it
+through the one path builder and calls `public.mark_story_derivative_ready()`. **Idempotent**: a marked photograph is
+not listed again; a failure is logged and retried next hour. **`main`'s worker in the gap** has no such task: nothing
+changes until the new worker deploys.
+
 #### `JOB-rsvp_nudge`
 **Key:** `nudge:{session_id}` · **Notes:** in-app only, **once**, at −7 d. §6 asks for reminders to
 non-responders; once and in-app is the restraint that keeps that from being the reason people mute
@@ -462,6 +472,7 @@ that can differ between renders, which is D66's failure mode with no error attac
 | `JOB-generate_story_frames` | `REQ-STO-004` |
 | `JOB-transcode_story_video` | `REQ-STO-016` |
 | `JOB-purge_story_video` | `REQ-STO-016`, `REQ-STO-017` |
+| `JOB-backfill_story_derivatives` | `REQ-STO-012` |
 
 ## 5. Proposed entities
 

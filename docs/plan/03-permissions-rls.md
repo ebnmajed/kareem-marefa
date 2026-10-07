@@ -1161,6 +1161,7 @@ create policy "materials_storage_write"      on storage.objects for insert to au
 create policy "material_pages_storage_read"  on storage.objects for select to authenticated;  -- org prefix · phase gate, no allow_download conjunct
 create policy "photos_storage_read"          on storage.objects for select to authenticated;  -- org prefix · hidden only to staff (REQ-EVT-012) · ★ never once removed (0156, DEC-182)
 create policy "photos_storage_write"         on storage.objects for insert to authenticated;  -- org prefix · has_checked_in() or presenter or staff (REQ-EVT-009)
+create policy "photos_storage_write_story"   on storage.objects for insert to authenticated;  -- DEC-278 (0219): the same path under story_capture_open() — a story photograph from a member who only reserved; opens no album upload (initiate_photo_processing() keeps its own gate)
 create policy "design_assets_storage_read"   on storage.objects for select to authenticated;  -- org prefix
 create policy "design_assets_storage_write"  on storage.objects for insert to authenticated;  -- org prefix · staff
 create policy "exports_storage_read"         on storage.objects for select to authenticated;  -- org prefix · the requesting member; writes are service_role only
@@ -1169,7 +1170,7 @@ create policy "exports_storage_certificate_restricted" on storage.objects as res
 create policy "photo_albums_storage_read"          on storage.objects for select to authenticated;  -- DEC-182 (0156): staff of the org, and only the album's CURRENT build (path segment 5 = build_id), ready and unexpired — a stale, superseded or expired zip is unreadable with its path in hand
 create policy "avatars_storage_read"                on storage.objects for select to authenticated;  -- DEC-182 (0157): same org, and only a member's CURRENT avatar_version (path segment 4) — clearing the version cuts access in the same statement
 create policy "story_media_read"                    on storage.objects for select to authenticated;  -- DEC-248 §5 (0198): a story video's rendition and poster — never its source — for a frame the caller may read now (the frame is looked up under the caller's own policies); the write policy lands with content's capture gate
-create policy "story_media_write"                   on storage.objects for insert to authenticated;  -- DEC-251 §5 (0199): a SOURCE only (source.mp4|mov|webm), under the caller's org and a session whose capture window is open for them — story_capture_open(): checked in, from the start until 24 h after the end; no update policy, so no overwrite
+create policy "story_media_write"                   on storage.objects for insert to authenticated;  -- DEC-251 §5 (0199): a SOURCE only (source.mp4|mov|webm), under the caller's org and a session whose capture window is open for them — story_capture_open(): checked in, from the start until 24 h after the end — ★ DEC-278 (0219): or reserved (confirmed), a presenter or staff, from 24 h BEFORE the start; no update policy, so no overwrite
 create policy "design_assets_storage_read_public_logo" on storage.objects for select to anon, authenticated;  -- DEC-161 (0126): ONLY the PNG or JPEG an ACTIVE org's brand_kits.logo_asset_id names, via brand_logo_is_public(name) — so a mail client can fetch a logo; every other design asset stays closed
 create policy "fonts_storage_read"           on storage.objects for select to authenticated;  -- no org prefix (REQ-DSG-016)
 ```
@@ -1609,6 +1610,10 @@ generated suite is the highest-value test in the product.
 | `POL-photo_albums_read_staff` | Admin ✓ · moderator ✓ · member ✗ · another org's admin ✗. (migration `0156`). |
 | `POL-photo_albums_storage_read` | Staff, a ready and current build ✓ · a member ✗ · stale ✗ · expired ✗ · a superseded `build_id` ✗. (migration `0156`). |
 | `POL-story_media_write` | A checked-in attendee inside the window uploads a source under their org and that session ✓ · not checked in ✗ · outside the window ✗ · another org's prefix ✗ · any other file name ✗ · no overwrite. (migration `0199`; `tests/rls/story-frames-content.test.ts`). |
+| `POL-photos_storage_write_story` | ★ DEC-278: a member who only reserved puts a story photograph on the album's path ✓ · a member with no tie to the session ✗. (migration `0219`; `tests/rls/story-frames-content.test.ts`). |
+| `RPC-story_capture_open` (DEC-278) | checked in · reserved (confirmed) · presenter · staff ✓, from 24 h before the start until 24 h after the end · waitlisted · no tie · draft · cancelled · another org ✗. (migration `0219`). |
+| `RPC-story_capture_sessions` | the sessions the caller may add to now; never another org's, never an outsider's. (migration `0219`). |
+| `RPC-story_derivatives_wanted` · `RPC-mark_story_derivative_ready` | service_role only; lists photographs under 30 days old with no `story` derivative and not removed; the mark removes one from the list. (migration `0219`; `tests/rls/story-derivative-backfill.test.ts`). |
 | `RPC-resolve_report.story_frame` | A story-frame report given to `resolve_report()`: `invalid`, nothing written — only `decide_story_frame()` decides one. (migration `0199`). |
 | `TRG-story.published_once` | The admin's publish writes one `published` frame with no author; a second publish and a second generate write nothing. (`tests/rls/story-generator.test.ts`, as every `TRG-story.*` and `RPC-story*` row). |
 | `TRG-story.live_per_day` | The clock's start writes one `live` frame keyed on the running day; the minutely clock writes no second; a three-day workshop writes three. |
