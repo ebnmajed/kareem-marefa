@@ -10629,8 +10629,10 @@ the feed passes `"card"` because a post has no phone bar. The ticket rises over 
 thuds; the face fades in as the ticket leaves. `reserveFromFeed` (`DEC-276`) is removed — one reserve action.
 
 ★ **The anchor and the reveal are two parts, not one.** The reveal is held at opacity 0 while the ticket plays, so a
-ticket rendered inside it was invisible; the first capture showed an empty slot. `checkin/rsvp-panel.tsx:74` combines the
-two on the event page's card (the host from `md`) — the same defect may hide the ticket on the desktop event page. Not
-changed here; recorded for its owner.
+ticket rendered inside it was invisible; the first capture showed an empty slot. `checkin/rsvp-panel.tsx:74` combined the
+two on the event page's card (the host from `md`), and **measured: on the desktop event page the stamp's effective opacity
+at its rest was 0** — the ticket played unseen since wave 16, because the spec captured the phone only, where the bar's two
+parts were already separate. Fixed the same way, with the owner's yes, and `wave16-sessions-reserve` now reads the stamp's
+effective opacity on both projects (it failed on desktop before the fix, passes after).
 
 - **Documents changed:** `STATUS.md`

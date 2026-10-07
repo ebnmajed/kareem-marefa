@@ -70,13 +70,17 @@ function statusPart(data: RsvpPanelData, t: Translate, tm: TranslateMoment, { se
     note: !onWaitlist && data.cutoffPassed ? t("lateCancelWarning") : undefined,
   };
   return (
-    // Moment 1's anchor from `md`, held back while the ticket plays there and faded in as it leaves.
-    <MomentPart anchor="card" reveal="card">
-      <SessionCta
-        state={{ kind: "booked", hold: onWaitlist ? "waitlist" : "seat", cancel, between }}
-        label={onWaitlist ? tm("waitlistFace") : t("confirmed")}
-        chip={onWaitlist ? tm("positionChip", { position: formatNumber(position) }) : seatsChip(data, tm)}
-      />
+    // Moment 1's anchor from `md`; the face inside it is held back while the ticket plays there and faded in as it
+    // leaves. ★ Two parts, not one (DEC-277): the reveal is held at opacity 0, and a ticket rendered inside it was
+    // held with it — the desktop event page showed an empty slot where the ticket should rise.
+    <MomentPart anchor="card">
+      <MomentPart reveal="card">
+        <SessionCta
+          state={{ kind: "booked", hold: onWaitlist ? "waitlist" : "seat", cancel, between }}
+          label={onWaitlist ? tm("waitlistFace") : t("confirmed")}
+          chip={onWaitlist ? tm("positionChip", { position: formatNumber(position) }) : seatsChip(data, tm)}
+        />
+      </MomentPart>
     </MomentPart>
   );
 }
