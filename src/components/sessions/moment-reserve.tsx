@@ -102,8 +102,12 @@ interface StageContext {
 const Host = createContext<HostContext | null>(null);
 const Stage = createContext<StageContext | null>(null);
 
-/** The host. Wraps the action card's content; the server binds the action (DEC-159). */
-export function ReserveMoment({ action, labels, children }: { action: ReserveAction; labels: ReserveMomentLabels; children: ReactNode }) {
+/**
+ * The host. Wraps the action card's content; the server binds the action (DEC-159).
+ * `host` (add-only, DEC-277): pins where the ticket rises at every width. The feed's post has no phone bar, so it
+ * passes `"card"`; the event page omits it and keeps the card from `md`, the bar below it.
+ */
+export function ReserveMoment({ action, labels, host, children }: { action: ReserveAction; labels: ReserveMomentLabels; host?: Placement; children: ReactNode }) {
   const [result, formAction] = useActionState(action, null);
   const played = result?.ok ? result : null;
   return (
@@ -114,6 +118,7 @@ export function ReserveMoment({ action, labels, children }: { action: ReserveAct
         status={played?.status ?? "confirmed"}
         calendar={played?.calendar ?? "manual"}
         labels={labels}
+        fixedHost={host}
       >
         {children}
       </MomentStage>
@@ -215,12 +220,14 @@ function MomentStage({
   status,
   calendar,
   labels,
+  fixedHost,
   children,
 }: {
   occurrence: string | null;
   status: "confirmed" | "waitlisted";
   calendar: "sync" | "manual";
   labels: ReserveMomentLabels;
+  fixedHost?: Placement;
   children: ReactNode;
 }) {
   const toast = useToast();
@@ -276,7 +283,7 @@ function MomentStage({
   const value: StageContext = {
     playing: phase === "playing",
     armed,
-    host: md ? "card" : "bar",
+    host: fixedHost ?? (md ? "card" : "bar"),
     step,
     thudding,
     revealing,

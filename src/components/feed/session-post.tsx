@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import { getTranslations } from "next-intl/server";
 import type { SessionPost as SessionPostData } from "@/components/browse/session-post";
 import { dayHeading, daysBetween } from "@/components/feed/relative";
-import { reserveFromFeed } from "@/components/feed/actions";
+import { reserveSeatAction } from "@/components/checkin/actions";
 import { LikeButton } from "@/components/feed/like-button";
 import { BookmarkButton } from "@/components/search/bookmark-button";
 import { dayCountLabel, dayRange } from "@/components/sessions/day-label";
@@ -16,6 +16,7 @@ import { Card } from "@/components/ui/card";
 import { CommentIcon } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
 import { Poster } from "@/components/ui/poster";
+import { MomentPart, ReserveCta, ReserveMoment, ReserveRefused, type ReserveMomentLabels } from "@/components/sessions/moment-reserve";
 import { SessionCta } from "@/components/ui/session-cta";
 import { Sticker } from "@/components/ui/sticker";
 
@@ -32,9 +33,12 @@ import { Sticker } from "@/components/ui/sticker";
 // draws the two. The title is text there; on a phone it is on the poster, so the heading is visually hidden
 // below that width and still the post's name for a screen reader.
 //
-// ★ RESERVE AND WAITLIST ARE MADE IN PLACE (DEC-276, the owner's ruling, amending §4.57): the button posts
-// `reserveFromFeed`, the page refreshes, and the post re-renders as booked — no trip to the event page. Moment 1
-// stays the event page's; the feed shows the held seat as a fact. Check-in and rating are still links.
+// ★ RESERVE AND WAITLIST ARE MADE IN PLACE (DEC-276, the owner's ruling, amending §4.57): the button posts the
+// event page's own `reserveSeatAction`, the page refreshes, and the post re-renders as booked — no trip to the event
+// page. ★ MOMENT 1 PLAYS HERE TOO (DEC-277): the post is wrapped in the event page's `ReserveMoment`, keyed on the
+// action's own result exactly as there — once per occurrence, never on a re-render, static under reduced motion —
+// with the ticket rising from the post's booked face at every width (`host="card"`: the feed has no phone bar).
+// Check-in and rating are still links; cancelling stays on the event page.
 // ★ EVERY FIGURE IS READ (contract 7): the amount is the org's rule, drawn only when `sessions'` DTO says so;
 // the seats and the live count are the DTO's; no «+0» is drawn.
 // ★ A member sees how many attend, never who (§4.56).
@@ -52,7 +56,13 @@ function presenterLine(post: SessionPostData) {
 }
 
 export async function SessionPost({ post, locale, today }: { post: SessionPostData; locale: string; today: string }) {
-  const [t, tDays, tEvent, tBrowse] = await Promise.all([getTranslations("feed"), getTranslations("sessions.days"), getTranslations("sessions.event"), getTranslations("browse")]);
+  const [t, tDays, tEvent, tBrowse, tm] = await Promise.all([
+    getTranslations("feed"),
+    getTranslations("sessions.days"),
+    getTranslations("sessions.event"),
+    getTranslations("browse"),
+    getTranslations("sessions.moment"),
+  ]);
   const lead = presenterLine(post);
   const live = post.phase === "live";
   const cancelled = post.phase === "cancelled";
@@ -85,126 +95,156 @@ export async function SessionPost({ post, locale, today }: { post: SessionPostDa
       : null;
   const attendedNow = live && post.attendedCount !== null ? t("post.attendedLive", { count: post.attendedCount, value: formatNumber(post.attendedCount) }) : null;
   const shareUrl = cancelled ? null : `${siteOrigin()}${publicCardPath(locale, post.id)}`;
-  const cta = cancelled ? null : action(post, t, points, reserveFromFeed.bind(null, locale, post.id));
+  const cta = cancelled ? null : action(post, t, points);
+  // Moment 1's words — the event page's (`reserveMomentLabels`), the stamp's position read from this render's DTO,
+  // which is the refreshed one when the ticket plays.
+  const momentLabels: ReserveMomentLabels = {
+    stampBooked: tm("stampBooked"),
+    stampWaitlist: tm.rich("stampWaitlist", {
+      position: formatNumber(post.action.kind === "booked" ? (post.action.waitlistPosition ?? 0) : 0),
+      n: (chunks) => <bdi>{chunks}</bdi>,
+    }),
+    whisper: { sync: tm("whisperSync"), manual: tm("whisperManual"), waitlist: tm("whisperWaitlist") },
+    refused: { deadline_passed: tm("refusedDeadline"), not_open: tm("refusedNotOpen"), unknown: tm("refusedUnknown") },
+  };
+  const reserve = reserveSeatAction.bind(null, locale, post.id);
   const company = lead?.company ?? null;
   const dot = company ? teamColorOrNull(company.teamColor) : null;
 
   return (
     <Card density="post">
-      <div className="flex items-center gap-2.5">
-        {lead ? (
-          <Link href={`/app/members/${lead.memberId}`} quiet className="shrink-0 rounded-pill">
-            <Avatar memberId={lead.memberId} displayName={lead.displayName} src={lead.avatarUrl} size={40} teamColor={company?.teamColor ?? null} />
-          </Link>
-        ) : null}
-        <div className="flex min-w-0 flex-1 flex-col leading-tight">
-          {lead ? (
-            <p className="flex flex-wrap items-center gap-x-1.5 text-label font-bold text-fg-heading">
-              <span>
-                <bdi>{lead.displayName}</bdi>
-                {others > 0 ? <> {tBrowse("card.others", { count: others, value: formatNumber(others) })}</> : null}
-              </span>
-              {company ? (
-                // §4.61: the company in words, with its colour as a dot beside it — a colour from data is never
-                // the text's own colour, whose contrast nobody measured.
-                <span className="inline-flex items-center gap-1 text-caption font-semibold text-fg-muted">
-                  {dot ? <span aria-hidden className="size-2 rounded-pill bg-team" style={{ "--team": dot } as CSSProperties} /> : null}
-                  <bdi>{company.name}</bdi>
-                </span>
+      <ReserveMoment action={reserve} labels={momentLabels} host="card">
+        {/* The thud moves this inner wrapper, never the card (DEC-195 §1.3). */}
+        <MomentPart thud="card" className="flex flex-col gap-2.5">
+          <div className="flex items-center gap-2.5">
+            {lead ? (
+              <Link href={`/app/members/${lead.memberId}`} quiet className="shrink-0 rounded-pill">
+                <Avatar memberId={lead.memberId} displayName={lead.displayName} src={lead.avatarUrl} size={40} teamColor={company?.teamColor ?? null} />
+              </Link>
+            ) : null}
+            <div className="flex min-w-0 flex-1 flex-col leading-tight">
+              {lead ? (
+                <p className="flex flex-wrap items-center gap-x-1.5 text-label font-bold text-fg-heading">
+                  <span>
+                    <bdi>{lead.displayName}</bdi>
+                    {others > 0 ? <> {tBrowse("card.others", { count: others, value: formatNumber(others) })}</> : null}
+                  </span>
+                  {company ? (
+                    // §4.61: the company in words, with its colour as a dot beside it — a colour from data is never
+                    // the text's own colour, whose contrast nobody measured.
+                    <span className="inline-flex items-center gap-1 text-caption font-semibold text-fg-muted">
+                      {dot ? <span aria-hidden className="size-2 rounded-pill bg-team" style={{ "--team": dot } as CSSProperties} /> : null}
+                      <bdi>{company.name}</bdi>
+                    </span>
+                  ) : null}
+                </p>
               ) : null}
-            </p>
-          ) : null}
-          <p className="flex flex-wrap gap-x-1.5 text-caption text-fg-muted">
-            {when
-              .filter(Boolean)
-              .map((part, i) => (
-                <span key={i}>
-                  {i > 0 ? <span aria-hidden>· </span> : null}
-                  {part}
-                </span>
-              ))}
-          </p>
-        </div>
-        {badge}
-      </div>
+              <p className="flex flex-wrap gap-x-1.5 text-caption text-fg-muted">
+                {when
+                  .filter(Boolean)
+                  .map((part, i) => (
+                    <span key={i}>
+                      {i > 0 ? <span aria-hidden>· </span> : null}
+                      {part}
+                    </span>
+                  ))}
+              </p>
+            </div>
+            {badge}
+          </div>
 
-      <div className="flex flex-col gap-3 @min-[34rem]:flex-row @min-[34rem]:items-start">
-        <Link href={post.href} quiet aria-label={t("post.posterName", { title: post.title })} className={`block rounded-tile @min-[34rem]:shrink-0 ${live ? "@min-[34rem]:w-[260px]" : "@min-[34rem]:w-40"}`}>
-          <Poster
-            src={post.posterUrl}
-            title={post.title}
-            category={post.categoryName ?? undefined}
-            date={post.day && time ? t("post.posterDate", { day: dayHeading(post.day, today, t, locale), time }) : undefined}
-            teamColor={company?.teamColor ?? null}
-            // The placeholder names who, never by colour alone: the company, else the presenter.
-            teamName={company?.name ?? lead?.displayName ?? ""}
-            // §4.46: a rendered poster carries no sticker; the placeholder draws the rule's amount.
-            sticker={!post.posterUrl && points ? <Sticker size="sm">{points}</Sticker> : undefined}
-            // A rendered poster takes the whole wash; the placeholder draws the title, category and date as
-            // real text, so it drains to grey at full opacity — `opacity-45` took them under 4.5:1 (REQ-NFR-007).
-            className={cancelled ? (post.posterUrl ? "opacity-45 grayscale" : "grayscale") : ""}
-          />
-        </Link>
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <h3 className="sr-only @min-[34rem]:not-sr-only font-display text-play-sm leading-[1.4] font-extrabold text-fg-heading">
-            <Link href={post.href} quiet>
-              <bdi>{post.title}</bdi>
+          <div className="flex flex-col gap-3 @min-[34rem]:flex-row @min-[34rem]:items-start">
+            <Link href={post.href} quiet aria-label={t("post.posterName", { title: post.title })} className={`block rounded-tile @min-[34rem]:shrink-0 ${live ? "@min-[34rem]:w-[260px]" : "@min-[34rem]:w-40"}`}>
+              <Poster
+                src={post.posterUrl}
+                title={post.title}
+                category={post.categoryName ?? undefined}
+                date={post.day && time ? t("post.posterDate", { day: dayHeading(post.day, today, t, locale), time }) : undefined}
+                teamColor={company?.teamColor ?? null}
+                // The placeholder names who, never by colour alone: the company, else the presenter.
+                teamName={company?.name ?? lead?.displayName ?? ""}
+                // §4.46: a rendered poster carries no sticker; the placeholder draws the rule's amount.
+                sticker={!post.posterUrl && points ? <Sticker size="sm">{points}</Sticker> : undefined}
+                // A rendered poster takes the whole wash; the placeholder draws the title, category and date as
+                // real text, so it drains to grey at full opacity — `opacity-45` took them under 4.5:1 (REQ-NFR-007).
+                className={cancelled ? (post.posterUrl ? "opacity-45 grayscale" : "grayscale") : ""}
+              />
             </Link>
-          </h3>
-          {post.excerpt ? (
-            <p className="hidden text-body text-fg-muted @min-[34rem]:block">
-              <bdi>{post.excerpt}</bdi>
-            </p>
-          ) : null}
-          {attendedNow ? <p className="text-label font-bold text-fg-heading">{attendedNow}</p> : null}
-        </div>
-      </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+              <h3 className="sr-only @min-[34rem]:not-sr-only font-display text-play-sm leading-[1.4] font-extrabold text-fg-heading">
+                <Link href={post.href} quiet>
+                  <bdi>{post.title}</bdi>
+                </Link>
+              </h3>
+              {post.excerpt ? (
+                <p className="hidden text-body text-fg-muted @min-[34rem]:block">
+                  <bdi>{post.excerpt}</bdi>
+                </p>
+              ) : null}
+              {attendedNow ? <p className="text-label font-bold text-fg-heading">{attendedNow}</p> : null}
+            </div>
+          </div>
 
-      {cancelled ? null : (
-        <div className="flex flex-wrap items-center gap-2">
-          <LikeButton locale={locale} sessionId={post.id} liked={post.likedByMe} count={post.likeCount} groupLabel={t("post.reactions")} likeLabel={t("post.like")} />
-          <Link
-            href={`${post.href}#discussion`}
-            quiet
-            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-pill border border-edge bg-surface px-3 text-label font-bold text-fg-body hover:bg-hover"
-            aria-label={t("post.comments", { count: post.commentCount, value: formatNumber(post.commentCount) })}
-          >
-            <CommentIcon className="text-base" />
-            {post.commentCount > 0 ? <bdi className="tabular-nums">{formatNumber(post.commentCount)}</bdi> : null}
-          </Link>
-          <span className="flex-1" />
-          {seats ? <span className="text-caption text-fg-muted">{seats}</span> : null}
-          {shareUrl ? (
-            <ShareLink
-              url={shareUrl}
-              title={post.title}
-              label={tEvent("actions.share")}
-              copiedLabel={tEvent("shareCopied")}
-              hint={tEvent("shareHint")}
-              failedLabel={tEvent("shareFailed")}
-              variant="icon"
-              hintId="feed-share-hint"
-            />
-          ) : null}
-          <BookmarkButton locale={locale} sessionId={post.id} initialBookmarked={post.bookmarked} variant="icon" />
-        </div>
-      )}
+          {cancelled ? null : (
+            <div className="flex flex-wrap items-center gap-2">
+              <LikeButton locale={locale} sessionId={post.id} liked={post.likedByMe} count={post.likeCount} groupLabel={t("post.reactions")} likeLabel={t("post.like")} />
+              <Link
+                href={`${post.href}#discussion`}
+                quiet
+                className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-pill border border-edge bg-surface px-3 text-label font-bold text-fg-body hover:bg-hover"
+                aria-label={t("post.comments", { count: post.commentCount, value: formatNumber(post.commentCount) })}
+              >
+                <CommentIcon className="text-base" />
+                {post.commentCount > 0 ? <bdi className="tabular-nums">{formatNumber(post.commentCount)}</bdi> : null}
+              </Link>
+              <span className="flex-1" />
+              {seats ? <span className="text-caption text-fg-muted">{seats}</span> : null}
+              {shareUrl ? (
+                <ShareLink
+                  url={shareUrl}
+                  title={post.title}
+                  label={tEvent("actions.share")}
+                  copiedLabel={tEvent("shareCopied")}
+                  hint={tEvent("shareHint")}
+                  failedLabel={tEvent("shareFailed")}
+                  variant="icon"
+                  hintId="feed-share-hint"
+                />
+              ) : null}
+              <BookmarkButton locale={locale} sessionId={post.id} initialBookmarked={post.bookmarked} variant="icon" />
+            </div>
+          )}
 
-      {cta ? <SessionCta {...cta} /> : null}
+          {cta && (cta.state.kind === "reserve" || cta.state.kind === "waitlist") ? (
+            <ReserveCta kind={cta.state.kind} label={cta.label} chip={cta.chip} placement="card" action={reserve} />
+          ) : cta?.state.kind === "booked" ? (
+            // The ticket rises over the booked face, which is held out of sight while it plays and faded in as it
+            // leaves. Two parts, not one: the reveal is held at opacity 0, and a ticket inside it would be held too.
+            <MomentPart anchor="card">
+              <MomentPart reveal="card">
+                <SessionCta {...cta} />
+              </MomentPart>
+            </MomentPart>
+      ) : cta ? (
+        <SessionCta {...cta} />
+      ) : null}
+      <ReserveRefused />
+        </MomentPart>
+      </ReserveMoment>
     </Card>
   );
 }
 
 type T = Awaited<ReturnType<typeof getTranslations>>;
 
-/** The post's last row, from `sessions'` action — a form for reserve and waitlist (DEC-276), else a link. */
-function action(post: SessionPostData, t: T, points: string | null, reserve: () => Promise<void>): SessionCtaProps | null {
+/** The post's last row, from `sessions'` action. Reserve and waitlist are drawn by `ReserveCta` (DEC-276). */
+function action(post: SessionPostData, t: T, points: string | null): SessionCtaProps | null {
   const a = post.action;
   switch (a.kind) {
     case "reserve":
-      return { state: { kind: "reserve", act: { action: reserve } }, label: t("post.action.reserve"), chip: points ?? undefined };
+      return { state: { kind: "reserve", act: { href: a.href } }, label: t("post.action.reserve"), chip: points ?? undefined };
     case "waitlist":
-      return { state: { kind: "waitlist", act: { action: reserve } }, label: t("post.action.waitlist") };
+      return { state: { kind: "waitlist", act: { href: a.href } }, label: t("post.action.waitlist") };
     case "booked":
       return {
         state: { kind: "booked", hold: a.hold },

@@ -10615,3 +10615,22 @@ the member has never linked a calendar (a disconnected row means they chose), an
 holds the dismissal** — the prompt is an invitation, not a setting; connecting and disconnecting live on SCR-025.
 
 - **Documents changed:** `STATUS.md`
+
+## DEC-277 — Moment 1 plays on the feed when a member reserves there
+
+- **Date:** 2026-10-07 · **Decided by:** the owner («I want the animation to also play on the timeline when the user reserves a seat») · **Amends:** `DEC-276` §1 («moment 1 stays the event page's») · **Migration:** none
+- **Serves:** `REQ-UIX-045`, `REQ-UIX-044`, `REQ-UIX-055`
+
+A feed post is now wrapped in the event page's own `ReserveMoment`, and its reserve button is `ReserveCta`, posting the
+event page's `reserveSeatAction` — so the moment is keyed on the action's own result exactly as there: once per
+occurrence, in the client that pressed, never on a re-render or a reload, static (with the whisper) under reduced motion,
+silent on a refusal. `ReserveMoment` gains one add-only prop, `host`, which pins where the ticket rises at every width:
+the feed passes `"card"` because a post has no phone bar. The ticket rises over the post's booked face; the post's content
+thuds; the face fades in as the ticket leaves. `reserveFromFeed` (`DEC-276`) is removed — one reserve action.
+
+★ **The anchor and the reveal are two parts, not one.** The reveal is held at opacity 0 while the ticket plays, so a
+ticket rendered inside it was invisible; the first capture showed an empty slot. `checkin/rsvp-panel.tsx:74` combines the
+two on the event page's card (the host from `md`) — the same defect may hide the ticket on the desktop event page. Not
+changed here; recorded for its owner.
+
+- **Documents changed:** `STATUS.md`

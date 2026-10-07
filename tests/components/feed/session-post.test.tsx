@@ -17,7 +17,8 @@ vi.mock("next-intl/server", () => ({
         ? createTranslator({ locale: "ar", messages: browseAr, namespace: "browse" })
         : createTranslator({ locale: "ar", messages: feedAr, namespace: namespace as "feed" }),
 }));
-vi.mock("@/components/feed/actions", () => ({ toggleSessionLike: vi.fn(), reserveFromFeed: vi.fn() }));
+vi.mock("@/components/feed/actions", () => ({ toggleSessionLike: vi.fn() }));
+vi.mock("@/components/checkin/actions", () => ({ reserveSeatAction: vi.fn() }));
 vi.mock("@/components/search/bookmark-button", () => ({ BookmarkButton: () => <button type="button">احفظ</button> }));
 vi.mock("@/components/sessions/share-link", () => ({ ShareLink: ({ label }: { label: string }) => <button type="button">{label}</button> }));
 
