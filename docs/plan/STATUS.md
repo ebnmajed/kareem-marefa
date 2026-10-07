@@ -1,4 +1,5 @@
-**Last updated:** 2026-10-06 · **Branch:** `fix/org-deletion-history` · ★ **`DEC-275` / `0218`** — an org's deletion was blocked by another org's settings history naming one of its members, so the platform admin's login stayed bound to a deleted org and could not join another; fixed. **#99 merged (`8fc85667`), production `0217`.** Next migration **`0219`**, next decision **`DEC-276`**. Before that: `DEC-274` (platform mark, camera).
+**Last updated:** 2026-10-07 · **Branch:** `feat/feed-reserve-and-calendar-prompt` · ★ **`DEC-276`** — the feed's «احجز مقعدك» reserves in place (no trip to the event page) and the home offers Google Calendar sync beside the photo prompt. No migration. Production `0218`. Next migration **`0219`**, next decision **`DEC-277`**. Before that: `DEC-275` (org deletion history).
+> Ledger (DEC-276): `tests/components/feed/session-post.test.tsx` — reserve is a form, not a link; `tests/components/feed/feed.test.tsx` — the calendar prompt follows the photo prompt; `tests/e2e/wave18-content-home.spec.ts` — reserve is a button, plus a new case reserving from the home.
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 

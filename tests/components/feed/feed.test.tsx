@@ -16,6 +16,7 @@ vi.mock("next-intl/server", () => ({
 }));
 vi.mock("@/lib/dal/feed", () => ({ getFeed: vi.fn() }));
 vi.mock("@/lib/dal/search", () => ({ getTimeline: vi.fn().mockResolvedValue({ pinned: null, items: [], orgTimeZone: "Asia/Riyadh" }) }));
+vi.mock("@/components/calendar/calendar-connect-prompt", () => ({ CalendarConnectPrompt: () => <div data-region="calendar-prompt" /> }));
 vi.mock("@/components/privacy/avatar-import-prompt", () => ({ AvatarImportPrompt: () => <div data-region="avatar-prompt" /> }));
 vi.mock("@/components/scoring/member-week-hud", () => ({ MemberWeekHud: ({ className }: { className?: string }) => <div data-region="week" className={className} /> }));
 vi.mock("@/components/scoring/company-race-card", () => ({ CompanyRaceCard: ({ className }: { className?: string }) => <div data-region="race" className={className} /> }));
@@ -75,7 +76,7 @@ describe("Feed", () => {
     const { container } = await show(feed());
     await screen.findByText("عندك موضوع؟");
     const order = await regions(container);
-    expect(order).toEqual(["rings", "avatar-prompt", "week", "h2:اليوم", "post", "race", expect.stringMatching(/^h2:/), "post", "h2:أمس", "recap", "h2:عندك موضوع؟"]);
+    expect(order).toEqual(["rings", "avatar-prompt", "calendar-prompt", "week", "h2:اليوم", "post", "race", expect.stringMatching(/^h2:/), "post", "h2:أمس", "recap", "h2:عندك موضوع؟"]);
   });
 
   // wave 27 (DEC-255 §4, REQ-PRF-012): the «choose your company» status line is gone with the gate it announced.

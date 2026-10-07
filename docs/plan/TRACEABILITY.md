@@ -530,7 +530,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-004` | — | — | `SCR-012` `SCR-014` `SCR-016` | — | `MSG-rsvp_promoted` | `STORY-UIX-003` | M9 |
 | `REQ-UIX-005` | — | — | `SCR-011` `SCR-013` | — | — | `STORY-UIX-004` | M9 |
 | `REQ-UIX-006` | — | — | — | — | — | `STORY-UIX-004` | M9 |
-| `REQ-UIX-007` | — | — | `SCR-012` `SCR-014` | — | — | `STORY-UIX-004` | M9 |
+| `REQ-UIX-007` | — | — | `SCR-012` `SCR-014` `SCR-025` | — | — | `STORY-UIX-004` | M9 |
 | `REQ-UIX-008` | — | — | `SCR-017` | — | — | `STORY-UIX-009` | M10 |
 | `REQ-UIX-009` | `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-017` +3 | `JOB-award_points` | `MSG-reminder_` | `STORY-UIX-006` | M9 |
 | `REQ-UIX-010` | `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-017` +3 | `JOB-award_points` | `MSG-reminder_` | `STORY-UIX-006` | M9 |
@@ -578,7 +578,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-052` | — | — | — | — | — | `STORY-UIX-036` | M19 |
 | `REQ-UIX-053` | — | — | `SCR-022` `SCR-042` `SCR-045` +4 | — | — | `STORY-UIX-038` | M19 |
 | `REQ-UIX-054` | — | — | `SCR-010` `SCR-011` `SCR-012` +2 | — | — | `STORY-UIX-039` `STORY-UIX-051` | M20, M21 |
-| `REQ-UIX-055` | `ENT-feed_announcements` | — | `SCR-010` `SCR-020` `SCR-022` | — | — | `STORY-UIX-044` `STORY-UIX-047` | M20 |
+| `REQ-UIX-055` | `ENT-feed_announcements` | — | `SCR-010` `SCR-020` `SCR-022` +1 | — | — | `STORY-UIX-044` `STORY-UIX-047` | M20 |
 | `REQ-UIX-056` | `ENT-feed_announcements` | `POL-feed_announcements.read` `POL-feed_announcements.write` | `SCR-010` `SCR-042` | — | — | `STORY-UIX-040` `STORY-UIX-044` | M20 |
 | `REQ-UIX-057` | — | — | `SCR-010` `SCR-012` | — | — | `STORY-UIX-041` | M20 |
 | `REQ-UIX-058` | — | — | `SCR-002` `SCR-003` `SCR-004` | — | — | `STORY-UIX-042` | M20 |

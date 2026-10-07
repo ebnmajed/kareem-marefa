@@ -10591,3 +10591,27 @@ to the row's own org. No data fix: the stuck job's next retry deletes «يمان
 found this one and no other.
 
 - **Documents changed:** `03-permissions-rls.md`, `STATUS.md`
+
+## DEC-276 — A member reserves from the feed without leaving it; the feed offers calendar sync beside the photo prompt
+
+- **Date:** 2026-10-07 · **Decided by:** the owner · **Amends:** `DEC-206` §4.57 («nothing is reserved from the feed») · **Migration:** none
+- **Serves:** `REQ-UIX-055`, `REQ-UIX-007`, `REQ-CAL-003`
+
+**The ask:** «when in the timeline a user clicks on reserve your seat button they register and no need for them to be
+redirected to the session's page. And also i want the link [to] the calendar notification appear in the timeline similar
+to the photo one so users know it exists».
+
+**1. Reserve in place.** A feed post's «احجز مقعدك» and «انضم لقائمة الانتظار» are now a form posting `reserveFromFeed`
+(`components/feed/actions.ts`), which calls the same `reserve_seat()` the event page calls — every gate is the RPC's and
+unchanged — and `refresh()`es the page in the same response. The post re-renders from the server as «مقعدك محجوز» or the
+waitlist face; nothing is optimistic (`REQ-UIX-007`). A refusal is not thrown: the refreshed post shows the session's actual
+state. **Moment 1 stays the event page's** — the feed shows the held seat as a fact, which is what `DEC-206` §4.57 feared
+losing; the owner prefers the shorter path. Cancelling stays on the event page. Check-in and rating remain links.
+
+**2. The calendar prompt.** «نضيف جلساتك إلى تقويم Google؟» sits under the photo prompt on the home
+(`components/calendar/calendar-connect-prompt.tsx`): «نعم، اربط تقويمي» is a plain link into SCR-025's unchanged
+`/api/calendar/connect`; «لاحقًا» sets a per-device cookie for a year. It shows only while the OAuth client is configured,
+the member has never linked a calendar (a disconnected row means they chose), and «لاحقًا» was not pressed. **No table
+holds the dismissal** — the prompt is an invitation, not a setting; connecting and disconnecting live on SCR-025.
+
+- **Documents changed:** `STATUS.md`

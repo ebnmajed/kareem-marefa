@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { getTranslations } from "next-intl/server";
 import type { SessionPost as SessionPostData } from "@/components/browse/session-post";
 import { dayHeading, daysBetween } from "@/components/feed/relative";
+import { reserveFromFeed } from "@/components/feed/actions";
 import { LikeButton } from "@/components/feed/like-button";
 import { BookmarkButton } from "@/components/search/bookmark-button";
 import { dayCountLabel, dayRange } from "@/components/sessions/day-label";
@@ -31,8 +32,9 @@ import { Sticker } from "@/components/ui/sticker";
 // draws the two. The title is text there; on a phone it is on the poster, so the heading is visually hidden
 // below that width and still the post's name for a screen reader.
 //
-// ★ A POST'S ACTION IS A LINK (§4.57): to the event page to reserve, to check-in to check in, to the rating
-// to rate. A reservation is never made from the feed, where its moment cannot play.
+// ★ RESERVE AND WAITLIST ARE MADE IN PLACE (DEC-276, the owner's ruling, amending §4.57): the button posts
+// `reserveFromFeed`, the page refreshes, and the post re-renders as booked — no trip to the event page. Moment 1
+// stays the event page's; the feed shows the held seat as a fact. Check-in and rating are still links.
 // ★ EVERY FIGURE IS READ (contract 7): the amount is the org's rule, drawn only when `sessions'` DTO says so;
 // the seats and the live count are the DTO's; no «+0» is drawn.
 // ★ A member sees how many attend, never who (§4.56).
@@ -83,7 +85,7 @@ export async function SessionPost({ post, locale, today }: { post: SessionPostDa
       : null;
   const attendedNow = live && post.attendedCount !== null ? t("post.attendedLive", { count: post.attendedCount, value: formatNumber(post.attendedCount) }) : null;
   const shareUrl = cancelled ? null : `${siteOrigin()}${publicCardPath(locale, post.id)}`;
-  const cta = cancelled ? null : action(post, t, points);
+  const cta = cancelled ? null : action(post, t, points, reserveFromFeed.bind(null, locale, post.id));
   const company = lead?.company ?? null;
   const dot = company ? teamColorOrNull(company.teamColor) : null;
 
@@ -195,14 +197,14 @@ export async function SessionPost({ post, locale, today }: { post: SessionPostDa
 
 type T = Awaited<ReturnType<typeof getTranslations>>;
 
-/** The post's last row, from `sessions'` action — always a link. */
-function action(post: SessionPostData, t: T, points: string | null): SessionCtaProps | null {
+/** The post's last row, from `sessions'` action — a form for reserve and waitlist (DEC-276), else a link. */
+function action(post: SessionPostData, t: T, points: string | null, reserve: () => Promise<void>): SessionCtaProps | null {
   const a = post.action;
   switch (a.kind) {
     case "reserve":
-      return { state: { kind: "reserve", act: { href: a.href } }, label: t("post.action.reserve"), chip: points ?? undefined };
+      return { state: { kind: "reserve", act: { action: reserve } }, label: t("post.action.reserve"), chip: points ?? undefined };
     case "waitlist":
-      return { state: { kind: "waitlist", act: { href: a.href } }, label: t("post.action.waitlist") };
+      return { state: { kind: "waitlist", act: { action: reserve } }, label: t("post.action.waitlist") };
     case "booked":
       return {
         state: { kind: "booked", hold: a.hold },

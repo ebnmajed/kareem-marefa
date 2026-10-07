@@ -54,7 +54,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 //   · `size` and `width` — the desktop feed post draws a 44 px action beside the
 //     reaction pills, not a full-width one (`HomeDesktop.dc.html`);
 //   · `booked` with no `cancel` — the feed shows a held seat as a fact and offers no
-//     cancel there, because a feed never reserves (DEC-206 §4.57, N10).
+//     cancel there (DEC-206 §4.57, N10; since DEC-276 the feed reserves, but cancelling stays on the event page).
 
 function Chip({ children, tone }: { children: string; tone: "accent" | "signal" | "face" }) {
   const colours =

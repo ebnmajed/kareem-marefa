@@ -8,7 +8,7 @@
 // What it proves, beyond the pictures:
 //   · the regions stand in the artboard's order, and the page has one `<h1>`;
 //   · a ring is a button that opens the session's story (wave 26, DEC-251 §4 — until then it opened nothing);
-//   · a post's action is a LINK — nothing on the home reserves (§4.57);
+//   · ★ DEC-276 (amending §4.57): reserve and waitlist are a form on the post — a member reserves without leaving the home;
 //   · the like is written and survives a reload;
 //   · with no company, nothing asks for one and a post still offers its seat (wave 27, DEC-255 §4);
 //   · staff see «يحتاج انتباهك», a member does not;
@@ -166,10 +166,10 @@ test("★ the regions in the artboard's order, one h1, rings that open the story
   await expect(main.getByText(NOTICE, { exact: true })).toBeVisible();
   await expect(main.getByText("اكتملت", { exact: true })).toBeVisible();
 
-  // Nothing on the home reserves: the open post's action is a link to the event page, and there is no form.
-  const reserve = main.getByRole("link", { name: /احجز مقعدك/ });
-  await expect(reserve).toHaveAttribute("href", `/ar/app/sessions/${openId}`);
-  await expect(main.locator("form")).toHaveCount(0);
+  // ★ DEC-276: the open post's reserve is a button in a form on the home, not a link to the event page.
+  const reserve = main.getByRole("button", { name: /احجز مقعدك/ });
+  await expect(reserve).toBeVisible();
+  await expect(main.getByRole("link", { name: /احجز مقعدك/ })).toHaveCount(0);
 
   // With a company, there is no status line and no staff strip.
   await expect(page.getByRole("status")).toHaveCount(0);
@@ -214,7 +214,7 @@ test("★ no company: nothing asks for one, and a post still offers its seat", a
   const main = page.locator("#main");
   await expect(page.getByRole("status")).toHaveCount(0);
   await expect(main.getByText(/اختر شركتك/)).toHaveCount(0);
-  await expect(main.getByRole("link", { name: /احجز مقعدك/ }).first()).toBeVisible();
+  await expect(main.getByRole("button", { name: /احجز مقعدك/ }).first()).toBeVisible();
   await shot(page, "no-company", 390);
 });
 
@@ -264,4 +264,19 @@ test("★ an empty org: the home asks for a proposal — 390", async ({ context,
   await expect(main.getByRole("link", { name: "اقترح موضوعًا" })).toHaveAttribute("href", "/ar/app/propose");
   await expect(main.getByRole("list", { name: "جلسات اليوم وما حوله" })).toHaveCount(0);
   await shot(page, "empty", 390);
+});
+
+// ★ DEC-276 (the owner's ruling): pressing «احجز مقعدك» on the home reserves in place — the URL stays the home, the
+// post turns into «مقعدك محجوز», and the seat is in `rsvps`.
+test("★ reserving from the home holds the seat without leaving it", async ({ context, page }) => {
+  await page.setViewportSize(PHONE);
+  await signIn(context, emails.noCompany);
+  await openHome(page);
+  const post = page.locator("#main article", { hasText: OPEN }).first();
+  await post.getByRole("button", { name: /احجز مقعدك/ }).click();
+  await expect(post.getByText("مقعدك محجوز")).toBeVisible();
+  await expect(page).toHaveURL(/\/ar\/app\/?$/);
+  await expect
+    .poll(async () => (await db.query(`select count(*)::int as n from public.rsvps r join public.members m on m.id = r.member_id where r.session_id = $1 and m.email = $2 and r.status = 'confirmed'`, [openId, emails.noCompany])).rows[0].n)
+    .toBe(1);
 });

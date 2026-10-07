@@ -24,6 +24,12 @@
       "retried": "Trying again.",
       "retryError": "Couldn't try again. Please try once more.",
       "seatStands": "Your seat stands either way."
+    },
+    "prompt": {
+      "title": "Add your sessions to Google Calendar?",
+      "body": "Every session you reserve appears in your calendar automatically and updates if its time changes. You can connect or disconnect later from the calendar page.",
+      "connect": "Yes, connect my calendar",
+      "dismiss": "Not now"
     }
   }
 }
