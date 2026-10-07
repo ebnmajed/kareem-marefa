@@ -21,3 +21,4 @@ export async function toggleSessionLike(locale: string, sessionId: string): Prom
     return { ok: false };
   }
 }
+

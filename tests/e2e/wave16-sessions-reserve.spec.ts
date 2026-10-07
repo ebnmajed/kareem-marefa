@@ -163,6 +163,14 @@ async function pauseAtRest(page: Page) {
     { polling: "raf", timeout: 15_000 },
   );
 }
+/** The stamp's effective opacity — the product of its own and every ancestor's. */
+const stampOpacity = (page: Page) =>
+  page.evaluate(() => {
+    let el: Element | null = document.querySelector("#main [data-moment='stamp']");
+    let opacity = 1;
+    for (; el; el = el.parentElement) opacity *= Number(getComputedStyle(el).opacity);
+    return opacity;
+  });
 const resume = (page: Page) => page.evaluate(() => document.getAnimations().forEach((a) => a.play()));
 
 test("★★ moment 1 plays once, on the press — and a reload, a back navigation and another device show the static state", async ({ context, page, browser }, testInfo) => {
@@ -179,12 +187,13 @@ test("★★ moment 1 plays once, on the press — and a reload, a back navigati
   // Nothing moves before the server answers (REQ-UIX-007).
   await reserveButton(page).click();
   await expect(ticket(page)).toHaveCount(1);
-  if (phone) {
-    await pauseAtRest(page);
-    await expect(main.locator("[data-moment='stamp']")).toHaveText("محجوز");
-    await capture(page, "reserve-animated");
-    await resume(page);
-  }
+  await pauseAtRest(page);
+  await expect(main.locator("[data-moment='stamp']")).toHaveText("محجوز");
+  // ★ DEC-277: the ticket is SEEN at its rest — no ancestor holds it at opacity 0. A ticket rendered inside the held
+  // reveal was in the DOM and invisible on the desktop card; Playwright's visibility ignores opacity, so it is read here.
+  expect(await stampOpacity(page)).toBeGreaterThan(0.9);
+  if (phone) await capture(page, "reserve-animated");
+  await resume(page);
   await expect(ticket(page)).toHaveCount(0);
   await expect(region.getByText("تم تأكيد حجزك")).toBeVisible();
   // ★ Wave 18 (DEC-209, a ledger line): once held, the calendar is the primary in the card at every width and in the

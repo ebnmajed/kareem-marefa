@@ -18,6 +18,7 @@ vi.mock("next-intl/server", () => ({
         : createTranslator({ locale: "ar", messages: feedAr, namespace: namespace as "feed" }),
 }));
 vi.mock("@/components/feed/actions", () => ({ toggleSessionLike: vi.fn() }));
+vi.mock("@/components/checkin/actions", () => ({ reserveSeatAction: vi.fn() }));
 vi.mock("@/components/search/bookmark-button", () => ({ BookmarkButton: () => <button type="button">احفظ</button> }));
 vi.mock("@/components/sessions/share-link", () => ({ ShareLink: ({ label }: { label: string }) => <button type="button">{label}</button> }));
 
@@ -76,12 +77,15 @@ async function show(p: Post) {
 }
 
 describe("SessionPost", () => {
-  it("reserving is a LINK to the event page, with the rule's amount — never a form (§4.57)", async () => {
+  // DEC-276 (the owner's ruling, amending §4.57): reserving is made in place — a form posting the feed's action,
+  // never a link to the event page.
+  it("reserving is a FORM on the feed, with the rule's amount — not a link to the event page (DEC-276)", async () => {
     const { container } = await show(post());
-    const link = screen.getByRole("link", { name: /احجز مقعدك/ });
-    expect(link).toHaveAttribute("href", expect.stringContaining("/app/sessions/11111111"));
-    expect(link).toHaveTextContent("+20");
-    expect(container.querySelector("form")).toBeNull();
+    const button = screen.getByRole("button", { name: /احجز مقعدك/ });
+    expect(button).toHaveAttribute("type", "submit");
+    expect(button).toHaveTextContent("+20");
+    expect(button.closest("form")).not.toBeNull();
+    expect(container.querySelector('a[href*="/app/sessions/11111111"][class*="w-full"]')).toBeNull();
   });
 
   it("draws no amount when the rule pays nothing — never «+0»", async () => {
@@ -114,7 +118,7 @@ describe("SessionPost", () => {
   // a company, so its absence refuses nothing. The post takes no «has a company» input at all.
   it("the reserve control never depends on the viewer's company", async () => {
     await show(post());
-    expect(screen.getByRole("link", { name: /احجز مقعدك/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /احجز مقعدك/ })).toBeInTheDocument();
     expect(screen.queryByText(/اختر شركتك/)).not.toBeInTheDocument();
   });
 

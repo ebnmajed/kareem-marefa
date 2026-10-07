@@ -9,6 +9,7 @@ import { dayHeading } from "@/components/feed/relative";
 import { RingRow } from "@/components/feed/ring-row";
 import { SessionPost } from "@/components/feed/session-post";
 import { StaffStrip } from "@/components/feed/staff-strip";
+import { CalendarConnectPrompt } from "@/components/calendar/calendar-connect-prompt";
 import { AvatarImportPrompt } from "@/components/privacy/avatar-import-prompt";
 import { CompanyRaceCard } from "@/components/scoring/company-race-card";
 import { MemberWeekHud } from "@/components/scoring/member-week-hud";
@@ -21,7 +22,7 @@ import { getFeed } from "@/lib/dal/feed";
 //
 // The regions, in the artboard's order:
 //   1. the ring row;
-//   2. the member's own prompt — «نستخدم صورتك من Google؟» — above the week (DEC-207 §6.1). ★ wave 27 (DEC-255 §4,
+//   2. the member's own prompts — «نستخدم صورتك من Google؟», then «نضيف جلساتك إلى تقويم Google؟» (DEC-276) — above the week (DEC-207 §6.1). ★ wave 27 (DEC-255 §4,
 //      REQ-PRF-012): the «choose your company» prompt is gone — a member no longer chooses, and one with none is
 //      refused nothing;
 //   3. the week (`scoring's` `MemberWeekHud`) — on the phone only: from `lg` the week is the game rail's;
@@ -45,6 +46,11 @@ export async function Feed({ locale }: { locale: string }) {
 
       <Suspense fallback={null}>
         <AvatarImportPrompt locale={locale} />
+      </Suspense>
+
+      {/* DEC-276: calendar sync offered beside the photo prompt, so a member knows it exists. */}
+      <Suspense fallback={null}>
+        <CalendarConnectPrompt locale={locale} />
       </Suspense>
 
       {/* scoring's gate plays a moment only on the copy that is displayed: the HUD is hidden from `lg`. */}
