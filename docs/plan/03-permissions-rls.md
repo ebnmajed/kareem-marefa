@@ -1493,6 +1493,7 @@ generated suite is the highest-value test in the product.
 | `POL-task_completions.self` | A member reads and writes only their own completions; a presenter reads the session's (migration `0037`). |
 | `RPC-store_calendar_connection.self` | A member can store only their OWN connection: the function takes no member id and reads `auth_member_id()`. (migration `0038`). |
 | `RPC-store_calendar_connection.write_only` | Storing a token does not make it readable — the same member calling `select *` afterwards still gets `42501`. (migration `0038`). |
+| `RPC-store_calendar_connection.backfill` | ★ DEC-279: connecting enqueues one `calendar_upsert` per confirmed reservation of the caller's on a published or in-progress session that has not ended — twice is once (the job key); an ended session or a cancelled seat enqueues nothing. (migration `0220`; `tests/rls/calendar-sync.test.ts`). |
 | `RPC-calendar_tokens_for_job.worker_only` | The ONLY function that returns a token, and no client role may call it (`03` §5.9c, `11` §2.2). (migration `0038`). |
 | `RPC-record_calendar_sync.idempotent` | Running it twice for one (member, session) leaves ONE row — `REQ-CAL-004`'s idempotency is the constraint, not job logic. (migration `0038`). |
 | `POL-calendar_connections.disconnect_notice` | Deleting the row notifies the member that existing events will no longer update (`MSG-calendar_disconnected`, non-optional). (migration `0038`). |

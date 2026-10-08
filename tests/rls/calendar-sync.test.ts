@@ -91,6 +91,50 @@ describe("RPC-store_calendar_connection", () => {
     });
   });
 
+  // ★ DEC-279 (0220): connecting adds the sessions the member had ALREADY reserved — before it, only reservations made
+  // after connecting ever reached the calendar.
+  it("connecting enqueues calendar_upsert for each upcoming confirmed reservation — never an ended session or a cancelled seat", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      const attendee = f.a.members[1];
+      const [rsvp] = await tx.q<{ id: string }>(`select id from public.rsvps where session_id = $1 and member_id = $2`, [f.m2.a.published, attendee.memberId]);
+      const jobs = async (key: string) => {
+        await tx.asOwner();
+        return (await tx.q<{ n: number }>(
+          `select count(*)::int as n from graphile_worker._private_jobs j join graphile_worker._private_tasks t on t.id = j.task_id where t.identifier = 'calendar_upsert' and j.key = $1`,
+          [key],
+        ))[0].n;
+      };
+      await tx.asOwner();
+      await tx.q(`delete from graphile_worker._private_jobs where key = $1`, [`cal:${rsvp.id}`]);
+      // The session's deadlines must sit before its start (0010), so they are cleared before its days move.
+      await tx.q(`update public.sessions set rsvp_deadline_at = null, cancellation_cutoff_at = null where id = $1`, [f.m2.a.published]);
+
+      await tx.as(attendee.claims);
+      await store(tx);
+      expect(await jobs(`cal:${rsvp.id}`)).toBe(1);
+      // Twice is once: the key replaces the pending job.
+      await tx.as(attendee.claims);
+      await store(tx);
+      expect(await jobs(`cal:${rsvp.id}`)).toBe(1);
+
+      // An ended session and a cancelled seat enqueue nothing.
+      // Moving the days enqueues its own resync, so the queue is cleared AFTER the move.
+      await tx.q(`update public.session_days set starts_at = now() - interval '3 hours', ends_at = now() - interval '1 hour' where session_id = $1`, [f.m2.a.published]);
+      await tx.q(`delete from graphile_worker._private_jobs where key = $1`, [`cal:${rsvp.id}`]);
+      await tx.as(attendee.claims);
+      await store(tx);
+      expect(await jobs(`cal:${rsvp.id}`)).toBe(0);
+      await tx.asOwner();
+      await tx.q(`update public.session_days set starts_at = now() + interval '1 day', ends_at = now() + interval '1 day 1 hour' where session_id = $1`, [f.m2.a.published]);
+      await tx.q(`update public.rsvps set status = 'cancelled', cancelled_at = now() where id = $1`, [rsvp.id]);
+      await tx.q(`delete from graphile_worker._private_jobs where key = $1`, [`cal:${rsvp.id}`]);
+      await tx.as(attendee.claims);
+      await store(tx);
+      expect(await jobs(`cal:${rsvp.id}`)).toBe(0);
+    });
+  });
+
   it("refuses an empty access token rather than storing a connection that cannot work", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
