@@ -10695,3 +10695,26 @@ at once, or a sheet asking which session; the event page's «أضف إلى ال�
 reserved and posts before the session adds to its album and earns the album's photo award under its cap.
 
 - **Documents changed:** `03-permissions-rls.md`, `11-background-jobs.md`, `STATUS.md`
+
+## DEC-279 — Calendar sync: Google's Calendar API is off in the OAuth project, and connecting now adds the sessions already reserved · `0220`
+
+- **Date:** 2026-10-08 · **Decided by:** the owner («there seems to be a bug in connecting the calendar … check it and test it and fix if there is any») · **Amends:** nothing; repairs `REQ-CAL-003` / `REQ-CAL-004` · **Migration:** `0220`
+
+**Measured on production.** Connecting works: two members are connected, each with a refresh token, and the worker
+has already refreshed one. But every event write fails — `calendar_events`' one row is `failed` with **«Google Calendar
+API has not been used in project 798826138381 before or it is disabled»** (403). The OAuth client lives in a Google Cloud
+project where the Calendar API is not enabled, so the token is granted and every call with it is refused. **No code can
+fix that**: the owner enables the API for that project in the Google Cloud console.
+
+**The code defect beside it.** A reservation enqueues `calendar_upsert` when it is confirmed, and the job does nothing
+for a member with no calendar — correctly. Connecting later wrote the tokens and nothing else, so every session reserved
+**before** connecting stayed out of the calendar for good; only later reservations ever synced. `0220` makes
+`store_calendar_connection()` enqueue the job for the caller's confirmed reservations on sessions that are published or
+in progress and have not ended — the same job, key and attempts as `resync_calendars()`, so a pending job is replaced
+and never doubled, and the worker's client-chosen event id turns a create that already landed into an update.
+
+**Once the API is on.** The connected members' existing reservations are queued again by `resync_calendars()` (a
+service-role call, run once by the lead after the owner confirms), and a member can also press «أعد المحاولة» on SCR-025
+or reconnect.
+
+- **Documents changed:** `03-permissions-rls.md`, `STATUS.md`
