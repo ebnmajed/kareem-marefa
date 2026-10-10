@@ -10912,3 +10912,44 @@ case — at most one move, the page's arrival ≤ 120 ms; push and switch; reduc
 TRN-10 (every frame ≤ 16.8 ms). Shell and a11y specs 25/25, unit 5,982, `qa` 57/57.
 
 - **Documents changed:** `STATUS.md`
+
+## DEC-286 — Speed, the server half: posters from one stable URL, each area's messages only, the feed's reads in fewer rounds
+
+- **Date:** 2026-10-10 · **Status:** accepted · **Refs:** REQ-NFR-008, REQ-UIX-055, REQ-UIX-123, DEC-182, DEC-283, DEC-284
+
+**Context.** After `DEC-283` and `DEC-284` the owner asked for the next steps: fewer waits on the server and less for the
+phone to carry. Measured on a production build against local Supabase, every Supabase request timed per page:
+
+1. **Every page sent the whole message catalogue.** The root `NextIntlClientProvider` had no `messages`, so next-intl
+   passed all 37 namespaces — about 300 KB of the 400 KB HTML of `/ar/sign-in` in production, parsed by the phone and
+   serialised by the server on every full load. Removing it alone took 30 – 60 ms off a full load locally.
+2. **A poster's `<img src>` was a new signed Storage URL on every render** (`signExportUrl`, 300 s), so no browser ever
+   kept a poster between two pages, each signature was a Storage round trip on the page's critical path (≈ 40 – 55 ms
+   locally), and the URL left our origin under `img-src 'self'`. The timeline asked two queries and a signature PER
+   session.
+3. **The home's longest chain was ten requests deep**: the posts, then the viewer's check-ins and counts, then the
+   attendance figures, then the seats and posters, then each poster's renders, then its signature — and the story rings
+   only after all of that, because the ring row was a child of the component that awaited the feed.
+
+**Ruling.**
+1. **Each area's layout passes its own namespaces** (`src/i18n/scoped-messages.tsx`): public at the root, member in
+   `app/layout.tsx`, admin, platform and the gallery in theirs. A nested provider REPLACES the messages above it, so
+   each list covers everything under its routes, and the lists are **generated from the import graph**
+   (`scripts/client-scopes.mjs` → `src/messages/client-scopes.ts`); `tests/unit/client-scopes.test.ts` fails when
+   they are stale. Public ≈ 8 KB of JSON, member ≈ 40 KB, admin ≈ 135 KB, of 236 KB.
+2. **A poster is served by `/api/posters/<artifact>?v=<render>`**, read as the viewer — `DEC-182`'s shape, as the
+   avatar's and the logo's: the row through `export_artifacts`' policy, the bytes through the `exports` bucket's, no
+   `service_role`; `private, max-age=86400, immutable` while the render is current. `getSessionPosters()` reads many
+   sessions' posters in two queries; `getSessionPoster()` is it with one id.
+3. **The feed asks what depends only on the posts in one round**, and the rings are a sibling of the feed's body, read
+   at the same time. No boundary is added and nothing streams that did not.
+
+**Measured** (median of 7 full loads per screen, phone, before → after): event page 279 → 190 ms to first byte and
+495 → 203 KB of HTML; the hub 327 → 200 ms; ملفي 239 → 167 ms; leaderboards 241 → 184 ms; host view 224 → 168 ms; the
+feed's HTML 458 → 163 KB (its first byte is the streamed shell either way). No missing message on any of 11 screens,
+phone and desktop. The five public routes at 0.000 % against `w29c-after`; `qa` 57/57. Every changed assertion:
+ledger C-4, C-5 (`notes/wave-29-ledger-c.md`) — `wave26-content-story-walks` was failing on `main` already, measured
+mid-zoom. Found and left: `wave20-content-hub` and `wave20-notify-inbox` fail on `main`'s code too (the profile's edit
+heading and the inbox's «لا شيء غير مقروء»), stale since wave 29's sheet.
+
+- **Documents changed:** `STATUS.md`
