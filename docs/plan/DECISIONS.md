@@ -10807,3 +10807,30 @@ the hero picture is `scoring`'s standing card, not the profile's files; both its
 9. **«تعذّر الحفظ»** is added for a failed pick or Google save — a word, as the refusals are.
 
 - **Documents changed:** `02-domain-model.md` (`ENT-avatar_uploads`), `03-permissions-rls.md`, `STATUS.md`
+
+## DEC-282 — Wave 29 closes: the library, the picture and the moves are live · `0221` – `0223`
+
+- **Date:** 2026-10-10 · **Decided by:** the lead, closing the wave the owner merged · **Amends:** nothing · **Wave:** 29 (M34)
+
+**What shipped.** PR A #104 (`f8fff79b`) — every member holds one of fifty library avatars; the backfill gave all 41
+production members one. PR B #106 (`e5dc763e`) — the sheet «صورتك» on ملفي: upload through a crop step, «من Google» on
+demand, a library pick, «أزل الصورة», an admin's takedown (not reportable, `DEC-280` §8). PR C #105 (`d0597d03`) —
+navigation carries the game: the press, the poster jump, push and back, the tab switch, sheets, the story zoom; the
+console cuts. Production is at **`0223`**; the owner pushed `0221`, then `0222` + `0223`, each after the whole local RLS
+suite.
+
+**What the build found, for the next wave to know.**
+
+1. **React's shared-element pair cannot form across a Next 16 navigation here**: Next keeps the route it leaves alive and
+   hidden rather than removing it, so a card's poster never «exits». The jump is a FLIP from the rectangle remembered on
+   press (`src/lib/ui/poster-flight.ts`); the shared name was removed.
+2. **Next restores a page on a history move without a view transition.** Back is therefore a live «rise» of the restored
+   page plus the card flying home, not a transition.
+3. **The event page's skeleton often never shows on a fast server**, so the jump lands on whichever of the skeleton and
+   the hero commits first; the handoff is taken once.
+4. **TRN-10 is met in most runs, not all**: on a 4× throttled CPU, 7 runs held every frame ≤ 16.8 ms; one showed a single
+   long frame under load; twice the jump's transition never started and the page cut — the designed fallback. Its cause
+   is open; `wave29-lead-moves` now logs the browser's reason if it recurs. The owner merged with this stated.
+5. Upload, measured on the real worker: recorded 363 – 880 ms after the route's 202.
+
+- **Documents changed:** `STATUS.md`, `CLAUDE.md`

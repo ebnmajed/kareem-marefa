@@ -1,4 +1,4 @@
-**Last updated:** 2026-10-10 · **Branch:** `wave-29b/the-picture` · production **`0223`** · ★ **WAVE 29 (M34, `DEC-280`) — the profile picture and the moves.** Three PRs: A the library (`0221`), B the picture (`0222`), C the moves. Next migration **`0221`**, next decision **`DEC-281`**. Before it: #103 merged (`2d145348`, `DEC-279`, production `0220`).
+**Last updated:** 2026-10-10 · **Branch:** `wave-29/close` · ★ **WAVE 29 (M34) MERGED AND LIVE** — #104, #106, #105 (`main` `d0597d03`); production **`0223`**; closed by `DEC-282`. Next migration **`0224`**, next decision **`DEC-283`**. **No wave is open.**
 > Ledger (DEC-279): `tests/rls/calendar-sync.test.ts` — a new case: connecting enqueues one `calendar_upsert` per upcoming confirmed reservation, twice is once, none for an ended session or a cancelled seat.
 > Ledger (DEC-278): `tests/components/ui/story-viewer{,-scope}.test.tsx` — the three controls are hidden until focused, the width cap is the screen's height × 5/8, «التالي» on the chrome token on focus; `tests/components/stories/frames.test.tsx` — the ordinary gutter (`px-6`); `tests/rls/story-frames-content.test.ts` — the gate admits presenters, staff and a confirmed reservation, opens 24 h before, refuses a draft; the outsider is members[0] with the presenter row removed; `tests/e2e/wave26-*-story*.spec.ts` — the frame is tapped (next at the end third), pause by Space, the first STORY ring is `button[data-state]` (`«قصتك»` may lead the row), the «أضف» control is named by `aria-label`.
 > Ledger (DEC-276): `tests/components/feed/session-post.test.tsx` — reserve is a form, not a link; `tests/components/feed/feed.test.tsx` — the calendar prompt follows the photo prompt; `tests/e2e/wave18-content-home.spec.ts` — reserve is a button, plus a new case reserving from the home and asserting the ticket plays once and not after a reload (DEC-277); `session-post.test.tsx` mocks `reserveSeatAction`; `wave16-sessions-reserve.spec.ts` pauses at rest on both projects and asserts the stamp's effective opacity (DEC-277).
@@ -7,7 +7,7 @@
 
 ---
 
-## ★★★ WAVE 29 — M34, the profile picture and the moves (`DEC-280`) — IN PROGRESS
+## ★★★ WAVE 29 — M34, the profile picture and the moves (`DEC-280`) — MERGED AND LIVE (`DEC-282`)
 
 **Brief:** `docs/plan/notes/wave-29-lead.md` · **Map:** `CLAUDE.md` § *Ownership map (wave 29)* · **Trace:** 474
 requirements, 296 stories, no gaps. ★ The owner at sync 1: **a profile photo is not reportable**; **the current members
@@ -16,8 +16,8 @@ get their avatars** when A's backfill is pushed.
 | PR | Branch | State |
 |---|---|---|
 | A — the library (`STORY-PRF-008`, `009`) | `wave-29a/the-library` | ★ **MERGED** as #104 (`f8fff79b`); `0221` on production, all 41 members hold a library avatar |
-| B — the picture (`STORY-PRF-010` … `013`) | `wave-29b/the-picture` | ★ **READY** — `0222` + `0223` on production (owner's push); whole RLS suite green (1,847; two load timeouts passed alone), unit 5,965, `qa` 57/57, ui-lint, trace, policy-diff, `definer-exposure`; real worker: upload recorded in 363 – 880 ms, no EXIF, removal deletes the bytes, SVG-as-PNG refused; e2e: `wave29-{content-picture,lead-upload,lead-avatar-library}` (phone), `wave29-platform-takedown` (desktop) green. Ledger: `notes/wave-29-ledger-b.md` |
-| C — the moves (`STORY-UIX-111` … `116`) | `wave-29c/the-moves` | draft #105 — the five moves green in a production build; ★ TRN-10 (no frame over 16 ms on a 4× throttled CPU) not yet met: one long frame per run (33 – 133 ms) on a varying move, under load — re-measured before it is marked ready |
+| B — the picture (`STORY-PRF-010` … `013`) | `wave-29b/the-picture` | ★ **MERGED** as #106 (`e5dc763e`) — `0222` + `0223` on production (owner's push); whole RLS suite green (1,847; two load timeouts passed alone), unit 5,965, `qa` 57/57, ui-lint, trace, policy-diff, `definer-exposure`; real worker: upload recorded in 363 – 880 ms, no EXIF, removal deletes the bytes, SVG-as-PNG refused; e2e: `wave29-{content-picture,lead-upload,lead-avatar-library}` (phone), `wave29-platform-takedown` (desktop) green. Ledger: `notes/wave-29-ledger-b.md` |
+| C — the moves (`STORY-UIX-111` … `116`) | `wave-29c/the-moves` | ★ **MERGED** as #105 (`d0597d03`). TRN-10 met in 7 runs of 10; the rest are recorded in `DEC-282` §4 |
 
 ### Untouched-suite ledger (wave 29)
 
