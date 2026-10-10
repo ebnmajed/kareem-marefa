@@ -325,7 +325,9 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
-### Ownership map (wave 29 — M34, the profile picture and the moves — DEC-280)
+### Ownership map (wave 29 — M34, the profile picture and the moves — DEC-280) — ★ THE RECORD OF A FINISHED WAVE
+
+> Wave 29 merged as PRs #104, #106 and #105 (`main` `d0597d03`, production `0223`, closed by `DEC-282`). Its map is kept as the record. **No wave is open**: the next lead writes a new map before spawning anyone.
 
 **The owner's ask** (milestone **M34**): fifty library avatars every member holds from creation; the picture changed
 from ملفي by upload (through a crop step), «من Google» or the library; and navigation that presses, jumps and sinks.
@@ -358,7 +360,7 @@ adds a keyframe, a `view-transition-name` or a `data-nav` kind.
 
 ### Ownership map (wave 28 — M30, the designer saves when it is told to — DEC-258) — ★ THE RECORD OF A FINISHED WAVE
 
-> Wave 28 merged as PRs #84, #85 and #87 (`main` `df491755`, production `0211`, closed by `DEC-264`). Its map is kept as the record; **wave 29's map is directly above** (`DEC-280`).
+> Wave 28 merged as PRs #84, #85 and #87 (`main` `df491755`, production `0211`, closed by `DEC-264`). Its map is kept as the record; wave 29's is directly above.
 
 **The owner's ask** (milestone **M30**): ★★ **«instead of auto save i want the user to manually save and in case they
 made edits that weren't saved then a popup shows up to either discard or save».** Specified by `DEC-258` and the brief
