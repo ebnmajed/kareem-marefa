@@ -1,3 +1,4 @@
+import { ScopedMessages } from "@/i18n/scoped-messages";
 // The `(dev)` route group — DEC-083. A route group adds no URL segment, so
 // `/[locale]/(dev)/ui` is `/ar/ui`.
 //
@@ -11,5 +12,9 @@
 // scopes do not nest; the first of them is the page's root, and the document's
 // ground follows it (`globals.css`).
 export default function DevLayout({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-dvh">{children}</div>;
+  return (
+    <ScopedMessages scope="dev">
+      <div className="min-h-dvh">{children}</div>
+    </ScopedMessages>
+  );
 }
