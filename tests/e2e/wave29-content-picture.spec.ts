@@ -124,9 +124,9 @@ test("★ a library avatar, picked and saved, is the member's picture in the she
   await expect(sheet.getByRole("button", { name: "أزل الصورة" })).toHaveCount(0);
   await capture(page, "nogoogle");
 
-  await sheet.getByRole("button", { name: "أشياء" }).click();
-  await sheet.getByRole("button", { name: target.name }).click();
-  await expect(sheet.getByRole("button", { name: target.name })).toHaveAttribute("aria-pressed", "true");
+  await sheet.getByRole("button", { name: "أشياء", exact: true }).click();
+  await sheet.getByRole("button", { name: target.name, exact: true }).click();
+  await expect(sheet.getByRole("button", { name: target.name, exact: true })).toHaveAttribute("aria-pressed", "true");
   await sheet.getByRole("button", { name: "حفظ" }).click();
   await expect(sheet).toBeHidden();
 
@@ -148,8 +148,8 @@ test("★ a pick closed without «حفظ» changes nothing", async ({ context, p
   await expect(sheet.getByRole("button", { name: "من Google" })).toBeVisible();
   await capture(page, "library");
   const other = before.startsWith("characters/") ? { set: "أشياء", name: "الكشّاف" } : { set: "شخصيات", name: "الممثل" };
-  await sheet.getByRole("button", { name: other.set }).click();
-  await sheet.getByRole("button", { name: other.name }).click();
+  await sheet.getByRole("button", { name: other.set, exact: true }).click();
+  await sheet.getByRole("button", { name: other.name, exact: true }).click();
   // A tap on the scrim, above the sheet — a pointer, not a key.
   await page.mouse.click(PHONE.width / 2, 24);
   await expect(sheet).toBeHidden();
