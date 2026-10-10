@@ -172,7 +172,13 @@ test("★ TRN-02: the feed's poster jumps into the event's hero, and back shrink
   await page.waitForURL(new RegExp(`/app/sessions/${sessionId}$`));
   await expect(page.locator("#main h1").first()).toBeVisible();
   // The page sank under the jump, and the poster flew from the card into its slot, arriving with the overshoot.
-  await expect.poll(async () => (await played(page)).some((p) => p.nav === "jump" && p.animated.length > 0 && p.longest > 0)).toBe(true);
+  await expect
+    .poll(async () => (await played(page)).some((p) => p.nav === "jump" && p.animated.length > 0 && p.longest > 0))
+    .toBe(true)
+    .catch(async (e: unknown) => {
+      console.log("PLAYED-ON-FAIL", JSON.stringify(await played(page)), await page.evaluate(() => document.documentElement.dataset.nav ?? "none"));
+      throw e;
+    });
   await expect.poll(() => page.evaluate(() => (window as unknown as { __flights: { arriving: boolean; nav: string | null }[] }).__flights.filter((f) => f.arriving && f.nav === "jump").length)).toBeGreaterThan(0);
   // A navigation with no kind never moves: whatever transition the load and the stream made, none ran a duration.
 

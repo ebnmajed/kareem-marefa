@@ -10854,3 +10854,28 @@ Nothing else moves: no code, no environment variable, no route. The proxy still 
 **Measured again on the preview before the merge** — the PR records both numbers.
 
 - **Documents changed:** `vercel.json` (new), `STATUS.md`
+## DEC-284 — The next screen is fetched before the tap lands, and a page just seen is reused
+
+- **Date:** 2026-10-10 · **Decided by:** the lead, on the owner's ask («I want it snapping fast»; McMaster-Carr as the model) · **Amends:** nothing · **Migration:** none
+
+**Measured.** Next 16 prefetches a dynamic page only down to its `loading.tsx`, and its client router reused nothing
+(`staleTimes.dynamic` 0): every tap — even back to a tab just left — waited a full server round trip, so a move had
+nothing to play onto. With `DEC-283`'s region that trip is shorter; this makes most taps need none.
+
+**Ruling.**
+
+1. **`staleTimes`** (`next.config.ts`): `dynamic: 30`, `static: 60` seconds. A page reached by a link is reused for
+   30 s, a fully prefetched one for 60 s. A write still refreshes what it changed — every action revalidates its paths.
+2. **Intent prefetch** (`src/lib/ui/intent-prefetch.ts`, `src/components/shell/instant-nav.tsx`): a mouse resting on a
+   link, or any press-down, prefetches that page in FULL (`router.prefetch(href, { kind: "full" })` — accepted by Next
+   16's runtime though absent from its type; without it the prefetch stops at the skeleton). When the shell is idle,
+   the member's tabs are warmed. **Never `/api/…`** — an audited download route prefetched is a download nobody asked for.
+3. **A move's kind survives a quick tap**: a settle clears only the kind of the navigation it settles (`setAt` ≤ the
+   commit). Measured: the old settle of the page just landed wiped a fresh `jump` whenever a member tapped within
+   900 ms — the cause of `DEC-282` §4's «the jump never started».
+
+**Proven** (`tests/e2e/perf-instant-nav.spec.ts`, production build): an idle shell's tab tap sends no page request; a
+press-down on a card fetches its full page before the click; a return to a tab inside the window asks nothing. The
+reserve, check-in, home and moves suites pass on it; the jump 4/4, TRN-10 2/2.
+
+- **Documents changed:** `next.config.ts`, `STATUS.md`

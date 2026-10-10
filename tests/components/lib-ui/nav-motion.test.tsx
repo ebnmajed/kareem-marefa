@@ -3,7 +3,7 @@
 // The moves are CSS keyed on `<html data-nav>`; this module decides the kind. A declared kind wins; a link to a child of
 // this screen is a push; a tab's side is its order; the console and the platform never carry a kind; a jump hands the
 // tapped card's poster to the event's skeleton.
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   clearNavKind,
   handPoster,
@@ -13,6 +13,7 @@ import {
   isStillPath,
   kindOfClick,
   setNavKind,
+  settleNavKind,
   switchKind,
 } from "@/lib/ui/nav-motion";
 
@@ -58,6 +59,27 @@ describe("kindOfClick", () => {
     document.body.innerHTML = `<a id="a" href="/x" data-nav-kind="back">x</a><a id="b" href="/x" data-nav-kind="none">x</a>`;
     expect(kindOfClick(click(document.getElementById("a")!))).toBeNull();
     expect(kindOfClick(click(document.getElementById("b")!))).toBeNull();
+  });
+});
+
+describe("settleNavKind — a settle clears its own navigation's kind, never the next tap's", () => {
+  it("clears a kind set before the commit", () => {
+    vi.useFakeTimers();
+    setNavKind("push", "/ar/app/me");
+    settleNavKind();
+    vi.advanceTimersByTime(1000);
+    expect(document.documentElement.dataset.nav).toBeUndefined();
+    vi.useRealTimers();
+  });
+
+  it("★ keeps a kind set AFTER the commit — a quick next tap's jump survives the last page's settle", () => {
+    vi.useFakeTimers();
+    settleNavKind();
+    vi.advanceTimersByTime(300);
+    setNavKind("jump", "/ar/app");
+    vi.advanceTimersByTime(1000);
+    expect(document.documentElement.dataset.nav).toBe("jump");
+    vi.useRealTimers();
   });
 });
 

@@ -38,6 +38,10 @@ export function isNavKind(value: unknown): value is NavKind {
 const SETTLE_AFTER_COMMIT_MS = 900;
 const ABANDON_MS = 10_000;
 let abandon: number | null = null;
+// When the current kind was set. ★ A settle clears only a kind set BEFORE the navigation it settles: the settle of the
+// page just landed must never wipe the kind a quick next tap has already set (measured — that race skipped the jump
+// whenever a member tapped within 900 ms of a page committing, and prefetching made that common).
+let setAt = 0;
 
 // ── The poster handoff (REQ-UIX-122, REQ-UIX-127) ────────────────────────────────────────────────────────────
 // The event page is dynamic, so its skeleton usually commits before the page: the jump would find no poster to land
@@ -128,6 +132,7 @@ export function setNavKind(kind: NavKind, pathname = typeof location === "undefi
     return;
   }
   root.dataset.nav = kind;
+  setAt = performance.now();
   if (abandon !== null) window.clearTimeout(abandon);
   abandon = window.setTimeout(clearNavKind, ABANDON_MS);
 }
@@ -148,9 +153,12 @@ export function clearNavKind(): void {
   abandon = null;
 }
 
-/** Called by the shell once a navigation has committed: the move plays, then the kind is cleared. */
+/** Called by the shell once a navigation has committed: the move plays, then ITS kind is cleared — never a newer one. */
 export function settleNavKind(): () => void {
-  const timer = window.setTimeout(clearNavKind, SETTLE_AFTER_COMMIT_MS);
+  const committedAt = performance.now();
+  const timer = window.setTimeout(() => {
+    if (setAt <= committedAt) clearNavKind();
+  }, SETTLE_AFTER_COMMIT_MS);
   return () => window.clearTimeout(timer);
 }
 

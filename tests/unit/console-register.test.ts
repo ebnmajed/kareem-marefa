@@ -19,7 +19,8 @@ const STAFF_DIRS = [
 ];
 // ★ wave 29 (DEC-280 §6): what the shell's navigation boundary reaches under `lib/ui/` — the kind, the poster's flight
 // and the two neutral readers they use. Each one checks `isStillPath()` before anything moves; none celebrates.
-const NAVIGATION = new Set(["lib/ui/nav-motion.ts", "lib/ui/poster-flight.ts", "lib/ui/reduced-motion.ts", "lib/ui/duration.ts"]);
+// ★ DEC-284: `intent-prefetch.ts` fetches the next page early — no motion, no celebration.
+const NAVIGATION = new Set(["lib/ui/nav-motion.ts", "lib/ui/poster-flight.ts", "lib/ui/reduced-motion.ts", "lib/ui/duration.ts", "lib/ui/intent-prefetch.ts"]);
 // ★ wave 21 (DEC-227 §2, the owner): the console's three primitives live in `ui/`, outside the staff directories, so
 // they are named here — the one amendment this file has had, and it reads more, never less.
 const PRIMITIVES = ["data-table", "combobox", "menu", "tabs", "sheet", "date-time", "admin-rail", "split-view", "kv-card"].map((n) => `src/components/ui/${n}.tsx`);

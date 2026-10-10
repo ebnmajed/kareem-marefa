@@ -15,6 +15,7 @@ import { ShellFooter, ShellMain } from "@/components/shell/shell-frame";
 import { TabBar } from "@/components/shell/tab-bar";
 import { RouteProgress } from "@/components/ui/route-progress";
 import { RouteMotion } from "@/components/shell/route-motion";
+import { InstantNav } from "@/components/shell/instant-nav";
 import { PlayScope } from "@/components/ui/scope";
 import { ToastProvider } from "@/components/ui/toast";
 
@@ -185,6 +186,8 @@ export default async function AppLayout({
         >
           {/* ★ Wave 29 (DEC-280 §5): the page's one transition boundary; the console and the platform cut. */}
           <RouteMotion>{children}</RouteMotion>
+          {/* ★ DEC-284: the next screen is fetched before the tap lands. Renders nothing. */}
+          {isMember ? <InstantNav locale={locale} /> : null}
         </ShellMain>
 
         <ShellFooter>
