@@ -8,7 +8,6 @@ import { SessionStatusBadge } from "@/components/ui/badge";
 import { Link } from "@/components/ui/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { Poster } from "@/components/ui/poster";
-import { PosterName } from "@/components/shell/poster-name";
 import { PosterLanding } from "@/components/shell/poster-landing";
 import { Prose } from "@/components/ui/prose";
 import { Sticker } from "@/components/ui/sticker";
@@ -72,9 +71,7 @@ export async function EventHero({ session, phase, seat, closingSoon, dayCount, p
             the seven team colours and the six sticker fills is 4.68:1 at worst (magenta, the filter taken
             in sRGB) and the neutral ground is unchanged. */}
         <div data-poster-hero={session.id} className={washed ? (poster?.imageUrl ? "grayscale opacity-45" : "grayscale") : undefined}>
-          {/* ★ Wave 29 (REQ-UIX-122): the hero the card's poster jumps into. */}
           <PosterLanding sessionId={session.id}>
-          <PosterName sessionId={session.id}>
           <Poster
             src={poster?.imageUrl ?? null}
             width={poster?.width ?? undefined}
@@ -87,7 +84,6 @@ export async function EventHero({ session, phase, seat, closingSoon, dayCount, p
             sticker={!poster?.imageUrl && points !== null && points > 0 ? <Sticker rotate={6}>{t("pointsChip", { value: formatNumber(points) })}</Sticker> : undefined}
             priority
           />
-          </PosterName>
           </PosterLanding>
         </div>
         {/* Staff learn when details moved under a detached poster (DEC-012) — said once, quietly. */}

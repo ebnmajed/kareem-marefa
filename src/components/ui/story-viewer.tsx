@@ -170,16 +170,20 @@ export function StoryViewer({ open, stories, storyIndex, onClose: closeNow, onFr
   const viewerRef = useRef<HTMLDivElement | null>(null);
   const shutting = useRef(false);
   // A callback ref, not an effect on `open`: Radix mounts the content through its portal a commit AFTER `open` turns
-  // true, so an effect would find no element (measured). It zooms the first time the content attaches per opening.
-  const attach = useCallback(
-    (el: HTMLDivElement | null) => {
-      const fresh = el !== null && viewerRef.current === null;
-      viewerRef.current = el;
-      if (fresh) zoomOpen(el, returnFocusTo?.current);
-    },
-    [returnFocusTo],
-  );
-  const onClose = useCallback(() => {
+  // true, so an effect would find no element (measured). It zooms ONCE per opening — `zoomed` resets when the viewer
+  // closes, never when the ref is re-attached on a render.
+  const zoomed = useRef(false);
+  useEffect(() => {
+    if (!open) zoomed.current = false;
+  }, [open]);
+  function attach(el: HTMLDivElement | null) {
+    viewerRef.current = el;
+    if (el && !zoomed.current) {
+      zoomed.current = true;
+      zoomOpen(el, returnFocusTo?.current);
+    }
+  }
+  function onClose() {
     if (shutting.current) return;
     const shrink = zoomShut(viewerRef.current, returnFocusTo?.current);
     if (!shrink) return closeNow();
@@ -188,7 +192,7 @@ export function StoryViewer({ open, stories, storyIndex, onClose: closeNow, onFr
       shutting.current = false;
       closeNow();
     });
-  }, [closeNow, returnFocusTo]);
+  }
 
   const startOf = (s: number) => Math.min(Math.max(0, stories[s]?.startIndex ?? 0), Math.max(0, (stories[s]?.frames.length ?? 1) - 1));
   const [pos, setPos] = useState({ s: storyIndex, f: startOf(storyIndex) });

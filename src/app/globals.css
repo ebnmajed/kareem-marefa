@@ -1621,7 +1621,7 @@ html[data-sting="done"] {
 /* ═══════════════════════════════════════════════════════════════════════════
    ★ Wave 29 — navigation motion (DEC-280 §5 – §6; REQ-UIX-121 … REQ-UIX-130; `TRANSITIONS.md`).
    The View Transitions API through React's <ViewTransition> (Next 16.3.5's vendored canary — no flag): the page
-   wrapper in the app shell is one keyed boundary of class `route`, and the poster a named pair of class `poster`.
+   wrapper in the app shell is one update boundary of class `route`; the poster flies by a FLIP of its own.
    WHICH move plays is `<html data-nav>`, set by `ui/link`'s `nav` on press and by the browser's back
    (`src/lib/ui/nav-motion.ts`); with no kind, or in the console, nothing moves. Transform, opacity and filter only
    (REQ-UIX-020) — blur on the sinking page alone. Browsers without the API cut: the static state is the design.
@@ -1642,7 +1642,8 @@ html[data-sting="done"] {
   transform: scale(0.96);
 }
 
-/* The shell does not move: only the page does. */
+/* The shell does not move: only the page does — its group included, or the browser runs its own 250 ms on it. */
+::view-transition-group(root),
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
@@ -1816,8 +1817,9 @@ html[data-sting="done"] {
   animation: nav-jump-icon var(--dur-slow) var(--ease-pop) 1;
 }
 
-/* قفزة · the poster jump — the poster flies as one object, the page sinks, the blocks drop (TRN-02). The new page
-   itself does not move: its blocks do, 40 ms apart, from `--i`. */
+/* قفزة · the poster jump — the page sinks, the blocks drop (TRN-02), and the poster flies from the card by a FLIP
+   (`src/lib/ui/poster-flight.ts` — React's shared pair cannot form, because Next keeps the route it leaves alive).
+   The new page itself does not move: its blocks do, 40 ms apart, from `--i`. */
 :root[data-nav="jump"]::view-transition-old(.route) {
   animation: nav-sink var(--dur-play) var(--ease-out) both;
 }
@@ -1829,22 +1831,6 @@ html[data-sting="done"] {
      transformed, because moment 1 thuds inside it. */
   animation: nav-drop var(--dur-slow) var(--ease-pop) backwards;
   animation-delay: calc(var(--i, 0) * 40ms);
-}
-::view-transition-group(.poster) {
-  z-index: 2;
-  animation-duration: var(--dur-play);
-  animation-timing-function: var(--ease-pop);
-}
-:root[data-nav="back"]::view-transition-group(.poster) {
-  animation-duration: var(--dur-slow);
-  animation-timing-function: var(--ease-out);
-}
-/* The snapshots keep their own size: the window opens on the poster rather than stretching it (REQ-UIX-026). */
-::view-transition-old(.poster),
-::view-transition-new(.poster) {
-  height: 100%;
-  object-fit: cover;
-  object-position: top;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -4,13 +4,12 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useParams } from "next/navigation";
 import { handedPoster, takeHandedPoster } from "@/lib/ui/nav-motion";
 import { flyFrom } from "@/lib/ui/poster-flight";
-import { PosterName } from "@/components/shell/poster-name";
 
 // The event skeleton's poster — wave 29 (DEC-280 §5, REQ-UIX-122, REQ-UIX-127).
 //
-// When the press that led here was a jump from this session's card, the skeleton draws THAT poster under the
-// poster's shared name, so the jump lands on it the moment the skeleton commits; when the page arrives, the hero
-// takes the name over in place. Otherwise — a hard load, a link from anywhere else, a card with no rendered poster —
+// When the press that led here was a jump from this session's card, the skeleton draws THAT poster and flies it
+// from the card's place (`poster-flight.ts`), so the jump lands the moment the skeleton commits; the hero then
+// arrives in the same place. Otherwise — a hard load, a link from anywhere else, a card with no rendered poster —
 // it draws the skeleton's own box (`fallback`) and nothing jumps.
 //
 // ★ Read once, at mount: the handoff is the press's, and a re-render must not change what the skeleton shows; it is
@@ -28,11 +27,9 @@ export function PendingPoster({ fallback }: { fallback: ReactNode }) {
   }, [poster, params?.id]);
   if (!poster) return <>{fallback}</>;
   return (
-    <PosterName sessionId={poster.sessionId}>
-      <div ref={box} className="overflow-hidden rounded-tile" style={{ aspectRatio: String(poster.ratio) }}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- the card's own decoded image, drawn at once; next/image would re-request it. */}
-        <img src={poster.src} alt="" className="h-full w-full object-contain" />
-      </div>
-    </PosterName>
+    <div ref={box} className="overflow-hidden rounded-tile" style={{ aspectRatio: String(poster.ratio) }}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- the card's own decoded image, drawn at once; next/image would re-request it. */}
+      <img src={poster.src} alt="" className="h-full w-full object-contain" />
+    </div>
   );
 }

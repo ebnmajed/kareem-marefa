@@ -161,9 +161,13 @@ test("★ TRN-02: the feed's poster jumps into the event's hero, and back shrink
   await signIn(context, memberEmail);
   await record(page);
   await page.goto("/ar/app");
+  // A click before hydration is a plain navigation, with no move by design; the member's is after.
+  await page.waitForLoadState("networkidle");
   const poster = page.locator(`#main a[data-nav-kind="jump"][href$="/app/sessions/${sessionId}"]`).first();
   await expect(poster).toBeVisible();
   await expect(poster.locator("img")).toBeVisible();
+  // The member taps a poster they can SEE: decoded, not merely laid out — an undecoded one hands nothing to fly.
+  await expect.poll(() => poster.locator("img").evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
   await poster.click();
   await page.waitForURL(new RegExp(`/app/sessions/${sessionId}$`));
   await expect(page.locator("#main h1").first()).toBeVisible();
@@ -171,6 +175,7 @@ test("★ TRN-02: the feed's poster jumps into the event's hero, and back shrink
   await expect.poll(async () => (await played(page)).some((p) => p.nav === "jump" && p.animated.length > 0 && p.longest > 0)).toBe(true);
   await expect.poll(() => page.evaluate(() => (window as unknown as { __flights: { arriving: boolean; nav: string | null }[] }).__flights.filter((f) => f.arriving && f.nav === "jump").length)).toBeGreaterThan(0);
   // A navigation with no kind never moves: whatever transition the load and the stream made, none ran a duration.
+
   expect((await played(page)).filter((p) => p.nav === null && p.longest > 0)).toEqual([]);
   await capture(page, "jump-landed");
 
@@ -189,11 +194,13 @@ test("TRN-04 / TRN-05: a child screen pushes; a tab switches from its side", asy
   await signIn(context, memberEmail);
   await record(page);
   await page.goto("/ar/app/me");
+  await page.waitForLoadState("networkidle");
   await page.locator('#main a[href$="/app/me/settings"]').first().click();
   await page.waitForURL(/\/app\/me\/settings$/);
   await expect.poll(async () => (await played(page)).some((p) => p.nav === "push" && p.longest > 0)).toBe(true);
 
   await page.goto("/ar/app");
+  await page.waitForLoadState("networkidle");
   const tab = page.locator('nav[data-tab-bar] a[href$="/app/sessions"]');
   await expect(tab).toHaveAttribute("data-nav-kind", /^switch-(start|end)$/);
   await tab.click();
@@ -207,6 +214,7 @@ test("★ TRN-08: under reduced motion every move is a cut — nothing animates,
   await signIn(context, memberEmail);
   await record(page);
   await page.goto("/ar/app");
+  await page.waitForLoadState("networkidle");
   await page.locator(`#main a[data-nav-kind="jump"][href$="/app/sessions/${sessionId}"]`).first().click();
   await page.waitForURL(new RegExp(`/app/sessions/${sessionId}$`));
   await expect(page.locator("#main h1").first()).toBeVisible();
@@ -226,6 +234,7 @@ test("★ TRN-09: the console cuts — no kind is ever set inside it", async ({ 
   await signIn(context, adminEmail); // the role is in the claims: sign in again
   await record(page);
   await page.goto("/ar/app/admin");
+  await page.waitForLoadState("networkidle");
   await expect(page.locator("html")).toHaveAttribute("data-still", "");
   const link = page.locator('#main a[href*="/app/admin/"]').filter({ visible: true }).first();
   await link.click();
@@ -241,6 +250,7 @@ test("★ TRN-03: a story zooms out of its ring, and every close shrinks it back
   await signIn(context, memberEmail);
   await record(page);
   await page.goto("/ar/app");
+  await page.waitForLoadState("networkidle");
   const ring = page.locator('button[data-state][aria-haspopup="dialog"]').filter({ visible: true }).first();
   await expect(ring).toBeVisible();
   const zooms = () => page.evaluate(() => (window as unknown as { __flights: { arriving: boolean; nav: string | null }[] }).__flights.filter((f) => f.nav === "story"));
@@ -297,6 +307,7 @@ test("★★ TRN-10: on a 4× throttled CPU no frame of the jump, the push or th
   });
   const cdp = await context.newCDPSession(page);
   await page.goto("/ar/app");
+  await page.waitForLoadState("networkidle");
   const take = () => page.evaluate(() => (window as unknown as { __moveFrames: Record<string, number[]> }).__moveFrames);
   const frames: Record<string, number[]> = {};
   const keep = (got: Record<string, number[]>) => {
@@ -310,12 +321,16 @@ test("★★ TRN-10: on a 4× throttled CPU no frame of the jump, the push or th
   keep(await take());
 
   await page.goto("/ar/app/me");
+
+  await page.waitForLoadState("networkidle");
   await page.locator('#main a[href$="/app/me/settings"]').first().click();
   await page.waitForURL(/\/app\/me\/settings$/);
   await page.waitForTimeout(1500);
   keep(await take());
 
   await page.goto("/ar/app");
+
+  await page.waitForLoadState("networkidle");
   await page.locator('button[data-state][aria-haspopup="dialog"]').filter({ visible: true }).first().click();
   await page.waitForTimeout(1500);
   keep(await take());
