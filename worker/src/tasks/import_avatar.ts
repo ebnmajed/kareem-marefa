@@ -24,6 +24,14 @@ import { deleteObjects, listObjects } from "../platform/storage.js";
 // their mind or signed in with a new photo while this ran, it answers `stale`
 // and what was just uploaded is deleted (a newer job is already queued).
 //
+// ★ Wave 29 (DEC-280, DEC-281): a member's own UPLOAD is a stored photo this
+// job never fetches over. While `source = 'upload'` it only deletes what is not
+// current; `record_avatar_copy()` refuses to write over one anyway. Anonymised,
+// it also empties the member's `avatar-staging` prefix. One rule for both
+// avatar jobs: storage under a member's prefix is exactly the row's current
+// version. Queue `avatar:{member_id}`, 5 attempts — every write to one
+// member's picture is serial.
+//
 // `members.avatar_url` is Google's source. It is read here — through
 // `avatar_job_target()`, the one definer door (CLAUDE.md § Data access 6) —
 // and nowhere a browser can see.
@@ -34,6 +42,8 @@ interface Target {
   source_url: string | null;
   version: number | string | null;
   anonymised: boolean;
+  /** Which photo the stored object is (0221); absent before wave 29's functions. */
+  source?: "google" | "upload" | null;
 }
 
 export interface ImportAvatarDeps {
@@ -46,6 +56,7 @@ export interface ImportAvatarDeps {
 }
 
 const BUCKET = "avatars";
+const STAGING = "avatar-staging";
 
 export function makeImportAvatar(deps: ImportAvatarDeps = {}): Task {
   const upload = deps.upload ?? uploadObject;
@@ -78,9 +89,22 @@ export function makeImportAvatar(deps: ImportAvatarDeps = {}): Task {
     const prefix = avatarMemberPrefix(target.org_id, member_id);
     const current = target.version === null ? null : String(target.version);
 
-    if (target.anonymised || target.answer !== "accepted") {
+    if (target.anonymised) {
       const removed = await purge(prefix, null);
-      helpers.logger.info(`import_avatar: ${member_id} ${target.anonymised ? "anonymised" : `answer ${target.answer ?? "none"}`} — removed ${removed} object(s)`);
+      // `avatarStagingPath()` files an upload under the same three segments in the other bucket.
+      const staged = await remove(STAGING, await list(STAGING, prefix));
+      helpers.logger.info(`import_avatar: ${member_id} anonymised — removed ${removed} object(s) and ${staged} staged`);
+      return;
+    }
+    if (target.source === "upload") {
+      // The member's own upload: never fetched over (REQ-PRF-018); only what is not current goes.
+      const removed = await purge(prefix, current);
+      helpers.logger.info(`import_avatar: ${member_id} holds an upload — kept version ${current}; removed ${removed} object(s)`);
+      return;
+    }
+    if (target.answer !== "accepted") {
+      const removed = await purge(prefix, current);
+      helpers.logger.info(`import_avatar: ${member_id} answer ${target.answer ?? "none"} — removed ${removed} object(s)`);
       return;
     }
     if (!target.source_url) {

@@ -15,7 +15,7 @@ import { useToast } from "@/components/ui/toast";
 import type { MenuItem } from "@/components/ui";
 import type { ConsoleMembers, ConsoleMemberRow } from "@/lib/dal/admin-members";
 import type { Locale } from "@/i18n/routing";
-import { changeCompany, changeRole, deactivate, reactivate, removeUnbound, resendInvitation, type RowState } from "./actions";
+import { changeCompany, changeRole, deactivate, reactivate, removeUnbound, resendInvitation, takeDownPhoto, type RowState } from "./actions";
 import { emptyRowState } from "./state";
 
 // SCR-049's ⋯ (`REQ-ADM-009`, `REQ-UIX-096`), written for wave 22 from `AdminMembers.dc.html`: the row menu changes the
@@ -36,6 +36,10 @@ import { emptyRowState } from "./state";
 // ★ wave 27 (`REQ-PRF-013`, `DEC-254` §2.6): «غيّر الشركة» — the one place a member's company is written after they
 // exist. A dialog with the org's ACTIVE companies and «بلا شركة»; the RPC records it as the admin's placement, which no
 // later domain edit moves, and audits the old and the new. The dialog closes from the RESULT, as the deactivation's.
+//
+// ★ wave 29 (`REQ-PRF-019`, `DEC-280` §4, §8): «أزل الصورة» — an admin takes a member's photo down, confirmed first,
+// audited by `take_down_avatar()`. Offered only when a photo is stored: a library avatar cannot be taken down, and a
+// picture is not reportable, so this is the one moderation it has.
 
 const ROLES = ["admin", "moderator", "member"] as const;
 
@@ -61,6 +65,8 @@ export function MemberRowMenu({
   const [resendPending, setResendPending] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [removePending, setRemovePending] = useState(false);
+  const [takingDown, setTakingDown] = useState(false);
+  const [takeDownPending, setTakeDownPending] = useState(false);
 
   const [state, formAction, pending] = useActionState(async (prev: RowState, formData: FormData) => {
     const result = await deactivate(locale, member.id, prev, formData);
@@ -130,6 +136,17 @@ export function MemberRowMenu({
     }
   }
 
+  async function runTakeDown() {
+    setTakeDownPending(true);
+    try {
+      const result = await takeDownPhoto(locale, member.id);
+      toast.show(result.done ? { title: t("takeDownDone"), tone: "success" } : { title: t("takeDownFailed"), tone: "error" });
+      if (result.done) setTakingDown(false);
+    } finally {
+      setTakeDownPending(false);
+    }
+  }
+
   const active = member.status === "active";
   const items: MenuItem[] = [
     { label: t("viewProfile"), href: `/app/members/${member.id}` },
@@ -150,6 +167,9 @@ export function MemberRowMenu({
       items.push({ label: t("changeRoleTo", { role: t(`role.${r}`) }), onSelect: () => setRoleTo(r), startsGroup: i === 0 }),
     );
     items.push({ label: t("deactivate"), tone: "error", onSelect: () => setDeactivating(true), startsGroup: true });
+  }
+  if (member.hasPhoto) {
+    items.push({ label: t("takeDownPhoto"), tone: "error", onSelect: () => setTakingDown(true), startsGroup: true, disabled: takeDownPending });
   }
 
   return (
@@ -188,6 +208,19 @@ export function MemberRowMenu({
         tone="danger"
         pending={removePending}
         onConfirm={() => void runRemove()}
+      />
+
+      <ConfirmDialog
+        open={takingDown}
+        onOpenChange={setTakingDown}
+        title={t.rich("takeDownTitle", { name, t: (chunks) => <bdi>{chunks}</bdi> })}
+        body={null}
+        confirmLabel={t("takeDownConfirm")}
+        cancelLabel={t("cancelDialogCancel")}
+        closeLabel={t("closeDialog")}
+        tone="danger"
+        pending={takeDownPending}
+        onConfirm={() => void runTakeDown()}
       />
 
       <Dialog open={placing} onOpenChange={setPlacing}>

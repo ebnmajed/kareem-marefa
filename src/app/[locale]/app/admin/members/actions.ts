@@ -14,6 +14,7 @@ import {
   memberCompanyInput,
   setMemberCompany,
   setMemberRole,
+  takeDownMemberPhoto,
   type AddMemberLine,
 } from "@/lib/dal/admin-members";
 import type { Locale } from "@/i18n/routing";
@@ -123,5 +124,15 @@ export async function changeCompany(locale: Locale, memberId: string, _prev: Row
   if (error) return { error, done: false };
   revalidatePath(`/${locale}/app/admin/members`);
   revalidatePath(`/${locale}/app/admin/companies`);
+  return { error: null, done: true };
+}
+
+// ── wave 29 · M34 — «أزل الصورة» (`REQ-PRF-019`, `DEC-280` §4, §8, `DEC-281`) ─────────────────────────────────────────
+// `take_down_avatar()` is the gate (an admin, this org) and writes the audit row. `no_photo` is the photo already gone
+// — a menu opened before another admin took it down — and reads as done: the member shows their library avatar either way.
+export async function takeDownPhoto(locale: Locale, memberId: string): Promise<RowState> {
+  const { error } = await takeDownMemberPhoto(locale, memberId);
+  if (error && error !== "no_photo") return { error, done: false };
+  revalidatePath(`/${locale}/app/admin/members`);
   return { error: null, done: true };
 }

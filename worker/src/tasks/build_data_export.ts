@@ -115,7 +115,9 @@ export async function exportAvatar(
     [memberId],
   );
   const target = rows[0]?.target;
-  if (!target || target.anonymised || target.answer !== "accepted" || target.version === null) return null;
+  // ★ Wave 29 (DEC-280): a stored photo is a Google copy OR the member's own upload, and an upload is held whatever the
+  // Google answer — so the version alone says whether there is a picture to export (REQ-PRF-011).
+  if (!target || target.anonymised || target.version === null) return null;
   const location = avatarPath(target.org_id, memberId, String(target.version), 192);
   const bytes = await download(location.bucket, location.path);
   return { content_type: "image/webp", size: 192, data_base64: Buffer.from(bytes).toString("base64") };

@@ -64,7 +64,7 @@ export const assert_storage_prefixes: Task = async (_payload, helpers) => {
       else if (!orgIds.has(first)) violations.push({ bucket: bucket.name, path, reason: "first segment is not a known org id" });
     }
 
-    if (bucket.name === "avatars") violations.push(...(await avatarOwnerViolations(helpers, paths)));
+    if (bucket.name === "avatars" || bucket.name === "avatar-staging") violations.push(...(await avatarOwnerViolations(helpers, paths, bucket.name)));
   }
 
   if (violations.length === 0) {
@@ -94,16 +94,20 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * avatar.ts): the member segment must name a member, and that member's org
  * must be the prefix's. Asked through `avatar_member_orgs()`, the one definer
  * door, in one query for the whole bucket.
+ *
+ * ★ Wave 29 (DEC-281): `avatar-staging/{org}/members/{member}/{upload_id}` — a
+ * member's upload before the worker derives it — is asked the same question.
  */
 export async function avatarOwnerViolations(
   helpers: Parameters<Task>[1],
   paths: string[],
+  bucket: "avatars" | "avatar-staging" = "avatars",
 ): Promise<{ bucket: string; path: string; reason: string }[]> {
   const out: { bucket: string; path: string; reason: string }[] = [];
   const named = new Set<string>();
   for (const path of paths) {
     const [, literal, member] = path.split("/");
-    if (literal !== "members" || !member || !UUID_RE.test(member)) out.push({ bucket: "avatars", path, reason: "not a member avatar path" });
+    if (literal !== "members" || !member || !UUID_RE.test(member)) out.push({ bucket, path, reason: "not a member avatar path" });
     else named.add(member.toLowerCase());
   }
   if (named.size === 0) return out;
@@ -117,8 +121,8 @@ export async function avatarOwnerViolations(
     const [org, literal, member] = path.split("/");
     if (literal !== "members" || !member || !UUID_RE.test(member)) continue;
     const owner = orgOf.get(member.toLowerCase());
-    if (!owner) out.push({ bucket: "avatars", path, reason: "member segment is not a known member" });
-    else if (owner !== org) out.push({ bucket: "avatars", path, reason: "member belongs to another org" });
+    if (!owner) out.push({ bucket, path, reason: "member segment is not a known member" });
+    else if (owner !== org) out.push({ bucket, path, reason: "member belongs to another org" });
   }
   return out;
 }

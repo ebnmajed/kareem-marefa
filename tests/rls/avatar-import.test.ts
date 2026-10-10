@@ -15,10 +15,13 @@ import { applyProposed, errorCode, PERMISSION_DENIED, withTx, type Tx } from "./
 import { seed } from "./fixture";
 
 const FILE = "platform/0010_avatar_import.sql";
+// ★ Wave 29 (DEC-281): 0158's writers widened for an upload and moved onto the member's own queue.
+const WAVE29 = "platform/0011_avatar_uploads.sql";
 const SOURCE = "https://lh3.googleusercontent.com/a/ACg8ocTEST=s96-c";
 
 async function apply(tx: Tx) {
   if (existsSync(join(process.cwd(), "supabase", "proposed", FILE))) await applyProposed(tx, FILE);
+  await applyProposed(tx, WAVE29);
 }
 
 async function jobsForKey(tx: Tx, key: string) {
@@ -96,7 +99,7 @@ describe("POL-avatars_storage_read (0157)", () => {
 });
 
 describe("RPC-set_avatar_import", () => {
-  it("yes: records the answer, audits it, and enqueues ONE import_avatar on convert under avatar:{id}", async () => {
+  it("yes: records the answer, audits it, and enqueues ONE import_avatar on the member's queue under avatar:{id}", async () => {
     await withTx(async (tx) => {
       const { f, who } = await ready(tx);
       await tx.as(who.claims);
@@ -108,7 +111,7 @@ describe("RPC-set_avatar_import", () => {
       expect(m.avatar_import).toBe("accepted");
       const jobs = await jobsForKey(tx, `avatar:${who.memberId}`);
       expect(jobs).toHaveLength(1);
-      expect(jobs[0]).toMatchObject({ task_identifier: "import_avatar", payload: { member_id: who.memberId }, queue: "convert" });
+      expect(jobs[0]).toMatchObject({ task_identifier: "import_avatar", payload: { member_id: who.memberId }, queue: `avatar:${who.memberId}` });
       const audit = await tx.q(`select 1 from public.audit_log where org_id = $1 and action = 'member.avatar_import_answered' and subject_id = $2`, [
         f.a.id,
         who.memberId,
@@ -149,7 +152,7 @@ describe("RPC-set_avatar_import", () => {
       const { f, who } = await ready(tx, { answer: "accepted", version: 1790000000000 });
       await tx.as(who.claims);
       const [{ mine }] = await tx.q<{ mine: Record<string, unknown> }>(`select public.my_avatar() as mine`);
-      expect(mine).toEqual({ answer: "accepted", has_source: true, version: 1790000000000 });
+      expect(mine).toEqual({ answer: "accepted", has_source: true, version: 1790000000000, key: expect.any(String), source: "google" });
       expect(JSON.stringify(mine)).not.toContain("googleusercontent");
 
       await tx.as(f.a.members[0].claims);
