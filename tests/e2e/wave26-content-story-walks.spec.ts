@@ -131,6 +131,17 @@ const frameId = (page: Page) => viewer(page).locator("[data-frame-id]").getAttri
 const tapFrame = (page: Page, where: "next" | "previous") =>
   page.click("[data-story-viewer] [data-story-taps]", { position: { x: where === "next" ? 60 : 340, y: 420 } });
 
+// ★ DEC-286 (ledger C-4): wave 29's zoom (REQ-UIX-123) grows the viewer out of its ring and shrinks it back into it on
+// every close. A box is read, and a tap is aimed, only once that move has landed — mid-zoom the frame measured 330 or
+// 350 wide by timing, and a tap aimed at a viewer zooming shut waited for a target that was leaving.
+const zoomLanded = (page: Page) =>
+  page.waitForFunction(() =>
+    document.getAnimations().every((a) => {
+      const target = (a.effect as KeyframeEffect | null)?.target;
+      return a.playState !== "running" || !(target instanceof Element) || target.querySelector("[data-frame-id]") === null;
+    }),
+  );
+
 test("★★ a story walked end to end with page.click() ALONE — taps forward and back, react, and the ring turns seen", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
   await signIn(context, email.member);
@@ -140,6 +151,7 @@ test("★★ a story walked end to end with page.click() ALONE — taps forward 
   await expect(first).toHaveAttribute("aria-haspopup", "dialog");
   await page.click('#main ul[aria-label="جلسات اليوم وما حوله"] > li:first-child button');
   await expect(viewer(page)).toBeVisible();
+  await zoomLanded(page);
   await page.screenshot({ path: join(SHOTS, "wave26-content-story-open-390.png") });
 
   // ★ The viewer fills the phone's width (DEC-278): no gutter either side.
@@ -171,6 +183,7 @@ test("★★ a story walked end to end with page.click() ALONE — taps forward 
     const id = await frameId(page);
     if (id) seenIds.add(id);
     await tapFrame(page, "next");
+    await zoomLanded(page);
   }
   await expect(viewer(page)).toHaveCount(0);
   expect(seenIds.size).toBeGreaterThanOrEqual(6);
@@ -221,6 +234,7 @@ test("the gestures, as enhancements: a tap on the start third goes back, a hold 
   await signIn(context, email.member);
   await openHome(page);
   await rings(page).locator("button[data-state]").first().click();
+  await zoomLanded(page);
   const box = (await viewer(page).locator("[data-story-taps]").boundingBox())!;
   const y = box.y + box.height / 2;
 

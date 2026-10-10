@@ -1,4 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { ScopedMessages } from "@/i18n/scoped-messages";
 import { Link } from "@/i18n/navigation";
 import { Logo } from "@/components/brand/logo";
 import { ImpersonationBanner } from "@/components/platform/impersonation-banner";
@@ -47,57 +48,59 @@ export default async function PlatformLayout({ children, params }: { children: R
   ]);
 
   return (
-    <ConsoleFrame
-      groups={platformRailGroups((key) => t(`nav.${key}`))}
-      railLabel={t("brand")}
-      openLabel={tApp("platform.openRail")}
-      skipLabel={t("skipToContent")}
-      contentId="platform-content"
-      title={t("brand")}
-      orgName={null}
-      banner={<ImpersonationBanner locale={locale} />}
-      badge={<Badge tone="neutral">{tApp("platform.noOrgData")}</Badge>}
-      brand={
-        // Inside the platform the mark leads home, not to the public site (REQ-UIX-027). ★ It is the MARK, at the
-        // 30 px the brand pack gives a console bar, and it never moves here (REQ-UIX-053, REQ-UIX-119): the platform
-        // bar is new this wave, so it never wore the wordmark that PR E retires everywhere else.
-        <Link href="/app" aria-label={tShell("brand")} className="inline-flex items-center">
-          <Logo height={30} label={null} motion="none" />
-        </Link>
-      }
-      toApp={
-        isMember ? (
-          <Link href="/app" className="text-label text-fg-muted hover:text-fg-heading">
-            {tApp("toApp")}
+    <ScopedMessages scope="platform">
+      <ConsoleFrame
+        groups={platformRailGroups((key) => t(`nav.${key}`))}
+        railLabel={t("brand")}
+        openLabel={tApp("platform.openRail")}
+        skipLabel={t("skipToContent")}
+        contentId="platform-content"
+        title={t("brand")}
+        orgName={null}
+        banner={<ImpersonationBanner locale={locale} />}
+        badge={<Badge tone="neutral">{tApp("platform.noOrgData")}</Badge>}
+        brand={
+          // Inside the platform the mark leads home, not to the public site (REQ-UIX-027). ★ It is the MARK, at the
+          // 30 px the brand pack gives a console bar, and it never moves here (REQ-UIX-053, REQ-UIX-119): the platform
+          // bar is new this wave, so it never wore the wordmark that PR E retires everywhere else.
+          <Link href="/app" aria-label={tShell("brand")} className="inline-flex items-center">
+            <Logo height={30} label={null} motion="none" />
           </Link>
-        ) : null
-      }
-      account={
-        <AccountMenu
-          memberId={me?.id ?? null}
-          displayName={me?.displayName ?? null}
-          avatarUrl={me?.avatarUrl ?? null}
-          teamColor={shell?.teamColor ?? null}
-          isStaff={isStaff}
-          isPlatformAdmin
-          labels={{
-            account: tShell("account"),
-            profile: tShell("profile"),
-            points: tShell("points"),
-            certificates: tShell("certificates"),
-            bookmarks: tShell("bookmarks"),
-            calendar: tShell("calendar"),
-            notifications: tShell("meNotifications"),
-            privacy: tShell("mePrivacy"),
-            members: tShell("members"),
-            admin: tShell("adminConsole"),
-            platform: tShell("platform"),
-            signOut: tShell("signOut"),
-          }}
-        />
-      }
-    >
-      {children}
-    </ConsoleFrame>
+        }
+        toApp={
+          isMember ? (
+            <Link href="/app" className="text-label text-fg-muted hover:text-fg-heading">
+              {tApp("toApp")}
+            </Link>
+          ) : null
+        }
+        account={
+          <AccountMenu
+            memberId={me?.id ?? null}
+            displayName={me?.displayName ?? null}
+            avatarUrl={me?.avatarUrl ?? null}
+            teamColor={shell?.teamColor ?? null}
+            isStaff={isStaff}
+            isPlatformAdmin
+            labels={{
+              account: tShell("account"),
+              profile: tShell("profile"),
+              points: tShell("points"),
+              certificates: tShell("certificates"),
+              bookmarks: tShell("bookmarks"),
+              calendar: tShell("calendar"),
+              notifications: tShell("meNotifications"),
+              privacy: tShell("mePrivacy"),
+              members: tShell("members"),
+              admin: tShell("adminConsole"),
+              platform: tShell("platform"),
+              signOut: tShell("signOut"),
+            }}
+          />
+        }
+      >
+        {children}
+      </ConsoleFrame>
+    </ScopedMessages>
   );
 }

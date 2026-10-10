@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
-import { hasLocale, NextIntlClientProvider } from "next-intl";
+import { hasLocale } from "next-intl";
+import { ScopedMessages } from "@/i18n/scoped-messages";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Direction } from "radix-ui";
 import { routing } from "@/i18n/routing";
@@ -119,7 +120,7 @@ export default async function LocaleLayout({
             __html: `(function(){try{if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;if(!/^\\/(ar|en)\\/?$/.test(location.pathname))return;if(sessionStorage.getItem('km-sting'))return;document.documentElement.setAttribute('data-sting','1');}catch(e){}})();`,
           }}
         />
-        <NextIntlClientProvider>
+        <ScopedMessages scope="public">
           {/* Radix primitives read their direction from here, not from the
               DOM — a popover or a select with no provider assumes LTR and
               opens on the wrong side in Arabic (DEC-019, 10 §2.1). It renders
@@ -130,7 +131,7 @@ export default async function LocaleLayout({
                 (DEC-038). */}
             {children}
           </Direction.Provider>
-        </NextIntlClientProvider>
+        </ScopedMessages>
       </body>
     </html>
   );

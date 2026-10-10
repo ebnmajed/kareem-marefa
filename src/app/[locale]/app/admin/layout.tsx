@@ -1,4 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { ScopedMessages } from "@/i18n/scoped-messages";
 import { Link } from "@/i18n/navigation";
 import { Logo } from "@/components/brand/logo";
 import { formatNumber } from "@/components/sessions/numerals";
@@ -60,51 +61,53 @@ export default async function AdminLayout({ children, params }: { children: Reac
   const isStaff = role !== "member";
 
   return (
-    <ConsoleFrame
-      groups={groups}
-      railLabel={t("brand")}
-      openLabel={t("openRail")}
-      skipLabel={t("skipToContent")}
-      title={tApp("title")}
-      orgName={shell.orgName ?? null}
-      brand={
-        // Inside the platform the mark leads home, not to the public site (REQ-UIX-027).
-        <Link href="/app" aria-label={tShell("brand")} className="inline-flex items-center text-accent">
-          {/* Still: a console bar's mark never moves (REQ-UIX-053, REQ-UIX-119). */}
-          <Logo height={28} label={null} motion="none" />
-        </Link>
-      }
-      toApp={
-        <Link href="/app" className="text-label text-fg-muted hover:text-fg-heading">
-          {tApp("toApp")}
-        </Link>
-      }
-      account={
-        <AccountMenu
-          memberId={me?.id ?? null}
-          displayName={me?.displayName ?? null}
-          avatarUrl={me?.avatarUrl ?? null}
-          teamColor={shell.teamColor}
-          isStaff={isStaff}
-          isPlatformAdmin={session.platformAdmin}
-          labels={{
-            account: tShell("account"),
-            profile: tShell("profile"),
-            points: tShell("points"),
-            certificates: tShell("certificates"),
-            bookmarks: tShell("bookmarks"),
-            calendar: tShell("calendar"),
-            notifications: tShell("meNotifications"),
-            privacy: tShell("mePrivacy"),
-            members: tShell("members"),
-            admin: tShell("adminConsole"),
-            platform: tShell("platform"),
-            signOut: tShell("signOut"),
-          }}
-        />
-      }
-    >
-      {children}
-    </ConsoleFrame>
+    <ScopedMessages scope="admin">
+      <ConsoleFrame
+        groups={groups}
+        railLabel={t("brand")}
+        openLabel={t("openRail")}
+        skipLabel={t("skipToContent")}
+        title={tApp("title")}
+        orgName={shell.orgName ?? null}
+        brand={
+          // Inside the platform the mark leads home, not to the public site (REQ-UIX-027).
+          <Link href="/app" aria-label={tShell("brand")} className="inline-flex items-center text-accent">
+            {/* Still: a console bar's mark never moves (REQ-UIX-053, REQ-UIX-119). */}
+            <Logo height={28} label={null} motion="none" />
+          </Link>
+        }
+        toApp={
+          <Link href="/app" className="text-label text-fg-muted hover:text-fg-heading">
+            {tApp("toApp")}
+          </Link>
+        }
+        account={
+          <AccountMenu
+            memberId={me?.id ?? null}
+            displayName={me?.displayName ?? null}
+            avatarUrl={me?.avatarUrl ?? null}
+            teamColor={shell.teamColor}
+            isStaff={isStaff}
+            isPlatformAdmin={session.platformAdmin}
+            labels={{
+              account: tShell("account"),
+              profile: tShell("profile"),
+              points: tShell("points"),
+              certificates: tShell("certificates"),
+              bookmarks: tShell("bookmarks"),
+              calendar: tShell("calendar"),
+              notifications: tShell("meNotifications"),
+              privacy: tShell("mePrivacy"),
+              members: tShell("members"),
+              admin: tShell("adminConsole"),
+              platform: tShell("platform"),
+              signOut: tShell("signOut"),
+            }}
+          />
+        }
+      >
+        {children}
+      </ConsoleFrame>
+    </ScopedMessages>
   );
 }

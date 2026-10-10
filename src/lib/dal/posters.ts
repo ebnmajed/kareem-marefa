@@ -5,7 +5,8 @@ import { z } from "zod";
 import { imageSize, PAGE_SCALE_SCHEMA_VERSION, PRESETS, presetsFor, type DesignDocument, type PresetName } from "@kareem/designer-runtime";
 import { storagePaths } from "@/lib/storage/paths";
 import { sniffContent } from "@/lib/storage/sniff";
-import { sessionClient } from "@/lib/dal/session";
+import { getSessionState, sessionClient } from "@/lib/dal/session";
+import { createServerClient } from "@/lib/supabase/server";
 
 // Design assets and uploaded posters — REQ-DSG-018, REQ-DSG-019, REQ-DSG-020,
 // DEC-009, DEC-012, A31, A32.
@@ -280,7 +281,7 @@ export interface SessionPosterData {
   /** Set when session details moved under a DETACHED poster. The prompt, not
    *  an overwrite — DEC-012's asymmetry made visible. */
   staleSince: string | null;
-  /** A signed URL for the variant asked for, when one has rendered. */
+  /** `/api/posters/<artifact>?v=<render>` for the variant asked for, when one has rendered (DEC-286) — a stable URL. */
   imageUrl: string | null;
   /** The artifact's own pixel size, for reserving the box before the image
    *  arrives. The master's ratio is a reasonable constant but it is the
@@ -309,55 +310,109 @@ export type PosterVariant = "master" | "square" | "og" | "landscape" | "story";
  * read was its own round trip plus a signed URL. No logic change; no caller
  * reads it inside a Server Action, where a cached read could outlive a write.
  */
-export const getSessionPoster = cache(loadSessionPoster);
+export const getSessionPoster = cache(async (locale: string, sessionId: string, variant: PosterVariant = "master"): Promise<SessionPosterData | null> => {
+  return (await loadSessionPosters(locale, [sessionId], variant)).get(sessionId) ?? null;
+});
 
-async function loadSessionPoster(locale: string, sessionId: string, variant: PosterVariant = "master"): Promise<SessionPosterData | null> {
+/**
+ * Many sessions' posters in TWO round trips, whatever the count — a feed, a timeline and the story ring each draw up
+ * to a dozen, and one `getSessionPoster()` per session was two queries and a Storage signature EACH. The result per
+ * session is exactly `getSessionPoster()`'s, which is this with one id.
+ */
+export async function getSessionPosters(locale: string, sessionIds: string[], variant: PosterVariant = "master"): Promise<Map<string, SessionPosterData>> {
+  return loadSessionPosters(locale, [...new Set(sessionIds)], variant);
+}
+
+async function loadSessionPosters(locale: string, sessionIds: string[], variant: PosterVariant): Promise<Map<string, SessionPosterData>> {
+  const out = new Map<string, SessionPosterData>();
+  if (sessionIds.length === 0) return out;
   const { supabase } = await sessionClient(locale);
 
-  const { data: poster } = await supabase
+  const { data: posters } = await supabase
     .from("session_posters")
     .select("session_id, document_id, mode, binding, stale_since")
-    .eq("session_id", sessionId)
-    .maybeSingle();
-  if (!poster) return null;
+    .in("session_id", sessionIds);
+  const rows = (posters ?? []) as { session_id: string; document_id: string | null; mode: PosterMode; binding: PosterBinding; stale_since: string | null }[];
+  const sets = await currentPosterSets(
+    supabase,
+    rows.map((r) => r.document_id).filter((d): d is string => d !== null),
+  );
 
-  const documentId = (poster.document_id as string | null) ?? null;
-  let imageUrl: string | null = null;
-  let width: number | null = null;
-  let height: number | null = null;
-  let ready = 0;
-  let total = 0;
+  for (const poster of rows) {
+    const documentId = poster.document_id ?? null;
+    let imageUrl: string | null = null;
+    let width: number | null = null;
+    let height: number | null = null;
+    let ready = 0;
+    let total = 0;
 
-  if (documentId) {
-    const { current } = await currentPosterSet(supabase, documentId);
-    total = current.length;
-    ready = current.filter((a) => a.status === "ready").length;
+    if (documentId) {
+      const current = sets.get(documentId)?.current ?? [];
+      total = current.length;
+      ready = current.filter((a) => a.status === "ready").length;
 
-    // An IMAGE, never the PDF a print preset also writes (an <img> cannot draw it): the variant asked for, the smaller
-    // file first; else the master; else any ready image (DEC-278).
-    const images = current.filter((a) => a.status === "ready" && a.storage_path && a.format !== "pdf");
-    const byWeight = (a: PosterArtifactRow, b: PosterArtifactRow) => (a.byte_size ?? Infinity) - (b.byte_size ?? Infinity);
-    const match =
-      images.filter((a) => a.preset === variant).sort(byWeight)[0] ?? images.filter((a) => a.preset === "master").sort(byWeight)[0] ?? images[0];
-    if (match?.storage_path) {
-      imageUrl = await signExportUrl(locale, match.storage_path);
-      width = match.width_px;
-      height = match.height_px;
+      // An IMAGE, never the PDF a print preset also writes (an <img> cannot draw it): the variant asked for, the smaller
+      // file first; else the master; else any ready image (DEC-278).
+      const images = current.filter((a) => a.status === "ready" && a.storage_path && a.format !== "pdf");
+      const byWeight = (a: PosterArtifactRow, b: PosterArtifactRow) => (a.byte_size ?? Infinity) - (b.byte_size ?? Infinity);
+      const match =
+        images.filter((a) => a.preset === variant).sort(byWeight)[0] ?? images.filter((a) => a.preset === "master").sort(byWeight)[0] ?? images[0];
+      if (match?.storage_path) {
+        imageUrl = posterHref(match);
+        width = match.width_px;
+        height = match.height_px;
+      }
     }
-  }
 
-  return {
-    sessionId,
-    documentId,
-    mode: poster.mode as PosterMode,
-    binding: poster.binding as PosterBinding,
-    staleSince: (poster.stale_since as string | null) ?? null,
-    imageUrl,
-    width,
-    height,
-    ready,
-    total,
-  };
+    out.set(poster.session_id, {
+      sessionId: poster.session_id,
+      documentId,
+      mode: poster.mode,
+      binding: poster.binding,
+      staleSince: poster.stale_since ?? null,
+      imageUrl,
+      width,
+      height,
+      ready,
+      total,
+    });
+  }
+  return out;
+}
+
+/**
+ * DEC-286 — a poster's `<img src>` is OUR route, never a signed Storage URL. A signature is a new URL on every render,
+ * so no browser could keep a poster between two pages: every visit downloaded every poster again, and minting each one
+ * was a Storage round trip on the page's critical path. `/api/posters/<artifact>?v=<render>` is the same URL for as long
+ * as that render is current, read as the viewer behind it (DEC-182's shape, as the avatar's and the logo's).
+ */
+function posterHref(artifact: PosterArtifactRow): string {
+  return `/api/posters/${artifact.id}?v=${encodeURIComponent(artifact.source_fingerprint)}`;
+}
+
+const posterRequest = z.object({ artifactId: z.uuid(), version: z.string().min(1).max(200) });
+
+/**
+ * The bytes behind `posterHref()`, read AS THE VIEWER: `export_artifacts`' policy decides who sees the row and the
+ * `exports` bucket's who reads the object — the same two checks the signature made, and no `service_role` (invariant 7).
+ * `current` is false when the URL's render is no longer the artifact's, so the response is revalidated, never kept.
+ */
+export async function readPosterBytes(artifactId: string, version: string): Promise<{ bytes: ArrayBuffer; mime: string; current: boolean } | null> {
+  const parsed = posterRequest.safeParse({ artifactId, version });
+  if (!parsed.success) return null;
+  const state = await getSessionState();
+  if (state.kind !== "member") return null;
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+    .from("export_artifacts")
+    .select("storage_path, format, status, source_fingerprint")
+    .eq("id", parsed.data.artifactId)
+    .maybeSingle();
+  if (error || !data || data.status !== "ready" || !data.storage_path || data.format === "pdf") return null;
+  const { data: file, error: downloadError } = await supabase.storage.from("exports").download(data.storage_path as string);
+  if (downloadError || !file) return null;
+  const mime = data.format === "webp" ? "image/webp" : "image/png";
+  return { bytes: await file.arrayBuffer(), mime, current: data.source_fingerprint === parsed.data.version };
 }
 
 /**
@@ -486,6 +541,30 @@ interface PosterArtifactRow {
  * fingerprint has work queued or running — a newer poster is on its way and the
  * files here are the previous one's.
  */
+async function currentPosterSets(supabase: Awaited<ReturnType<typeof sessionClient>>["supabase"], documentIds: string[]): Promise<Map<string, { current: PosterArtifactRow[]; updating: boolean }>> {
+  const out = new Map<string, { current: PosterArtifactRow[]; updating: boolean }>();
+  if (documentIds.length === 0) return out;
+  const { data } = await supabase
+    .from("export_artifacts")
+    .select("id, document_id, preset, format, status, storage_path, source_fingerprint, width_px, height_px, byte_size, rendered_at")
+    .in("document_id", [...new Set(documentIds)])
+    .order("rendered_at", { ascending: false });
+  const byDocument = new Map<string, PosterArtifactRow[]>();
+  for (const row of (data ?? []) as unknown as (PosterArtifactRow & { document_id: string })[]) {
+    byDocument.set(row.document_id, [...(byDocument.get(row.document_id) ?? []), row]);
+  }
+  for (const id of documentIds) out.set(id, currentOf(byDocument.get(id) ?? []));
+  return out;
+}
+
+function currentOf(rows: PosterArtifactRow[]): { current: PosterArtifactRow[]; updating: boolean } {
+  const newest = rows.find((a) => a.status === "ready")?.source_fingerprint ?? rows[0]?.source_fingerprint;
+  return {
+    current: rows.filter((a) => a.source_fingerprint === newest),
+    updating: rows.some((a) => a.source_fingerprint !== newest && (a.status === "queued" || a.status === "rendering")),
+  };
+}
+
 async function currentPosterSet(supabase: Awaited<ReturnType<typeof sessionClient>>["supabase"], documentId: string): Promise<{ current: PosterArtifactRow[]; updating: boolean }> {
   const { data } = await supabase
     .from("export_artifacts")

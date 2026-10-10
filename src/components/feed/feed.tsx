@@ -36,10 +36,10 @@ import { getFeed } from "@/lib/dal/feed";
 // keeps the hidden one from claiming a moment (DEC-207 §2). Each streams in its own boundary, so the feed
 // never waits for the week.
 
-export async function Feed({ locale }: { locale: string }) {
-  const [feed, t] = await Promise.all([getFeed(locale), getTranslations("feed")]);
-  const now = new Date(feed.now);
-
+// ★ DEC-286: the column is not async. The ring row, the prompts and the week are async siblings of the feed's body,
+// and React renders sibling server components at once — so the rings are read WHILE the feed is, not after it (they
+// waited for the whole feed and its posters before). Nothing streams that did not: no boundary is added.
+export function Feed({ locale }: { locale: string }) {
   return (
     <div className="flex flex-col gap-4">
       <RingRow />
@@ -58,6 +58,17 @@ export async function Feed({ locale }: { locale: string }) {
         <MemberWeekHud locale={locale} className="lg:hidden" />
       </Suspense>
 
+      <FeedBody locale={locale} />
+    </div>
+  );
+}
+
+async function FeedBody({ locale }: { locale: string }) {
+  const [feed, t] = await Promise.all([getFeed(locale), getTranslations("feed")]);
+  const now = new Date(feed.now);
+
+  return (
+    <>
       <StaffStrip attention={feed.attention} />
 
       {feed.groups.length === 0 ? (
@@ -93,6 +104,6 @@ export async function Feed({ locale }: { locale: string }) {
       )}
 
       <ProposeBand />
-    </div>
+    </>
   );
 }

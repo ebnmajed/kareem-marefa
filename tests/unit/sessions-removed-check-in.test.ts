@@ -21,7 +21,7 @@ import { memorySupabase } from "./sessions-memory-supabase";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/server", () => ({ createServerClient: async () => ({}) }));
-vi.mock("@/lib/dal/posters", () => ({ getSessionPoster: async () => null }));
+vi.mock("@/lib/dal/posters", () => ({ getSessionPoster: async () => null, getSessionPosters: async () => new Map() }));
 
 const ORG = "00000000-0000-4000-8000-0000000000aa";
 const ME = "00000000-0000-4000-8000-0000000000bb";
