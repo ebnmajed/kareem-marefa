@@ -480,7 +480,12 @@
       "changeCompany": "Change company",
       "companyTitle": "Company of “<t>{name}</t>”",
       "companySave": "Save",
-      "companyChanged": "Company saved."
+      "companyChanged": "Company saved.",
+      "takeDownPhoto": "Remove photo",
+      "takeDownTitle": "Remove <bdi>{name}</bdi>'s photo?",
+      "takeDownConfirm": "Remove",
+      "takeDownDone": "Photo removed",
+      "takeDownFailed": "Couldn't remove"
     },
     "exports": {
       "title": "Exports",

@@ -10773,3 +10773,37 @@ or reconnect.
 
 - **Documents changed:** `01-prd.md`, `14-roadmap.md`, `15-backlog.md`, `16-ui-redesign.md` (a ★ note at §7.5),
   `02-domain-model.md` and `03-permissions-rls.md` (with `0221`), `TRACEABILITY.md`, `STATUS.md`, `CLAUDE.md`
+
+## DEC-281 — PR B's rulings: how an upload is stored, who may take a picture down, and what the sheet does · `0222`
+
+- **Date:** 2026-10-10 · **Decided by:** the lead, at wave 29's sync 1 for PR B, on `platform`'s and `content`'s plans (`docs/plan/notes/{platform,content}.md`, «Wave 29 — the plan») · **Amends:** nothing; applies `DEC-280` · **Migrations:** `0222` (the schema), and `platform`'s functions after it · **Wave:** 29
+
+**What the plans found that the brief did not.** 0158's invariant — `avatar_version` non-null only while
+`avatar_import = 'accepted'` — breaks four ways once a member can upload: a decline would delete the upload, a Google
+refresh would overwrite it, an in-flight import would record over it, and the export would drop it. And a library pick
+that leaves `avatar_import = 'accepted'` would let the next sign-in with a changed Google picture copy Google back over
+the avatar the member just chose. The new invariant: **`avatar_version` is non-null only while a photo is stored, and
+`avatar_source` says which; a Google path never writes over an upload; and every way of leaving a photo — a pick,
+«أزل الصورة», a takedown — turns an `accepted` answer to `declined`, audited as the answer it is.** On the screen side:
+the hero picture is `scoring`'s standing card, not the profile's files; both its forms are always in the document; and
+«من Google» cannot be previewed without the hotlink `DEC-099` forbids.
+
+**Rulings.**
+
+1. **Upload state is a table, `avatar_uploads`** — one row per member, RLS on, **no policy and no grant**, written and
+   read only by definer functions (the survey register's shape, invariant 5). Not columns on `members`.
+2. **The bytes go through the Route Handler** (`POST /api/avatars/upload`, 1 MiB, PNG/JPEG by declared type) into the
+   private `avatar-staging` bucket; the worker sniffs on content, strips, derives and deletes. Status is read by
+   `GET /api/avatars/upload/{id}` and the sheet polls it.
+3. **One queue per member for both avatar jobs** (`avatar:{member}`), five attempts — every write to one member's picture
+   is serial, and no member waits behind another or behind a PDF.
+4. **The privacy page's «نعم» never replaces an upload**; the sheet is the only place the picture changes
+   (`REQ-PRF-016`). Its «لا» never deletes one.
+5. **The takedown is an admin's alone** — a moderator does not see it — audited as `member.avatar_taken_down`; a library
+   avatar cannot be taken down. Not reportable (`DEC-280` §8).
+6. **The desktop band opens the sheet from every hub page**, without the camera badge; the badge is ملفي's edit mode.
+7. **«من Google» is staged and committed by «حفظ»**, like a pick; the ring changes when the copy lands, never before.
+8. **One grid shows the chosen set and scrolls**; the chips switch it.
+9. **«تعذّر الحفظ»** is added for a failed pick or Google save — a word, as the refusals are.
+
+- **Documents changed:** `02-domain-model.md` (`ENT-avatar_uploads`), `03-permissions-rls.md`, `STATUS.md`

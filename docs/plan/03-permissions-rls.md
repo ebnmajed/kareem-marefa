@@ -694,6 +694,7 @@ moderation material (`REQ-ADM-020`).
 | `survey_participations` | — | — | — | — | **No policy at all.** The REGISTER: who answered, with no answer, no time and no surrogate id (`DEC-160` §3). Written by `submit_survey_response()` alone. |
 | `survey_responses` | — | — | — | — | **No policy at all.** The BOX: a random id, an org and a survey, **and nothing else, ever** — no member, no timestamp. Written by the jittered job alone; read by `survey_results()` alone. |
 | `survey_answers` | — | — | — | — | **No policy at all.** One value of one response. No member, no timestamp. |
+| `avatar_uploads` | — | — | — | — | **No policy at all.** One row per member: the current avatar upload's id and outcome (`DEC-281`, `0222`). No bytes, no URL, no name. Written and read by `platform`'s definer functions alone. |
 | `photo_albums` | §5.6g | — | — | — | One album per session (`0156`, `REQ-ADM-021`). Staff of the org read it; the three audit definers and `content`'s service_role functions are its only writers. |
 
 #### §5.6g — the photo album (`0156`, `DEC-180`, `DEC-182`)
@@ -1168,6 +1169,7 @@ create policy "exports_storage_read"         on storage.objects for select to au
 create policy "exports_storage_read_public_card" on storage.objects for select to anon, authenticated;  -- DEC-066 (0080): ONLY the og.png of a card-eligible session's poster, via export_is_public_card(name); a member of another org sees what a stranger sees
 create policy "exports_storage_certificate_restricted" on storage.objects as restrictive for select to authenticated;  -- DEC-178 (0153): a certificate's render only to staff of its org or its own member once released, via export_object_is_foreign_certificate(name); narrows exports_storage_read, which admitted the whole org prefix
 create policy "photo_albums_storage_read"          on storage.objects for select to authenticated;  -- DEC-182 (0156): staff of the org, and only the album's CURRENT build (path segment 5 = build_id), ready and unexpired — a stale, superseded or expired zip is unreadable with its path in hand
+create policy "avatar_staging_insert"               on storage.objects for insert to authenticated;  -- DEC-281 (0222): a member's own {org}/members/{self}/ prefix in `avatar-staging`, and no read back or delete — the worker reads, sniffs and deletes
 create policy "avatars_storage_read"                on storage.objects for select to authenticated;  -- DEC-182 (0157): same org, and only a member's CURRENT avatar_version (path segment 4) — clearing the version cuts access in the same statement
 create policy "story_media_read"                    on storage.objects for select to authenticated;  -- DEC-248 §5 (0198): a story video's rendition and poster — never its source — for a frame the caller may read now (the frame is looked up under the caller's own policies); the write policy lands with content's capture gate
 create policy "story_media_write"                   on storage.objects for insert to authenticated;  -- DEC-251 §5 (0199): a SOURCE only (source.mp4|mov|webm), under the caller's org and a session whose capture window is open for them — story_capture_open(): checked in, from the start until 24 h after the end — ★ DEC-278 (0219): or reserved (confirmed), a presenter or staff, from 24 h BEFORE the start; no update policy, so no overwrite
@@ -2265,6 +2267,11 @@ generated suite is the highest-value test in the product.
 | `TRG-members_avatar.source_follows_version` | A recorded copy is `google`; a cleared copy has no source; the key is untouched by either. |
 | `TRG-comments_broadcast.avatar_key` | The live comment payload carries `authorAvatarKey` beside the version, and still no URL. |
 
+| ★ **wave 29, migration `0222`** — lead — the upload's schema (`DEC-281`, `REQ-PRF-017` … `REQ-PRF-019`) |
+| `POL-avatar_staging_insert.own_prefix` | A member writes under `{own org}/members/{self}/` in `avatar-staging` ✓. |
+| `POL-avatar_staging_insert.other_member_refused` · `.other_org_refused` | Another member's prefix, or another org's, ✗. |
+| `POL-avatar_staging.no_read_back` · `.no_delete` | A member's select or delete of a staged object, their own included, ✗. |
+| `TBL-avatar_uploads.no_client_access` | A select, insert or update of `avatar_uploads` by `authenticated` → 42501. |
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.
 

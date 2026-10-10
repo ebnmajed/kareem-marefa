@@ -153,6 +153,10 @@ export interface SheetProps {
   title: string;
   description?: string;
   side?: "bottom" | "inline-start" | "inline-end";
+  /** ★ Wave 29 (DEC-281, add-only): drawn at the inline-start of the title row — «صورتك»'s 80 px picture. */
+  leading?: ReactNode;
+  /** ★ Wave 29 (DEC-281, add-only): drawn under the title, inside the title row — «أزل الصورة». */
+  belowTitle?: ReactNode;
   children: ReactNode;
 }
 

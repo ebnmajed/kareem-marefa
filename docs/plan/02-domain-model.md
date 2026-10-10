@@ -1262,6 +1262,19 @@ would be indexed as gibberish and would match nothing a member could type.
 
 ### 4.16 Audit
 
+#### `ENT-avatar_uploads`
+
+★ **Added by `DEC-281` (`0222`, wave 29).** One row per member: which staged avatar upload is current, and its
+outcome. No bytes, no URL, no name. RLS on, **no policy and no grant** — written and read by definer functions only.
+
+| Column | Type | Notes |
+|---|---|---|
+| `member_id` | `uuid` | PK, → `members`, on delete cascade |
+| `org_id` | `uuid not null` | → `orgs`, on delete cascade |
+| `upload_id` | `uuid not null` | the staged object's name under `avatar-staging/{org}/members/{member}/` |
+| `state` | `avatar_upload_state` | pending · done · refused · failed · cancelled |
+| `updated_at` | `timestamptz` | |
+
 #### `ENT-audit_log`
 **Serves:** `REQ-ADM-018`, `REQ-NFR-006`
 **Append-only. `revoke update, delete` from every role, including `service_role`.**

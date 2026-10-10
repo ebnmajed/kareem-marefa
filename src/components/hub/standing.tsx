@@ -129,7 +129,7 @@ function delta(s: HubStandingData, t: T): ReactNode {
   );
 }
 
-function Card({ s, t, seenRank }: { s: HubStandingData; t: T; seenRank: number | null }) {
+function Card({ s, t, seenRank, picture = same }: { s: HubStandingData; t: T; seenRank: number | null; picture?: PictureWrap }) {
   const m = s.member;
   const bar =
     s.level && s.progress ? (
@@ -144,7 +144,7 @@ function Card({ s, t, seenRank }: { s: HubStandingData; t: T; seenRank: number |
   return (
     <section aria-label={t("hub.label")} data-form="card" className="flex flex-col gap-3.5 rounded-panel border border-edge bg-surface p-4">
       <div className="flex items-center gap-3">
-        <Avatar memberId={m.id} displayName={m.displayName} src={m.avatarUrl} size={64} decorative teamColor={m.company?.teamColor ?? null} />
+        {picture(<Avatar memberId={m.id} displayName={m.displayName} src={m.avatarUrl} size={64} decorative teamColor={m.company?.teamColor ?? null} />)}
         <div className="min-w-0 flex-1 leading-snug">
           <p className="font-display text-play-sm font-extrabold text-fg-heading">
             <bdi>{m.displayName}</bdi>
@@ -206,7 +206,7 @@ function Card({ s, t, seenRank }: { s: HubStandingData; t: T; seenRank: number |
   );
 }
 
-function Band({ s, t, seenRank, locale }: { s: HubStandingData; t: T; seenRank: number | null; locale: string }) {
+function Band({ s, t, seenRank, locale, picture = same }: { s: HubStandingData; t: T; seenRank: number | null; locale: string ; picture?: PictureWrap }) {
   const m = s.member;
   const since = m.memberSince
     ? new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { month: "long", year: "numeric", timeZone: s.week.window.timeZone }).format(new Date(m.memberSince))
@@ -235,7 +235,7 @@ function Band({ s, t, seenRank, locale }: { s: HubStandingData; t: T; seenRank: 
 
   return (
     <section aria-label={t("hub.label")} data-form="band" className="flex flex-wrap items-center gap-5 rounded-panel border border-edge bg-surface px-5 py-4">
-      <Avatar memberId={m.id} displayName={m.displayName} src={m.avatarUrl} size={84} decorative teamColor={m.company?.teamColor ?? null} />
+      {picture(<Avatar memberId={m.id} displayName={m.displayName} src={m.avatarUrl} size={84} decorative teamColor={m.company?.teamColor ?? null} />)}
       <div className="min-w-0 flex-1 leading-snug">
         <p className="font-display text-play-md font-extrabold text-fg-heading">
           <bdi>{m.displayName}</bdi>
@@ -279,7 +279,15 @@ function Band({ s, t, seenRank, locale }: { s: HubStandingData; t: T; seenRank: 
   );
 }
 
-export async function HubStanding({ locale, form, className = "" }: { locale: string; form: "card" | "band"; className?: string }) {
+/**
+ * ★ Wave 29 (DEC-280, DEC-281 §6, `content`'s R1 — add-only): the picture is the way into «صورتك». A caller may wrap the
+ * avatar — ملفي's card and the hub's band pass `content`'s button; every other caller passes nothing and renders
+ * byte-identically. The avatar itself, its size, its ring and `decorative` do not change.
+ */
+export type PictureWrap = (avatar: ReactNode) => ReactNode;
+const same: PictureWrap = (avatar) => avatar;
+
+export async function HubStanding({ locale, form, className = "", picture }: { locale: string; form: "card" | "band"; className?: string; picture?: PictureWrap }) {
   const [s, t, documentLoad] = await Promise.all([getHubStanding(locale), getTranslations("scoring"), isDocumentLoad()]);
   const week = s.week;
   const seenRank = week.rank && week.moment.seenRank !== null && week.moment.seenRank > week.rank.rank ? week.moment.seenRank : null;
@@ -298,11 +306,11 @@ export async function HubStanding({ locale, form, className = "" }: { locale: st
   // ★ The band yields moment 3 to a page that plays it on its own head (`band-moments.tsx`, DEC-195).
   return form === "card" ? (
     <MomentWeek {...moment} className={className}>
-      <Card s={s} t={t} seenRank={seenRank} />
+      <Card s={s} t={t} seenRank={seenRank} picture={picture} />
     </MomentWeek>
   ) : (
     <BandMoments {...moment} className={className}>
-      <Band s={s} t={t} seenRank={seenRank} locale={locale} />
+      <Band s={s} t={t} seenRank={seenRank} locale={locale} picture={picture} />
     </BandMoments>
   );
 }

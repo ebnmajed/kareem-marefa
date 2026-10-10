@@ -480,7 +480,12 @@
       "changeCompany": "غيّر الشركة",
       "companyTitle": "شركة «<t>{name}</t>»",
       "companySave": "احفظ",
-      "companyChanged": "حُفظت الشركة."
+      "companyChanged": "حُفظت الشركة.",
+      "takeDownPhoto": "أزل الصورة",
+      "takeDownTitle": "أزل صورة <bdi>{name}</bdi>؟",
+      "takeDownConfirm": "أزل",
+      "takeDownDone": "أُزيلت الصورة",
+      "takeDownFailed": "تعذّر"
     },
     "exports": {
       "title": "التصدير",

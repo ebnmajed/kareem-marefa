@@ -9,7 +9,7 @@
 | Artifact | Count |
 |---|---|
 | Requirements (`REQ-*`) | **474** |
-| Entities (`ENT-*`) | **90** |
+| Entities (`ENT-*`) | **91** |
 | Stories (`STORY-*`) | **296** |
 | Screens cited (`SCR-*`) | 60 |
 | Jobs cited (`JOB-*`) | 46 |
@@ -351,7 +351,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-PRF-013` | `ENT-sessions` | — | `SCR-021` `SCR-045` `SCR-048` +1 | — | — | `STORY-ADM-013` | M29 |
 | `REQ-PRF-014` | — | — | `SCR-049` `SCR-051` `SCR-052` | — | — | `STORY-PRF-008` | M34 |
 | `REQ-PRF-015` | — | — | `SCR-049` `SCR-051` `SCR-052` | — | — | `STORY-PRF-009` | M34 |
-| `REQ-PRF-016` | — | — | `SCR-021` `SCR-049` `SCR-051` +1 | — | — | `STORY-PRF-010` | M34 |
+| `REQ-PRF-016` | `ENT-avatar_uploads` | — | `SCR-021` `SCR-049` `SCR-051` +1 | — | — | `STORY-PRF-010` | M34 |
 | `REQ-PRF-017` | — | — | `SCR-049` `SCR-051` `SCR-052` | — | — | `STORY-PRF-011` | M34 |
 | `REQ-PRF-018` | — | — | `SCR-049` `SCR-051` `SCR-052` | — | — | `STORY-PRF-012` | M34 |
 | `REQ-PRF-019` | — | — | `SCR-049` `SCR-051` `SCR-052` | — | — | `STORY-PRF-012` `STORY-PRF-013` | M34 |
