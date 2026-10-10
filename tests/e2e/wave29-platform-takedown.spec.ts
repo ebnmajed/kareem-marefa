@@ -105,7 +105,12 @@ test("★ an admin takes a photo down from the row — the library avatar shows,
   await page.getByRole("dialog", { name: new RegExp(PHOTO_NAME) }).getByRole("button", { name: "أزل", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "أُزيلت الصورة" })).toBeVisible();
 
+  // The action's own refresh redraws the row — no reload. ★ The table is asserted first, so a run where the page lost
+  // its whole table fails as THAT, not as a stale avatar: the failures seen in this spec's first window were the
+  // console frame with no table at all (zero rows), never the row still drawing the photo.
+  await expect(page.locator("#main").getByRole("table")).toBeVisible();
   await expect(row.locator('img[src="/avatars/objects/reel.svg"]')).toHaveCount(1);
+  await expect(row.locator(`img[src^="/api/avatars/"]`)).toHaveCount(0);
   const { rows } = await db.query<{ avatar_version: string | null; avatar_source: string | null; avatar_key: string }>(
     `select avatar_version, avatar_source, avatar_key from public.members where id = $1`,
     [photoId],
