@@ -15,9 +15,9 @@ get their avatars** when A's backfill is pushed.
 
 | PR | Branch | State |
 |---|---|---|
-| A — the library (`STORY-PRF-008`, `009`) | `wave-29a/the-library` | building — the DEC, requirements, stories, brief landed |
-| B — the picture (`STORY-PRF-010` … `013`) | `wave-29b/the-picture` | waits on A's resolver |
-| C — the moves (`STORY-UIX-111` … `116`) | `wave-29c/the-moves` | not cut |
+| A — the library (`STORY-PRF-008`, `009`) | `wave-29a/the-library` | ★ built and verified — `0221`, the resolver, every reader, `ui/avatar`; the whole RLS suite green (a check-in case timed out under load and passed alone), unit 5,876 green, `qa` 57/57, `ui-lint --strict`, trace, policy-diff; `wave29-lead-avatar-library` green, captures at `.qa-shots/rtl/wave29-lead-avatar-*`. ★ **`0221` waits for the owner's `supabase db push`** (the password prompt) — it carries the backfill the owner asked for |
+| B — the picture (`STORY-PRF-010` … `013`) | `wave-29b/the-picture` | cut at A's head in `../kareem-marefa-wave29b`; `platform` and `content` planning |
+| C — the moves (`STORY-UIX-111` … `116`) | `wave-29c/the-moves` | cut from `main` in `../kareem-marefa-wave29c`; tokens, press, the five moves, the boundary, the poster handoff, the story zoom, the console guard written — not yet proven in a browser |
 
 ### Untouched-suite ledger (wave 29)
 
