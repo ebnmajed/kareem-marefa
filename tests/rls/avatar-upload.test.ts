@@ -3,10 +3,10 @@
 // applied inside each transaction and rolled back until it is promoted.
 //
 // ★ The cases the wave names: an upload REPLACES a Google copy (the old version unreadable at once), and a Google
-//   refresh NEVER overwrites an upload — neither the trigger, nor an import { join } from "node:path";
-import { existsSync } from "node:fs";
-import in flight, nor a «لا» on the privacy page.
+//   refresh NEVER overwrites an upload — neither the trigger, nor an import in flight, nor a «لا» on the privacy page.
 
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
