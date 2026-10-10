@@ -59,6 +59,30 @@
         "confirm": "تجاهل",
         "stay": "تابع التعديل"
       }
+    },
+    "picture": {
+      "title": "صورتك",
+      "upload": "ارفع صورة",
+      "google": "من Google",
+      "remove": "أزل الصورة",
+      "sets": {
+        "label": "المجموعات",
+        "characters": "شخصيات",
+        "objects": "أشياء"
+      },
+      "grid": "الصور الرمزية",
+      "crop": {
+        "cancel": "إلغاء",
+        "zoom": "تكبير",
+        "image": "الصورة"
+      },
+      "errors": {
+        "type": "<ltr>PNG</ltr> أو <ltr>JPG</ltr> فقط",
+        "size": "أكبر من <bdi>{size}</bdi> م.ب",
+        "upload": "تعذّر الرفع",
+        "save": "تعذّر الحفظ"
+      },
+      "retry": "أعد المحاولة"
     }
   }
 }

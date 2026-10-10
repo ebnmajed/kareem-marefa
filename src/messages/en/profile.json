@@ -59,6 +59,30 @@
         "confirm": "Discard",
         "stay": "Keep editing"
       }
+    },
+    "picture": {
+      "title": "Your picture",
+      "upload": "Upload a photo",
+      "google": "From Google",
+      "remove": "Remove photo",
+      "sets": {
+        "label": "Sets",
+        "characters": "Characters",
+        "objects": "Objects"
+      },
+      "grid": "Avatars",
+      "crop": {
+        "cancel": "Cancel",
+        "zoom": "Zoom",
+        "image": "Image"
+      },
+      "errors": {
+        "type": "<ltr>PNG</ltr> or <ltr>JPG</ltr> only",
+        "size": "Over <bdi>{size}</bdi> MB",
+        "upload": "Upload failed",
+        "save": "Couldn't save"
+      },
+      "retry": "Try again"
     }
   }
 }

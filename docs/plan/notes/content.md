@@ -1,3 +1,315 @@
+# Wave 29 — the plan (`DEC-280`, M34, PR B `wave-29b/the-picture`) — planning only, nothing edited
+
+**Written** 2026-10-10 by `content`, in `../kareem-marefa-wave29b` at `7e30b0c9`. **Stories:** `STORY-PRF-010`,
+`STORY-PRF-011`'s crop half. **Requirements:** `REQ-PRF-016`, `REQ-PRF-017` (the screen), `REQ-PRF-018` (the button),
+`REQ-PRF-019` (the removal's screen half). **Read:** `DEC-280` whole (★ §8: a picture is **not reportable** — nothing in
+this plan draws a report control on a picture, and nothing reaches a queue), the wave-29 map, the lead's brief,
+`AVATARS.md`, AVA-04 … 12, the five artboards with their PNGs at 390, `m10c/Me.dc.html` and `MeEdit.dc.html`, the
+four `REQ-PRF-016 … 019`, and the tree: `me/{page,actions,state}`, `components/me/**`, `components/hub/standing.tsx`,
+`ui/{avatar,sheet,dialog}`, `lib/avatar-library.ts`, `messages/*/avatars.json`, `privacy/avatar-href.ts`,
+`lib/dal/avatars.ts`.
+
+## 0 · ★ What the tree says that the brief does not
+
+- **F1 — the hero picture is not on SCR-021's files.** The 64 px picture `Me.dc.html:26` makes tappable is the avatar
+  of `scoring`'s **standing card**, `src/components/hub/standing.tsx:147` (`form="card"`), and from `lg` of the band,
+  `:238`, which **the lead's `me/layout.tsx`** places. Neither file is in my list. The way in therefore needs one
+  **add-only** prop on `HubStanding` (request **R1**, §6) and, for desktop, the lead's layout to pass it (**R2**).
+  Nothing of `profile-read.tsx` or `profile-edit.tsx` changes.
+- **F2 — both forms are in the document at every width** (`displayed-only.tsx`'s header): the card `lg:hidden`, the
+  band `hidden lg:block`. Two triggers exist; only the displayed one is in the accessibility tree. Each trigger owns
+  its sheet (only one ever opens), so nothing has to be shared across the page/layout boundary.
+- **F3 — `ui/sheet` draws its title above `children`**; the artboard draws the 80 px picture at the inline-start
+  **beside** «صورتك» (`AvatarPicker.dc.html:95-98`), with «أزل الصورة» under the title (`AvatarPickerPhoto.dc.html:104`).
+  The lead holds `ui/sheet` this wave → request **R3**. Without it the picture row sits under the title row.
+- **F4 — no Google preview is possible.** «من Google» cannot show Google's picture in the ring before the copy lands:
+  that would be the hotlink `DEC-099` forbids. An undrawn state (§2.4, **D2**).
+- **F5 — `platform`'s note carries no wave-29 contract yet.** The names in §3 and §4 are **placeholders** (`⟨…⟩`), to
+  be replaced by contract 3's names when the lead posts them. The existing `getMyAvatar()` / `my_avatar()` already
+  carry `hasSource` — the «من Google» gate.
+
+## 1 · The way in on SCR-021 — an extension, not a rebuild
+
+`DEC-208` does not apply: no page file is deleted; the screen gains one control in an existing region.
+
+| Adds | Where | Artboard |
+|---|---|---|
+| The 64 px picture becomes a `<button type="button" aria-label="صورتك">` wrapping the unchanged `<Avatar … decorative>`; nothing drawn on it in read mode | the standing card, through R1's slot; me/page passes it | `Me.dc.html:26` |
+| In «عدّل ملفك» (`?edit`) the same button carries the camera badge: 26 px, `bg-accent`, the press shadow token, a 3 px ring in the surface colour, at `bottom: -6px; inset-inline-end: -6px`, a 14 px camera glyph, `aria-hidden` | same | `MeEdit.dc.html:26` |
+| Both open the sheet «صورتك» | `src/components/avatar-picker/picture-button.tsx` (new) | `AvatarPicker.dc.html` |
+| `getMyPicture()` ⟨platform's read⟩ joins the page's one `Promise.all` | `me/page.tsx` | — |
+
+- **The badge's glyph** is a 24-unit camera path drawn inline in my component (`aria-hidden`). `ui/icons.tsx` is the
+  lead's; if the lead prefers it there, a `CameraIcon` is a request, not my edit.
+- **The button is not a link** (unlike «عدّل ملفك»): the sheet needs script anyway, and a button is not caught by
+  `profile-edit.tsx`'s leave-with-changes guard, which listens for **anchors** only — so opening the sheet in edit mode
+  never asks «تجاهل التغييرات؟», and the form's controlled state is untouched while the sheet is open.
+- A focus ring on the button (the house focus style); **no hover scale** (`DEC-183`), **no motion of my own**
+  (contract 4 — the sheet's arrival is the lead's in PR C).
+- **Nothing else on the page moves** — see §7's table: the top row, the settings glyph, the card's other content,
+  the strip, read mode and edit mode are byte-for-byte as built.
+
+## 2 · The sheet «صورتك»
+
+### 2.1 Frame
+- **Phone:** `ui/sheet`, `side="bottom"`, `title="صورتك"`. No close control is drawn (the artboard draws none);
+  Escape and a tap on the scrim close it (Radix's default, as `ui/sheet` documents).
+- **Desktop, from `lg`:** the same body inside `ui/dialog`'s default frame, centred, `closeLabel={ui.dialog.close}`
+  (the brief's ruling). One client hook, `useMinWidthLg()` (a `useSyncExternalStore` over
+  `matchMedia("(min-width: 64rem)")`, the shape `ui/story-viewer.tsx:142-150` already uses), picks the frame; the server
+  and the first paint assume the phone. **Alternative for the lead:** an add-only `centered` prop on `ui/sheet`
+  (it is the lead's this wave) would drop the hook — R3 asks.
+- No new primitive; `ui/` stays 71.
+
+### 2.2 The body, in the artboard's order (`AvatarPicker.dc.html:95-105`)
+1. **The ring row** — the staged-or-current picture at 80 px in the team ring (`<Avatar size=…>`: 80 is not in the
+   size union → **R4**, add-only `80` with a 4 px ring, the lead's file this wave), with «صورتك» beside it (R3) and,
+   **only when a photo is current and no change is staged**, «أزل الصورة» under it — a text button in the coral
+   (`text-error`'s on-dark tone is what the artboard draws, `#FF6E4F`; the lead names the token).
+2. **The actions row** — «ارفع صورة» (primary, `flex-1`) · «من Google» (secondary) **only when `hasGoogle`**.
+3. **The chips** — شخصيات · أشياء, a toggle pair (`aria-pressed`), opening on the set of the current key
+   (characters when none).
+4. **The grid** — 5 columns, 56 px avatars, 10 px gap, its own vertical scroll at `max-h-[280px]`, the selected set's
+   25 keys from `AVATAR_KEYS`. Each is a `<button type="button" aria-label={avatars.names.<set>.<key>}
+   aria-pressed={isOutlined}>` with `<img src={avatarLibrarySrc(key)} alt="" />` — **no visible text on an avatar**
+   (AVA-11). The outline: 3 px accent at a 3 px offset, on the outlined key only.
+5. **«حفظ»** — full width, the bone secondary the artboard draws (`:105`).
+
+### 2.3 The three states (each a component test, §5)
+
+| State | When | «أزل الصورة» | «من Google» | Outline |
+|---|---|---|---|---|
+| **A — a library avatar current** (`AvatarPicker`) | `source = null` | absent | when `hasGoogle` | the held key |
+| **B — a photo current** (`AvatarPickerPhoto`) | `source ∈ {upload, google}` | **shown** | when `hasGoogle` | none |
+| **C — Google gave nothing** (undrawn, named by the brief) | `hasGoogle = false` | per A/B | **absent** | per A/B |
+
+Nothing is disabled and nothing explains (AVA-05): what cannot apply is absent.
+
+### 2.4 Staging — a pick or a removal changes nothing until «حفظ»
+One piece of client state, `staged: { kind: "library"; key } | { kind: "google" } | null`.
+- **A tap on an avatar** stages `library(key)`: the ring shows it, the outline moves to it, «أزل الصورة» leaves (the
+  photo is no longer what «حفظ» will keep).
+- **«أزل الصورة»** stages `library(heldKey)` — the key the member holds (AVA-12: the platform assigns one if somehow
+  none is held; the DTO always carries one after `0221`): the ring shows the held avatar, outlined.
+- **«من Google»** stages `google`: the button shows `aria-pressed` and the accent outline; ★ **the ring does not
+  change** (F4 — no preview without a hotlink) — **D2**: the owner may prefer the button to save at once.
+- **Closing** (scrim, Escape, the desktop ✕) discards `staged`. Reopening starts from the server's state.
+- **«حفظ» with nothing staged** closes the sheet (no disabled control).
+- **«حفظ» with something staged** calls my Server Action `savePicture(locale, choice)` in `me/actions.ts`: Zod first
+  (`{kind:"library", key: z.enum(AVATAR_KEYS)} | {kind:"google"}`), then ⟨`platform`'s DAL: `setAvatarLibrary(key)` /
+  `requestAvatarGoogle()`⟩ — the removal is `library(heldKey)`, so it rides the same write (or ⟨`removeAvatarPhoto()`⟩
+  if `platform` keeps the two apart; I call whichever its contract names). `revalidatePath(/{locale}/app, "layout")`
+  so the shell's account avatar rereads. «حفظ» shows `SubmitButton`'s pending state while the action runs; on `ok`
+  the sheet closes and the toast «تم الحفظ» (`profile.saved`, existing) shows once; on `failed` the sheet stays open
+  with the stage kept and «تعذّر الحفظ» under «حفظ» (`role="alert"`).
+- **«من Google» after «حفظ»:** the import job runs; the ring and the shell move **when the version moves** — the
+  same status read as the upload (§3.4).
+
+## 3 · The crop step (`AvatarCrop.dc.html`)
+
+### 3.1 Choosing the file — refusals before the crop opens
+- «ارفع صورة» clicks a hidden `<input type="file" accept="image/png,image/jpeg">` (no `capture`, so iOS offers camera
+  **and** library and converts HEIC itself). `ui-lint`'s `field` rule: a reasoned
+  `// ui-lint-disable-next-line field — the hidden chooser behind «ارفع صورة»`, the precedent `DEC-087` names
+  (a hidden-by-design input). The lead approves it in review, or I wrap it in `<Field>` with an `sr-only` label.
+- `file.size > 20 * 1024 * 1024` → **«أكبر من 20 م.ب»** (the number from one constant, `<bdi>`, Western), in the
+  sheet under the actions row, `role="alert"`; the crop does not open.
+- `file.type` not PNG/JPEG, **or decoding fails** (`createImageBitmap` throws) → **«PNG أو JPG فقط»**, same place.
+
+### 3.2 The crop screen
+- The same frame (sheet / dialog), its content swapped — not a second dialog. In the artboard's order: a top row with
+  «إلغاء» at the **inline-start** (measured on the PNG: the right edge at 390) and «صورتك» centred, the stage, the
+  slider, «حفظ» (primary, 52 px).
+- **The stage:** the bitmap on a `<canvas>` sized to the stage (devicePixelRatio-aware), a 300 px circle with the
+  scrim outside it (`box-shadow` 0 0 0 2000px on an `aria-hidden` ring, as drawn), the image always **covering** the
+  circle (`scale ≥ cover`, the offset clamped).
+- **Gestures and their single-pointer paths (`DEC-093`, SC 2.5.7):**
+
+  | Gesture | Single-pointer, not a drag | Keyboard |
+  |---|---|---|
+  | drag to pan (one pointer) | **a tap on the image centres that point in the circle** | the stage is focusable (`aria-label="الصورة"`): ← → ↑ ↓ pan 8 px, Shift 32 px — visual axes, not logical |
+  | pinch to zoom (two pointers) · wheel on desktop | **the slider: a tap on its track sets the zoom** | the slider: ← → / Home / End (native range) |
+
+  The slider is a native `<input type="range" min=1 max=3 step=0.01>` inside `<Field label={<span className="sr-only">تكبير</span>}>`
+  (no visible label, as drawn; `aria-valuetext` the percentage, `<bdi>`, Western). Zoom is about the circle's centre.
+  Pointer events with `touch-action: none` on the stage only.
+- **Geometry is pure** (`crop-geometry.ts`: `coverScale`, `clampOffset`, `zoomAbout`, `centreOn`) so it is unit-tested
+  without a canvas.
+- **Large files:** the bitmap is decoded with `createImageBitmap(file, { imageOrientation: "from-image",
+  resizeWidth/Height })` capped at 4096 px on the long side — iOS refuses canvases over ~16.7 Mpx, and 1024 px output
+  never needs more. `imageOrientation` keeps a phone photo upright even though the server strips its EXIF.
+
+### 3.3 Encoding
+`encodeSquare(bitmap, view)` draws the circle's square onto a 1024 × 1024 canvas and `toBlob("image/jpeg", q)` from
+`q = 0.92`, stepping by `0.08` to a floor of `0.44`, until `blob.size ≤ ⟨MAX_UPLOAD_BYTES⟩` (1 MB — the constant is
+`platform`'s route's, imported, not retyped). Re-encoding through the canvas also drops the original's EXIF before it
+leaves the phone; the server still strips (`REQ-PRF-017` — the client is never the boundary). If the floor is still
+too large (it will not be at 1024 px JPEG, but nothing assumes) → «تعذّر الرفع».
+
+### 3.4 Upload in flight, and the server's answer (contract 3 — placeholders)
+- «حفظ» on the crop: `fetch(POST /api/avatars/upload)` with the JPEG ⟨as `platform` names the body⟩; the button shows
+  its pending state; the stage is inert. **Not a Server Action** (the 1 MB body cap, `CLAUDE.md`).
+- `202 { uploadId }` ⟨names placeholder⟩ → the crop **stays open with «حفظ» pending** and reads ⟨`GET
+  /api/avatars/upload/{uploadId}` or a DAL read through a tiny action — `platform`'s choice⟩ at 1 s, 1 s, 2 s, 2 s, 4 s…
+  up to 20 s: `processing` → keep waiting · `ready` → `router.refresh()`, close **the whole flow** (AVA-06), «تم الحفظ»
+  once · `refused` (the worker's sniff: an SVG renamed `.png`) → «PNG أو JPG فقط» on the crop · `failed`/timeout/a
+  non-2xx/a network error → **«تعذّر الرفع»** with **«أعد المحاولة»**, which re-sends the same blob (the job replaces
+  whatever is current, so a retry after a slow success is harmless).
+- **«إلغاء»** returns to the sheet with **nothing changed** — the stage from before the crop is kept, the file is
+  dropped. «إلغاء» during an upload in flight aborts the `fetch` (`AbortController`); a staged object the route already
+  took is the worker's to sweep (⟨platform⟩).
+- The ring and the shell show the new picture **only when the version moves** — never an optimistic local preview
+  (the brief's undrawn state 4).
+- ★ This polling is a read loop with its own budget, **not** a nudge on a pending control (`DEC-146`): the button is
+  pending because a request is in flight, and the loop ends in one of four named outcomes.
+- **Q to `platform`/lead:** if the worker's LISTEN wake-up makes «ready» reliably sub-second, a single wait in the
+  route (≤ 5 s) would replace the loop; the brief says it is measured, not assumed — I build the loop and keep it if
+  the measure says so.
+
+## 4 · Data the sheet reads — one DTO, placeholder
+
+`⟨getMyPicture(locale)⟩: { key: AvatarKey | null; source: "google" | "upload" | null; photoHref: string | null;
+currentHref: string | null; hasGoogle: boolean }` — or `getMyAvatar()` widened add-only (it already returns
+`hasSource`). The team colour comes from `listCompanies()` already on the page. `content` reads it, never storage.
+The four writes (contract 3): `⟨setAvatarLibrary(key)⟩`, `⟨removeAvatarPhoto()⟩`, `⟨requestAvatarGoogle()⟩`, the
+upload route. **I never import `lib/storage/**` or a Supabase client in this PR.**
+
+## 5 · Strings — `src/messages/ar/profile.json` first, then `en/` (`profile.picture.*`)
+
+| Key | ar | en |
+|---|---|---|
+| `picture.title` | صورتك | Your picture |
+| `picture.upload` | ارفع صورة | Upload a photo |
+| `picture.google` | من Google | From Google |
+| `picture.remove` | أزل الصورة | Remove photo |
+| `picture.sets.characters` | شخصيات | Characters |
+| `picture.sets.objects` | أشياء | Objects |
+| `picture.grid` | الصور الرمزية | Avatars |
+| `picture.crop.cancel` | إلغاء | Cancel |
+| `picture.crop.zoom` | تكبير | Zoom |
+| `picture.crop.image` | الصورة | Image |
+| `picture.errors.type` | PNG أو JPG فقط | PNG or JPG only |
+| `picture.errors.size` | أكبر من {size} م.ب | Over {size} MB |
+| `picture.errors.upload` | تعذّر الرفع | Upload failed |
+| `picture.errors.save` | تعذّر الحفظ | Couldn't save |
+| `picture.retry` | أعد المحاولة | Try again |
+
+Reused, not duplicated: `profile.save` «حفظ», `profile.saving`, `profile.saved` «تم الحفظ», `ui.dialog.close`, the
+fifty names in `avatars.json` (read, never written). `{size}` is a number, passed through `formatNumber` and isolated
+in `<bdi>`. No plural (no count). «PNG»/«JPG» sit in `<bdi dir="ltr">` via `t.rich`. **A word or a number, never a
+sentence** — `errors.save` is the one addition the artboard does not draw (the brief's refusals list upload only).
+
+## 6 · Requests (files that are not mine)
+
+- **R1 → the lead, as `scoring`'s custodian — `src/components/hub/standing.tsx`, add-only.** `HubStanding` gains
+  `picture?: (avatar: ReactNode) => ReactNode` (a server-side wrapper; default identity), applied to the card's
+  `<Avatar>` at `:147` and the band's at `:238`. Every caller that passes nothing renders byte-identically.
+  `me/page.tsx` passes `(avatar) => <PictureButton picture={…} badge={editing}>{avatar}</PictureButton>`.
+- **R2 → the lead — `me/layout.tsx`'s band.** Pass the same wrapper so desktop has a way in. The layout knows neither
+  the path nor `?edit`, so the band's picture opens the sheet **on every hub page, without the badge**. ★ **D1** for the
+  lead: that, or the way in on desktop only via `/app/me` (a client check of the path inside my button).
+- **R3 → the lead — `ui/sheet` (and `ui/dialog`), add-only**: a `leading?: ReactNode` drawn at the inline-start of
+  the title row (the 80 px ring), and a `belowTitle?: ReactNode` (or the caller composes the title row and the
+  primitive takes `title` for the accessible name only, `visuallyHiddenTitle`). Optional `centered` for `lg` (§2.1).
+- **R4 → the lead — `ui/avatar`, add-only**: size `80` with a 4 px ring (the sheet's ring, `AvatarPicker.dc.html:96`).
+
+## 7 · ★ SCR-021's kept behaviour — everything the page does today, and that it still does it
+
+| # | Behaviour today (`me/page.tsx`, `profile-read.tsx`, `profile-edit.tsx`, `actions.ts`, `state.ts`) | After PR B | Kept by |
+|---|---|---|---|
+| K1 | Reads `getMe`, `listCompanies`, `getMyInterests` in one `Promise.all`; auth at the DAL | same three, **plus** the picture read in the same `Promise.all` | `REQ-PRF-001`, `-004` |
+| K2 | `h1` «حسابي» in `HubTopRow`, `back={false}` | unchanged | `REQ-UIX-071` |
+| K3 | The settings glyph is a link to `/app/me/settings` named «الإعدادات» | unchanged | `DEC-218` §4.5 |
+| K4 | The standing card on the phone (`lg:hidden`) in `<Suspense>` with its skeleton; the band from `lg` by the layout | unchanged; the avatar inside is wrapped by R1 — size, ring, `decorative`, and the moments untouched | contract 3 (wave 20), `DEC-218` §3.7 |
+| K5 | `HubStrip` | unchanged | `REQ-UIX-070` |
+| K6 | Edit mode is the URL `?edit`; «عدّل ملفك» and «إلغاء» are links that work before hydration | unchanged | `DEC-218` §4.3 |
+| K7 | Read mode's rows: الاسم · الشركة (dot via `--team`, or «بلا شركة») · المسمى if any · نبذة or «لا توجد نبذة بعد» · الاهتمامات chips if any · البريد `<bdi dir="ltr">` | unchanged — file not edited | `REQ-UIX-071`, `REQ-PRF-012` |
+| K8 | No company control and no leaderboard opt-out in edit mode; `profileInput` strict | unchanged | `DEC-254` §2.5, contract 5 (wave 20) |
+| K9 | Edit mode: controlled fields, the unsaved count in six ICU forms, `outline-accent` + sr-only «(معدّل)» on each changed field | unchanged — file not edited | SC 1.4.1, `DEC-149` §1 |
+| K10 | `noValidate`; `FormSummary` / focused `FormError` | unchanged | `CLAUDE.md` |
+| K11 | Save enabled in the server's HTML; a save before hydration persists | unchanged (`wave10-content-me-early-save.spec.ts` must pass untouched) | P11 (wave 20) |
+| K12 | Leaving with changes asks (links, captured) and `beforeunload` | unchanged; ★ the picture button is not an anchor, so it is **not** caught (§1) | `REQ-UIX-071` |
+| K13 | «تم الحفظ» once, then `router.replace("/app/me")`; `revalidatePath` | unchanged; the sheet's own save toasts the same key once | P10, P18 |
+| K14 | Interests travel with the profile as hidden `interests` values | unchanged | `REQ-PRF-001` |
+| K15 | The Google import prompt is **not** on `/app/me` (feed and privacy) | unchanged — the sheet's «من Google» is a separate path (`REQ-PRF-018`) | `REQ-PRF-008`, `DEC-180` |
+| K16 | No report control on any picture | unchanged, and the sheet adds none | ★ `DEC-280` §8 |
+
+`profile-read.tsx`, `profile-edit.tsx` and `state.ts` are **not edited**. `me/page.tsx` gains one read and one prop;
+`me/actions.ts` gains `savePicture` (and `state.ts` nothing — the outcome type lives in the new folder).
+
+## 8 · Files (all new unless stated)
+
+`src/components/avatar-picker/{picture-button.tsx, picture-sheet.tsx, library-grid.tsx, crop-step.tsx,
+crop-geometry.ts, encode.ts, use-min-width-lg.ts, upload.ts}` · `me/page.tsx` and `me/actions.ts` (add-only) ·
+`src/messages/{ar,en}/profile.json` (add-only, `picture.*`) · tests below.
+
+## 9 · Tests
+
+- **`tests/components/avatar-picker/picture-sheet.test.tsx`** — state A (the held key `aria-pressed`, no «أزل الصورة»),
+  B («أزل الصورة» shown, no key pressed), C (no «من Google»); fifty-in-two-sets, each button's name equal to
+  `avatars.json`'s and **no text node inside an avatar button**; the chips switch the set; a tap stages (the ring's
+  `img` changes, the action not called); «حفظ» calls the action once with the key; closing then reopening shows the
+  server's state and the action was never called; «أزل الصورة» stages the held key; «حفظ» with nothing staged closes
+  without a call; a `failed` outcome keeps the sheet open with «تعذّر الحفظ».
+- **`tests/components/avatar-picker/crop-step.test.tsx`** — a 21 MB file → «أكبر من 20 م.ب» and no crop; `image/gif`
+  → «PNG أو JPG فقط»; a decode failure → the same; an upload `500` → «تعذّر الرفع» and «أعد المحاولة» re-sends; a
+  `refused` status → «PNG أو JPG فقط»; «إلغاء» → back to the sheet with the earlier stage intact; the slider and the
+  stage have their names; `accept="image/png,image/jpeg"`.
+- **`tests/components/avatar-picker/crop-geometry.test.ts`, `encode.test.ts`** — cover, clamp, zoom about the centre,
+  tap-to-centre; the quality steps down until under the cap (a fake `toBlob`).
+- **`tests/components/me/picture-button.test.tsx`** — read: a button «صورتك», no badge; edit: the badge present and
+  `aria-hidden`; a click opens the sheet.
+- **`tests/e2e/wave29-content-picture.spec.ts`** (`page.click()` only, phone project 390 × 844, against the fixture
+  member): (1) open `/ar/app/me`, click «صورتك», click «أشياء», click «الكلاكيت», click «حفظ» → the shell's account
+  avatar's `img` ends `/avatars/objects/clapper.svg`, and survives a reload; (2) open, click another avatar, close by a
+  click on the scrim (`page.mouse.click` above the sheet — a pointer, not a key) → the shell's `img` is unchanged, and
+  after a reload too; (3) the crop opens on a fixture PNG (`setInputFiles` — the file chooser is the one non-click
+  step) and «إلغاء» returns unchanged. The upload end to end with the real worker is `platform`'s spec.
+- **Captures:** `.qa-shots/rtl/wave29-content-picture-{library,photo,nogoogle,crop,crop-refused}-390.png` and
+  `…-desktop-1280.png`, from the production build the row names, held beside the three PNGs.
+- **Ledger:** I expect **no** existing assertion to change. Specs that read the standing (`wave20-scoring-standing`,
+  `wave20-content-hub`, `wave19-scoring-profile`, `wave7-content-me`) are run once R1 lands; any change is a ledger line.
+
+## 10 · Disagreements and questions — nobody picks a side
+
+- **D1** — desktop's way in (R2): every hub page's band, or `/app/me` only.
+- **D2** — «من Google» staged with no visible change in the ring (F4) vs. saving at once.
+- **D3** — AVA-10 «both sets scroll in the one grid; the chips switch sets» vs. `AVATARS.md` «chips above a grid»: I
+  read it as **one grid element that shows the chosen set and scrolls** (25 = 5 rows over a 280 px window); the
+  alternative is all fifty in one scroll with the chips jumping to a set. The artboards cannot tell the two apart.
+- **D4** — «تعذّر الحفظ» for a failed library/Google save is not drawn; it is the one word I add.
+- **Q1** — `platform`'s names (§3.4, §4); I build against the placeholders' shapes and rename when they land.
+
+## 11 · Built (after «the plan is approved», DEC-281's rulings applied)
+
+- **Contract 3 used verbatim**: `types.ts` aliases `AvatarSheet` / `AvatarWriteResult` (types only); `me/actions.ts`
+  gains `savePicture(locale, choice)` (Zod over `library{key ∈ AVATAR_KEYS}` · `remove` · `google` →
+  `pickAvatarKey` / `removeAvatarPhoto` / `requestAvatarGoogle`; `revalidatePath(/{locale}/app, "layout")` on `ok`) and
+  `readPicture(locale)` (`getAvatarSheet`). ★ The removal is `removeAvatarPhoto()` (the lead's ruling), not a
+  `library(heldKey)` pick; a tap on the held key while a photo is current stages the same removal.
+- **The upload**: `upload.ts` imports `MAX_UPLOAD_BYTES` from `platform`'s `src/lib/avatar-upload.ts`; 415 →
+  «PNG أو JPG فقط», any other non-202, `failed`, `cancelled`, 404 or the 20 s budget → «تعذّر الرفع» + «أعد المحاولة».
+- **The way in**: `picture-wrap.tsx` (server) builds `HubStanding`'s `picture` wrapper once — ملفي's page calls
+  `pictureWrap(locale, { badge: editing })`; ★ **the lead's band (R2) calls `pictureWrap(locale)`**, no badge.
+- **«من Google» after «حفظ»**: the button re-reads the sheet through `readPicture` on the upload's budget and refreshes
+  the page when the Google copy's `href` lands (DEC-281 §7 — the ring never previews it).
+- **One string beyond §5**: `picture.sets.label` «المجموعات» — the chips' group name, never drawn.
+- **Two deviations from the artboard, named**: «صورتك» on the crop is the frame's title at the start of its row, not
+  centred (`ui/sheet` draws the one title); «أزل الصورة» wears `text-error` (the on-dark error constant), not the
+  drawn `#FF6E4F`, which is `signal` — check-in's alone (`button.tsx`'s `signal` note).
+- **Tests**: `tests/components/avatar-picker/{picture-sheet,geometry-and-upload}.test.tsx` (19 + 10),
+  `tests/components/me/picture-button.test.tsx` (3) — green; `tests/e2e/wave29-content-picture.spec.ts` (three cases,
+  click-only but the file chooser) — **written, not yet run**: it needs `0222` and `platform`'s functions applied, so
+  the lead runs it. Captures `wave29-content-picture-{nogoogle,library,crop}-390.png`; the photo state and 1280 follow
+  once R2 and a real upload exist.
+- **Ledger** (`wave-29-ledger-b.md`): **no existing assertion changed.** `tests/components/me/profile-wave20.test.tsx`
+  and every `/app/me` spec are untouched; `profile-read.tsx`, `profile-edit.tsx` and `state.ts` are not edited.
+- **Found, not mine**: `proposal-copy.test.tsx` fails on the lead's new `admin.members.takeDownTitle`
+  («<bdi>{name}</bdi>» — the catalogue test wants `<t>{name}</t>`); `delete-sessions.test.tsx` failed once under the
+  full suite's load and passes alone.
+
+---
+
 # notes — `content` teammate (wave 2, M5)
 
 Working notes for the MAT / TSK / photos (EVT-009…015) / DSC track. Not a plan document —

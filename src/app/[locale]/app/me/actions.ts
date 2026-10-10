@@ -2,7 +2,10 @@
 
 import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import type { Locale } from "@/i18n/routing";
+import { AVATAR_KEYS } from "@/lib/avatar-library";
+import { getAvatarSheet, pickAvatarKey, removeAvatarPhoto, requestAvatarGoogle, type AvatarSheet, type AvatarWriteResult } from "@/lib/dal/avatars";
 import { interestsInput, profileInput, setMyInterests, updateMyProfile } from "@/lib/dal/members";
 import { formStateFrom, was, withErrors, withFormError, zodErrors } from "@/lib/form-state";
 import { PROFILE_FIELDS, type ProfileField, type ProfileState } from "./state";
@@ -65,4 +68,35 @@ export async function saveProfile(locale: Locale, prev: ProfileState, formData: 
 
   revalidatePath(`/${locale}/app/me`);
   return { ...state, errors: {}, formError: null, saved: true };
+}
+
+// ★ Wave 29 — the sheet «صورتك»'s «حفظ» (REQ-PRF-016, REQ-PRF-018, REQ-PRF-019, DEC-280 §2, DEC-281). Zod first; the
+// write is `platform`'s (contract 3), one RPC and one transaction, the member re-derived from the session. A removal
+// keeps the held key and declines Google (`removeAvatarPhoto`); «من Google» answers `ok` while the copy is made. An
+// upload is not here: it is a Route Handler, for the 1 MB body cap.
+const pictureChoice = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("library"), key: z.enum(AVATAR_KEYS) }),
+  z.object({ kind: z.literal("remove") }),
+  z.object({ kind: z.literal("google") }),
+]);
+
+export async function savePicture(locale: Locale, choice: unknown): Promise<AvatarWriteResult> {
+  const parsed = pictureChoice.safeParse(choice);
+  if (!parsed.success) return { status: "failed" };
+  let result: AvatarWriteResult;
+  try {
+    const c = parsed.data;
+    result = c.kind === "library" ? await pickAvatarKey(locale, c.key) : c.kind === "remove" ? await removeAvatarPhoto(locale) : await requestAvatarGoogle(locale);
+  } catch (e) {
+    unstable_rethrow(e);
+    return { status: "failed" };
+  }
+  // The shell's account avatar, the standing and every hub page reread the picture.
+  if (result.status === "ok") revalidatePath(`/${locale}/app`, "layout");
+  return result;
+}
+
+/** The sheet's state, re-read after «من Google» to learn when the copy lands. */
+export async function readPicture(locale: Locale): Promise<AvatarSheet> {
+  return getAvatarSheet(locale);
 }
