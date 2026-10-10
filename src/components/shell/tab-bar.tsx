@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { Link } from "@/i18n/navigation";
+import { switchKind } from "@/lib/ui/nav-motion";
 import { CalendarIcon, HomeIcon, PlusIcon, TrophyIcon, UserIcon } from "@/components/ui/icons";
 import { NAV, type NavKey } from "@/components/shell/nav-items";
 import { isAdminConsole, isImmersive, shellPath } from "@/components/shell/shell-routes";
@@ -48,14 +49,18 @@ export function TabBar({ labels }: TabBarProps) {
       style={{ paddingBlockEnd: "env(safe-area-inset-bottom, 0px)" }}
     >
       <ul className="mx-auto flex h-20 max-w-xl items-end justify-around px-2 pb-3.5">
-        {NAV.map(({ key, href, current: isCurrent }) => {
+        {NAV.map(({ key, href, current: isCurrent }, index) => {
           const current = isCurrent(path);
+          // ★ Wave 29 (REQ-UIX-121, REQ-UIX-125): each tab presses, and its content arrives from its own side.
+          const nav = switchKind(index, NAV.findIndex((n) => n.current(path)));
           const Icon = ICONS[key];
           if (key === "propose") {
             return (
               <li key={key} className="flex w-[62px] justify-center self-start">
                 <Link
                   href={href}
+                  data-nav-kind={nav}
+                  data-press=""
                   aria-label={labels.proposeFull}
                   aria-current={current ? "page" : undefined}
                   className={`-mt-[18px] inline-flex size-14 items-center justify-center rounded-full focus-visible:outline-[length:var(--focus-width)] focus-visible:outline-offset-4 focus-visible:outline-[var(--ring)] ${
@@ -66,7 +71,7 @@ export function TabBar({ labels }: TabBarProps) {
                       : "bg-accent text-on-accent shadow-[0_5px_0_var(--accent-deep),0_0_0_5px_var(--bg)]"
                   }`}
                 >
-                  <PlusIcon aria-hidden className="text-[1.75rem]" />
+                  <PlusIcon aria-hidden data-nav-jump-icon="" className="text-[1.75rem]" />
                 </Link>
               </li>
             );
@@ -75,6 +80,8 @@ export function TabBar({ labels }: TabBarProps) {
             <li key={key} className="w-[62px]">
               <Link
                 href={href}
+                data-nav-kind={nav}
+                data-press=""
                 aria-current={current ? "page" : undefined}
                 className={`relative flex min-h-11 flex-col items-center gap-[3px] py-1.5 text-[0.6875rem] leading-tight font-bold ${
                   current ? "text-accent" : "text-fg-muted"
@@ -83,7 +90,7 @@ export function TabBar({ labels }: TabBarProps) {
                 {/* More than colour marks the current tab (REQ-UIX-054): a dot above
                     it, absolute so it costs no height. */}
                 <span aria-hidden className={`absolute -top-0.5 block size-1 rounded-full ${current ? "bg-accent" : "bg-transparent"}`} />
-                <Icon aria-hidden className="text-[1.5rem]" />
+                <Icon aria-hidden data-nav-jump-icon="" className="text-[1.5rem]" />
                 <span>{labels[key]}</span>
               </Link>
             </li>

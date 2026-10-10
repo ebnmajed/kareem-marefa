@@ -38,8 +38,9 @@ export function Sheet({ open, onOpenChange, title, description, side = "bottom",
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal container={landing}>
-        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-[var(--color-navy-950)]/60 pg:bg-scrim" />
+        <RadixDialog.Overlay data-sheet-scrim="" className="fixed inset-0 z-40 bg-[var(--color-navy-950)]/60 pg:bg-scrim" />
         <RadixDialog.Content
+          data-sheet={side}
           className={`fixed z-50 overflow-y-auto border-edge bg-[var(--color-canvas)] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] text-fg-body shadow-xl outline-none ${sidePosition[side]} pg:bg-surface pg:shadow-none`}
         >
           {side === "bottom" ? (

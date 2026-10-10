@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { Link } from "@/i18n/navigation";
+import { switchKind } from "@/lib/ui/nav-motion";
 import { CalendarIcon, ChartIcon, HomeIcon, PlusIcon, TrophyIcon, UserIcon, UsersIcon } from "@/components/ui/icons";
 import { MEMBERS, NAV, type NavKey } from "@/components/shell/nav-items";
 import { hasNavRail, shellPath } from "@/components/shell/shell-routes";
@@ -40,6 +41,7 @@ export function NavRail({ labels, isStaff, isPlatformAdmin, attentionCount }: Na
   if (!hasNavRail(pathname)) return null;
   const path = shellPath(pathname);
 
+  const RAIL = [...NAV.filter((n) => n.key !== "propose").slice(0, 2), MEMBERS, ...NAV.filter((n) => n.key !== "propose").slice(2)];
   return (
     <nav aria-label={labels.nav} className="sticky top-[88px] hidden w-[220px] shrink-0 flex-col gap-1.5 self-start lg:flex">
       <Link
@@ -51,17 +53,21 @@ export function NavRail({ labels, isStaff, isPlatformAdmin, attentionCount }: Na
         {labels.propose}
       </Link>
 
-      {[...NAV.filter((n) => n.key !== "propose").slice(0, 2), MEMBERS, ...NAV.filter((n) => n.key !== "propose").slice(2)].map(({ key, href, current: isCurrent }) => {
+      {RAIL.map(({ key, href, current: isCurrent }, index) => {
         const current = isCurrent(path);
+        // ★ Wave 29 (REQ-UIX-125): the rail switches as the tabs do — from the tapped item's side, in rail order.
+        const nav = switchKind(index, RAIL.findIndex((n) => n.current(path)));
         const Icon = key === "members" ? UsersIcon : ICONS[key as Exclude<NavKey, "propose">];
         return (
           <Link
             key={key}
             href={href}
+            data-nav-kind={nav}
+            data-press=""
             aria-current={current ? "page" : undefined}
             className={`${item} ${current ? "bg-surface font-bold text-accent" : "text-fg-heading"}`}
           >
-            <Icon aria-hidden className="text-[1.375rem]" />
+            <Icon aria-hidden data-nav-jump-icon="" className="text-[1.375rem]" />
             {key === "members" ? labels.members : labels[key as Exclude<NavKey, "propose">]}
           </Link>
         );

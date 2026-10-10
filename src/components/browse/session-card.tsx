@@ -5,6 +5,7 @@ import { formatDate, formatNumber, formatTime } from "@/components/sessions/nume
 import { AvatarStack } from "@/components/ui/avatar";
 import { Badge, SessionStatusBadge } from "@/components/ui/badge";
 import { Card, CardActions, CardBody, CardMedia } from "@/components/ui/card";
+import { PosterName } from "@/components/shell/poster-name";
 import { TagChip } from "@/components/ui/tag-chip";
 import type { TimelineSession } from "@/lib/dal/search";
 
@@ -68,8 +69,10 @@ export async function SessionCard({ session, locale, pinned = false }: { session
   })();
 
   return (
-    <Card density={pinned ? "wide" : "row"} href={`/app/sessions/${session.id}`}>
-      <CardMedia src={session.posterUrl} placeholderFrom={session.title} aspect="4/5" dimmed={ended} />
+    <Card density={pinned ? "wide" : "row"} href={`/app/sessions/${session.id}`} nav="jump">
+      <PosterName sessionId={session.id}>
+        <CardMedia src={session.posterUrl} placeholderFrom={session.title} aspect="4/5" dimmed={ended} />
+      </PosterName>
       <CardBody>
         <div className="flex flex-wrap items-center gap-2">
           {pinned ? <span className="text-label text-fg-heading">{t("timeline.pinned")}</span> : null}

@@ -1,4 +1,4 @@
-import { cache, Suspense, type ReactNode } from "react";
+import { cache, Suspense, type CSSProperties, type ReactNode } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -299,7 +299,8 @@ export default async function EventPage({
 
         {/* The card first after the hero, in flow (DEC-045); from `lg` the full-width action row, sticky once
             scrolled past (§4.73). The element is never transformed, filtered or clipped — moment 1 thuds INSIDE it. */}
-        <div className="mt-4 lg:sticky lg:top-[var(--header-h)] lg:z-20">
+        {/* ★ Wave 29 (REQ-UIX-122): after a jump the blocks under the hero drop in 40 ms apart, the action last. */}
+        <div className="nav-drop mt-4 lg:sticky lg:top-[var(--header-h)] lg:z-20" style={{ "--i": 3 } as CSSProperties}>
           <ActionCard
             session={session}
             phase={phase}
@@ -322,21 +323,21 @@ export default async function EventPage({
         </div>
 
         {phase === "ended" ? (
-          <div className="mt-3">
+          <div className="nav-drop mt-3" style={{ "--i": 1 } as CSSProperties}>
             <Suspense fallback={null}>
               <EventRecap attended={figures.attendedCount} registered={rsvp?.confirmedCount ?? null} photos={summaries.photos} />
             </Suspense>
           </div>
         ) : null}
 
-        <div className="mt-5">
+        <div className="nav-drop mt-5" style={{ "--i": 1 } as CSSProperties}>
           {/* The sub-nav lists exactly the sections that render; a row-high placeholder holds its place. */}
           <Suspense fallback={<div aria-hidden="true" className="h-14 border-b border-edge" />}>
             <SubnavFor order={order} gates={gates} summaries={summaries} label={t("sectionsNav")} labels={navLabels} />
           </Suspense>
         </div>
 
-        <div className="mt-6 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-8">
+        <div className="nav-drop mt-6 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-8" style={{ "--i": 2 } as CSSProperties}>
           <div className="flex min-w-0 flex-col gap-10">{order.map((sectionId) => sections[sectionId])}</div>
           <EventAside session={session} phase={phase} reserved={rsvp?.confirmedCount ?? null} attended={figures.attendedCount} faces={faces} team={team} />
         </div>

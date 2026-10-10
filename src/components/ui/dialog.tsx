@@ -62,7 +62,7 @@ export function DialogContent({ title, description, closeLabel, size = "default"
   return (
     <RadixDialog.Portal container={landing}>
       <RadixDialog.Overlay className="fixed inset-0 z-40 bg-[var(--color-navy-950)]/60 motion-safe:animate-[fade-in_150ms_ease-out] pg:bg-scrim" />
-      <RadixDialog.Content className={`${FRAME[size]} ${className}`} data-size={size} {...props}>
+      <RadixDialog.Content className={`${FRAME[size]} ${className}`} data-size={size} data-dialog="" {...props}>
         <div className={`flex items-start justify-between gap-4 ${media ? "shrink-0 items-center" : ""}`}>
           <RadixDialog.Title className={media ? "min-w-0 text-body font-semibold text-white" : "text-h3 text-[var(--fg-heading)]"}>
             {title}

@@ -8,7 +8,7 @@
 // changes nothing; `--prune` refuses. A control the system genuinely cannot express takes a
 // reasoned `ui-lint-disable-next-line`, approved in review — never a list.
 //
-// Two rules, over src/app/** and src/components/**:
+// Two rules, over src/app/** and src/components/** — and ★ a third, `keyframes`, over globals.css and src/lib/ui (wave 29):
 //
 //   field         a JSX <input>/<select>/<textarea> with no <Field> ancestor
 //   class-string  a string literal matching /rounded-field border border-edge(-strong)?/
@@ -154,6 +154,47 @@ for (const f of Object.keys(found)) {
   }
 }
 
+// ★ Rule 3, `keyframes` — wave 29 (DEC-280 §5, REQ-UIX-020, REQ-UIX-130). Motion moves only `transform`, `opacity` and
+// `filter`. Every `@keyframes` in `globals.css`, and every keyframe passed to `element.animate()` under
+// `src/lib/ui/`, animates nothing else — unless the line right above it carries a written reason,
+// `ui-lint-keyframes: <why>`. The two the transitions spec names are the story portal's `border-radius` and the
+// poster's view-transition group (whose size the browser animates, so it is never written here); the five that predate
+// the rule carry theirs: the mark's and the sting's stroke draws, the cut-in's clip, the stepper's colour.
+const MOTION_OK = new Set(['transform', 'opacity', 'filter', 'translate', 'scale', 'rotate', 'offset', 'animation-timing-function', 'transform-origin', 'transformOrigin', 'easing'])
+const REASON = /ui-lint-keyframes:\s*\S/
+{
+  const css = readFileSync(join(ROOT, 'src/app/globals.css'), 'utf8')
+  const lines = css.split('\n')
+  for (const m of css.matchAll(/@keyframes\s+([\w-]+)\s*\{/g)) {
+    let depth = 1
+    let j = m.index + m[0].length
+    while (depth && j < css.length) {
+      if (css[j] === '{') depth++
+      else if (css[j] === '}') depth--
+      j++
+    }
+    const body = css.slice(m.index + m[0].length, j - 1).replace(/\/\*[\s\S]*?\*\//g, '')
+    const bad = [...body.matchAll(/([a-z-]+)\s*:/g)].map((p) => p[1]).filter((p) => !MOTION_OK.has(p))
+    const line = css.slice(0, m.index).split('\n').length
+    if (bad.length && !REASON.test(lines[line - 2] ?? '')) {
+      failures.push(`src/app/globals.css:${line}  @keyframes ${m[1]} animates ${[...new Set(bad)].join(', ')} — transform, opacity and filter only (REQ-UIX-020), or a \`ui-lint-keyframes:\` reason above it`)
+    }
+  }
+  const libUi = join(ROOT, 'src/lib/ui')
+  for (const name of readdirSync(libUi).filter((n) => n.endsWith('.ts'))) {
+    const src = readFileSync(join(libUi, name), 'utf8')
+    const srcLines = src.split('\n')
+    srcLines.forEach((text, i) => {
+      if (!/^\s*\{\s*[a-zA-Z]+\s*:/.test(text) || !/\.animate\(/.test(srcLines.slice(Math.max(0, i - 6), i + 1).join('\n'))) return
+      const keys = [...text.matchAll(/([a-zA-Z]+)\s*:/g)].map((k) => k[1])
+      const bad = keys.filter((k) => !MOTION_OK.has(k) && !['duration', 'fill', 'iterations', 'delay', 'composite'].includes(k))
+      if (bad.length && !srcLines.slice(Math.max(0, i - 8), i).some((l) => REASON.test(l))) {
+        failures.push(`src/lib/ui/${name}:${i + 1}  element.animate() moves ${bad.join(', ')} — transform, opacity and filter only, or a \`ui-lint-keyframes:\` reason above it`)
+      }
+    })
+  }
+}
+
 if (failures.length) {
   console.error(`\n✗ ui-lint (${failures.length}):`)
   for (const l of failures.slice(0, 40)) console.error(`    ${l}`)
@@ -162,4 +203,4 @@ if (failures.length) {
   console.error('express the control — add `// ui-lint-disable-next-line <rule> — <reason>` above the line, for review.\n')
   process.exit(1)
 }
-console.log(`✓ ui-lint · ${files.length} files · strict — no allowlist, no exceptions but reasoned escapes`)
+console.log(`✓ ui-lint · ${files.length} files · strict — no allowlist, no exceptions but reasoned escapes · keyframes: transform, opacity, filter`)

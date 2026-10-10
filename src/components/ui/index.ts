@@ -95,6 +95,8 @@ export interface CardProps extends Styleable {
   density?: CardDensity;
   /** The whole card is one link; nested interactives stop propagation. */
   href?: string;
+  /** ★ Wave 29 (DEC-280, add-only): the move the card's link asks for — `ui/link`'s `nav`. */
+  nav?: import("@/lib/ui/nav-motion").LinkNavKind;
   children: ReactNode;
 }
 
@@ -475,6 +477,12 @@ export interface UiLinkProps extends Omit<ComponentProps<"a">, "href"> {
   href: string;
   /** Suppress the inline pending affordance where it would be noise. */
   quiet?: boolean;
+  /**
+   * ★ Wave 29 (DEC-280 §5, REQ-UIX-121 … 125): the move this link asks for — `jump` (the poster), `push` (a child
+   * screen), `switch-start` / `switch-end` (a tab, from the tapped side). It presses on tap; the move plays when the
+   * next screen commits. Absent, the link presses nothing and cuts. Never set in the console (REQ-UIX-129).
+   */
+  nav?: import("@/lib/ui/nav-motion").LinkNavKind;
   children: ReactNode;
 }
 

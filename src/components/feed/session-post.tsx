@@ -16,6 +16,7 @@ import { Card } from "@/components/ui/card";
 import { CommentIcon } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
 import { Poster } from "@/components/ui/poster";
+import { PosterName } from "@/components/shell/poster-name";
 import { MomentPart, ReserveCta, ReserveMoment, ReserveRefused, type ReserveMomentLabels } from "@/components/sessions/moment-reserve";
 import { SessionCta } from "@/components/ui/session-cta";
 import { Sticker } from "@/components/ui/sticker";
@@ -154,7 +155,9 @@ export async function SessionPost({ post, locale, today }: { post: SessionPostDa
           </div>
 
           <div className="flex flex-col gap-3 @min-[34rem]:flex-row @min-[34rem]:items-start">
-            <Link href={post.href} quiet aria-label={t("post.posterName", { title: post.title })} className={`block rounded-tile @min-[34rem]:shrink-0 ${live ? "@min-[34rem]:w-[260px]" : "@min-[34rem]:w-40"}`}>
+            <Link href={post.href} quiet nav="jump" aria-label={t("post.posterName", { title: post.title })} className={`block rounded-tile @min-[34rem]:shrink-0 ${live ? "@min-[34rem]:w-[260px]" : "@min-[34rem]:w-40"}`}>
+              {/* ★ Wave 29 (REQ-UIX-122): the poster jumps into the event's hero. */}
+              <PosterName sessionId={post.id}>
               <Poster
                 src={post.posterUrl}
                 title={post.title}
@@ -169,6 +172,7 @@ export async function SessionPost({ post, locale, today }: { post: SessionPostDa
                 // real text, so it drains to grey at full opacity — `opacity-45` took them under 4.5:1 (REQ-NFR-007).
                 className={cancelled ? (post.posterUrl ? "opacity-45 grayscale" : "grayscale") : ""}
               />
+              </PosterName>
             </Link>
             <div className="flex min-w-0 flex-1 flex-col gap-2">
               <h3 className="sr-only @min-[34rem]:not-sr-only font-display text-play-sm leading-[1.4] font-extrabold text-fg-heading">
