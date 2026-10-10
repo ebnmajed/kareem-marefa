@@ -48,6 +48,7 @@ import { assert_storage_prefixes } from "./tasks/assert_storage_prefixes.js";
 import { expire_impersonation } from "./tasks/expire_impersonation.js";
 import { build_data_export } from "./tasks/build_data_export.js";
 import { import_avatar } from "./tasks/import_avatar.js";
+import { process_avatar_upload } from "./tasks/process_avatar_upload.js";
 import { generate_story_frames } from "./tasks/generate_story_frames.js"; // wave 26, REQ-STO-004 — the three clock-driven triggers, minutely
 import { purge_story_video } from "./tasks/purge_story_video.js"; // wave 26, REQ-STO-016 — a removed or deleted frame's objects
 import { transcode_story_video } from "./tasks/transcode_story_video.js"; // wave 26, REQ-STO-016 — ffmpeg from the image, never an npm package (DEC-181)
@@ -110,7 +111,7 @@ const runner = await run({
   // minute. Concurrency stays 1 (DEC-051) — this is the cheaper knob, and
   // it is the one the measurement pointed at.
   pollInterval: POLL_INTERVAL_MS,
-  taskList: { ping, promote_waitlist, rotate_codes, start_session, complete_session, award_points, send_notification, award_presenter_points, evaluate_no_shows, audit_balances, send_reminder, rsvp_nudge, rating_prompt, schedule_reminders, calendar_upsert, calendar_delete, refresh_calendar_tokens, convert_document, render_pages, process_photo, evaluate_streaks, evaluate_badges, evaluate_levels_perks, snapshot_leaderboards, render_variant, regenerate_poster, materialise_font, issue_certificates, enforce_retention, anonymise_members, assert_storage_prefixes, expire_impersonation, build_data_export, delete_org, evaluate_alerts, record_survey_response, send_test_email, import_avatar, zip_session_photos, send_member_invitation, generate_story_frames, transcode_story_video, purge_story_video, publish_announcement, backfill_story_derivatives },
+  taskList: { ping, promote_waitlist, rotate_codes, start_session, complete_session, award_points, send_notification, award_presenter_points, evaluate_no_shows, audit_balances, send_reminder, rsvp_nudge, rating_prompt, schedule_reminders, calendar_upsert, calendar_delete, refresh_calendar_tokens, convert_document, render_pages, process_photo, evaluate_streaks, evaluate_badges, evaluate_levels_perks, snapshot_leaderboards, render_variant, regenerate_poster, materialise_font, issue_certificates, enforce_retention, anonymise_members, assert_storage_prefixes, expire_impersonation, build_data_export, delete_org, evaluate_alerts, record_survey_response, send_test_email, import_avatar, process_avatar_upload, zip_session_photos, send_member_invitation, generate_story_frames, transcode_story_video, purge_story_video, publish_announcement, backfill_story_derivatives },
   // 11 §2.1: the clock runs every minute. Both functions are idempotent and
   // only move forward along 02 §6.2 (migration 0022), so a missed or doubled
   // tick is harmless. Inline rather than a crontab file so the image carries

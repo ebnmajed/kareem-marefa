@@ -218,10 +218,22 @@ a re-request re-enqueues under the same key, which moves the job rather than dup
 to «نستخدم صورتك من Google؟», and a sign-in that changes Google's source URL for a member who said yes
 **Out:** the member's picture in platform storage under the org's prefix — EXIF-stripped, 96 px and
 192 px WebP — and the row pointing at it
-**Key:** `avatar:{member_id}` · **Retry:** 3 × 60 s · **Queue:** `convert`
+**Key:** `avatar:{member_id}` · **Retry:** 3 × 60 s · **Queue:** `convert` — ★ from `0223` (`DEC-281` §3) `avatar:{member_id}`, 5 attempts
+**Notes (wave 29):** ★ the reconcile never fetches over an **upload** (`avatar_source = 'upload'`) — it keeps the current version and purges the rest; an anonymised member's `avatars` and `avatar-staging` prefixes are both purged.
 **Notes:** ★ it fetches from **Google's image host only**, with a byte cap, and sniffs the bytes before
 anything is stored; a failure leaves initials, never a broken frame. `members.avatar_url` stays the
 source and is never rendered. Named provisionally; `platform`'s plan confirms the name at sync 1.
+
+#### `JOB-process_avatar_upload` ★ `DEC-281`
+**Serves:** `REQ-PRF-017`, `REQ-PRF-010` · **Trigger:** `begin_avatar_upload()`, called by `POST /api/avatars/upload` once a
+member's cropped JPEG has landed in `avatar-staging`
+**Out:** the member's own picture under the org's prefix — sniffed on content, EXIF-stripped, 96 px and 192 px WebP —
+the row's version moved with `avatar_source = 'upload'`, every other version and the staged file deleted; or the
+upload marked `refused` (not PNG/JPEG by its bytes) or `failed`
+**Key:** `avatar-upload:{member_id}` · **Retry:** 5 · **Queue:** `avatar:{member_id}` (with `import_avatar`, so one
+member's writes are serial)
+**Notes:** reads the `avatar_uploads` row, never the payload, so a second upload before the first ran loses nothing; on
+its last attempt it marks the row `failed` so the sheet reads «تعذّر الرفع». No npm image package (`DEC-181`).
 
 #### `JOB-transcode_audio` · `JOB-cleanup_rejected`
 **Keys:** `audio:{version_id}` · `cleanup:{date}`

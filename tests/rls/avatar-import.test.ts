@@ -21,7 +21,8 @@ const SOURCE = "https://lh3.googleusercontent.com/a/ACg8ocTEST=s96-c";
 
 async function apply(tx: Tx) {
   if (existsSync(join(process.cwd(), "supabase", "proposed", FILE))) await applyProposed(tx, FILE);
-  await applyProposed(tx, WAVE29);
+  // ★ Promoted as 0223 (DEC-281): applied only while the proposed copy still exists.
+  if (existsSync(join(process.cwd(), "supabase", "proposed", WAVE29))) await applyProposed(tx, WAVE29);
 }
 
 async function jobsForKey(tx: Tx, key: string) {

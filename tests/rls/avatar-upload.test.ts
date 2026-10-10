@@ -3,7 +3,9 @@
 // applied inside each transaction and rolled back until it is promoted.
 //
 // ★ The cases the wave names: an upload REPLACES a Google copy (the old version unreadable at once), and a Google
-//   refresh NEVER overwrites an upload — neither the trigger, nor an import in flight, nor a «لا» on the privacy page.
+//   refresh NEVER overwrites an upload — neither the trigger, nor an import { join } from "node:path";
+import { existsSync } from "node:fs";
+import in flight, nor a «لا» on the privacy page.
 
 import { afterAll, describe, expect, it } from "vitest";
 import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
@@ -30,7 +32,8 @@ async function jobs(tx: Tx, key: string) {
 /** A member of org A with a Google source; optionally a stored copy of a given source. */
 async function ready(tx: Tx, opts: { answer?: "accepted" | "declined" | null; version?: number | null; source?: "google" | "upload" | null } = {}) {
   const f = await seed(tx);
-  await applyProposed(tx, FILE);
+  // ★ Promoted as 0223 (DEC-281): applied only while the proposed copy still exists.
+  if (existsSync(join(process.cwd(), "supabase", "proposed", FILE))) await applyProposed(tx, FILE);
   await tx.asOwner();
   const who = f.a.members[1];
   await tx.q(`update public.members set avatar_url = $2, avatar_import = $3, avatar_version = $4, avatar_source = $5 where id = $1`, [

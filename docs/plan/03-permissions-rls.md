@@ -2272,6 +2272,21 @@ generated suite is the highest-value test in the product.
 | `POL-avatar_staging_insert.other_member_refused` · `.other_org_refused` | Another member's prefix, or another org's, ✗. |
 | `POL-avatar_staging.no_read_back` · `.no_delete` | A member's select or delete of a staged object, their own included, ✗. |
 | `TBL-avatar_uploads.no_client_access` | A select, insert or update of `avatar_uploads` by `authenticated` → 42501. |
+| ★ **wave 29, migration `0223`** — `platform` — the member's own picture: upload, «من Google», a pick, «أزل الصورة», the takedown (`DEC-281`) |
+  | `RPC-begin_avatar_upload.self_only` · `.replaces_pending` · `.enqueues` | the caller's row; a second id replaces the first; one job |
+  | `RPC-record_avatar_upload.worker_only` · `.replaces_google_copy` · `.stale_when_cancelled` · `.stale_when_superseded` · `.stale_when_anonymised` | |
+  | `RPC-fail_avatar_upload.worker_only` · `.only_pending` | |
+  | `RPC-record_avatar_copy.never_over_upload` | a refresh never overwrites an upload |
+  | `TRG-members_avatar_source_changed.not_while_upload` | a changed source enqueues nothing while an upload is current |
+  | `RPC-set_avatar_import.decline_keeps_upload` · `.accept_keeps_upload` | |
+  | `RPC-request_avatar_google.replaces_upload` · `.no_source` · `.cancels_pending` · `.keeps_current_copy` | |
+  | `RPC-set_avatar_library.clears_photo` · `.invalid_key` · `.declines_and_audits` · `.cancels_pending` | |
+  | `RPC-remove_avatar_photo.clears` · `.no_photo` | |
+  | `RPC-take_down_avatar.admin_only` · `.audited` · `.library_refused` · `.reverts_to_key` | |
+  | `RPC-anonymise_members.upload` | version, key, source, answer null; the uploads row gone; the reconcile enqueued |
+  | `RPC-my_avatar.sheet_keys` · `RPC-my_avatar_upload.self_only` · `RPC-avatar_job_target.source_and_upload` | |
+  | `POL-avatars_storage_read.upload_current` | an upload's current version is served like a copy |
+  | `ENUM-report_target.no_picture` | unchanged |
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.
 

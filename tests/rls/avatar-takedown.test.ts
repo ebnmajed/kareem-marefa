@@ -4,6 +4,8 @@
 // ★ Admin only, the actor's org only, audited; a library avatar cannot be taken down; the member reverts to the key
 //   they hold — never initials — and no refresh restores a Google copy.
 
+import { join } from "node:path";
+import { existsSync } from "node:fs";
 import { afterAll, describe, expect, it } from "vitest";
 import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
@@ -15,7 +17,8 @@ const SOURCE = "https://lh3.googleusercontent.com/a/ACg8ocTEST=s96-c";
 
 async function ready(tx: Tx, opts: { answer?: "accepted" | null; version?: number | null; source?: "google" | "upload" | null } = {}) {
   const f = await seed(tx);
-  await applyProposed(tx, FILE);
+  // ★ Promoted as 0223 (DEC-281): applied only while the proposed copy still exists.
+  if (existsSync(join(process.cwd(), "supabase", "proposed", FILE))) await applyProposed(tx, FILE);
   await tx.asOwner();
   const who = f.a.members[1];
   await tx.q(

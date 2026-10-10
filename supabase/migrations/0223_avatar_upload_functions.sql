@@ -1,6 +1,6 @@
--- proposed · platform (wave 29, PR B) — the member's own picture: an upload, «من Google», a library pick, «أزل الصورة»,
--- an admin's takedown (DEC-280 §2 – §4, §8; DEC-281; REQ-PRF-008, REQ-PRF-010, REQ-PRF-011, REQ-PRF-016 … REQ-PRF-019,
--- REQ-ADM-010). For the lead to promote as `0223`.
+-- 0223 · promoted by the lead from supabase/proposed/platform/0011_avatar_uploads.sql — platform (wave 29, PR B): the
+-- member's own picture — an upload, «من Google», a library pick, «أزل الصورة», an admin's takedown (DEC-280 §2 – §4, §8;
+-- DEC-281; REQ-PRF-008, REQ-PRF-010, REQ-PRF-011, REQ-PRF-016 … REQ-PRF-019, REQ-ADM-010).
 --
 -- Needs:   0157 (`avatars`, `avatars_storage_read`), 0158 (the import), 0221 (`avatar_key`, `avatar_source`, the
 --          `members_avatar` trigger), 0222 (`avatar_uploads`, `avatar_upload_state`, `avatar-staging`). This file
