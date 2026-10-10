@@ -109,7 +109,7 @@ async function signIn(context: BrowserContext, email: string): Promise<string> {
   return (data as { member_id: string }).member_id;
 }
 
-/** Records every view transition: the kind at its start, and the pseudo-elements that animated once it was ready. */
+/** Records every view transition: its TYPE (DEC-285 — the link's move), and the pseudo-elements that animated. */
 async function record(page: Page) {
   await page.addInitScript(() => {
     const w = window as unknown as { __played: Played[]; __flights: { arriving: boolean; nav: string | null }[] };
@@ -122,23 +122,23 @@ async function record(page: Page) {
       if (first && first.borderRadius !== undefined) {
         w.__flights.push({ arriving: first.borderRadius === "50%", nav: "story" });
       }
-      if (first && String(first.filter ?? "").includes("blur") && first.transform === "scale(0.94)") {
-        w.__flights.push({ arriving: false, nav: `rise:${document.documentElement.dataset.nav ?? ""}` });
-      }
       if (first && first.transformOrigin === "0 0" && String(first.transform).includes("scale(")) {
         const easing = typeof options === "object" && options ? String(options.easing) : "";
-        w.__flights.push({ arriving: easing.includes("1.4"), nav: document.documentElement.dataset.nav ?? null });
+        w.__flights.push({ arriving: easing.includes("1.4"), nav: "poster" });
       }
       return animate.call(this, keyframes, options);
     };
     const original = document.startViewTransition?.bind(document);
     if (!original) return;
     document.startViewTransition = ((arg: unknown) => {
-      const entry: Played = { nav: document.documentElement.dataset.nav ?? null, still: "still" in document.documentElement.dataset, animated: [], longest: 0, url: location.pathname };
+      const types = arg && typeof arg === "object" && Array.isArray((arg as { types?: unknown }).types) ? ((arg as { types: string[] }).types) : [];
+      const entry: Played = { nav: types[0] ?? null, still: "still" in document.documentElement.dataset, animated: [], longest: 0, url: location.pathname };
       w.__played.push(entry);
       const t = original(arg as never);
       t.ready
         .then(() => {
+          // The move is the transition's TYPE, added once its update has run (DEC-285) — so it is read when ready.
+          entry.nav = [...((t as unknown as { types?: Set<string> }).types ?? [])][0] ?? null;
           const vt = document.getAnimations().filter((a) => ((a.effect as KeyframeEffect | null)?.pseudoElement ?? "").startsWith("::view-transition"));
           entry.animated = vt.map((a) => (a.effect as KeyframeEffect).pseudoElement!);
           entry.longest = Math.max(0, ...vt.map((a) => Number(a.effect?.getComputedTiming().duration) || 0));
@@ -156,7 +156,7 @@ async function capture(page: Page, state: string) {
   await page.screenshot({ path: join(SHOTS, `wave29-lead-moves-${state}-390.png`) });
 }
 
-test("★ TRN-02: the feed's poster jumps into the event's hero, and back shrinks it home", async ({ context, page }) => {
+test("★ TRN-02: the feed's poster jumps into the event's hero, and back is instant", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
   await signIn(context, memberEmail);
   await record(page);
@@ -176,23 +176,50 @@ test("★ TRN-02: the feed's poster jumps into the event's hero, and back shrink
     .poll(async () => (await played(page)).some((p) => p.nav === "jump" && p.animated.length > 0 && p.longest > 0))
     .toBe(true)
     .catch(async (e: unknown) => {
-      console.log("PLAYED-ON-FAIL", JSON.stringify(await played(page)), await page.evaluate(() => document.documentElement.dataset.nav ?? "none"));
+      console.log("PLAYED-ON-FAIL", JSON.stringify(await played(page)));
       throw e;
     });
-  await expect.poll(() => page.evaluate(() => (window as unknown as { __flights: { arriving: boolean; nav: string | null }[] }).__flights.filter((f) => f.arriving && f.nav === "jump").length)).toBeGreaterThan(0);
-  // A navigation with no kind never moves: whatever transition the load and the stream made, none ran a duration.
-
-  expect((await played(page)).filter((p) => p.nav === null && p.longest > 0)).toEqual([]);
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __flights: { arriving: boolean; nav: string | null }[] }).__flights.filter((f) => f.arriving && f.nav === "poster").length)).toBeGreaterThan(0);
+  // A transition with no type never moves: at most the short crossfade (`--dur-fast`).
+  expect((await played(page)).filter((p) => p.nav === null && p.longest > 120)).toEqual([]);
   await capture(page, "jump-landed");
 
+  // Back is instant (DEC-285): the page is restored with no move, and nothing typed plays.
+  const before = (await played(page)).length;
   await page.goBack();
   await page.waitForURL(/\/ar\/app$/);
-  // Next restores the page without a view transition, so the page RISES from the sunk state — the mirror of the sink.
-  await expect.poll(() => page.evaluate(() => (window as unknown as { __flights: { nav: string | null }[] }).__flights.some((f) => f.nav === "rise:back"))).toBe(true);
-  // …and the card's poster flew home from the hero, settling without an overshoot.
-  await expect.poll(() => page.evaluate(() => (window as unknown as { __flights: { arriving: boolean }[] }).__flights.filter((f) => !f.arriving).length)).toBeGreaterThan(0);
-  // The kind is cleared once the move has played: nothing later inherits it.
-  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.nav ?? null), { timeout: 5_000 }).toBeNull();
+  await expect(page.locator("#main").first()).toBeVisible();
+  await page.waitForTimeout(600);
+  expect((await played(page)).slice(before).filter((p) => p.nav !== null)).toEqual([]);
+});
+
+test("★ TRN-07: on a slow network there is at most one move, and the page fades in over its skeleton — never a second move", async ({ context, page }) => {
+  await page.setViewportSize(PHONE);
+  await signIn(context, memberEmail);
+  await record(page);
+  // The event page's server answer — prefetch and navigation alike — arrives 1.5 s late, so its skeleton commits first.
+  await page.route(`**/ar/app/sessions/${sessionId}*`, async (route) => {
+    if (route.request().headers()["rsc"] === "1") await new Promise((r) => setTimeout(r, 1500));
+    await route.continue();
+  });
+  await page.goto("/ar/app");
+  await page.waitForLoadState("networkidle");
+  const card = page.locator(`#main a[data-nav-kind="jump"][href$="/app/sessions/${sessionId}"]`).first();
+  await expect.poll(() => card.locator("img").evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
+  await card.click();
+  await page.waitForURL(new RegExp(`/app/sessions/${sessionId}$`));
+  await expect(page.locator("#main h1").first()).toBeVisible({ timeout: 10_000 });
+  await page.waitForTimeout(800);
+
+  const onEvent = (await played(page)).filter((p) => (p.url ?? "").endsWith(sessionId));
+  const moves = onEvent.filter((p) => p.longest > 0 && p.nav !== null);
+  const reveals = onEvent.filter((p) => p.nav === null && p.longest > 0);
+  // At most one move: Next shows the skeleton at once, outside any transition, on a slow network — so the jump plays
+  // only when the page arrives with the tap (a fast or prefetched one, TRN-02). Either way, never a second move, and
+  // the page's arrival over its skeleton is a crossfade no longer than `--dur-fast`.
+  expect(moves.length, JSON.stringify(onEvent)).toBeLessThanOrEqual(1);
+  expect(reveals.length, JSON.stringify(onEvent)).toBeGreaterThan(0);
+  for (const r of reveals) expect(r.longest).toBeLessThanOrEqual(120);
 });
 
 test("TRN-04 / TRN-05: a child screen pushes; a tab switches from its side", async ({ context, page }) => {
@@ -298,11 +325,11 @@ test("★★ TRN-10: on a 4× throttled CPU no frame of the jump, the push or th
     if (start) {
       document.startViewTransition = ((arg: unknown) => {
         const t = start(arg as never);
-        const label = document.documentElement.dataset.nav ?? "none";
+        const label = () => [...((t as unknown as { types?: Set<string> }).types ?? [])][0] ?? "none";
         const started = performance.now();
         void t.ready
-          .then(() => sample(label, t.finished))
-          .catch((e: Error) => ((w as unknown as { __skipped: string[] }).__skipped ??= []).push(`${label}:${e.name}:${e.message.slice(0, 80)}:${Math.round(performance.now() - started)}ms`));
+          .then(() => sample(label(), t.finished))
+          .catch((e: Error) => ((w as unknown as { __skipped: string[] }).__skipped ??= []).push(`${label()}:${e.name}:${e.message.slice(0, 80)}:${Math.round(performance.now() - started)}ms`));
         return t;
       }) as typeof document.startViewTransition;
     }

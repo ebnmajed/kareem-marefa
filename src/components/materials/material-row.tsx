@@ -89,7 +89,7 @@ function MaterialRowBody({ m, sessionId, locale, canManage, scope, playbackUrl, 
   let row: React.ReactNode;
   if (m.kind === "pdf" && ready) {
     row = (
-      <Link href={`/app/sessions/${sessionId}/materials/${m.id}`} className={`${ROW} hover:bg-hover`}>
+      <Link href={`/app/sessions/${sessionId}/materials/${m.id}`} nav="push" className={`${ROW} hover:bg-hover`}>
         <Head
           tile={t("kind.pdf")}
           title={m.title}

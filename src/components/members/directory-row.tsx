@@ -56,7 +56,7 @@ export async function DirectoryRow({ member }: { member: DirectoryMember }) {
     </div>
   );
   return (
-    <Card density="row" href={member.deactivated ? undefined : `/app/members/${member.id}`} className={member.deactivated ? "opacity-80" : ""}>
+    <Card density="row" href={member.deactivated ? undefined : `/app/members/${member.id}`} nav="push" className={member.deactivated ? "opacity-80" : ""}>
       {body}
     </Card>
   );

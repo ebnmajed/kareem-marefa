@@ -94,7 +94,8 @@ function Act({
   const width = full ? "w-full" : "";
   if (act.href !== undefined) {
     return (
-      <ButtonLink href={act.href} variant={variant} size={size} trailing={trailing} className={width} aria-describedby={describedBy}>
+      // ★ DEC-285: check-in and rating open a child of the event page — a push (REQ-UIX-124).
+      <ButtonLink href={act.href} data-nav-kind={/\/(check-in|rate)(?:[?#]|$)/.test(act.href) ? "push" : undefined} data-press="" variant={variant} size={size} trailing={trailing} className={width} aria-describedby={describedBy}>
         <span data-part="label">{children}</span>
       </ButtonLink>
     );

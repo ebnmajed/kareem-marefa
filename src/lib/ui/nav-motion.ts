@@ -1,26 +1,24 @@
-import { boxOf, flyFrom, type Box } from "./poster-flight";
+import { boxOf, type Box } from "./poster-flight";
 
-// Navigation motion — WHICH move a navigation plays (DEC-280 §5 – §6; REQ-UIX-121 … REQ-UIX-130; `TRANSITIONS.md`).
+// Navigation motion — which move a navigation plays (DEC-280 §5 – §6, as simplified by DEC-285).
 //
-// The moves themselves are CSS keyed on `<html data-nav>` (`globals.css`, «navigation motion»); this module only sets
-// the kind, at the moment the member asks for the move, and clears it once the move has had its time:
+// ★ ONE MOVE PER TAP, CARRIED AS THE TRANSITION'S OWN TYPE. A link names its move — `jump`, `push`, `switch-start`,
+// `switch-end` — in `data-nav-kind` (`ui/link`'s `nav`, the tab bar, the rail). The tap stores it; the view transition
+// whose update CHANGES THE PATH takes it as its type (`types`, read by `:active-view-transition-type()` in
+// `globals.css`) and the store empties at that moment. Nothing is timed and nothing is page-wide, so a move cannot
+// play twice or leak into the next tap.
+// ★ Why not Next's own `transitionTypes`: Next attaches it only to the click's transition, and a server-rendered page
+// commits in a LATER one when its data arrives — measured, the types arrived empty. Taking the kind at the transition's
+// start is what reaches the commit that actually shows the page.
 //
-//   · a press on a link that carries `data-nav-kind` (`ui/link`'s `nav` prop), or a link to a child of this screen
-//     (a push) — the press is immediate, the move plays
-//     when the next screen or its skeleton commits, because the attribute simply waits for React's transition;
-//   · the browser's back and forward — back is the mirror of a push, forward plays a push again (REQ-UIX-124);
-//   · nothing else. A refresh, a redirect after a form or a link with no kind carries no kind, and the CSS cuts.
+// Everything else — the real page replacing its skeleton, a section streaming in, a save refreshing the page — carries
+// no type and crossfades briefly. Back is instant: Next restores a page without a view transition (measured), and the
+// state machine that faked one was the source of overlapping moves (DEC-285).
 //
-// ★ The console and the platform cut (DEC-280 §6, REQ-UIX-053): `isStillPath()` is the one test, read by the shell's
-// boundary and by every setter here, so a press or a back inside the staff tree can never leave a kind behind.
-// ★ Nothing here animates: no keyframe, no duration. Reduced motion is the CSS's (every move a cut), and the press,
-// being a `:active` transition, still shows as a step.
+// This module keeps only what the types cannot carry: whether a path is the console's, which side a tab is on, and the
+// poster handed from a tapped card to the event page it opens.
 
-export const NAV_KINDS = ["jump", "push", "back", "switch-start", "switch-end", "none"] as const;
-export type NavKind = (typeof NAV_KINDS)[number];
-
-/** The kinds a link may ask for — `back` belongs to history, `none` is the absence of one. */
-export type LinkNavKind = Exclude<NavKind, "back" | "none">;
+export type LinkNavKind = "jump" | "push" | "switch-start" | "switch-end";
 
 const STILL = /^\/(?:[a-z]{2}\/)?app\/(?:admin|platform)(?:\/|$)/;
 
@@ -29,25 +27,19 @@ export function isStillPath(pathname: string): boolean {
   return STILL.test(pathname);
 }
 
-export function isNavKind(value: unknown): value is NavKind {
-  return typeof value === "string" && (NAV_KINDS as readonly string[]).includes(value);
+/**
+ * A tab's side relative to the current one, in tab order (REQ-UIX-125): a later tab is at the inline-end, so its
+ * content arrives from there. The current tab asks for nothing; with no current tab the side is the inline-end.
+ */
+export function switchKind(index: number, currentIndex: number): LinkNavKind | undefined {
+  if (index === currentIndex) return undefined;
+  return currentIndex < 0 || index > currentIndex ? "switch-end" : "switch-start";
 }
 
-// Long enough for the slowest move (`--dur-play`, 480 ms) to finish after a slow commit; a navigation that has not
-// committed by then cuts, which is the honest answer to a network that slow (REQ-UIX-127).
-const SETTLE_AFTER_COMMIT_MS = 900;
-const ABANDON_MS = 10_000;
-let abandon: number | null = null;
-// When the current kind was set. ★ A settle clears only a kind set BEFORE the navigation it settles: the settle of the
-// page just landed must never wipe the kind a quick next tap has already set (measured — that race skipped the jump
-// whenever a member tapped within 900 ms of a page committing, and prefetching made that common).
-let setAt = 0;
-
 // ── The poster handoff (REQ-UIX-122, REQ-UIX-127) ────────────────────────────────────────────────────────────
-// The event page is dynamic, so its skeleton usually commits before the page: the jump would find no poster to land
-// on. On a jump press the tapped card's poster is remembered here — its session, read from the link, and the image
-// already decoded in the card, and where it stood — and the event's skeleton draws it and flies it from there
-// (`poster-flight.ts`). Leaving the event by back remembers the hero's place, so the card flies home from it.
+// A jump flies the tapped card's poster into the event page (`poster-flight.ts`). On press, the card's poster — its
+// session, read from the link, the decoded image, and where it stood — is remembered here; the event's skeleton or its
+// hero, whichever lands first, takes it once and flies it from there.
 export interface HandedPoster {
   sessionId: string;
   src: string;
@@ -69,6 +61,11 @@ export function handPoster(link: Element): void {
       : null;
 }
 
+/** The poster handed for this session, if the press that led here was a jump from its card. */
+export function handedPoster(sessionId: string): HandedPoster | null {
+  return handed && handed.sessionId === sessionId.toLowerCase() ? handed : null;
+}
+
 /** Takes the poster handed for this session — once: a later visit by any other path draws the skeleton's box. */
 export function takeHandedPoster(sessionId: string): HandedPoster | null {
   const poster = handedPoster(sessionId);
@@ -76,172 +73,106 @@ export function takeHandedPoster(sessionId: string): HandedPoster | null {
   return poster;
 }
 
-// The way back: the hero's place, remembered as the member leaves by history, for the card to fly home from.
-let returning: { sessionId: string; from: Box } | null = null;
-function rememberHero(): void {
-  const hero = document.querySelector<HTMLElement>("[data-poster-hero]");
-  const box = hero ? boxOf(hero) : null;
-  returning = hero && box ? { sessionId: (hero.dataset.posterHero ?? "").toLowerCase(), from: box } : null;
+// ── The tap's move ────────────────────────────────────────────────────────────────────────────────────────
+const KINDS: readonly string[] = ["jump", "push", "switch-start", "switch-end"];
+let pending: LinkNavKind | null = null;
+
+/** The move a tap stored and no transition has taken yet. */
+export function pendingKind(): LinkNavKind | null {
+  return pending;
 }
 
-/**
- * ★ Back has no view transition: Next restores the page it kept on a history move without one (measured,
- * `wave29-lead-moves`). So once the restored page commits it RISES from where a push left it — the mirror of the sink —
- * as a live animation on the page, `transform` and `filter` only, `--dur-slow` on `--ease-out` (REQ-UIX-124). The card
- * that was jumped from flies home beside it (`landReturningPoster`).
- */
-export function riseOnBack(): Animation | null {
-  if (typeof document === "undefined" || document.documentElement.dataset.nav !== "back") return null;
-  if (isStillPath(location.pathname) || !window.matchMedia || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return null;
-  const page = document.querySelector<HTMLElement>("#main > *");
-  if (!page || typeof page.animate !== "function") return null;
-  const root = getComputedStyle(document.documentElement);
-  const duration = Number.parseFloat(root.getPropertyValue("--dur-slow")) || 0;
-  if (duration === 0) return null;
-  return page.animate(
-    [
-      { transform: "scale(0.94)", filter: "brightness(0.5) blur(6px)" },
-      { transform: "none", filter: "none" },
-    ],
-    { duration, easing: root.getPropertyValue("--ease-out").trim() || "ease-out" },
-  );
+/** The navigation committed: whatever the tap stored was taken or is moot now. */
+export function forgetPendingKind(): void {
+  pending = null;
 }
 
-/** Called once the navigation has committed: a card whose event was just left by back flies home. */
-export function landReturningPoster(): void {
-  const r = returning;
-  returning = null;
-  if (!r) return;
-  const img = [...document.querySelectorAll<HTMLImageElement>(`a[data-nav-kind="jump"][href$="/app/sessions/${r.sessionId}"] img`)].find(
-    (el) => el.getClientRects().length > 0,
-  );
-  if (img) flyFrom(img, r.from, false);
-}
-
-/** The poster handed for this session, if the press that led here was a jump from its card. */
-export function handedPoster(sessionId: string): HandedPoster | null {
-  return handed && handed.sessionId === sessionId.toLowerCase() ? handed : null;
-}
-
-/** Sets the kind for the navigation about to happen. Inside the staff tree, or for `none`, it clears instead. */
-export function setNavKind(kind: NavKind, pathname = typeof location === "undefined" ? "" : location.pathname): void {
-  if (typeof document === "undefined") return;
-  const root = document.documentElement;
-  if (kind === "none" || isStillPath(pathname)) {
-    delete root.dataset.nav;
-    return;
-  }
-  root.dataset.nav = kind;
-  setAt = performance.now();
-  if (abandon !== null) window.clearTimeout(abandon);
-  abandon = window.setTimeout(clearNavKind, ABANDON_MS);
-}
-
-let tapped: HTMLElement | null = null;
-function markTapped(el: HTMLElement): void {
-  tapped?.removeAttribute("data-nav-tapped");
-  tapped = el;
-  el.setAttribute("data-nav-tapped", "");
-}
-
-export function clearNavKind(): void {
-  if (typeof document === "undefined") return;
-  delete document.documentElement.dataset.nav;
-  tapped?.removeAttribute("data-nav-tapped");
-  tapped = null;
-  if (abandon !== null) window.clearTimeout(abandon);
-  abandon = null;
-}
-
-/** Called by the shell once a navigation has committed: the move plays, then ITS kind is cleared — never a newer one. */
-export function settleNavKind(): () => void {
-  const committedAt = performance.now();
-  const timer = window.setTimeout(() => {
-    if (setAt <= committedAt) clearNavKind();
-  }, SETTLE_AFTER_COMMIT_MS);
-  return () => window.clearTimeout(timer);
-}
-
-/**
- * A tab's side relative to the current one, in tab order (REQ-UIX-125): a later tab is at the inline-end, so its
- * content arrives from there. The current tab asks for nothing; with no current tab the side is the inline-end.
- */
-export function switchKind(index: number, currentIndex: number): LinkNavKind | undefined {
-  if (index === currentIndex) return undefined;
-  return currentIndex < 0 || index > currentIndex ? "switch-end" : "switch-start";
-}
-
-/** The kind a click asks for, or null — only a plain, same-tab, primary click on an element that declares one. */
+/** The kind a plain, same-tab, primary click on a link asks for, or null. */
 export function kindOfClick(event: Pick<MouseEvent, "button" | "metaKey" | "ctrlKey" | "shiftKey" | "altKey" | "defaultPrevented" | "target">): LinkNavKind | null {
   if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return null;
   const target = event.target;
   if (!(target instanceof Element)) return null;
   const el = target.closest<HTMLElement>("[data-nav-kind]");
-  if (el) {
-    if (el instanceof HTMLAnchorElement && el.target && el.target !== "_self") return null;
-    const kind = el.dataset.navKind;
-    return isNavKind(kind) && kind !== "back" && kind !== "none" ? kind : null;
-  }
-  // ★ No declared kind: a link to a CHILD of this screen is a push (REQ-UIX-124) — حسابي → الإعدادات, the event → the
-  // viewer · check-in · rating, the directory → a profile — so no call site has to remember to say so.
-  const a = target.closest<HTMLAnchorElement>("a[href]");
-  if (!a || (a.target && a.target !== "_self") || a.hasAttribute("download") || typeof location === "undefined") return null;
-  return isChildPath(location.pathname, new URL(a.href, location.href)) ? "push" : null;
+  if (!el || (el instanceof HTMLAnchorElement && el.target && el.target !== "_self")) return null;
+  const kind = el.dataset.navKind ?? "";
+  return KINDS.includes(kind) ? (kind as LinkNavKind) : null;
 }
 
-/** A same-origin path strictly below the current one: `/ar/app/me` → `/ar/app/me/settings`. */
-export function isChildPath(current: string, next: URL): boolean {
-  if (typeof location !== "undefined" && next.origin !== location.origin) return false;
-  const base = current.replace(/\/+$/, "");
-  return next.pathname.startsWith(`${base}/`) && next.pathname.length > base.length + 1;
-}
+type StartViewTransition = (arg?: unknown) => ViewTransition;
+type Update = () => unknown;
 
-interface NavigationLike {
-  currentEntry: { index: number } | null;
-  addEventListener(type: "navigate", listener: (event: { navigationType: string; destination: { index: number } }) => void): void;
-  removeEventListener(type: "navigate", listener: (event: { navigationType: string; destination: { index: number } }) => void): void;
+// Bumped by the shell's layout effect when the path changes — React runs layout effects INSIDE a view transition's
+// update step, while Next pushes the URL only after it (measured), so this is the signal that a transition is the
+// navigation itself.
+let navigations = 0;
+export function noteNavigation(): void {
+  navigations += 1;
 }
 
 /**
- * Listens once, for the whole app shell: presses on links that declare a kind, and history moves. Returns the
- * cleanup. The Navigation API tells back from forward; where it is missing, a history move is read as back — the
- * common case, and only ever a move, never a behaviour.
+ * Starts a view transition and gives it the stored move as its type — but only if this transition is the NAVIGATION:
+ * the path changed during its update. ★ A tap first updates the page being LEFT (the link's pending dot), and that is
+ * a transition too; measured, it took the move and the new page arrived with none. The type is added right after the
+ * update step (`types` is mutable until the animations start), synchronously, and the store empties then.
+ */
+export function startWithMove(original: (arg?: unknown) => ViewTransition, arg?: unknown): ViewTransition {
+  const kind = pending;
+  if (!kind) return original(arg);
+  let started: ViewTransition | null = null;
+  const take = (before: number) => {
+    if (pending === kind && navigations !== before) {
+      pending = null;
+      (started as (ViewTransition & { types?: Set<string> }) | null)?.types?.add(kind);
+    }
+  };
+  const wrap = (update: Update | undefined): Update => () => {
+    const before = navigations;
+    const result = update?.();
+    take(before);
+    // A blocked update (fonts, images) resolves later: its layout effects run then — check again when it does.
+    if (result && typeof (result as Promise<unknown>).then === "function") {
+      return (result as Promise<unknown>).then((value) => {
+        take(before);
+        return value;
+      });
+    }
+    return result;
+  };
+  const next =
+    typeof arg === "function"
+      ? wrap(arg as Update)
+      : arg && typeof arg === "object"
+        ? { ...(arg as object), update: wrap((arg as { update?: Update }).update) }
+        : arg;
+  started = original(next);
+  return started;
+}
+
+/**
+ * Installs the one mechanism, once, for the whole shell. Returns the cleanup. A tap on a link that names a move stores
+ * it (outside the console) and, for a jump, hands its poster; `document.startViewTransition` is wrapped so the first
+ * transition after the tap carries the move as its type.
  */
 export function installNavMotion(): () => void {
   const onClick = (event: MouseEvent) => {
+    if (isStillPath(location.pathname)) return;
     const kind = kindOfClick(event);
     if (!kind) return;
-    setNavKind(kind);
-    const link = (event.target as Element).closest<HTMLElement>("[data-nav-kind]");
+    pending = kind;
+    const link = (event.target as Element).closest('[data-nav-kind="jump"]');
     if (kind === "jump" && link) handPoster(link);
-    // Only the TAPPED tab's icon jumps (REQ-UIX-125); the mark goes with the kind.
-    if (kind.startsWith("switch") && link) markTapped(link);
   };
   document.addEventListener("click", onClick, true);
 
-  const navigation = (window as unknown as { navigation?: NavigationLike }).navigation;
-  if (navigation && typeof navigation.addEventListener === "function") {
-    const onNavigate = (event: { navigationType: string; destination: { index: number } }) => {
-      if (event.navigationType !== "traverse") return;
-      const from = navigation.currentEntry?.index ?? 0;
-      const back = event.destination.index < from;
-      if (back) rememberHero();
-      setNavKind(back ? "back" : "push");
-    };
-    navigation.addEventListener("navigate", onNavigate);
-    return () => {
-      document.removeEventListener("click", onClick, true);
-      navigation.removeEventListener("navigate", onNavigate);
-    };
+  const doc = document as Document & { startViewTransition?: StartViewTransition };
+  const original = doc.startViewTransition;
+  if (typeof original === "function") {
+    const bound = (a?: unknown) => original.call(document, a);
+    doc.startViewTransition = ((arg?: unknown) => startWithMove(bound, arg)) as StartViewTransition;
   }
-
-  const onPop = () => {
-    rememberHero();
-    setNavKind("back");
-  };
-  window.addEventListener("popstate", onPop);
   return () => {
     document.removeEventListener("click", onClick, true);
-    window.removeEventListener("popstate", onPop);
+    if (typeof original === "function") doc.startViewTransition = original;
+    pending = null;
   };
 }

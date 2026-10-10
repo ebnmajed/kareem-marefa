@@ -47,31 +47,28 @@ export function ShellMain({ rail, children }: { rail: ReactNode; children: React
   const { fullBleed, framed, clearsBottomBar, adminConsole } = useShellRoute();
   const style = clearsBottomBar ? CLEARS_BAR : undefined;
 
-  // ★ wave 21 (REQ-UIX-084): the org console's layout draws its bar, its rail and its padding — the frame gives it the
+  // ★★ ONE SHAPE ON EVERY ROUTE (DEC-285). The frame used to return a different element tree for the console, a page
+  // with the rail, and a plain or full-bleed page — so crossing from the feed to an event page REMOUNTED everything
+  // below it, the page's view-transition boundary included, and React does not animate a boundary it has just
+  // created: the tap's move never played (measured). Now the wrapper and `<main>` are the same elements everywhere;
+  // the rail is present or absent in its own slot, and only classes change.
+  //
+  // wave 21 (REQ-UIX-084): the org console's layout draws its bar, its rail and its padding — the frame gives it the
   // whole width and nothing else.
-  if (adminConsole) {
-    return (
-      <main id="main" data-frame="console">
+  const frame = adminConsole ? "console" : framed ? "member" : fullBleed ? "bleed" : "plain";
+  const mainClass =
+    frame === "member"
+      ? "min-w-0 flex-1 px-3 pt-2 lg:px-0 lg:pt-0"
+      : frame === "plain"
+        ? "mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-12"
+        : undefined;
+  return (
+    <div className={frame === "member" ? "mx-auto flex max-w-[1280px] gap-6 lg:px-6 lg:pt-6" : undefined}>
+      {frame === "member" ? rail : null}
+      <main id="main" data-frame={frame} className={mainClass} style={frame === "console" ? undefined : style}>
         {children}
       </main>
-    );
-  }
-
-  if (framed) {
-    return (
-      <div className="mx-auto flex max-w-[1280px] gap-6 lg:px-6 lg:pt-6">
-        {rail}
-        <main id="main" data-frame="member" className="min-w-0 flex-1 px-3 pt-2 lg:px-0 lg:pt-0" style={style}>
-          {children}
-        </main>
-      </div>
-    );
-  }
-
-  return (
-    <main id="main" data-frame={fullBleed ? "bleed" : "plain"} className={fullBleed ? undefined : "mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-12"} style={style}>
-      {children}
-    </main>
+    </div>
   );
 }
 
