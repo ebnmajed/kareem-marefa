@@ -482,7 +482,7 @@
       "companySave": "احفظ",
       "companyChanged": "حُفظت الشركة.",
       "takeDownPhoto": "أزل الصورة",
-      "takeDownTitle": "أزل صورة <bdi>{name}</bdi>؟",
+      "takeDownTitle": "أزل صورة «<t>{name}</t>»؟",
       "takeDownConfirm": "أزل",
       "takeDownDone": "أُزيلت الصورة",
       "takeDownFailed": "تعذّر"

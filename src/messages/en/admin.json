@@ -482,7 +482,7 @@
       "companySave": "Save",
       "companyChanged": "Company saved.",
       "takeDownPhoto": "Remove photo",
-      "takeDownTitle": "Remove <bdi>{name}</bdi>'s photo?",
+      "takeDownTitle": "Remove «<t>{name}</t>»'s photo?",
       "takeDownConfirm": "Remove",
       "takeDownDone": "Photo removed",
       "takeDownFailed": "Couldn't remove"
