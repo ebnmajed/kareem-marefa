@@ -522,12 +522,12 @@ export async function getSessionCertificateFaces(
   const ids = [...new Set(((certs ?? []) as Array<{ member_id: string }>).map((c) => c.member_id))];
   const out: Record<string, { avatarUrl: string | null; teamColor: string | null | undefined }> = {};
   if (ids.length === 0) return out;
-  const { data, error } = await supabase.from("members").select("id, avatar_version, company_id, companies(team_color)").in("id", ids);
+  const { data, error } = await supabase.from("members").select("id, avatar_version, avatar_key, company_id, companies(team_color)").in("id", ids);
   if (error) throw new Error(`members (faces): ${error.message}`);
-  type Face = { id: string; avatar_version: number | string | null; company_id: string | null; companies: { team_color: string | null } | { team_color: string | null }[] | null };
+  type Face = { id: string; avatar_version: number | string | null; avatar_key?: string | null; company_id: string | null; companies: { team_color: string | null } | { team_color: string | null }[] | null };
   for (const m of (data ?? []) as unknown as Face[]) {
     // `undefined` draws no ring (a member with no company); `null` the neutral ring — `AvatarProps.teamColor`'s three values.
-    out[m.id] = { avatarUrl: avatarHref({ id: m.id, avatarVersion: m.avatar_version }, 96), teamColor: m.company_id ? (one(m.companies)?.team_color ?? null) : undefined };
+    out[m.id] = { avatarUrl: avatarHref({ id: m.id, avatarVersion: m.avatar_version, avatarKey: m.avatar_key }, 96), teamColor: m.company_id ? (one(m.companies)?.team_color ?? null) : undefined };
   }
   return out;
 }

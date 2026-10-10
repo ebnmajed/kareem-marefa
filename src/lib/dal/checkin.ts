@@ -693,7 +693,7 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
 
   const [sessionRes, rsvpsRes, checkInsRes, days, completeRes] = await Promise.all([
     supabase.from("sessions").select("id, title, state, time_zone, require_all_days").eq("id", sessionId).maybeSingle(),
-    supabase.from("rsvps").select("member_id, status, members(display_name, avatar_version, companies(team_color))").eq("session_id", sessionId),
+    supabase.from("rsvps").select("member_id, status, members(display_name, avatar_version, avatar_key, companies(team_color))").eq("session_id", sessionId),
     // `!check_ins_member_id_fkey` / `remover:...!check_ins_removed_by_fkey`:
     // `check_ins` has THREE foreign keys into `members` now (`member_id`,
     // `marked_by`, `removed_by`) — an unqualified `members(...)` embed is
@@ -712,7 +712,7 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
     supabase
       .from("check_ins")
       .select(
-        "member_id, session_day_id, arrived_at, method, removed_at, removal_reason, members!check_ins_member_id_fkey(display_name, avatar_version, companies(team_color)), remover:members!check_ins_removed_by_fkey(display_name), marker:members!check_ins_marked_by_fkey(display_name)",
+        "member_id, session_day_id, arrived_at, method, removed_at, removal_reason, members!check_ins_member_id_fkey(display_name, avatar_version, avatar_key, companies(team_color)), remover:members!check_ins_removed_by_fkey(display_name), marker:members!check_ins_marked_by_fkey(display_name)",
       )
       .eq("session_id", sessionId),
     listSessionDays(locale, sessionId),
@@ -732,11 +732,11 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
   type MemberEmbed = { display_name: string | null } | { display_name: string | null }[] | null;
   const nameOf = (m: MemberEmbed) => (Array.isArray(m) ? (m[0]?.display_name ?? null) : (m?.display_name ?? null));
   // wave 21: the face and the team ring, from the same embed (the one resolver, `DEC-099`).
-  type FaceEmbed = { avatar_version?: number | string | null; companies?: { team_color: string | null } | { team_color: string | null }[] | null };
+  type FaceEmbed = { avatar_version?: number | string | null; avatar_key?: string | null; companies?: { team_color: string | null } | { team_color: string | null }[] | null };
   const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
   const faceOf = (memberId: string, m: unknown) => {
     const f = one(m as FaceEmbed | FaceEmbed[] | null);
-    return { avatarUrl: avatarHref({ id: memberId, avatarVersion: f?.avatar_version ?? null }, 96), teamColor: one(f?.companies)?.team_color ?? null };
+    return { avatarUrl: avatarHref({ id: memberId, avatarVersion: f?.avatar_version ?? null, avatarKey: f?.avatar_key ?? null }, 96), teamColor: one(f?.companies)?.team_color ?? null };
   };
 
   type CheckInJoinRow = NonNullable<typeof checkInsRes.data>[number] & { member_id: string; session_day_id?: string | null };

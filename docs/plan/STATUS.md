@@ -23,6 +23,8 @@ get their avatars** when A's backfill is pushed.
 
 | # | File | Why it changed |
 |---|---|---|
+| W29-1 | `tests/unit/objects.test.ts` | «no SVG is served from `public/`» exempts `public/avatars/<set>/<key>.svg` — the library is shipped there by `DEC-280`; `avatar-library.test.ts` holds each file inert and equal to the list. Every other SVG under `public/` is still refused |
+| W29-2 | `docs/design/prototypes/transitions.html` | not a suite — the prototype's control panel class `group` renamed `ctl-group`, because `design-files.test.ts` refuses a drawn class name that a `className` in `src/` uses (Tailwind's `group`). Nothing the prototype demonstrates moved |
 
 ---
 

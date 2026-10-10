@@ -1,0 +1,60 @@
+{
+  "avatars": {
+    "names": {
+      "characters": {
+        "director": "المخرج",
+        "dop": "مدير التصوير",
+        "sound": "مهندس الصوت",
+        "gaffer": "الغافر",
+        "makeup": "فنانة المكياج",
+        "wardrobe": "مصممة الأزياء",
+        "editor": "المونتير",
+        "producer": "المنتجة",
+        "script": "مشرفة النص",
+        "actor": "الممثل",
+        "actress": "الممثلة",
+        "runner": "المساعد",
+        "vfx": "فنان المؤثرات",
+        "colorist": "الملوّن",
+        "writer": "الكاتبة",
+        "scout": "منسق المواقع",
+        "broadcast": "مهندسة البث",
+        "casting": "منسق الكاستينغ",
+        "photographer": "المصوّر",
+        "drone-pilot": "طيّار الدرون",
+        "animator": "فنانة الرسوم",
+        "line-producer": "مديرة الإنتاج",
+        "host": "المقدّم",
+        "critic": "الناقد",
+        "stylist": "مصففة الشعر"
+      },
+      "objects": {
+        "clapper": "الكلاكيت",
+        "megaphone": "المكبّر",
+        "film-camera": "كاميرا السينما",
+        "boom": "ميكروفون البوم",
+        "light": "الكشّاف",
+        "scissors": "المقصّ",
+        "hanger": "الشماعة",
+        "dress-form": "المانيكان",
+        "director-chair": "كرسي المخرج",
+        "reel": "البكرة",
+        "headphones": "السماعات",
+        "brush": "فرشاة المكياج",
+        "storyboard": "اللوح القصصي",
+        "tape": "شريط اللصق",
+        "audition": "رقم التجربة",
+        "timecode": "التايم كود",
+        "tripod": "الحامل",
+        "lav": "ميكروفون الياقة",
+        "gels": "ألوان الإضاءة",
+        "drone": "الدرون",
+        "monitor": "شاشة المراقبة",
+        "spool": "بكرة الخيط",
+        "mirror": "مرآة المكياج",
+        "location": "الموقع",
+        "walkie": "جهاز اللاسلكي"
+      }
+    }
+  }
+}

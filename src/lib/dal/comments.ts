@@ -54,7 +54,7 @@ type CommentRow = {
   author: {
     id: string;
     display_name: string | null;
-    avatar_version: number | string | null;
+    avatar_version: number | string | null; avatar_key?: string | null;
     company: { name: string; team_color: string | null } | null;
   } | null;
 };
@@ -101,7 +101,7 @@ export const getCommentsPageData = cache(async (locale: string, sessionId: strin
       .from("comments")
       .select(
         "id, session_id, parent_id, author_id, body, mentions, created_at, edited_at, deleted_at, " +
-          "author:members!comments_author_id_fkey(id, display_name, avatar_version, company:companies(name, team_color))",
+          "author:members!comments_author_id_fkey(id, display_name, avatar_version, avatar_key, company:companies(name, team_color))",
       )
       .eq("session_id", sessionId)
       .order("created_at", { ascending: true }),
@@ -109,7 +109,7 @@ export const getCommentsPageData = cache(async (locale: string, sessionId: strin
     supabase.from("sessions").select("state").eq("id", sessionId).maybeSingle(),
     // Wave 18 (DEC-209): who presents, for «· المُقدِّمة» — `session_presenters` is org-readable.
     supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("accepted", true),
-    supabase.from("members").select("id, display_name, avatar_version, company:companies(name, team_color)").eq("id", session.memberId).maybeSingle(),
+    supabase.from("members").select("id, display_name, avatar_version, avatar_key, company:companies(name, team_color)").eq("id", session.memberId).maybeSingle(),
   ]);
   if (error) throw new Error(`comments: ${error.message}`);
 
@@ -133,7 +133,7 @@ export const getCommentsPageData = cache(async (locale: string, sessionId: strin
       author: {
         id: r.author?.id ?? r.author_id,
         displayName: r.author?.display_name ?? null,
-        avatarUrl: avatarHref({ id: r.author?.id ?? r.author_id, avatarVersion: r.author?.avatar_version }),
+        avatarUrl: avatarHref({ id: r.author?.id ?? r.author_id, avatarVersion: r.author?.avatar_version, avatarKey: r.author?.avatar_key }),
         company: companyOf(r.author?.company),
         isPresenter: presenters.has(r.author_id),
       },
@@ -148,7 +148,7 @@ export const getCommentsPageData = cache(async (locale: string, sessionId: strin
     };
   });
 
-  const me = viewerRow as { id: string; display_name: string | null; avatar_version: number | string | null; company: { name: string; team_color: string | null } | null } | null;
+  const me = viewerRow as { id: string; display_name: string | null; avatar_version: number | string | null; avatar_key?: string | null; company: { name: string; team_color: string | null } | null } | null;
   return {
     comments,
     editWindowMinutes,
@@ -157,7 +157,7 @@ export const getCommentsPageData = cache(async (locale: string, sessionId: strin
     viewer: {
       id: session.memberId,
       displayName: me?.display_name ?? null,
-      avatarUrl: avatarHref({ id: session.memberId, avatarVersion: me?.avatar_version }),
+      avatarUrl: avatarHref({ id: session.memberId, avatarVersion: me?.avatar_version, avatarKey: me?.avatar_key }),
       company: companyOf(me?.company),
       isPresenter: presenters.has(session.memberId),
     },

@@ -228,14 +228,14 @@ async function presenterProfiles(
   const memberIds = [...new Set(rows.map((p) => p.member_id))];
   const profiles = new Map<string, { displayName: string | null; companyId: string | null; avatarUrl: string | null }>();
   if (memberIds.length === 0) return profiles;
-  const { data, error } = await supabase.from("members_member_view").select("id, display_name, company_id, avatar_version").in("id", memberIds);
+  const { data, error } = await supabase.from("members_member_view").select("id, display_name, company_id, avatar_version, avatar_key").in("id", memberIds);
   if (error) throw new Error(`members_member_view: ${error.message}`);
   for (const m of data ?? []) {
     profiles.set(m.id as string, {
       displayName: (m.display_name as string | null) ?? null,
       companyId: (m.company_id as string | null) ?? null,
       // The one shape of an avatar's URL — our copy, never Google's (DEC-099, contract 4 of wave 14).
-      avatarUrl: avatarHref({ id: m.id as string, avatarVersion: (m.avatar_version as number | null) ?? null }, 96),
+      avatarUrl: avatarHref({ id: m.id as string, avatarVersion: (m.avatar_version as number | null) ?? null, avatarKey: (m.avatar_key as string | null) ?? null }, 96),
     });
   }
   return profiles;

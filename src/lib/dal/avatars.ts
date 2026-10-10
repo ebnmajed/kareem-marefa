@@ -14,7 +14,7 @@ import { avatarHref } from "@/components/privacy/avatar-href";
 // `members.avatar_version`, which is non-null only while a copy exists that
 // `avatars_storage_read` (0157) will serve.
 
-export { avatarHref, type AvatarSize, type AvatarSource } from "@/components/privacy/avatar-href";
+export { avatarHref, type AvatarSize, type AvatarMember } from "@/components/privacy/avatar-href";
 
 export type AvatarAnswer = "accepted" | "declined";
 

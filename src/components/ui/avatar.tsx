@@ -3,6 +3,9 @@ import type { AvatarProps, AvatarStackProps } from "@/components/ui";
 
 // content's file — `16` §6.8, DEC-099.
 //
+// ★★ Wave 29 (DEC-280): the DEFAULT is now the member's library avatar, which arrives here as `src` like a photo
+// (`avatarHref()` resolves photo → library → null). What follows still holds for the fallback.
+//
 // ★ Initials are the DEFAULT and the PERMANENT fallback: `src` is a
 // platform-stored path (never the Google hotlink DEC-099 retires), and a
 // missing `src`, a `null` and a moderation takedown all fall back to the
@@ -133,10 +136,31 @@ function ring(teamColor: string | null | undefined, size: AvatarSize): { classNa
   return { className: `${ringWidth(size)} border-team`, style: { "--team": colour } as CSSProperties };
 }
 
+/**
+ * A library avatar's shipped SVG (DEC-280, REQ-PRF-014) — `avatarHref()`'s second answer, `/avatars/<set>/<key>.svg`.
+ * Never a member's upload: those are `/api/avatars/…` WebP. Exported for the tests.
+ */
+export function isLibrarySrc(src: string | null | undefined): src is string {
+  return typeof src === "string" && /^\/avatars\/(characters|objects)\/[a-z-]+\.svg$/.test(src);
+}
+
 export function Avatar({ memberId, displayName, src, size = 40, decorative, teamColor, className = "" }: AvatarSizedProps) {
   const team = ring(teamColor, size);
   const shared = `inline-flex shrink-0 items-center justify-center overflow-hidden rounded-field font-medium ${DIMENSION[size]} pg:rounded-pill ${team.className} ${className}`;
   const a11y = decorative ? { "aria-hidden": true as const } : { role: "img" as const, "aria-label": displayName ?? undefined };
+
+  // ★ Wave 29 (DEC-280; `m10c/Me.dc.html`): a library avatar sits on the ground, not on the member's tint, inset inside
+  // the ring — 48 of the 56 px inside a 64 px ring, the same proportion at every size. Its own disc is drawn by the SVG.
+  // The initials stay underneath, as for a photo (DEC-182), in the heading colour so a failed SVG still reads.
+  if (isLibrarySrc(src)) {
+    return (
+      <span className={`relative ${shared} bg-canvas text-fg-heading`} style={team.style} {...a11y}>
+        <bdi>{initial(displayName)}</bdi>
+        {/* eslint-disable-next-line @next/next/no-img-element -- a shipped SVG, drawn at its own size; nothing to optimise. */}
+        <img src={src} alt="" loading="lazy" decoding="async" className="absolute inset-[7%] h-[86%] w-[86%]" />
+      </span>
+    );
+  }
 
   // ★ The initials are ALWAYS drawn, and the image is laid over them (DEC-182,
   // `platform`'s R1). An `<img>` whose request fails — an expired version, a

@@ -279,10 +279,10 @@ function newerFirst(a: { occurredAt: string; id: string }, b: { occurredAt: stri
 async function facesFor(supabase: Supabase, ids: string[]): Promise<Map<string, AuditActorFace>> {
   const faces = new Map<string, AuditActorFace>();
   if (ids.length === 0) return faces;
-  const { data, error } = await supabase.from("members").select("id, avatar_version, company_id, companies(team_color)").in("id", ids);
+  const { data, error } = await supabase.from("members").select("id, avatar_version, avatar_key, company_id, companies(team_color)").in("id", ids);
   if (error) throw new Error(`members (faces): ${error.message}`);
-  for (const m of (data ?? []) as unknown as { id: string; avatar_version: number | string | null; company_id: string | null; companies: { team_color: string | null } | null }[]) {
-    faces.set(m.id, { avatarUrl: avatarHref({ id: m.id, avatarVersion: m.avatar_version }, 96), teamColor: m.company_id ? (m.companies?.team_color ?? null) : undefined });
+  for (const m of (data ?? []) as unknown as { id: string; avatar_version: number | string | null; avatar_key?: string | null; company_id: string | null; companies: { team_color: string | null } | null }[]) {
+    faces.set(m.id, { avatarUrl: avatarHref({ id: m.id, avatarVersion: m.avatar_version, avatarKey: m.avatar_key }, 96), teamColor: m.company_id ? (m.companies?.team_color ?? null) : undefined });
   }
   return faces;
 }

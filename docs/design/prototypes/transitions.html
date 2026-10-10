@@ -56,8 +56,8 @@ html[dir="ltr"] .progress{--origin-x:0%}
 :root[data-reduced="1"] [data-pending]{animation:none;opacity:.7}
 /* controls */
 .controls{display:flex;flex-direction:column;gap:18px}
-.group{display:flex;flex-direction:column;gap:10px}
-.group h2{margin:0;font-size:22px}
+.ctl-group{display:flex;flex-direction:column;gap:10px}
+.ctl-group h2{margin:0;font-size:22px}
 .row{display:flex;flex-wrap:wrap;gap:8px}
 button.b{border:0;border-radius:999px;cursor:pointer;font-family:inherit;font-weight:700;font-size:14px;min-height:44px;padding:0 16px;color:var(--bone);background:var(--surface2);border:1px solid var(--line)}
 button.b.primary{font-family:'Baloo Bhaijaan 2',sans-serif;font-weight:800;font-size:17px;background:var(--lime);color:var(--ink);border:0;box-shadow:0 4px 0 var(--lime-deep)}
@@ -613,7 +613,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;ba
     </div>
 
     <aside class="controls">
-      <div class="group">
+      <div class="ctl-group">
         <h2 class="display">جرّب</h2>
         <div class="row">
           <button class="b primary" data-demo="hero">قفزة · بطاقة ← جلسة</button>
@@ -625,7 +625,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;ba
           <button class="b" data-demo="reset">البداية</button>
         </div>
       </div>
-      <div class="group">
+      <div class="ctl-group">
         <h2 class="display">الظروف</h2>
         <div class="row">
           <button class="b" id="tReduced" aria-pressed="false">حركة أقل</button>

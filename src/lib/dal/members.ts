@@ -51,7 +51,7 @@ export const getMe = cache(async (locale: string): Promise<SelfProfile> => {
     displayName: (m.display_name as string) ?? null,
     // ★ DEC-099: never `me()`'s `avatar_url` (Google's source). Our stored copy
     // through contract 4's one resolver, or null → initials (DEC-182).
-    avatarUrl: avatarHref({ id: m.id as string, avatarVersion: m.avatar_version as number | null }, 96),
+    avatarUrl: avatarHref({ id: m.id as string, avatarVersion: m.avatar_version as number | null, avatarKey: m.avatar_key as string | null }, 96),
     companyId: (m.company_id as string) ?? null,
     jobTitle: (m.job_title as string) ?? null,
     bio: (m.bio as string) ?? null,
@@ -68,7 +68,7 @@ export async function getMemberProfile(locale: string, id: string): Promise<Memb
   const { supabase } = await sessionClient(locale);
   const { data, error } = await supabase
     .from("members_member_view")
-    .select("id, display_name, avatar_version, company_id, job_title, bio, org_role, created_at")
+    .select("id, display_name, avatar_version, avatar_key, company_id, job_title, bio, org_role, created_at")
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(`members_member_view: ${error.message}`);
@@ -76,7 +76,7 @@ export async function getMemberProfile(locale: string, id: string): Promise<Memb
   return {
     id: data.id,
     displayName: data.display_name,
-    avatarUrl: avatarHref({ id: data.id, avatarVersion: data.avatar_version }, 192), // DEC-099: our copy, never Google's URL
+    avatarUrl: avatarHref({ id: data.id, avatarVersion: data.avatar_version, avatarKey: data.avatar_key }, 192), // DEC-099: our copy, never Google's URL
     companyId: data.company_id,
     jobTitle: data.job_title,
     bio: data.bio,
@@ -382,7 +382,7 @@ export function orderDirectory<T extends { displayName: string; presentedCount: 
   );
 }
 
-type DirectoryRow = { id: string; display_name: string | null; avatar_version: number | null; company_id: string | null; job_title: string | null; org_role: DirectoryMember["role"]; status?: string };
+type DirectoryRow = { id: string; display_name: string | null; avatar_version: number | null; avatar_key?: string | null; company_id: string | null; job_title: string | null; org_role: DirectoryMember["role"]; status?: string };
 
 export async function listDirectory(locale: string, query: DirectoryQuery): Promise<DirectoryPage> {
   const { session, supabase } = await sessionClient(locale);
@@ -391,8 +391,8 @@ export async function listDirectory(locale: string, query: DirectoryQuery): Prom
   const page = Math.min(DIRECTORY_MAX_PAGES, Math.max(1, Math.floor(Number.isFinite(query.page) ? query.page : 1)));
 
   const membersRead = withDeactivated
-    ? supabase.from("members").select("id, display_name, avatar_version, company_id, job_title, org_role, status").eq("org_id", session.orgId)
-    : supabase.from("members_member_view").select("id, display_name, avatar_version, company_id, job_title, org_role").eq("org_id", session.orgId);
+    ? supabase.from("members").select("id, display_name, avatar_version, avatar_key, company_id, job_title, org_role, status").eq("org_id", session.orgId)
+    : supabase.from("members_member_view").select("id, display_name, avatar_version, avatar_key, company_id, job_title, org_role").eq("org_id", session.orgId);
 
   const [membersRes, companiesRes, balancesRes, levelsRes, interestsRes, counts] = await Promise.all([
     membersRead,
@@ -428,7 +428,7 @@ export async function listDirectory(locale: string, query: DirectoryQuery): Prom
     .map((m) => ({
       id: m.id,
       displayName: (m.display_name as string).trim(),
-      avatarUrl: avatarHref({ id: m.id, avatarVersion: m.avatar_version }, 96), // DEC-099: our copy, never Google's URL
+      avatarUrl: avatarHref({ id: m.id, avatarVersion: m.avatar_version, avatarKey: m.avatar_key }, 96), // DEC-099: our copy, never Google's URL
       jobTitle: m.job_title ?? null,
       role: m.org_role,
       company: m.company_id ? (companyById.get(m.company_id) ?? null) : null,

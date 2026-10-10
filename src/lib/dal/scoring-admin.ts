@@ -544,7 +544,7 @@ export async function getConfigLastSave(locale: string, scopes: readonly ("scori
 export async function listAvatarHrefs(locale: string, memberIds: readonly string[]): Promise<Record<string, string | null>> {
   const client = await assertAdmin(locale);
   if (!client || memberIds.length === 0) return {};
-  const { data, error } = await client.supabase.from("members").select("id, avatar_version").in("id", [...new Set(memberIds)]);
+  const { data, error } = await client.supabase.from("members").select("id, avatar_version, avatar_key").in("id", [...new Set(memberIds)]);
   if (error) throw new Error(`members: ${error.message}`);
-  return Object.fromEntries((data ?? []).map((m) => [m.id as string, avatarHref({ id: m.id as string, avatarVersion: m.avatar_version as number | string | null }, 96)]));
+  return Object.fromEntries((data ?? []).map((m) => [m.id as string, avatarHref({ id: m.id as string, avatarVersion: m.avatar_version as number | string | null, avatarKey: m.avatar_key as string | null }, 96)]));
 }

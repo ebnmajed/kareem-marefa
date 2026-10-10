@@ -1,0 +1,60 @@
+{
+  "avatars": {
+    "names": {
+      "characters": {
+        "director": "Director",
+        "dop": "Director of photography",
+        "sound": "Sound engineer",
+        "gaffer": "Gaffer",
+        "makeup": "Makeup artist",
+        "wardrobe": "Costume designer",
+        "editor": "Editor",
+        "producer": "Producer",
+        "script": "Script supervisor",
+        "actor": "Actor",
+        "actress": "Actress",
+        "runner": "Runner",
+        "vfx": "VFX artist",
+        "colorist": "Colourist",
+        "writer": "Writer",
+        "scout": "Location scout",
+        "broadcast": "Broadcast engineer",
+        "casting": "Casting director",
+        "photographer": "Photographer",
+        "drone-pilot": "Drone pilot",
+        "animator": "Animator",
+        "line-producer": "Line producer",
+        "host": "Host",
+        "critic": "Critic",
+        "stylist": "Hair stylist"
+      },
+      "objects": {
+        "clapper": "Clapperboard",
+        "megaphone": "Megaphone",
+        "film-camera": "Film camera",
+        "boom": "Boom microphone",
+        "light": "Spotlight",
+        "scissors": "Scissors",
+        "hanger": "Hanger",
+        "dress-form": "Dress form",
+        "director-chair": "Director's chair",
+        "reel": "Film reel",
+        "headphones": "Headphones",
+        "brush": "Makeup brush",
+        "storyboard": "Storyboard",
+        "tape": "Gaffer tape",
+        "audition": "Audition number",
+        "timecode": "Timecode",
+        "tripod": "Tripod",
+        "lav": "Lavalier microphone",
+        "gels": "Lighting gels",
+        "drone": "Drone",
+        "monitor": "Monitor",
+        "spool": "Thread spool",
+        "mirror": "Makeup mirror",
+        "location": "Location pin",
+        "walkie": "Walkie-talkie"
+      }
+    }
+  }
+}
