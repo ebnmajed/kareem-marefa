@@ -314,6 +314,7 @@ balances still reconcile.
 
 #### REQ-PRF-008 — A member owns their profile picture, and the platform stores it
 **Serves:** owner 2026-09-15 · DEC-099
+★★ **Amended by `DEC-280` (`REQ-PRF-016` … `REQ-PRF-019`):** the upload is built through the sheet on ملفي; Google's photo is **prompted once and available after** from the sheet; a «no» keeps the member's **library avatar**, not initials.
 A member may **upload, replace or remove** their own **صورة الملف الشخصي** on `/app/me`. The image
 is stored by the platform, in its own storage, under the org's prefix through the single path
 builder — **never linked from a third party**. Google's photo is offered **once**, as an explicit
@@ -329,6 +330,7 @@ keeps initials.
 
 #### REQ-PRF-009 — Initials over a deterministic tint are the default and the permanent fallback
 **Serves:** DEC-099 · `REQ-INT-007`
+★★ **Amended by `DEC-280` §1 (`REQ-PRF-014`, `REQ-PRF-015`):** the **default is the library avatar**. Initials over the tint remain the fallback where an SVG cannot render (CSV, mail), for an anonymised member, and under a failed image.
 The default, and the fallback whenever no picture exists or one has been taken down, is the first
 letter of the display name over one of six navy/silver tints chosen by a **stable hash of the
 member id**. There is **no silhouette placeholder** anywhere in the product.
@@ -340,6 +342,7 @@ member id**. There is **no silhouette placeholder** anywhere in the product.
 
 #### REQ-PRF-010 — A profile picture is sniffed, EXIF-stripped, raster-only and moderatable
 **Serves:** DEC-099 · DEC-009 · `REQ-EVT-012`
+★★ **Amended by `DEC-280` §4, §8 (`REQ-PRF-019`):** a taken-down picture reverts to the **library avatar**, and a picture is **not reportable** — the takedown is an admin's, from the member's row, and joins no queue.
 The upload is sniffed **on content, not extension**, after the bytes land; **EXIF is stripped**
 exactly as session photographs are; **PNG and JPEG only — no SVG** (invariant 11), because an
 avatar renders inside the same privileged headless Chromium the posters do. Derivatives at 96 px
@@ -352,6 +355,7 @@ moderation queue.
 
 #### REQ-PRF-011 — Anonymisation clears the picture; the data export includes it
 **Serves:** DEC-099 · `REQ-NFR-012`, `REQ-NFR-013`
+★ **Read with `DEC-280`:** anonymisation also nulls `avatar_key` and `avatar_source` — a former member is initials over the tint.
 `JOB-anonymise_members` clears `avatar_url` **and deletes the stored object**. The member data
 export (`REQ-PRF-006`) includes the picture.
 **Acceptance:**
@@ -385,6 +389,68 @@ a member (`REQ-TEN-009`) is such a placement.
 - A member added with a شركة keeps it at first sign-in, whatever their domain says.
 
 ---
+
+#### REQ-PRF-014 — Every member holds a library avatar from creation
+**Serves:** owner 2026-10-10 · `DEC-280` §1, §9 · amends `REQ-PRF-009` · AVA-02, AVA-10, AVA-11
+The platform ships a library of fifty avatars in two sets — **شخصيات** and **أشياء** — and every member holds one,
+`<set>/<key>`, assigned **at random across both sets** when the member row is created, and kept until the member
+picks another. Existing members without one are backfilled. An avatar carries no visible text: its name is the
+`aria-label` only.
+**Acceptance:**
+- A member created by sign-in or by an admin holds a key from the library at once; nobody is initials on day one.
+- The key is stable across sign-ins, renames and company changes; only the member's own pick changes it.
+- A key outside the library is refused by the database.
+- An anonymised member holds no key.
+
+#### REQ-PRF-015 — One picture, resolved once: photo, then the library, then initials
+**Serves:** `DEC-280` §1, §7 · `DEC-099` · `DEC-180` contract 4 · AVA-01, AVA-13, AVA-14, AVA-15
+A member's picture is exactly one of a copied Google photo, an uploaded photo or a library avatar, resolved by one
+function in the order **photo → library avatar by key → initials**, and drawn wherever `avatar` renders. The
+leaderboards draw no `avatar`; exports and mail carry initials, never a picture.
+**Acceptance:**
+- Every reader goes through `avatarHref()`; no DTO and no realtime payload carries a URL on a host the platform does
+  not control.
+- A board row is initials in a team ring; a CSV has no image column; a mail never inlines an SVG.
+- `members.avatar_source` says which photo the one stored object is (`google` · `upload`), null when none.
+
+#### REQ-PRF-016 — The picture changes in one sheet, reached from ملفي
+**Serves:** `DEC-280` §2 · AVA-04, AVA-05 · `SCR-021`
+On ملفي the hero picture is tappable, and in «عدّل ملفك» it carries a camera badge; both open the sheet **صورتك**:
+the current picture large in the team ring, «أزل الصورة» when a photo is current, «ارفع صورة», «من Google» when
+Google gave a picture, the chips شخصيات · أشياء over one grid, and «حفظ». Only what applies is shown.
+**Acceptance:**
+- The sheet is the only place the picture changes; «حفظ» commits and closing without it changes nothing.
+- No disabled control and no explanation: what cannot apply is absent.
+- On desktop the same sheet is centred.
+
+#### REQ-PRF-017 — An upload goes through a crop step and replaces the photo
+**Serves:** `DEC-280` §2 · amends `REQ-PRF-008` · `REQ-PRF-010` · AVA-06, AVA-07, AVA-08
+«ارفع صورة» opens the camera or the files, then a crop step — the image behind a circle, pinch, drag and a zoom
+slider. The circle is saved square at 1024 px as a JPEG of at most 1 MB, sniffed and EXIF-stripped on the server, and
+derived to 96 px and 192 px WebP. It replaces any photo, upload or Google copy, in the same transaction.
+**Acceptance:**
+- The picker accepts PNG and JPEG, so iOS converts HEIC itself.
+- The refusals are words: «PNG أو JPG فقط» · «أكبر من 20 م.ب» · «تعذّر الرفع» with «أعد المحاولة».
+- An SVG renamed `.png` is refused after the bytes land; the stored picture carries no EXIF.
+- After an upload the previous photo object no longer exists and `avatar_version` has moved.
+
+#### REQ-PRF-018 — «من Google» is offered whenever Google gave a picture, and never overwrites an upload
+**Serves:** `DEC-280` §3 · amends `REQ-PRF-008` · `DEC-099` · AVA-03, AVA-09
+The first-sign-in prompt stays as built, and its «no» keeps the library avatar. The sheet offers «من Google» whenever
+Google gave a picture URL, through the existing import job — Google's host only, byte-capped, sniffed, stripped.
+**Acceptance:**
+- A changed Google source is re-copied only while `avatar_source` is `google`; an upload is never replaced by a refresh.
+- Choosing «من Google» deletes an uploaded object in the same transaction.
+- Nothing is ever hotlinked.
+
+#### REQ-PRF-019 — A removed or taken-down photo leaves the library avatar
+**Serves:** `DEC-280` §2, §4, §8 · amends `REQ-PRF-010` · AVA-12, AVA-16
+«أزل الصورة», or picking a library avatar, deletes the photo object at once with no confirm and shows the key the
+member holds. An admin may take a member's photo down from the member's row; it is not reportable by members.
+**Acceptance:**
+- After removal or takedown no photo object remains and `avatar_source` is null; the library avatar shows.
+- A takedown is audited (`REQ-ADM-010`); a library avatar cannot be taken down.
+- `report_target` gains no value for a picture.
 
 ## 4. Proposals — `PRO`
 
@@ -4390,6 +4456,82 @@ and the app icons draw the mark; the two wordmark components are deleted.
 - Inside `/app` the mark leads to `/app`; outside it, to `/`.
 - No file imports a wordmark component, and neither file exists.
 - The name remains as text only where it is a word in a sentence, and as the mark's accessible name.
+
+#### REQ-UIX-121 — What is tapped presses before anything happens
+**Serves:** owner 2026-10-10 · `DEC-280` §5 · amends `16` §7.5 · TRN-01
+Buttons, cards, rings and tabs go to 96 % — a pop button down 3 px with its shadow collapsing — for `--dur-fast` and
+spring back on `--ease-pop`; then the move. `--ease-pop` (`cubic-bezier(.3,1.4,.5,1)`) and `--dur-play` (480 ms)
+join the motion tokens.
+**Acceptance:**
+- The press shows under reduced motion too; only its spring collapses.
+- Every move's timing reads a token, never a literal.
+
+#### REQ-UIX-122 — The poster jumps into the event's hero, and the page builds under it
+**Serves:** `DEC-280` §5 · TRN-02
+From the timeline and from الجلسات, the tapped card's poster becomes the event page's hero as one object; the page
+behind sinks (94 %, half dark, 6 px blur); the event's blocks drop in 40 ms apart on `--ease-pop`, the action last.
+Back shrinks the poster into its card on `--ease-out`.
+**Acceptance:**
+- The jump plays when the event page — or its skeleton — commits, never onto a blank page.
+- The poster is never cropped or stretched in flight (`REQ-UIX-026`).
+
+#### REQ-UIX-123 — A story zooms out of its ring and back into it
+**Serves:** `DEC-280` §5 · `REQ-STO-005` · TRN-03
+The viewer opens as a circle the ring's size that grows to the screen with the overshoot while the page leans into the
+ring; closing — by «إغلاق», Escape or swipe-down — reverses on `--ease-out`.
+**Acceptance:**
+- Every close path plays the reverse; under reduced motion each cuts.
+
+#### REQ-UIX-124 — A child screen slides over a parent that sinks
+**Serves:** `DEC-280` §5 · TRN-04
+حسابي → الإعدادات, the event → the viewer · check-in · rating, and the directory → a profile push: the child slides in
+from the inline-end edge on `--ease-pop` over `--dur-slow` while the parent sinks; back, including the browser's, is
+the mirror on `--ease-out`. On desktop a push is a switch inside the frame, with no blur.
+**Acceptance:**
+- Inline-end is the left in Arabic and the right in English.
+- The browser's back plays the mirror, not the forward move.
+
+#### REQ-UIX-125 — A tab switch comes from the tapped tab's side
+**Serves:** `DEC-280` §5 · TRN-05
+The five tabs, the hub strip and the desktop rails: the tapped icon jumps (130 % and back), and the content arrives
+from the side of the tapped tab while the old leaves the other way, over `--dur-base`.
+**Acceptance:**
+- Tab order, not history, decides the side.
+
+#### REQ-UIX-126 — A sheet lands with weight
+**Serves:** `DEC-280` §5 · TRN-06
+Bottom sheets, menus and pickers rise with a 5 % overshoot as the scrim fades and the page behind sinks to 97 %; a
+desktop dialog scales 0.96 → 1; closing drops on `--dur-base` `--ease-out`.
+**Acceptance:**
+- Open overshoots, close never does.
+
+#### REQ-UIX-127 — On a slow network the press and the bar answer, and the move waits
+**Serves:** `DEC-280` §5 · `REQ-UIX-006` · TRN-07
+The press is immediate; past 150 ms the shell's progress bar shows and the link keeps its pending affordance; the move
+plays when the next screen or its skeleton commits. Content streamed later fades in on opacity alone.
+**Acceptance:**
+- No move plays onto a blank page, and streamed content never makes a second move.
+
+#### REQ-UIX-128 — Under reduced motion every move is a cut
+**Serves:** `DEC-280` §5 · `REQ-UIX-014` · TRN-08
+With `prefers-reduced-motion: reduce` every duration is 0 and the next screen is its static state; the press, the
+progress bar and the pending affordance remain.
+**Acceptance:**
+- A Playwright pass over the five moves under `reduce` reaches each end state with nothing mid-transition.
+
+#### REQ-UIX-129 — The console and the platform cut
+**Serves:** `DEC-280` §6 · `REQ-UIX-053` · TRN-09
+`/app/admin/**` and `/app/platform/**` get no move; the progress bar alone remains.
+**Acceptance:**
+- The console's import-graph test refuses a `data-nav` kind and a `view-transition-name` in the staff tree.
+
+#### REQ-UIX-130 — Every move holds 60 fps
+**Serves:** `DEC-280` §5 · `REQ-UIX-020` · `REQ-NFR-008` · TRN-10
+The moves animate `transform`, `opacity` and `filter` only — blur on the sinking root alone — with two documented
+exceptions: the poster's view-transition group size and `border-radius` on the story portal.
+**Acceptance:**
+- Jump, story and push traced on a throttled CPU show no frame over 16 ms.
+- `ui-lint --strict`'s keyframes rule passes with the two exceptions and no other.
 
 
 ---

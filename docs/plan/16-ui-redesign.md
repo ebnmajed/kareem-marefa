@@ -1006,6 +1006,8 @@ the one place in the app shell that cannot read the DAL. Everything it needs —
 
 ### 7.5 ★★ الحركة — the motion system, and why the app has none
 
+★★ **Amended by `DEC-280` §5 – §6 (`REQ-UIX-121` … `REQ-UIX-130`):** navigation now carries the game — press, then move; the poster jump, the story zoom, push, switch and sheet; `--ease-pop` and `--dur-play` join the tokens. «Tier 3 stays quiet» is withdrawn for the member app; the console still cuts. The five moments remain the only celebrations.
+
 Raised by the owner, 2026-09-15: *«I want more animations and fun — the like button shows an
 animation when clicked, once registered it shows some animation that the knowledge is preserved.»*
 

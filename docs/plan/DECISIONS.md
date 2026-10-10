@@ -10718,3 +10718,58 @@ service-role call, run once by the lead after the owner confirms), and a member 
 or reconnect.
 
 - **Documents changed:** `03-permissions-rls.md`, `STATUS.md`
+
+## DEC-280 — The library is the default picture, the member changes it from ملفي, and navigation carries the game · `0221`
+
+- **Date:** 2026-10-10 · **Decided by:** the owner (the wave-29 prompt's seven rulings, and at sync 1: «no i do not agree for the profile photo to be reportable, go. And after implementing assign the random avatars to the current users») · **Amends:** `REQ-PRF-008`, `REQ-PRF-009`, `REQ-PRF-010`, `REQ-PRF-011`, `16` §7.5 · **Adds:** `REQ-PRF-014` … `REQ-PRF-019`, `REQ-UIX-121` … `REQ-UIX-130`, milestone **M34** · **Migrations:** `0221` (PR A), `0222` (PR B) · **Wave:** 29
+
+**The owner's rulings, in the owner's words.**
+
+1. **The library is the default picture.** A member with no photo holds a library avatar from creation, assigned at
+   random across both sets; initials remain only where an SVG cannot render (CSV, email) and for an anonymised
+   member. Amends `REQ-PRF-009`'s «default».
+2. **One stored photo object at a time.** Uploading or «من Google» replaces it; picking a library avatar or
+   «أزل الصورة» deletes it, in the same transaction. Removal is immediate, no confirm (`REQ-PRF-008`).
+3. **«من Google» is prompted once, available after.** The sign-in prompt stays as built; the sheet offers the copy
+   whenever Google gave a picture, through the existing import job; a refresh never overwrites an upload. Amends
+   `REQ-PRF-008`'s «offered once».
+4. **A taken-down photo reverts to the library avatar**, never to initials. Amends `REQ-PRF-010`.
+5. **Navigation carries the game.** Press-then-move; the five moves of `TRANSITIONS.md`; `--ease-pop` and
+   `--dur-play` join the tokens; overshoot on arrival only; the screen you leave sinks. Amends `16` §7.5's «Tier 3
+   stays quiet». The five moments stay the only celebrations and never play inside a move.
+6. **The console cuts** (`REQ-UIX-053` unchanged): `/app/admin/**` and `/app/platform/**` get no move.
+7. **Leaderboards stay initials** (`DEC-099`, `REQ-UIX-037` unchanged).
+8. ★ **At sync 1: a profile photo is NOT reportable.** `report_target` stays `comment | photo`; no member can report
+   another's picture, and nothing about a picture enters the photo queues (`SCR-051`, `SCR-052`). **The one moderation
+   is an admin's takedown** — from the member's row on `SCR-049`, audited (`REQ-ADM-010`), deleting the object and
+   reverting the member to their library avatar. `AVATARS-USER-STORIES.md` AVA-16's «reported … through the photos
+   queues» is withdrawn by this line; its «taken down … reverts to the library avatar» stands.
+9. ★ **At sync 1: the current members get their avatars.** `0221`'s backfill assigns a random library key to every
+   existing member who has none, anonymised members excepted, and it is pushed to production once PR A's gates pass.
+
+**The lead's clarifications, measured against the tree.**
+
+- **`0194` is not missing.** The wave prompt said one number was; `0194_certificate_mode_after_completion.sql` is on
+  disk and production's history reads `0192 … 0197` without a hole. The gap `DEC-246` recorded closed when #69 merged.
+  Nothing is renumbered and nothing is filled.
+- **`members.avatar_source` is a Postgres enum** (`public.avatar_source`: `google`, `upload`), not text (CLAUDE.md's
+  naming rule). Null when no photo is stored. The TypeScript name `AvatarSource` in `avatar-href.ts` is the existing
+  size-and-version input and is renamed by PR A so the two cannot be confused.
+- **`members.avatar_key` is checked against the library**: a check constraint over the fifty keys of
+  `docs/design/assets/avatars/README.md`, generated, `<set>/<key>`. Adding an avatar is a file, a row in the README, a
+  migration and a `DEC`; a held key is never retired.
+- **«One stored photo object» is one picture**, kept at its 96 px and 192 px WebP derivatives as `DEC-180` built them.
+  The `avatars` bucket stays WebP-only at 256 KB; the 1 MB JPEG an upload sends lands in a private staging prefix the
+  worker sniffs, strips, derives from and deletes (`0222`).
+- **The library SVGs are shipped assets, not uploads.** Invariant 11 forbids SVG *uploads*; the fifty files are the
+  design's own, served from `public/avatars/` through `<img>`, which runs no script. A unit test refuses any of them
+  that carries a `<script>`, an event attribute or an external reference.
+- **The resolver widens, the readers do not fork.** `avatarHref()` returns `/avatars/<set>/<key>.svg` when no photo
+  is stored and a key is held; every reader selects `avatar_key` beside `avatar_version`, and the DTO field keeps its
+  name and type. A board, a CSV and a mail never call it.
+- **The motion mechanism** is React's `<ViewTransition>` as Next 16.3.5's vendored canary ships it — no
+  `experimental` flag exists or is needed — for the poster's shared name, and `<html data-nav>` keyed root keyframes
+  for push, back, switch and sheet; browsers without the API cut. No motion library.
+
+- **Documents changed:** `01-prd.md`, `14-roadmap.md`, `15-backlog.md`, `16-ui-redesign.md` (a ★ note at §7.5),
+  `02-domain-model.md` and `03-permissions-rls.md` (with `0221`), `TRACEABILITY.md`, `STATUS.md`, `CLAUDE.md`

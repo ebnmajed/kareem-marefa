@@ -325,9 +325,40 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
+### Ownership map (wave 29 — M34, the profile picture and the moves — DEC-280)
+
+**The owner's ask** (milestone **M34**): fifty library avatars every member holds from creation; the picture changed
+from ملفي by upload (through a crop step), «من Google» or the library; and navigation that presses, jumps and sinks.
+Specified by `DEC-280`, `docs/design/screens/{AVATARS,AVATARS-USER-STORIES,TRANSITIONS}.md` and the brief
+(`docs/plan/notes/wave-29-lead.md`) — ★ **where they disagree, `DEC-280` wins**. ★★ **A profile photo is not
+reportable** (§8): the one moderation is an admin's takedown. ★★ **No new primitive** — `ui/` stays **71**.
+**Migrations `0221` (A) and `0222` (B), both the lead's.** ★★ **The console cuts and the leaderboards stay initials.**
+
+★★ **Three PRs, each against `main` from its first push. Merge order A, B, C.** **A — `wave-29a/the-library`** (the
+main checkout, the lead's). **B — `wave-29b/the-picture`** (`../kareem-marefa-wave29b`, cut from A's head once the
+resolver lands; retargeted to `main` before A merges). **C — `wave-29c/the-moves`** (`../kareem-marefa-wave29c`, cut
+from `main`, the lead's).
+
+| Teammate | Model | Delivers | Edits only |
+|---|---|---|---|
+| **lead** | — | `DEC-280`, this map, the agent files, `01`/`02`/`03`/`14`/`15`/`16`, `STATUS` · ★★ **PR A whole** — `public/avatars/**`, `0221` (the enum, the key, the trigger, the backfill), the resolver, ★ `ui/avatar` (**lent from `content` for PR A**), every reader's select · `0222` and the job registrations in B · ★★ **PR C whole** — the tokens, the press, `ui/link`'s kinds, the poster pair, the story zoom, sheets and dialogs, the console opt-out, the `ui-lint` keyframes rule, `console-register`'s extension | the lead-only paths, `supabase/migrations/**` from `0221`, `public/**`, `src/app/globals.css`, the lead's `ui/` files, ★ `ui/{avatar,sheet,menu}.tsx` **for this wave**, `src/components/privacy/avatar-href.ts`, the `avatar_key` select in every DAL module, `src/components/{feed,browse,sessions,stories,shell}/**` **for the poster name, the press and the story zoom only**, `tests/unit/{console-register,avatar-library}*`, new `tests/e2e/wave29-lead-*.spec.ts` |
+| `content` | opus | ★★ **PR B's screens** (`STORY-PRF-010`, `011`'s crop): the way in on `SCR-021` — the tappable hero, the camera badge in «عدّل ملفك» — the sheet `صورتك` in its three states, the crop step, the refusals, the desktop sheet | `src/app/[locale]/app/me/{page.tsx,actions.ts,state.ts}`, `src/components/me/**` except `tab-strip.tsx`, new `src/components/avatar-picker/**`, `src/messages/*/profile.json`, `tests/components/me/**`, new `tests/components/avatar-picker/**`, new `tests/e2e/wave29-content-*.spec.ts`, `docs/plan/notes/content.md`. **Nothing else** — `ui/avatar` is the lead's this wave; storage is `platform`'s |
+| `platform` | opus | ★★ **PR B's storage** (`STORY-PRF-011`'s route and job, `012`, `013`): `POST /api/avatars/upload`, `JOB-process_avatar_upload`, `import_avatar` never overwriting an upload, the four definer functions, the takedown on `SCR-049`'s row, anonymisation, the export, the prefix assertion | `src/app/api/avatars/**`, `src/lib/dal/{avatars,privacy}.ts`, `packages/storage-paths/src/avatar.ts`, `worker/src/tasks/{import_avatar,anonymise_members,build_data_export,assert_storage_prefixes}.ts`, new `worker/src/tasks/process_avatar_upload.ts`, `worker/src/platform/**`, ★ `src/app/[locale]/app/admin/members/**` and `src/lib/dal/admin-members.ts` **for the one row action, add-only** (from `console`), `supabase/proposed/platform/**` (functions only), `tests/rls/{avatar,privacy}*.test.ts`, `tests/unit/{avatar,privacy}*`, new `tests/e2e/wave29-platform-*.spec.ts`, `docs/plan/notes/platform.md` |
+
+**Wave-29 contracts.** (1) **The resolver** — `avatarHref({ id, avatarVersion, avatarKey }, size)`, photo → library →
+null; no reader forks on the source. (2) **Tables are the lead's** — a plan names a column; nobody writes `create`,
+`alter`, a policy or a grant, even in `proposed/`. (3) **`platform` → `content`** — the sheet's four writes, names and
+types in `platform`'s note on day one; `content` never touches storage. (4) **Motion is the lead's** — no other file
+adds a keyframe, a `view-transition-name` or a `data-nav` kind.
+
+**Wave-29 rules.** ★★ `registrations` is never touched; the five public routes do not move. ★★ No hotlink
+(`DEC-099`). ★ Arabic first; a word or a number, never a sentence; `<bdi>` on every number; Western numerals.
+★ Every changed assertion is a ledger line in `STATUS.md`. Teammates spawn planning-only; nobody edits code before
+«the plan is approved». `npm run qa`, `visual`, `build`, every `supabase` command, worktrees and pushes are the lead's.
+
 ### Ownership map (wave 28 — M30, the designer saves when it is told to — DEC-258) — ★ THE RECORD OF A FINISHED WAVE
 
-> Wave 28 merged as PRs #84, #85 and #87 (`main` `df491755`, production `0211`, closed by `DEC-264`). Its map is kept as the record. **No wave is open**: the next lead writes a new map before spawning anyone.
+> Wave 28 merged as PRs #84, #85 and #87 (`main` `df491755`, production `0211`, closed by `DEC-264`). Its map is kept as the record; **wave 29's map is directly above** (`DEC-280`).
 
 **The owner's ask** (milestone **M30**): ★★ **«instead of auto save i want the user to manually save and in case they
 made edits that weren't saved then a popup shows up to either discard or save».** Specified by `DEC-258` and the brief

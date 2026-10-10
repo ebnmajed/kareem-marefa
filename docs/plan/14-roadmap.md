@@ -1029,6 +1029,20 @@ One requirement, one PR, one migration (`0217`).
 **Demonstrable:** a member shares a ورشة's link in WhatsApp and it previews as the poster, the title and the
 abstract.
 
+## M34 — the profile picture and the moves · wave 29 · `DEC-280`
+
+The owner's ask: a library of fifty avatars every member holds from creation; the picture changed from ملفي by upload,
+Google or the library; and navigation that presses, jumps and sinks. Three PRs, two migrations (`0221`, `0222`).
+
+| Work | Requirements | Track | PR |
+|---|---|---|---|
+| The library, the assignment, the backfill, the resolver, every surface | `REQ-PRF-014`, `REQ-PRF-015` | lead, `content` | A |
+| The sheet, the crop, Google, removal, the takedown, anonymisation | `REQ-PRF-016` … `REQ-PRF-019`, `REQ-PRF-011` | `content`, `platform` | B |
+| The press, the five moves, the cuts | `REQ-UIX-121` … `REQ-UIX-130` | lead | C |
+
+**Demonstrable:** a new member signs in holding an avatar, uploads and crops a photo, and taps a session card whose
+poster jumps into the event page.
+
 ## 3. Dependencies
 
 ```mermaid

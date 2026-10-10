@@ -1,9 +1,28 @@
-**Last updated:** 2026-10-08 · **Branch:** `fix/calendar-connect` · ★ **`DEC-279` / `0220`** — calendar sync: every Google write fails 403 because the Calendar API is disabled in the OAuth client's Google Cloud project (798826138381) — **the owner enables it**; and connecting now enqueues the member's already-reserved upcoming sessions (before, only later reservations synced). After the API is on, the lead runs `resync_calendars()` once. Before it: #102 merged (`76336894`, `DEC-278`, production `0219`). Next migration **`0221`**, next decision **`DEC-280`**.
+**Last updated:** 2026-10-10 · **Branch:** `wave-29a/the-library` · ★ **WAVE 29 (M34, `DEC-280`) — the profile picture and the moves.** Three PRs: A the library (`0221`), B the picture (`0222`), C the moves. Next migration **`0221`**, next decision **`DEC-281`**. Before it: #103 merged (`2d145348`, `DEC-279`, production `0220`).
 > Ledger (DEC-279): `tests/rls/calendar-sync.test.ts` — a new case: connecting enqueues one `calendar_upsert` per upcoming confirmed reservation, twice is once, none for an ended session or a cancelled seat.
 > Ledger (DEC-278): `tests/components/ui/story-viewer{,-scope}.test.tsx` — the three controls are hidden until focused, the width cap is the screen's height × 5/8, «التالي» on the chrome token on focus; `tests/components/stories/frames.test.tsx` — the ordinary gutter (`px-6`); `tests/rls/story-frames-content.test.ts` — the gate admits presenters, staff and a confirmed reservation, opens 24 h before, refuses a draft; the outsider is members[0] with the presenter row removed; `tests/e2e/wave26-*-story*.spec.ts` — the frame is tapped (next at the end third), pause by Space, the first STORY ring is `button[data-state]` (`«قصتك»` may lead the row), the «أضف» control is named by `aria-label`.
 > Ledger (DEC-276): `tests/components/feed/session-post.test.tsx` — reserve is a form, not a link; `tests/components/feed/feed.test.tsx` — the calendar prompt follows the photo prompt; `tests/e2e/wave18-content-home.spec.ts` — reserve is a button, plus a new case reserving from the home and asserting the ticket plays once and not after a reload (DEC-277); `session-post.test.tsx` mocks `reserveSeatAction`; `wave16-sessions-reserve.spec.ts` pauses at rest on both projects and asserts the stamp's effective opacity (DEC-277).
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
+
+---
+
+## ★★★ WAVE 29 — M34, the profile picture and the moves (`DEC-280`) — IN PROGRESS
+
+**Brief:** `docs/plan/notes/wave-29-lead.md` · **Map:** `CLAUDE.md` § *Ownership map (wave 29)* · **Trace:** 474
+requirements, 296 stories, no gaps. ★ The owner at sync 1: **a profile photo is not reportable**; **the current members
+get their avatars** when A's backfill is pushed.
+
+| PR | Branch | State |
+|---|---|---|
+| A — the library (`STORY-PRF-008`, `009`) | `wave-29a/the-library` | building — the DEC, requirements, stories, brief landed |
+| B — the picture (`STORY-PRF-010` … `013`) | `wave-29b/the-picture` | waits on A's resolver |
+| C — the moves (`STORY-UIX-111` … `116`) | `wave-29c/the-moves` | not cut |
+
+### Untouched-suite ledger (wave 29)
+
+| # | File | Why it changed |
+|---|---|---|
 
 ---
 

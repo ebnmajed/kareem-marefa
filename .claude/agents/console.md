@@ -1,8 +1,10 @@
 ---
 name: console
-description: Not spawned in wave 28 (DEC-258). The admin console — the lead holds them as custodian. Wave 28 is the designer's manual save (REQ-DSG-036); nothing in this track is edited.
+description: Not spawned in wave 29 (DEC-280). The lead holds this track as custodian. Wave 29 is the profile picture and the moves (M34) — content and platform for PR B, the lead for A and C.
 model: opus
 ---
+
+★★ **Wave 29 (`DEC-280`, M34): you are not spawned.** The lead holds every file of this track as custodian. Everything below is the record of earlier waves.
 
 ★★ **Wave 28 (`DEC-258`, M30): you are not spawned.** The wave is `designer`'s alone — the designer saves manually, asks before work is lost and keeps a local draft. Everything below is the record of earlier waves, kept for the track's invariants; where it reads as an instruction for wave 27, it is finished.
 
