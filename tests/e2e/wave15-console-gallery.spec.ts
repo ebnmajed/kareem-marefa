@@ -147,6 +147,11 @@ for (const ground of GROUNDS) {
 
     const sheet = page.locator(ground.scope).getByRole("dialog", { name: "تصفية النتائج" });
     await openPopover(demo.getByRole("button", { name: "ورقة سفلية" }), sheet);
+    // ★ Wave 29 (DEC-280, REQ-UIX-126): a sheet now RISES into place (and its scrim fades) outside the console. Measure
+    // it where it lands, not mid-flight: wait for its own animations and the scrim's to finish.
+    await sheet.evaluate((el) =>
+      Promise.all([...el.getAnimations(), ...((el.previousElementSibling as HTMLElement | null)?.getAnimations() ?? [])].map((a) => a.finished)),
+    );
     const computed = await sheet.evaluate((el) => {
       const cs = getComputedStyle(el);
       return { background: cs.backgroundColor, color: cs.color };

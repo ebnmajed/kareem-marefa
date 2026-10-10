@@ -19,7 +19,7 @@ const css = readFileSync("src/app/globals.css", "utf8");
 // `--ease-pop` and `--dur-play` beside the M9 tokens, the navigation-motion section, the reduced-motion cut of the
 // transition's pseudo-elements, and a `ui-lint-keyframes:` reason above each of the five keyframes that animate more
 // than transform, opacity and filter. Nothing that existed changed value; `main`'s was 91948137…ddc3.
-const GLOBALS_BEFORE_WAVE_15 = "afd486514d43e85cf662c0cfb0ac8d83c5cbf9be810222e8e03c215d7d618e31";
+const GLOBALS_BEFORE_WAVE_15 = "8100261dc1a1ab1e2bbc240474d36ee2ee36ba36ff32d16d6f2ce77760479cff";
 
 const START = "/* ═══════════════════════════════════════════════════════════════════════════\n   «ساحة اللعب» — THE PLAYGROUND, AS A SCOPE.";
 const END = "/* --------------------------------- typography ---------------------------";

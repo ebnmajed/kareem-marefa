@@ -10854,3 +10854,61 @@ Nothing else moves: no code, no environment variable, no route. The proxy still 
 **Measured again on the preview before the merge** — the PR records both numbers.
 
 - **Documents changed:** `vercel.json` (new), `STATUS.md`
+## DEC-284 — The next screen is fetched before the tap lands, and a page just seen is reused
+
+- **Date:** 2026-10-10 · **Decided by:** the lead, on the owner's ask («I want it snapping fast»; McMaster-Carr as the model) · **Amends:** nothing · **Migration:** none
+
+**Measured.** Next 16 prefetches a dynamic page only down to its `loading.tsx`, and its client router reused nothing
+(`staleTimes.dynamic` 0): every tap — even back to a tab just left — waited a full server round trip, so a move had
+nothing to play onto. With `DEC-283`'s region that trip is shorter; this makes most taps need none.
+
+**Ruling.**
+
+1. **`staleTimes`** (`next.config.ts`): `dynamic: 30`, `static: 60` seconds. A page reached by a link is reused for
+   30 s, a fully prefetched one for 60 s. A write still refreshes what it changed — every action revalidates its paths.
+2. **Intent prefetch** (`src/lib/ui/intent-prefetch.ts`, `src/components/shell/instant-nav.tsx`): a mouse resting on a
+   link, or any press-down, prefetches that page in FULL (`router.prefetch(href, { kind: "full" })` — accepted by Next
+   16's runtime though absent from its type; without it the prefetch stops at the skeleton). When the shell is idle,
+   the member's tabs are warmed. **Never `/api/…`** — an audited download route prefetched is a download nobody asked for.
+3. **A move's kind survives a quick tap**: a settle clears only the kind of the navigation it settles (`setAt` ≤ the
+   commit). Measured: the old settle of the page just landed wiped a fresh `jump` whenever a member tapped within
+   900 ms — the cause of `DEC-282` §4's «the jump never started».
+
+**Proven** (`tests/e2e/perf-instant-nav.spec.ts`, production build): an idle shell's tab tap sends no page request; a
+press-down on a card fetches its full page before the click; a return to a tab inside the window asks nothing. The
+reserve, check-in, home and moves suites pass on it; the jump 4/4, TRN-10 2/2.
+
+- **Documents changed:** `next.config.ts`, `STATUS.md`
+
+## DEC-285 — Navigation motion, simplified: one move per tap, carried as the transition's own type; back is instant
+
+- **Date:** 2026-10-10 · **Decided by:** the owner («why are there four internal states … remove them completely and apply the new transitions … so they run cleanly with no overlap»), the lead on the mechanism · **Amends:** `DEC-280` §5 (TRN-04's «back is the mirror», TRN-07), `REQ-UIX-124`, `REQ-UIX-127` · **Migration:** none
+
+**What was wrong, measured.** Wave 29's moves kept the move in a page-wide flag on `<html data-nav>`, with timers to
+downgrade it and clear it, plus a «rise» faked on back. Taps, skeletons and timers interleaved, so the same tap looked
+different on every network: a second move when the page beat a timer, a snap when it missed it, a jump skipped when
+a timer from the page before wiped a quick tap's kind. Two more causes surfaced while fixing it:
+1. **The shell's frame returned a different element tree per route** (the rail, plain, full-bleed, the console), so
+   crossing from the feed to an event page REMOUNTED the page's view-transition boundary — and React does not animate
+   a boundary it has just created. The jump only ever played by accident.
+2. **The first view transition after a tap is the page being LEFT** (the link's pending dot), so a move «taken by the
+   next transition» was spent on the old page.
+
+**Ruling.**
+1. **One move per tap, as the transition's own type.** A link names its move in `data-nav-kind`; the tap stores it;
+   the view transition whose update changes the path (the shell's layout effect, which React runs inside that update)
+   takes it as its `types` and the store empties. The CSS reads `:active-view-transition-type()`. No page-wide flag, no
+   timers, nothing that outlives its transition.
+2. **Every transition without a type is a short crossfade** (`--dur-fast`) — the page replacing its skeleton, a stream,
+   a save's refresh. Never a second move, never a snap.
+3. **Back is instant.** Next restores a page without a view transition; faking one is what needed the machinery.
+4. **The shell's frame has one shape on every route** (`shell-frame.tsx`): the same wrapper and `<main>`, the rail in
+   its own slot. Nothing below it remounts on navigation.
+5. On a slow network Next shows the skeleton at once, outside any transition, so the jump plays only when the page
+   arrives with the tap (prefetched or fast); the page then fades in over its skeleton. At most one move, always.
+
+**Proven** (`wave29-lead-moves`, production build): the jump; back instant with no typed transition; the slow-network
+case — at most one move, the page's arrival ≤ 120 ms; push and switch; reduced motion; the console; the story zoom;
+TRN-10 (every frame ≤ 16.8 ms). Shell and a11y specs 25/25, unit 5,982, `qa` 57/57.
+
+- **Documents changed:** `STATUS.md`

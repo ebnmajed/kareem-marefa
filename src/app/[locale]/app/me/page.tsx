@@ -64,6 +64,7 @@ export default async function MePage({
         action={
           <Link
             href="/app/me/settings"
+            nav="push"
             aria-label={tShell("settings")}
             className="inline-flex size-10 items-center justify-center rounded-pill border border-edge bg-surface text-fg-heading"
           >

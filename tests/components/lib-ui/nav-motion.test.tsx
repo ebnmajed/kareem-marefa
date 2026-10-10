@@ -1,74 +1,16 @@
-// Wave 29, PR C — which move a navigation plays (DEC-280 §5 – §6; REQ-UIX-121 … REQ-UIX-130). `src/lib/ui/nav-motion.ts`.
-//
-// The moves are CSS keyed on `<html data-nav>`; this module decides the kind. A declared kind wins; a link to a child of
-// this screen is a push; a tab's side is its order; the console and the platform never carry a kind; a jump hands the
-// tapped card's poster to the event's skeleton.
+// Navigation motion after DEC-285 — `src/lib/ui/nav-motion.ts`. One move per tap: the tap stores it, the FIRST view
+// transition takes it as its type, and nothing is timed. Also here: the console's stillness, a tab's side, and the
+// poster handed from a tapped card to the event page it opens.
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  clearNavKind,
-  handPoster,
-  handedPoster,
-  isChildPath,
-  takeHandedPoster,
-  isStillPath,
-  kindOfClick,
-  setNavKind,
-  switchKind,
-} from "@/lib/ui/nav-motion";
+import { forgetPendingKind, handPoster, handedPoster, installNavMotion, isStillPath, kindOfClick, noteNavigation, pendingKind, startWithMove, switchKind, takeHandedPoster } from "@/lib/ui/nav-motion";
 
 const SESSION = "11111111-1111-4111-8111-111111111111";
 
-function click(target: Element, init: Partial<MouseEvent> = {}) {
-  return { button: 0, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, defaultPrevented: false, target, ...init } as MouseEvent;
-}
-
 afterEach(() => {
-  clearNavKind();
+  takeHandedPoster(SESSION);
+  forgetPendingKind();
   document.body.innerHTML = "";
   window.history.replaceState(null, "", "/");
-});
-
-describe("kindOfClick", () => {
-  it("a declared kind wins, from anywhere inside the link", () => {
-    document.body.innerHTML = `<a href="/ar/app/sessions/${SESSION}" data-nav-kind="jump"><span id="in">x</span></a>`;
-    expect(kindOfClick(click(document.getElementById("in")!))).toBe("jump");
-  });
-
-  it("a link to a child of this screen is a push; to anywhere else, nothing", () => {
-    window.history.replaceState(null, "", "/ar/app/me");
-    document.body.innerHTML = `<a id="child" href="/ar/app/me/settings">s</a><a id="other" href="/ar/app/leaderboards">l</a><a id="parent" href="/ar/app">h</a>`;
-    expect(kindOfClick(click(document.getElementById("child")!))).toBe("push");
-    expect(kindOfClick(click(document.getElementById("other")!))).toBeNull();
-    expect(kindOfClick(click(document.getElementById("parent")!))).toBeNull();
-  });
-
-  it("a modified click, a new tab, a download or another button asks for nothing", () => {
-    window.history.replaceState(null, "", "/ar/app/me");
-    document.body.innerHTML = `<a id="a" href="/ar/app/me/settings" data-nav-kind="push">s</a><a id="b" href="/ar/app/me/settings" target="_blank">s</a><a id="c" href="/ar/app/me/x.pdf" download>d</a>`;
-    const a = document.getElementById("a")!;
-    expect(kindOfClick(click(a, { metaKey: true }))).toBeNull();
-    expect(kindOfClick(click(a, { ctrlKey: true }))).toBeNull();
-    expect(kindOfClick(click(a, { button: 1 }))).toBeNull();
-    expect(kindOfClick(click(a, { defaultPrevented: true }))).toBeNull();
-    expect(kindOfClick(click(document.getElementById("b")!))).toBeNull();
-    expect(kindOfClick(click(document.getElementById("c")!))).toBeNull();
-  });
-
-  it("a link never asks for `back` or `none` — history owns back", () => {
-    document.body.innerHTML = `<a id="a" href="/x" data-nav-kind="back">x</a><a id="b" href="/x" data-nav-kind="none">x</a>`;
-    expect(kindOfClick(click(document.getElementById("a")!))).toBeNull();
-    expect(kindOfClick(click(document.getElementById("b")!))).toBeNull();
-  });
-});
-
-describe("isChildPath", () => {
-  it("strictly below, never the same screen or a sibling that shares a prefix", () => {
-    const at = (p: string) => new URL(p, location.href);
-    expect(isChildPath("/ar/app/sessions/x", at("/ar/app/sessions/x/check-in"))).toBe(true);
-    expect(isChildPath("/ar/app/sessions/x/", at("/ar/app/sessions/x/rate"))).toBe(true);
-    expect(isChildPath("/ar/app/sessions/x", at("/ar/app/sessions/x"))).toBe(false);
-    expect(isChildPath("/ar/app/me", at("/ar/app/members"))).toBe(false);
-  });
 });
 
 describe("switchKind — the tapped tab's side, in tab order (REQ-UIX-125)", () => {
@@ -88,16 +30,6 @@ describe("the console and the platform cut (REQ-UIX-129)", () => {
     expect(isStillPath("/ar/app/administrator")).toBe(false);
     expect(isStillPath("/ar/app")).toBe(false);
   });
-
-  it("setNavKind sets the kind on a member screen and clears it inside the staff tree", () => {
-    setNavKind("push", "/ar/app/me");
-    expect(document.documentElement.dataset.nav).toBe("push");
-    setNavKind("push", "/ar/app/admin/sessions");
-    expect(document.documentElement.dataset.nav).toBeUndefined();
-    setNavKind("jump", "/ar/app");
-    setNavKind("none", "/ar/app");
-    expect(document.documentElement.dataset.nav).toBeUndefined();
-  });
 });
 
 describe("the poster handoff (REQ-UIX-122, REQ-UIX-127)", () => {
@@ -110,13 +42,13 @@ describe("the poster handoff (REQ-UIX-122, REQ-UIX-127)", () => {
     return document.getElementById("card")!;
   }
 
-  it("hands the tapped card's decoded poster to that session's skeleton, and to no other", () => {
+  it("hands the tapped card's decoded poster to that session's page, and to no other", () => {
     handPoster(card(SESSION, true));
     expect(handedPoster(SESSION.toUpperCase())).toEqual({ sessionId: SESSION, src: new URL("/p.webp", location.href).href, ratio: 0.8, from: null });
     expect(handedPoster("22222222-2222-4222-8222-222222222222")).toBeNull();
   });
 
-  it("is taken once: a later visit by any other path draws the skeleton's own box", () => {
+  it("is taken once: a later visit by any other path draws the skeleton's box", () => {
     handPoster(card(SESSION, true));
     expect(takeHandedPoster(SESSION)).not.toBeNull();
     expect(takeHandedPoster(SESSION)).toBeNull();
@@ -125,5 +57,82 @@ describe("the poster handoff (REQ-UIX-122, REQ-UIX-127)", () => {
   it("hands nothing when the card's poster is a placeholder or not decoded yet", () => {
     handPoster(card(SESSION, false));
     expect(handedPoster(SESSION)).toBeNull();
+  });
+
+  it("a plain click on a jump link hands its poster; a modified click does not", () => {
+    const off = installNavMotion();
+    const a = card(SESSION, true);
+    a.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, metaKey: true }));
+    expect(handedPoster(SESSION)).toBeNull();
+    a.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
+    expect(handedPoster(SESSION)).not.toBeNull();
+    off();
+  });
+
+  it("★ nothing is handed inside the console", () => {
+    window.history.replaceState(null, "", "/ar/app/admin/sessions");
+    const off = installNavMotion();
+    card(SESSION, true).dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
+    expect(handedPoster(SESSION)).toBeNull();
+    off();
+  });
+});
+
+describe("one move per tap — the first transition takes it (DEC-285)", () => {
+  function click(target: Element, init: Partial<MouseEvent> = {}) {
+    return { button: 0, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, defaultPrevented: false, target, ...init } as MouseEvent;
+  }
+
+  it("kindOfClick reads a link's move; never from a modified click, a new tab or an unknown kind", () => {
+    document.body.innerHTML = `<a id="a" href="/x" data-nav-kind="push"><span id="in">x</span></a><a id="b" href="/x" data-nav-kind="back">x</a><a id="c" href="/x" target="_blank" data-nav-kind="jump">x</a>`;
+    expect(kindOfClick(click(document.getElementById("in")!))).toBe("push");
+    expect(kindOfClick(click(document.getElementById("in")!, { metaKey: true }))).toBeNull();
+    expect(kindOfClick(click(document.getElementById("b")!))).toBeNull();
+    expect(kindOfClick(click(document.getElementById("c")!))).toBeNull();
+  });
+
+  function fakeStart() {
+    const calls: { arg: unknown; types: Set<string> }[] = [];
+    const original = (arg?: unknown) => {
+      const t = { types: new Set<string>() } as unknown as ViewTransition;
+      calls.push({ arg, types: (t as unknown as { types: Set<string> }).types });
+      return t;
+    };
+    return { calls, original };
+  }
+  const tap = (kind: string) => {
+    document.body.innerHTML = `<a id="a" href="/x" data-nav-kind="${kind}">x</a>`;
+    document.getElementById("a")!.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
+  };
+
+  it("★ a transition whose update changes no path (the old page's pending dot) does NOT take the move", () => {
+    const off = installNavMotion();
+    tap("jump");
+    const { calls, original } = fakeStart();
+    startWithMove(original, { update: () => undefined });
+    (calls[0].arg as { update: () => unknown }).update();
+    expect([...calls[0].types]).toEqual([]);
+    expect(pendingKind()).toBe("jump");
+
+    // The navigation's own transition: the path changes during its update — it takes the move, once.
+    startWithMove(original, { update: () => noteNavigation() });
+    (calls[1].arg as { update: () => unknown }).update();
+    expect([...calls[1].types]).toEqual(["jump"]);
+    expect(pendingKind()).toBeNull();
+
+    // And a later transition — the skeleton's page arriving — has no type: it crossfades.
+    startWithMove(original, { update: () => noteNavigation() });
+    (calls[2].arg as { update?: () => unknown }).update?.();
+    expect([...calls[2].types]).toEqual([]);
+    off();
+  });
+
+  it("★ inside the console a tap stores nothing", () => {
+    window.history.replaceState(null, "", "/ar/app/admin/sessions");
+    const off = installNavMotion();
+    document.body.innerHTML = `<a id="a" href="/ar/app/admin/x" data-nav-kind="push">x</a>`;
+    document.getElementById("a")!.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
+    expect(pendingKind()).toBeNull();
+    off();
   });
 });

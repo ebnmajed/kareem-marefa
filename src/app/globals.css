@@ -1619,12 +1619,14 @@ html[data-sting="done"] {
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   ★ Wave 29 — navigation motion (DEC-280 §5 – §6; REQ-UIX-121 … REQ-UIX-130; `TRANSITIONS.md`).
-   The View Transitions API through React's <ViewTransition> (Next 16.3.5's vendored canary — no flag): the page
-   wrapper in the app shell is one update boundary of class `route`; the poster flies by a FLIP of its own.
-   WHICH move plays is `<html data-nav>`, set by `ui/link`'s `nav` on press and by the browser's back
-   (`src/lib/ui/nav-motion.ts`); with no kind, or in the console, nothing moves. Transform, opacity and filter only
-   (REQ-UIX-020) — blur on the sinking page alone. Browsers without the API cut: the static state is the design.
+   ★ Wave 29 — navigation motion (DEC-280 §5 – §6, simplified by DEC-285; REQ-UIX-121 … REQ-UIX-130).
+   ONE MECHANISM: the view transition's own TYPE. A link names its move (`ui/link`'s `nav`, the tab bar, the rail) and
+   Next passes it as the navigation's transition type; `:active-view-transition-type()` matches it for exactly that
+   transition, and the browser drops it when the transition ends — nothing stored, nothing timed, nothing to overlap.
+   The page is one React update boundary of class `route` (`route-motion.tsx`). Any transition WITHOUT a type — the
+   real page replacing its skeleton, a section streaming in, a save refreshing the page — is a short crossfade: never
+   a second move, never a snap. Back is instant: Next restores a page without a transition. Transform, opacity and
+   filter only (REQ-UIX-020); blur on the sinking page alone. Browsers without the API cut.
    ═══════════════════════════════════════════════════════════════════════════ */
 :root {
   /* Inline-end is the left in Arabic, the right in English (REQ-UIX-124). */
@@ -1647,6 +1649,103 @@ html[data-sting="done"] {
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
+}
+::view-transition-group(.route) {
+  animation: none;
+}
+
+@keyframes nav-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes nav-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes nav-sink {
+  to {
+    transform: scale(0.94);
+    filter: brightness(0.5) blur(6px);
+  }
+}
+@keyframes nav-from-end {
+  from {
+    transform: translateX(var(--nav-end));
+  }
+}
+@keyframes nav-switch-in {
+  from {
+    transform: translateX(var(--nav-switch-from));
+    opacity: 0;
+  }
+}
+@keyframes nav-switch-out {
+  to {
+    transform: translateX(var(--nav-switch-to));
+    opacity: 0;
+  }
+}
+@keyframes nav-drop {
+  from {
+    transform: translateY(1.5rem);
+    opacity: 0;
+  }
+}
+@keyframes nav-jump-icon {
+  50% {
+    transform: scale(1.3);
+  }
+}
+
+/* No type — the default: a short crossfade (the skeleton's page arriving, a stream, a refresh). */
+::view-transition-old(.route) {
+  animation: nav-fade-out var(--dur-fast) var(--ease-out) both;
+}
+::view-transition-new(.route) {
+  animation: nav-fade-in var(--dur-fast) var(--ease-out) both;
+}
+
+/* دفع · push — the child slides in from the inline-end over a parent that sinks (TRN-04). */
+:root:active-view-transition-type(push)::view-transition-old(.route) {
+  animation: nav-sink var(--dur-slow) var(--ease-out) both;
+}
+:root:active-view-transition-type(push)::view-transition-new(.route) {
+  animation: nav-from-end var(--dur-slow) var(--ease-pop) both;
+}
+
+/* تبديل · switch — from the tapped tab's side; no depth (TRN-05). The newly current tab's icon jumps. */
+:root:active-view-transition-type(switch-end) {
+  --nav-switch-from: calc(var(--nav-end) * 0.12);
+  --nav-switch-to: calc(var(--nav-end) * -0.12);
+}
+:root:active-view-transition-type(switch-start) {
+  --nav-switch-from: calc(var(--nav-end) * -0.12);
+  --nav-switch-to: calc(var(--nav-end) * 0.12);
+}
+:root:active-view-transition-type(switch-start, switch-end)::view-transition-old(.route) {
+  animation: nav-switch-out var(--dur-base) var(--ease-out) both;
+}
+:root:active-view-transition-type(switch-start, switch-end)::view-transition-new(.route) {
+  animation: nav-switch-in var(--dur-base) var(--ease-out) both;
+}
+:root:active-view-transition-type(switch-start, switch-end) [aria-current="page"] [data-nav-jump-icon] {
+  animation: nav-jump-icon var(--dur-slow) var(--ease-pop) 1;
+}
+
+/* قفزة · the poster jump — the page sinks, the poster flies from the card by a FLIP (`poster-flight.ts`), and the
+   blocks drop in 40 ms apart — only when the page itself arrives with the jump, never on a later crossfade (TRN-02).
+   `backwards`, never `both`: once landed nothing stays applied — moment 1 thuds inside the action card's wrapper. */
+:root:active-view-transition-type(jump)::view-transition-old(.route) {
+  animation: nav-sink var(--dur-play) var(--ease-out) both;
+}
+:root:active-view-transition-type(jump)::view-transition-new(.route) {
+  animation: none;
+}
+:root:active-view-transition-type(jump) .nav-drop {
+  animation: nav-drop var(--dur-slow) var(--ease-pop) backwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
 }
 
 /* ورقة · a sheet rises with weight, a dialog scales in; both settle on close with no overshoot (TRN-06). Keyed off the
@@ -1723,114 +1822,6 @@ html[data-sting="done"] {
 }
 :root:not([data-still]) [data-sheet-scrim][data-state="closed"] {
   animation: scrim-out var(--dur-base) var(--ease-out) both;
-}
-
-/* No kind, or `none` (the console, a redirect after a form, a refresh): a cut — never the browser's own crossfade. */
-::view-transition-group(.route) {
-  animation: none;
-}
-:root:not([data-nav])::view-transition-old(.route),
-:root:not([data-nav])::view-transition-new(.route),
-:root[data-nav="none"]::view-transition-old(.route),
-:root[data-nav="none"]::view-transition-new(.route) {
-  animation: none;
-}
-
-@keyframes nav-sink {
-  to {
-    transform: scale(0.94);
-    filter: brightness(0.5) blur(6px);
-  }
-}
-@keyframes nav-unsink {
-  from {
-    transform: scale(0.94);
-    filter: brightness(0.5) blur(6px);
-  }
-}
-@keyframes nav-from-end {
-  from {
-    transform: translateX(var(--nav-end));
-  }
-}
-@keyframes nav-to-end {
-  to {
-    transform: translateX(var(--nav-end));
-  }
-}
-@keyframes nav-switch-in {
-  from {
-    transform: translateX(var(--nav-switch-from));
-    opacity: 0;
-  }
-}
-@keyframes nav-switch-out {
-  to {
-    transform: translateX(var(--nav-switch-to));
-    opacity: 0;
-  }
-}
-@keyframes nav-drop {
-  from {
-    transform: translateY(1.5rem);
-    opacity: 0;
-  }
-}
-@keyframes nav-jump-icon {
-  50% {
-    transform: scale(1.3);
-  }
-}
-
-/* دفع · push — the child slides in from the inline-end over a parent that sinks (TRN-04). */
-:root[data-nav="push"]::view-transition-old(.route) {
-  animation: nav-sink var(--dur-slow) var(--ease-out) both;
-}
-:root[data-nav="push"]::view-transition-new(.route) {
-  animation: nav-from-end var(--dur-slow) var(--ease-pop) both;
-}
-/* back — the mirror, on `--ease-out`, the leaving child above the rising parent. */
-:root[data-nav="back"]::view-transition-old(.route) {
-  z-index: 1;
-  animation: nav-to-end var(--dur-slow) var(--ease-out) both;
-}
-:root[data-nav="back"]::view-transition-new(.route) {
-  animation: nav-unsink var(--dur-slow) var(--ease-out) both;
-}
-
-/* تبديل · switch — from the tapped tab's side; no depth (TRN-05). */
-:root[data-nav="switch-end"] {
-  --nav-switch-from: calc(var(--nav-end) * 0.12);
-  --nav-switch-to: calc(var(--nav-end) * -0.12);
-}
-:root[data-nav="switch-start"] {
-  --nav-switch-from: calc(var(--nav-end) * -0.12);
-  --nav-switch-to: calc(var(--nav-end) * 0.12);
-}
-:root[data-nav^="switch"]::view-transition-old(.route) {
-  animation: nav-switch-out var(--dur-base) var(--ease-out) both;
-}
-:root[data-nav^="switch"]::view-transition-new(.route) {
-  animation: nav-switch-in var(--dur-base) var(--ease-out) both;
-}
-:root[data-nav^="switch"] [data-nav-tapped] [data-nav-jump-icon] {
-  animation: nav-jump-icon var(--dur-slow) var(--ease-pop) 1;
-}
-
-/* قفزة · the poster jump — the page sinks, the blocks drop (TRN-02), and the poster flies from the card by a FLIP
-   (`src/lib/ui/poster-flight.ts` — React's shared pair cannot form, because Next keeps the route it leaves alive).
-   The new page itself does not move: its blocks do, 40 ms apart, from `--i`. */
-:root[data-nav="jump"]::view-transition-old(.route) {
-  animation: nav-sink var(--dur-play) var(--ease-out) both;
-}
-:root[data-nav="jump"]::view-transition-new(.route) {
-  animation: none;
-}
-:root[data-nav="jump"] .nav-drop {
-  /* `backwards`, never `both`: once landed nothing stays applied — the action card's wrapper is never left
-     transformed, because moment 1 thuds inside it. */
-  animation: nav-drop var(--dur-slow) var(--ease-pop) backwards;
-  animation-delay: calc(var(--i, 0) * 40ms);
 }
 
 @media (prefers-reduced-motion: reduce) {
