@@ -2256,6 +2256,14 @@ generated suite is the highest-value test in the product.
 | `POL-save_brand_kit.status_contrast_accepted` | The platform default palette (`platformBrand()`'s own light/dark, transcribed) always saves — the guard's own regression test against DEC-052's identity override. |
 | `POL-save_brand_kit.status_contrast_dark` | A dark palette whose `dark_canvas`/`dark_surface` sits too close to `--color-live-on-dark` is refused; a dark palette far from it saves. |
 | `POL-status-contrast-formula-agreement` | `public.wcag_contrast_ratio()`'s SQL formula and `src/lib/brand/contrast.ts`'s TypeScript formula agree on every pair this guard checks — a second copy of WCAG's maths, proven not to drift (`tests/rls/status-contrast.test.ts`). |
+| ★ **wave 29, migration `0221`** — lead — every member holds a library avatar (`DEC-280`, `REQ-PRF-014`, `REQ-PRF-015`) |
+| `COL-members.avatar_key.readable` | A member of the org reads `avatar_key` through the grant, `members_member_view` and `me()`. |
+| `COL-members.avatar_key.no_update` | A member updating their own `avatar_key` or `avatar_source` directly is refused (42501); PR B's definer functions are the one writer. |
+| `CHK-members.avatar_key.library` | A key outside `avatar_library()`'s fifty is refused (23514). |
+| `TRG-members_avatar.assigned_on_insert` | Every new member row — the fixture's direct inserts and `add_member()` alike — holds a library key; the draw spans both sets. |
+| `TRG-members_avatar.anonymised_clears` | `anonymise_members()` leaves `avatar_key` and `avatar_source` null. |
+| `TRG-members_avatar.source_follows_version` | A recorded copy is `google`; a cleared copy has no source; the key is untouched by either. |
+| `TRG-comments_broadcast.avatar_key` | The live comment payload carries `authorAvatarKey` beside the version, and still no URL. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

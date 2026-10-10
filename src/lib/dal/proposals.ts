@@ -220,11 +220,11 @@ async function presentersOf(
 
   const { data: members, error: mErr } = await supabase
     .from("members_member_view")
-    .select("id, display_name, company_id, avatar_version")
+    .select("id, display_name, company_id, avatar_version, avatar_key")
     .in("id", rows.map((r) => r.member_id));
   if (mErr) throw new Error(`members_member_view: ${mErr.message}`);
   const people = new Map(
-    (members ?? []).map((m) => [m.id as string, m as { id: string; display_name: string | null; company_id: string | null; avatar_version: number | null }]),
+    (members ?? []).map((m) => [m.id as string, m as { id: string; display_name: string | null; company_id: string | null; avatar_version: number | null; avatar_key?: string | null }]),
   );
   const colours = await teamColours(supabase, [...people.values()].map((m) => m.company_id));
 
@@ -236,7 +236,7 @@ async function presentersOf(
       isProposer: r.member_id === proposerId,
       accepted: r.accepted,
       declinedAt: r.declined_at,
-      avatarUrl: m ? avatarHref({ id: m.id, avatarVersion: m.avatar_version }, 96) : null,
+      avatarUrl: m ? avatarHref({ id: m.id, avatarVersion: m.avatar_version, avatarKey: m.avatar_key }, 96) : null,
       teamColor: m?.company_id ? (colours.get(m.company_id) ?? null) : null,
     };
   });

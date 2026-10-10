@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>حسابي — صورتك، قصّ الصورة</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#F4F1EA}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@700;800&amp;family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&amp;display=swap">
+</helmet>
+<div dir="rtl" style="width: 390px; height: 844px; box-sizing: border-box; background: #0B0C12; color: #F4F1EA; font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif; font-size: 15px; line-height: 1.5; position: relative; overflow: hidden; display: flex; flex-direction: column">
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; min-height: 56px">
+    <button type="button" style="padding: 0 4px; border: 0; background: transparent; color: #A7ABBE; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; min-height: 44px">إلغاء</button>
+    <div style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 22px">صورتك</div>
+    <span style="width: 44px"></span>
+  </div>
+  <div style="position: relative; flex-grow: 1; overflow: hidden; display: flex; align-items: center; justify-content: center">
+    <svg style="position: absolute; inset: 0; width: 100%; height: 100%; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 520" preserveAspectRatio="xMidYMid slice" role="img" aria-label="الصورة المختارة"><defs><linearGradient id="sky-crop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2B1E5E"/><stop offset=".58" stop-color="#FF6E4F"/><stop offset="1" stop-color="#FFD23F"/></linearGradient></defs><rect width="390" height="520" fill="url(#sky-crop)"/><circle cx="252" cy="236" r="54" fill="#FFF3C4"/><path d="M0 372 Q 110 300 210 350 T 390 338 V520 H0z" fill="#8A4A2B"/><path d="M0 430 Q 140 372 260 426 T 390 414 V520 H0z" fill="#5A2E1C"/></svg>
+    <div aria-hidden="true" style="position: relative; width: 300px; height: 300px; border-radius: 999px; box-shadow: 0 0 0 2000px rgba(11, 12, 18, 0.72); border: 2px solid rgba(244, 241, 234, 0.7)"></div>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 18px; padding: 22px 20px 20px">
+    <div role="slider" aria-label="تكبير" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1.6" tabindex="0" style="position: relative; height: 24px; display: flex; align-items: center">
+      <span style="position: absolute; inset-inline: 0; height: 4px; border-radius: 999px; background: #2A2E40"></span>
+      <span style="position: absolute; inset-inline-start: 0; width: 30%; height: 4px; border-radius: 999px; background: #C6FF3D"></span>
+      <span style="position: absolute; inset-inline-start: calc(30% - 12px); width: 24px; height: 24px; border-radius: 999px; background: #C6FF3D; box-shadow: 0 3px 0 #78AD12"></span>
+    </div>
+    <button type="button" style="display: flex; align-items: center; justify-content: center; min-height: 52px; border-radius: 999px; border: 0; background: #C6FF3D; color: #0B0C12; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px; cursor: pointer; box-shadow: 0 5px 0 #78AD12">حفظ</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

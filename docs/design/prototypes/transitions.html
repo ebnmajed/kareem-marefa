@@ -1,0 +1,945 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>الانتقالات</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --ink:#0B0C12; --surface:#151724; --surface2:#1E2130; --line:#2A2E40; --bone:#F4F1EA; --muted:#A7ABBE;
+  --lime:#C6FF3D; --lime-deep:#78AD12; --coral:#FF6E4F; --tangerine:#FF9A2E;
+  --ease-out: cubic-bezier(.2,.8,.2,1); --ease-pop: cubic-bezier(.3,1.4,.5,1);
+  --dur-fast:120ms; --dur-base:200ms; --dur-slow:360ms; --dur-play:480ms;
+  --speed:1;
+}
+@media (prefers-reduced-motion: reduce){ :root{ --dur-fast:0ms; --dur-base:0ms; --dur-slow:0ms; --dur-play:0ms } }
+:root[data-reduced="1"]{ --dur-fast:0ms; --dur-base:0ms; --dur-slow:0ms; --dur-play:0ms }
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ink);color:var(--bone);font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;font-size:15px;line-height:1.6}
+a{color:inherit}
+.display{font-family:'Baloo Bhaijaan 2',sans-serif;font-weight:800}
+.page{max-width:1180px;margin:0 auto;padding:28px 16px 64px}
+header.top{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+header.top h1{margin:0;font-size:40px;line-height:1.1}
+header.top .sub{color:var(--muted);font-size:14px}
+.stage{display:grid;grid-template-columns:390px minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:860px){.stage{grid-template-columns:1fr;justify-items:center;overflow-x:auto}}
+/* phone */
+.phone{position:relative;flex-shrink:0;width:390px;height:844px;border-radius:40px;background:var(--ink);border:1px solid var(--line);box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden;isolation:isolate}
+.progress{position:absolute;top:0;inset-inline:0;height:3px;background:var(--lime);transform:scaleX(0);transform-origin:var(--origin-x,100%) 50%;opacity:0;z-index:40;pointer-events:none}
+html[dir="ltr"] .progress{--origin-x:0%}
+.screens{position:absolute;inset:0 0 70px 0;overflow:hidden}
+.screen{position:absolute;inset:0;background:var(--ink);display:none;overflow:hidden}
+.screen[data-on]{display:block}
+.screen .scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+.screen .scroll::-webkit-scrollbar{display:none}
+.screen .inner{display:flex;flex-direction:column;min-height:100%;width:390px}
+.screen.full{inset:0;z-index:5}
+.tabbar{position:absolute;bottom:0;inset-inline:0;height:70px;z-index:20;transition:transform var(--dur-base) var(--ease-out),opacity var(--dur-base) var(--ease-out)}
+.tabbar[data-hidden]{transform:translateY(100%);opacity:0}
+.tabbar nav{margin:0 !important}
+.tabbar a{transition:color var(--dur-fast) var(--ease-out)}
+.tabbar a svg{transform-origin:50% 50%}
+/* overlays */
+.overlay{position:absolute;inset:0;z-index:30;display:none}
+.overlay[data-on]{display:block}
+.scrim{position:absolute;inset:0;background:rgba(11,12,18,.72)}
+.sheet{position:absolute;bottom:-48px;inset-inline:0;border-radius:28px 28px 0 0;background:var(--surface);border-top:1px solid var(--line);padding:12px 16px 72px;display:flex;flex-direction:column;gap:14px}
+.story{position:absolute;inset:0;background:#000;overflow:hidden;border-radius:0}
+.story .inner{width:390px;height:844px}
+/* hero clones */
+.clone{position:absolute !important;z-index:35;overflow:hidden;pointer-events:none;margin:0 !important}
+/* pending affordance on the pressed link */
+[data-pending]{opacity:.6;animation:pend 900ms var(--ease-out) infinite alternate}
+@keyframes pend{from{opacity:.6}to{opacity:.9}}
+:root[data-reduced="1"] [data-pending]{animation:none;opacity:.7}
+/* controls */
+.controls{display:flex;flex-direction:column;gap:18px}
+.ctl-group{display:flex;flex-direction:column;gap:10px}
+.ctl-group h2{margin:0;font-size:22px}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+button.b{border:0;border-radius:999px;cursor:pointer;font-family:inherit;font-weight:700;font-size:14px;min-height:44px;padding:0 16px;color:var(--bone);background:var(--surface2);border:1px solid var(--line)}
+button.b.primary{font-family:'Baloo Bhaijaan 2',sans-serif;font-weight:800;font-size:17px;background:var(--lime);color:var(--ink);border:0;box-shadow:0 4px 0 var(--lime-deep)}
+button.b.primary:active{transform:translateY(3px);box-shadow:0 1px 0 var(--lime-deep)}
+button.b[aria-pressed="true"]{background:var(--bone);color:var(--ink);border-color:var(--bone)}
+.readout{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;padding:14px 16px;border-radius:18px;background:var(--surface);border:1px solid var(--line);font-size:14px}
+.readout b{font-family:'Baloo Bhaijaan 2',sans-serif;font-weight:800;font-size:20px;color:var(--lime)}
+.readout .k{color:var(--muted)}
+.lane{position:relative;height:10px;border-radius:999px;background:var(--surface2);overflow:hidden}
+.lane i{position:absolute;inset:0;background:var(--lime);transform-origin:100% 50%;transform:scaleX(0)}
+html[dir="ltr"] .lane i{transform-origin:0 50%}
+table.rules{width:100%;border-collapse:collapse;font-size:14px;margin-top:34px}
+table.rules th,table.rules td{text-align:start;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+table.rules th{color:var(--muted);font-weight:700;font-size:12px}
+table.rules td:first-child{font-family:'Baloo Bhaijaan 2',sans-serif;font-weight:800;font-size:18px;white-space:nowrap}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;background:var(--surface2);padding:2px 6px;border-radius:6px;direction:ltr;unicode-bidi:isolate}
+.note{color:var(--muted);font-size:13px;margin-top:14px}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <h1 class="display">الانتقالات</h1>
+    <div class="sub">ضغطة ثم حركة · منحنيان · أربع مُدد — كل شيء يُضغط ويقفز ويهبط بثقل، لا شيء يخفت وحده</div>
+  </header>
+
+  <div class="stage">
+    <div class="phone" id="phone">
+      <div class="progress" id="progress"></div>
+      <div class="screens" id="screens">
+<section class="screen" data-screen="home" aria-label="home"><div class="scroll"><div class="inner" dir="rtl">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 16px 8px">
+    <a aria-label="كريم معرفة" href="Home.dc.html" style="text-decoration: none; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 24px; color: #C6FF3D; line-height: 1"><svg style="height: 36px; width: auto; display: inline-block; vertical-align: middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 215.78 294.03" role="img" aria-label="كريم معرفة"><defs><clipPath id="km-clip-a-1"><path d="M124.1,31.04c0,50.39-41.3,91.16-92.35,91.16L124.1,31.04Z"/></clipPath><clipPath id="km-clip-b-1"><path d="M118.47,26.68c0,50.39-41.3,91.16-92.35,91.16L118.47,26.68Z"/></clipPath></defs><g id="Layer_1-2" data-name="Layer 1"> <path d="M52.52,193.11c40.42,5.32,69.11,40.13,64.15,77.83" fill="none" stroke="#ff4d2d" stroke-width="37.83" stroke-linecap="round" pathLength="1"/> <path d="M46.9,197.29c40.42,5.32,69.11,40.13,64.15,77.83" fill="none" stroke="#ff6e4f" stroke-width="37.83" stroke-linecap="round" pathLength="1"/> <path d="M196.47,26.85c0,94.55-76.23,171.06-170.44,171.06" fill="none" stroke="#8eff3d" stroke-width="38.63" stroke-linecap="round" pathLength="1"/> <path d="M189.76,19.32c0,94.55-76.23,171.06-170.44,171.06" fill="none" stroke="#c6ff3d" stroke-width="38.63" stroke-linecap="round" pathLength="1"/> <path d="M25.22,123.17c83.56-6.87,157.01,58.54,164.22,146.25" fill="none" stroke="#9b61ff" stroke-width="38.63" stroke-linecap="round" pathLength="1"/> <path d="M30.7,118.59c83.56-6.87,157.01,58.54,164.22,146.25" fill="none" stroke="#9b7cff" stroke-width="38.63" stroke-linecap="round" pathLength="1"/> <g> <g clip-path="url(#km-clip-a-1)"> <path d="M124.1,31.04c0,50.39-41.3,91.16-92.35,91.16" fill="none" stroke="#d48300" stroke-width="23" stroke-linecap="round" pathLength="1"/> </g> <path d="M124.1,31.04c0,50.39-41.3,91.16-92.35,91.16" fill="none" stroke="#d48300" stroke-width="38.63" stroke-linecap="round" pathLength="1"/> </g> <g> <g clip-path="url(#km-clip-b-1)"> <path d="M118.47,26.68c0,50.39-41.3,91.16-92.35,91.16" fill="none" stroke="#ff9a2e" stroke-width="23" stroke-linecap="round" pathLength="1"/> </g> <path d="M118.47,26.68c0,50.39-41.3,91.16-92.35,91.16" fill="none" stroke="#ff9a2e" stroke-width="38.63" stroke-linecap="round" pathLength="1"/> </g> </g></svg></a>
+    <div style="display: flex; gap: 8px">
+      <a href="Browse.dc.html" aria-label="ابحث في الجلسات" style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #2A2E40; background: #151724; color: #F4F1EA; display: inline-flex; align-items: center; justify-content: center; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></a>
+      <button type="button" aria-label="الإشعارات، 3 غير مقروءة" style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #2A2E40; background: #151724; color: #F4F1EA; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; position: relative"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 21a2 2 0 0 0 4 0"/></svg><span style="position: absolute; top: 4px; inset-inline-end: 4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: #FF6E4F; color: #0B0C12; font-size: 10px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; border: 2px solid #151724">3</span></button>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 12px; padding: 6px 16px 10px; overflow: hidden">
+    <a data-open="story" href="#story-live" style="display: flex; flex-direction: column; align-items: center; gap: 5px; width: 64px; flex-shrink: 0; text-decoration: none; color: #FF6E4F"><span style="width: 58px; height: 58px; border-radius: 999px; border: 3px solid #FF6E4F; background: #151724; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 13px; box-shadow: 0 0 0 3px #0B0C12, 0 0 0 5px #FF6E4F">مباشر</span><small style="font-size: 11px; font-weight: 600">الآن</small></a>
+    <a href="#story-today" style="display: flex; flex-direction: column; align-items: center; gap: 5px; width: 64px; flex-shrink: 0; text-decoration: none; color: #A7ABBE"><span style="width: 58px; height: 58px; border-radius: 999px; border: 3px solid #FF9A2E; background: #151724; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px; color: #FF9A2E">ص</span><small style="font-size: 11px; font-weight: 600">الخميس</small></a>
+    <a href="#story-1" style="display: flex; flex-direction: column; align-items: center; gap: 5px; width: 64px; flex-shrink: 0; text-decoration: none; color: #A7ABBE"><span style="width: 58px; height: 58px; border-radius: 999px; border: 3px solid #C6FF3D; background: #151724; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 13px; color: #C6FF3D">ملخص</span><small style="font-size: 11px; font-weight: 600">أمس</small></a>
+    <a href="#story-2" style="display: flex; flex-direction: column; align-items: center; gap: 5px; width: 64px; flex-shrink: 0; text-decoration: none; color: #A7ABBE"><span style="width: 58px; height: 58px; border-radius: 999px; border: 3px solid #2A2E40; background: #151724; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px; color: #9B7CFF; opacity: .75">أ</span><small style="font-size: 11px; font-weight: 600">الثلاثاء</small></a>
+    <a href="#story-3" style="display: flex; flex-direction: column; align-items: center; gap: 5px; width: 64px; flex-shrink: 0; text-decoration: none; color: #A7ABBE"><span style="width: 58px; height: 58px; border-radius: 999px; border: 3px solid #2A2E40; background: #151724; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px; color: #3BE8B0; opacity: .75">ج</span><small style="font-size: 11px; font-weight: 600">الأحد</small></a>
+  </div>
+
+  <div style="margin: 0 12px; padding: 12px 14px; border-radius: 22px; background: #151724; border: 1px solid #2A2E40; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: stretch; gap: 8px">
+      <a href="#board" style="flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 14px; background: #1E2130; text-decoration: none; color: #F4F1EA"><span style="font-size: 11px; color: #A7ABBE; font-weight: 600">ترتيبك هذا الأسبوع</span><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 1; color: #C6FF3D">#4</span></a>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 14px; background: #1E2130"><span style="font-size: 11px; color: #A7ABBE; font-weight: 600">سلسلتك</span><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 1; color: #FF6E4F">×7</span></div>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 14px; background: #1E2130"><span style="font-size: 11px; color: #A7ABBE; font-weight: 600">نقاطك</span><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 1">680</span></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: #A7ABBE"><span style="flex: 1; height: 8px; border-radius: 999px; background: #1E2130; overflow: hidden"><span style="display: block; width: 97%; height: 100%; border-radius: 999px; background: #C6FF3D"></span></span><span>«كريم معرفة» بعد <b style="color: #F4F1EA">20</b></span></div>
+  </div>
+
+  <div style="padding: 16px 16px 6px; font-size: 13px; font-weight: 700; color: #A7ABBE">اليوم</div>
+  <article style="margin: 0 12px; display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 22px; background: #151724; border: 1px solid #2A2E40">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <a href="#profile" style="width: 38px; height: 38px; border-radius: 999px; background: #1E2130; border: 3px solid #35D0FF; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 16px; color: #F4F1EA; text-decoration: none">س</a>
+      <div style="flex: 1; line-height: 1.3"><div style="font-size: 14px; font-weight: 700">سارة القحطاني <span style="font-size: 11px; color: #35D0FF; font-weight: 600">مواهب</span></div><div style="font-size: 11px; color: #A7ABBE">قاعة الرياض، 6:30 م</div></div>
+      <span style="font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: #FF6E4F; color: #0B0C12; display: inline-flex; align-items: center; gap: 6px"><span style="width: 7px; height: 7px; border-radius: 999px; background: #0B0C12"></span>جارية الآن</span>
+    </div>
+    <a href="EventLive.dc.html" style="position: relative; height: 300px; border-radius: 16px; background: #35D0FF; color: #0B0C12; padding: 14px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; text-decoration: none; overflow: hidden">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start"><span style="font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 999px; background: #0B0C12; color: #35D0FF">جلسة إدارية</span><span style="display: inline-flex; padding: 5px 10px; border-radius: 999px; background: #C6FF3D; color: #0B0C12; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 14px; transform: rotate(6deg); box-shadow: 0 0 0 3px #35D0FF, 0 0 0 5px #0B0C12">+50</span></div>
+      <div style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 30px; line-height: 1.15; text-wrap: balance">العرض في 5 شرائح: كيف تُقنع اللجنة التنفيذية</div>
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; font-size: 12px; font-weight: 700"><span>اليوم، 6:30 م</span><span style="width: 40px; height: 40px; border-radius: 6px; background: #0B0C12; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; padding: 5px; box-sizing: border-box" aria-hidden="true"><span style="background: #35D0FF"></span><span style="background: #35D0FF"></span><span style="background: #0B0C12"></span><span style="background: #0B0C12"></span><span style="background: #35D0FF"></span><span style="background: #35D0FF"></span><span style="background: #35D0FF"></span><span style="background: #0B0C12"></span><span style="background: #35D0FF"></span></span></div>
+    </a>
+    <div style="display: flex; align-items: center; gap: 6px">
+      <button type="button" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 11px; border-radius: 999px; border: 1px solid #2A2E40; background: #1E2130; color: #F4F1EA; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit"><svg width="16" height="16" viewBox="0 0 24 24" fill="#FF4FB8" stroke="#FF4FB8" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-4.6-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.4-9.5 9-9.5 9z"/></svg>48</button>
+      <button type="button" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 11px; border-radius: 999px; border: 1px solid #2A2E40; background: #1E2130; color: #F4F1EA; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit"><svg width="16" height="16" viewBox="0 0 24 24" fill="#FF6E4F" stroke="#FF6E4F" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-6 1-9z"/></svg>21</button>
+      <a href="EventLive.dc.html#comments" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 11px; border-radius: 999px; border: 1px solid #2A2E40; background: #1E2130; color: #F4F1EA; font-weight: 700; font-size: 13px; text-decoration: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.6A8 8 0 1 1 21 12z"/></svg>8</a>
+      <span style="flex: 1"></span>
+      <button type="button" aria-label="مشاركة" style="width: 36px; height: 36px; border-radius: 999px; border: 1px solid #2A2E40; background: #1E2130; color: #F4F1EA; display: inline-flex; align-items: center; justify-content: center; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 15V3"/><path d="m8 7 4-4 4 4"/></svg></button>
+      <button type="button" aria-label="حفظ" style="width: 36px; height: 36px; border-radius: 999px; border: 1px solid #2A2E40; background: #1E2130; color: #F4F1EA; display: inline-flex; align-items: center; justify-content: center; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg></button>
+    </div>
+    <a href="CheckIn.dc.html" style="display: flex; align-items: center; justify-content: space-between; min-height: 52px; padding: 10px 16px; border-radius: 999px; background: #FF6E4F; color: #0B0C12; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px; text-decoration: none; box-shadow: 0 5px 0 #C2472C"><span>سجّل حضورك</span><span style="font-family: 'IBM Plex Sans Arabic', sans-serif; font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 999px; background: #0B0C12; color: #FF6E4F">مقعدك محجوز</span></a>
+  </article>
+
+  <section aria-label="سباق الشركات" style="margin: 10px 12px 0; padding: 12px 14px; border-radius: 22px; background: #151724; border: 1px solid #2A2E40; display: flex; flex-direction: column; gap: 8px">
+    <div style="display: flex; justify-content: space-between; align-items: center"><a href="#board" style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 18px; color: #F4F1EA; text-decoration: none">سباق الشركات</a><span style="font-size: 11px; padding: 4px 9px; border-radius: 999px; background: #1E2130; color: #A7ABBE">الجولة 3 · 26 يومًا</span></div>
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 12px"><span style="width: 20px; height: 20px; border-radius: 999px; background: #0B0C12; border: 3px solid #35D0FF"></span><span style="width: 76px; font-weight: 700">مواهب</span><span style="flex: 1; height: 10px; border-radius: 999px; background: #1E2130; overflow: hidden"><span style="display: block; width: 92%; height: 100%; border-radius: 999px; background: #35D0FF"></span></span><span style="width: 28px; font-weight: 700">9.4</span></div>
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 12px"><span style="width: 20px; height: 20px; border-radius: 999px; background: #0B0C12; border: 3px solid #FF4FB8"></span><span style="width: 76px; font-weight: 700">بنينسولا ستوري</span><span style="flex: 1; height: 10px; border-radius: 999px; background: #1E2130; overflow: hidden"><span style="display: block; width: 84%; height: 100%; border-radius: 999px; background: #FF4FB8"></span></span><span style="width: 28px; font-weight: 700">8.7</span></div>
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 6px; margin: -4px -6px; border-radius: 12px; border: 2px solid #C6FF3D"><span style="width: 20px; height: 20px; border-radius: 999px; background: #0B0C12; border: 3px solid #FF9A2E"></span><span style="width: 76px; font-weight: 700">صنف، فريقك</span><span style="flex: 1; height: 10px; border-radius: 999px; background: #1E2130; overflow: hidden"><span style="display: block; width: 71%; height: 100%; border-radius: 999px; background: #FF9A2E"></span></span><span style="width: 28px; font-weight: 700">7.3</span></div>
+  </section>
+
+  <div style="padding: 16px 16px 6px; font-size: 13px; font-weight: 700; color: #A7ABBE">الخميس 2 أكتوبر</div>
+  <article style="margin: 0 12px; display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 22px; background: #151724; border: 1px solid #2A2E40">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <a href="#profile" style="width: 38px; height: 38px; border-radius: 999px; background: #1E2130; border: 3px solid #FF9A2E; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 16px; color: #F4F1EA; text-decoration: none">ن</a>
+      <div style="flex: 1; line-height: 1.3"><div style="font-size: 14px; font-weight: 700">نورة العتيبي <span style="font-size: 11px; color: #FF9A2E; font-weight: 600">صنف</span></div><div style="font-size: 11px; color: #A7ABBE">قاعة الرياض، 6:30 م</div></div>
+      <span style="font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: #1E2130; color: #A7ABBE">بعد 3 أيام</span>
+    </div>
+    <a data-hero="poster" href="Event.dc.html" style="position: relative; height: 220px; border-radius: 16px; background: #FF9A2E; color: #0B0C12; padding: 14px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; text-decoration: none; overflow: hidden">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start"><span style="font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 999px; background: #0B0C12; color: #FF9A2E">جلسة إدارية</span><span style="display: inline-flex; padding: 5px 10px; border-radius: 999px; background: #C6FF3D; color: #0B0C12; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 14px; transform: rotate(6deg); box-shadow: 0 0 0 3px #FF9A2E, 0 0 0 5px #0B0C12">+50</span></div>
+      <div style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 1.15; text-wrap: balance">لوحة تحكم لا يهجرها أحد بعد أسبوع</div>
+      <div style="font-size: 12px; font-weight: 700">2 أكتوبر، 6:30 م</div>
+    </a>
+    <div style="display: flex; align-items: center; gap: 6px">
+      <button type="button" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 11px; border-radius: 999px; border: 1px solid #2A2E40; background: #1E2130; color: #F4F1EA; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF4FB8" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-4.6-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.4-9.5 9-9.5 9z"/></svg>12</button>
+      <a href="Event.dc.html#comments" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 11px; border-radius: 999px; border: 1px solid #2A2E40; background: #1E2130; color: #F4F1EA; font-weight: 700; font-size: 13px; text-decoration: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.6A8 8 0 1 1 21 12z"/></svg>3</a>
+      <span style="flex: 1"></span>
+      <span style="font-size: 12px; color: #A7ABBE">12 من 40 مقعدًا</span>
+    </div>
+    <a href="Event.dc.html" style="display: flex; align-items: center; justify-content: center; min-height: 52px; padding: 10px 16px; border-radius: 999px; background: #C6FF3D; color: #0B0C12; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px; text-decoration: none; box-shadow: 0 5px 0 #78AD12">احجز مقعدك</a>
+  </article>
+
+  <article style="margin: 10px 12px 0; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 22px; background: #151724; border: 1px solid #2A2E40">
+    <span style="width: 44px; height: 44px; border-radius: 14px; background: #1E2130; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9B7CFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg></span>
+    <div style="flex: 1; font-size: 14px; line-height: 1.5"><a href="#profile" style="color: #F4F1EA; font-weight: 700; text-decoration: none">فهد العنزي</a> بلغ مستوى <b style="color: #9B7CFF">صاحب أثر</b>، وصار يحجز قبل الجميع.<div style="font-size: 11px; color: #A7ABBE">أيك، قبل ساعتين</div></div>
+    <button type="button" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 11px; border-radius: 999px; border: 1px solid #2A2E40; background: #1E2130; color: #F4F1EA; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit"><svg width="16" height="16" viewBox="0 0 24 24" fill="#C6FF3D" stroke="#C6FF3D" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>9</button>
+  </article>
+
+  <article style="margin: 10px 12px 0; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 22px; background: #1E2130; border: 1px solid #2A2E40">
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #A7ABBE"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C6FF3D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12"/></svg><span>إعلان من الإدارة، أمس</span></div>
+    <div style="font-size: 15px; font-weight: 600; line-height: 1.5">موسم الشتاء يبدأ 12 أكتوبر: ثلاث جلسات كل أسبوع، والكأس يُسلَّم في اللقاء السنوي.</div>
+  </article>
+
+  <div style="padding: 16px 16px 6px; font-size: 13px; font-weight: 700; color: #A7ABBE">أمس</div>
+  <article style="margin: 0 12px; display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 22px; background: #151724; border: 1px solid #2A2E40">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <span style="width: 38px; height: 38px; border-radius: 999px; background: #1E2130; border: 3px solid #C6FF3D; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 16px">م</span>
+      <div style="flex: 1; line-height: 1.3"><div style="font-size: 14px; font-weight: 700">ملخص: الأرقام التي تكذب <span style="font-size: 11px; color: #C6FF3D; font-weight: 600">اكتملت</span></div><div style="font-size: 11px; color: #A7ABBE">محمد الدوسري، جذر · 28 حاضرًا، 3 صور</div></div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px"><div style="aspect-ratio: 1; border-radius: 12px; background: #3A3F56"></div><div style="aspect-ratio: 1; border-radius: 12px; background: #2C3D4A"></div><div style="aspect-ratio: 1; border-radius: 12px; background: #4A3A2E"></div></div>
+    <div style="display: flex; align-items: center; gap: 6px">
+      <button type="button" style="display: inline-flex; align-items: center; gap: 5px; padding: 7px 11px; border-radius: 999px; border: 1px solid #2A2E40; background: #1E2130; color: #F4F1EA; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit"><svg width="16" height="16" viewBox="0 0 24 24" fill="#FF4FB8" stroke="#FF4FB8" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-4.6-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.4-9.5 9-9.5 9z"/></svg>63</button>
+      <span style="flex: 1"></span>
+      <a href="EventDone.dc.html#materials" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; background: #C6FF3D; color: #0B0C12; font-weight: 700; font-size: 13px; text-decoration: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg>حمّل المواد</a>
+    </div>
+  </article>
+
+  <div style="margin: 12px 12px 0; padding: 16px; border-radius: 22px; background: #1E2130; border: 1px solid #2A2E40; display: flex; align-items: center; gap: 12px">
+    <div style="flex: 1"><div style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px; line-height: 1.2">عندك موضوع؟</div><div style="font-size: 13px; color: #A7ABBE">لست بحاجة لأن تكون خبيرًا.</div></div>
+    <a href="#propose" style="display: inline-flex; align-items: center; justify-content: center; padding: 10px 16px; border-radius: 999px; background: #C6FF3D; color: #0B0C12; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 16px; text-decoration: none; box-shadow: 0 4px 0 #78AD12; white-space: nowrap">اقترح جلسة</a>
+  </div>
+
+  
+</div></div></section>
+<section class="screen" data-screen="browse" aria-label="browse"><div class="scroll"><div class="inner" dir="rtl">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 16px 8px">
+    <h1 style="margin: 0; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 1">الجلسات</h1>
+    <button type="button" aria-label="الإشعارات" style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #2A2E40; background: #151724; color: #F4F1EA; display: inline-flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 21a2 2 0 0 0 4 0"/></svg></button>
+  </div>
+
+  <div style="padding: 4px 12px 10px">
+    <label for="q" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">ابحث في الجلسات</label>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 14px; height: 48px; border-radius: 999px; background: #151724; border: 1px solid #2A2E40">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7ABBE" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="ابحث عن جلسة أو مُقدِّم أو وسم…" style="flex: 1; border: 0; background: transparent; color: #F4F1EA; font-family: inherit; font-size: 15px; outline: none">
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 8px; padding: 0 12px 10px; overflow: hidden; align-items: center">
+    <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 999px; border: 1px solid #2A2E40; background: #151724; color: #F4F1EA; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap">الحالة: القادمة <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 999px; border: 1px solid #2A2E40; background: #151724; color: #F4F1EA; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap">التصنيف: الكل <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 999px; border: 1px solid #2A2E40; background: #0B0C12; color: #A7ABBE; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>المزيد</button>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 6px">
+    <a href="#tag" style="padding: 5px 10px; border-radius: 999px; background: #1E2130; color: #F4F1EA; font-size: 12px; font-weight: 600; text-decoration: none">#تقارير</a>
+    <a href="#tag" style="padding: 5px 10px; border-radius: 999px; background: #1E2130; color: #F4F1EA; font-size: 12px; font-weight: 600; text-decoration: none">#عروض</a>
+    <a href="#tag" style="padding: 5px 10px; border-radius: 999px; background: #1E2130; color: #F4F1EA; font-size: 12px; font-weight: 600; text-decoration: none">#إكسل</a>
+    <a href="#tag" style="padding: 5px 10px; border-radius: 999px; background: #1E2130; color: #F4F1EA; font-size: 12px; font-weight: 600; text-decoration: none">#تصوير</a>
+    <a href="#tag" style="padding: 5px 10px; border-radius: 999px; background: #1E2130; color: #F4F1EA; font-size: 12px; font-weight: 600; text-decoration: none">#أتمتة</a>
+    <a href="#tag" style="padding: 5px 10px; border-radius: 999px; background: #1E2130; color: #F4F1EA; font-size: 12px; font-weight: 600; text-decoration: none">#تفاوض</a>
+    <a href="#tag" style="padding: 5px 10px; border-radius: 999px; background: #1E2130; color: #F4F1EA; font-size: 12px; font-weight: 600; text-decoration: none">#إنتاج</a>
+    <a href="#tag" style="padding: 5px 10px; border-radius: 999px; background: #1E2130; color: #F4F1EA; font-size: 12px; font-weight: 600; text-decoration: none">#ميزانية</a>
+  </div>
+
+  <div style="padding: 12px 16px 6px; display: flex; align-items: baseline; justify-content: space-between"><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px">هذا الأسبوع</span><span style="font-size: 12px; color: #A7ABBE">3 جلسات</span></div>
+
+  <a href="EventLive.dc.html" style="margin: 0 12px; display: flex; gap: 12px; padding: 10px; border-radius: 18px; background: #151724; border: 1px solid #2A2E40; text-decoration: none; color: #F4F1EA">
+    <span style="width: 76px; height: 95px; border-radius: 10px; background: #35D0FF; color: #0B0C12; padding: 8px; box-sizing: border-box; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 12px; line-height: 1.15; flex-shrink: 0">العرض في 5 شرائح</span>
+    <span style="flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0">
+      <span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #FF6E4F; color: #0B0C12; align-self: flex-start">جارية الآن</span>
+      <span style="font-size: 15px; font-weight: 700; line-height: 1.35">العرض في 5 شرائح: كيف تُقنع اللجنة التنفيذية</span>
+      <span style="font-size: 12px; color: #A7ABBE">اليوم 6:30 م · قاعة الرياض</span>
+      <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #A7ABBE"><span style="width: 18px; height: 18px; border-radius: 999px; background: #0B0C12; border: 2px solid #35D0FF"></span>سارة القحطاني · <b style="color: #FF6E4F">مقعدك محجوز</b></span>
+    </span>
+    <span style="display: flex; flex-direction: column; justify-content: space-between; align-items: center"><span style="width: 32px; height: 32px; border-radius: 999px; border: 1px solid #2A2E40; display: inline-flex; align-items: center; justify-content: center; color: #C6FF3D" aria-label="محفوظة"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg></span><span style="font-size: 11px; color: #A7ABBE">+50</span></span>
+  </a>
+
+  <a href="Event.dc.html" style="margin: 8px 12px 0; display: flex; gap: 12px; padding: 10px; border-radius: 18px; background: #151724; border: 1px solid #2A2E40; text-decoration: none; color: #F4F1EA">
+    <span style="width: 76px; height: 95px; border-radius: 10px; background: #FF9A2E; color: #0B0C12; padding: 8px; box-sizing: border-box; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 12px; line-height: 1.15; flex-shrink: 0">لوحة تحكم لا يهجرها أحد</span>
+    <span style="flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0">
+      <span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #1E2130; color: #F4F1EA; border: 1px solid #2A2E40; align-self: flex-start">التسجيل مفتوح</span>
+      <span style="font-size: 15px; font-weight: 700; line-height: 1.35">لوحة تحكم لا يهجرها أحد بعد أسبوع</span>
+      <span style="font-size: 12px; color: #A7ABBE">الخميس 2 أكتوبر، 6:30 م · قاعة الرياض</span>
+      <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #A7ABBE"><span style="width: 18px; height: 18px; border-radius: 999px; background: #0B0C12; border: 2px solid #FF9A2E"></span>نورة العتيبي · 12 من 40 مقعدًا</span>
+    </span>
+    <span style="display: flex; flex-direction: column; justify-content: space-between; align-items: center"><span style="width: 32px; height: 32px; border-radius: 999px; border: 1px solid #2A2E40; display: inline-flex; align-items: center; justify-content: center; color: #A7ABBE" aria-label="حفظ"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg></span><span style="font-size: 11px; color: #A7ABBE">+50</span></span>
+  </a>
+
+  <a href="#s3" style="margin: 8px 12px 0; display: flex; gap: 12px; padding: 10px; border-radius: 18px; background: #151724; border: 1px solid #2A2E40; text-decoration: none; color: #F4F1EA">
+    <span style="width: 76px; height: 95px; border-radius: 10px; background: #3BE8B0; color: #0B0C12; padding: 8px; box-sizing: border-box; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 12px; line-height: 1.15; flex-shrink: 0">ورشة الإضاءة للمبتدئين</span>
+    <span style="flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0">
+      <span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #35D0FF; color: #0B0C12; align-self: flex-start">قائمة انتظار</span>
+      <span style="font-size: 15px; font-weight: 700; line-height: 1.35">ورشة الإضاءة للمبتدئين: ثلاث لمبات تكفي</span>
+      <span style="font-size: 12px; color: #A7ABBE">السبت 4 أكتوبر، 5:00 م · استوديو جدة</span>
+      <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #A7ABBE"><span style="width: 18px; height: 18px; border-radius: 999px; background: #0B0C12; border: 2px solid #3BE8B0"></span>محمد الدوسري · ممتلئة، 4 في الانتظار</span>
+    </span>
+    <span style="display: flex; flex-direction: column; justify-content: space-between; align-items: center"><span style="width: 32px; height: 32px; border-radius: 999px; border: 1px solid #2A2E40; display: inline-flex; align-items: center; justify-content: center; color: #A7ABBE" aria-label="حفظ"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg></span><span style="font-size: 11px; color: #A7ABBE">+50</span></span>
+  </a>
+
+  <div style="padding: 18px 16px 6px; display: flex; align-items: baseline; justify-content: space-between"><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px">الأسبوع القادم</span><span style="font-size: 12px; color: #A7ABBE">جلستان</span></div>
+
+  <a href="#s4" style="margin: 0 12px; display: flex; gap: 12px; padding: 10px; border-radius: 18px; background: #151724; border: 1px solid #2A2E40; text-decoration: none; color: #F4F1EA">
+    <span style="width: 76px; height: 95px; border-radius: 10px; background: #9B7CFF; color: #0B0C12; padding: 8px; box-sizing: border-box; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 12px; line-height: 1.15; flex-shrink: 0">ما تعلّمناه من إطلاق فاشل</span>
+    <span style="flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0">
+      <span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #1E2130; color: #F4F1EA; border: 1px solid #2A2E40; align-self: flex-start">التسجيل مفتوح</span>
+      <span style="font-size: 15px; font-weight: 700; line-height: 1.35">ما تعلّمناه من إطلاق فاشل</span>
+      <span style="font-size: 12px; color: #A7ABBE">الثلاثاء 7 أكتوبر، 5:00 م · قاعة الرياض</span>
+      <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #A7ABBE"><span style="width: 18px; height: 18px; border-radius: 999px; background: #0B0C12; border: 2px solid #9B7CFF"></span>خالد الغامدي · 31 من 40 مقعدًا</span>
+    </span>
+    <span style="display: flex; flex-direction: column; justify-content: space-between; align-items: center"><span style="width: 32px; height: 32px; border-radius: 999px; border: 1px solid #2A2E40; display: inline-flex; align-items: center; justify-content: center; color: #A7ABBE" aria-label="حفظ"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg></span><span style="font-size: 11px; color: #A7ABBE">+50</span></span>
+  </a>
+
+  <a href="#s5" style="margin: 8px 12px 0; display: flex; gap: 12px; padding: 10px; border-radius: 18px; background: #151724; border: 1px solid #2A2E40; text-decoration: none; color: #F4F1EA">
+    <span style="width: 76px; height: 95px; border-radius: 10px; background: #FFD23F; color: #0B0C12; padding: 8px; box-sizing: border-box; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 12px; line-height: 1.15; flex-shrink: 0">الأقمشة: كيف تقرأ العيّنة</span>
+    <span style="flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0">
+      <span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #1E2130; color: #F4F1EA; border: 1px solid #2A2E40; align-self: flex-start">التسجيل مفتوح</span>
+      <span style="font-size: 15px; font-weight: 700; line-height: 1.35">الأقمشة: كيف تقرأ العيّنة قبل أن تشتريها</span>
+      <span style="font-size: 12px; color: #A7ABBE">الأربعاء 8 أكتوبر، 6:00 م · معرض دبابيس</span>
+      <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #A7ABBE"><span style="width: 18px; height: 18px; border-radius: 999px; background: #0B0C12; border: 2px solid #FFD23F"></span>سلمى الحربي · 6 من 25 مقعدًا</span>
+    </span>
+    <span style="display: flex; flex-direction: column; justify-content: space-between; align-items: center"><span style="width: 32px; height: 32px; border-radius: 999px; border: 1px solid #2A2E40; display: inline-flex; align-items: center; justify-content: center; color: #A7ABBE" aria-label="حفظ"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg></span><span style="font-size: 11px; color: #A7ABBE">+50</span></span>
+  </a>
+
+  <div style="padding: 18px 16px 6px; display: flex; align-items: baseline; justify-content: space-between"><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px">سابقة</span><a href="#past" style="font-size: 12px; color: #A7ABBE; text-decoration: none">14</a></div>
+
+  
+</div></div></section>
+<section class="screen" data-screen="board" aria-label="board"><div class="scroll"><div class="inner" dir="rtl">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 16px 4px">
+    <h1 style="margin: 0; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 1">لوحات الصدارة</h1>
+    <span style="font-size: 12px; color: #A7ABBE">حتى الجمعة</span>
+  </div>
+
+  <div style="display: flex; gap: 6px; padding: 0 12px 10px; overflow: hidden">
+    <a href="Board.dc.html" aria-current="page" style="padding: 8px 14px; border-radius: 999px; background: #C6FF3D; color: #0B0C12; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap">هذا الأسبوع</a>
+    <a href="#month" style="padding: 8px 14px; border-radius: 999px; background: #151724; border: 1px solid #2A2E40; color: #F4F1EA; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap">هذا الشهر</a>
+    <a href="#all" style="padding: 8px 14px; border-radius: 999px; background: #151724; border: 1px solid #2A2E40; color: #F4F1EA; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap">كل الأوقات</a>
+    <a href="Companies.dc.html" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; background: #151724; border: 1px solid #2A2E40; color: #F4F1EA; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap">سباق الشركات</a>
+  </div>
+
+  <div style="margin: 0 12px; padding: 14px 16px; border-radius: 22px; background: #151724; border: 2px solid #C6FF3D; display: flex; align-items: center; gap: 12px">
+    <div style="line-height: 1"><div style="font-size: 11px; color: #A7ABBE; font-weight: 700; margin-bottom: 4px">ترتيبك</div><div style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 44px; color: #C6FF3D">#4</div></div>
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.4"><span style="color: #C6FF3D; font-weight: 700">▲2</span><span style="color: #A7ABBE">فوقك: <b style="color: #F4F1EA">فهد العنزي</b> · +30</span></div>
+    <div style="text-align: center; line-height: 1.1"><div style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 24px">130</div><div style="font-size: 11px; color: #A7ABBE">هذا الأسبوع</div></div>
+  </div>
+
+  <div style="display: flex; align-items: flex-end; justify-content: center; gap: 10px; padding: 22px 16px 6px">
+    <a href="#p2" style="display: flex; flex-direction: column; align-items: center; gap: 6px; width: 104px; text-decoration: none; color: #F4F1EA">
+      <span style="width: 60px; height: 60px; border-radius: 999px; background: #0B0C12; border: 4px solid #9B7CFF; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 24px">ف</span>
+      <span style="font-size: 13px; font-weight: 700; text-align: center; line-height: 1.2">فهد العنزي</span>
+      <span style="font-size: 11px; color: #9B7CFF; font-weight: 600">أيك</span>
+      <span style="width: 100%; height: 72px; border-radius: 14px 14px 0 0; background: #D9DEE8; color: #0B0C12; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1"><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 26px">2</span><span style="font-size: 11px; font-weight: 700">160</span></span>
+    </a>
+    <a href="Profile.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 6px; width: 112px; text-decoration: none; color: #F4F1EA">
+      <svg viewBox="0 0 96 96" width="44" height="44" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="bdCup" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE98A"/><stop offset="0.5" stop-color="#FFD23F"/><stop offset="1" stop-color="#C9961B"/></linearGradient></defs><path d="M28 14h40v26a20 20 0 0 1-40 0z" fill="url(#bdCup)"/><path d="M28 18H16a3 3 0 0 0-3 3c0 12 7 20 17 22M68 18h12a3 3 0 0 1 3 3c0 12-7 20-17 22" fill="none" stroke="#C9961B" stroke-width="5" stroke-linecap="round"/><path d="M44 60h8v10h-8zM30 84a10 10 0 0 1 10-10h16a10 10 0 0 1 10 10v4H30z" fill="#C9961B"/><ellipse cx="40" cy="26" rx="4" ry="8" fill="#FFF6D0" opacity="0.8"/></svg>
+      <span style="width: 64px; height: 64px; border-radius: 999px; background: #0B0C12; border: 4px solid #35D0FF; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 26px; box-shadow: 0 0 0 3px #0B0C12, 0 0 0 6px #FFD23F">س</span>
+      <span style="font-size: 13px; font-weight: 700; text-align: center; line-height: 1.2">سارة القحطاني</span>
+      <span style="font-size: 11px; color: #35D0FF; font-weight: 600">مواهب</span>
+      <span style="width: 100%; height: 96px; border-radius: 14px 14px 0 0; background: #FFD23F; color: #0B0C12; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1"><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 32px">1</span><span style="font-size: 11px; font-weight: 700">210</span></span>
+    </a>
+    <a href="#p3" style="display: flex; flex-direction: column; align-items: center; gap: 6px; width: 104px; text-decoration: none; color: #F4F1EA">
+      <span style="width: 60px; height: 60px; border-radius: 999px; background: #0B0C12; border: 4px solid #3BE8B0; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 24px">م</span>
+      <span style="font-size: 13px; font-weight: 700; text-align: center; line-height: 1.2">محمد الدوسري</span>
+      <span style="font-size: 11px; color: #3BE8B0; font-weight: 600">جذر</span>
+      <span style="width: 100%; height: 56px; border-radius: 14px 14px 0 0; background: #C8875A; color: #0B0C12; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1"><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 24px">3</span><span style="font-size: 11px; font-weight: 700">160</span></span>
+    </a>
+  </div>
+  <div style="margin: 0 16px; height: 1px; background: #2A2E40"></div>
+
+  <div style="display: flex; flex-direction: column; gap: 6px; padding: 12px 12px 0">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 16px; background: #151724; border: 2px solid #C6FF3D"><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px; width: 32px; color: #C6FF3D">4</span><span style="width: 38px; height: 38px; border-radius: 999px; background: #0B0C12; border: 3px solid #FF9A2E; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 16px">ي</span><span style="flex: 1; min-width: 0; line-height: 1.3"><span style="display: block; font-size: 14px; font-weight: 700">يمان <span style="font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #C6FF3D; color: #0B0C12">أنت</span></span><span style="display: block; font-size: 12px; color: #FF9A2E">صنف</span></span><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px">130</span><span style="font-size: 11px; color: #C6FF3D; font-weight: 700">▲2</span></div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 16px; background: #151724; border: 1px solid #2A2E40"><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px; width: 32px; color: #A7ABBE">5</span><span style="width: 38px; height: 38px; border-radius: 999px; background: #0B0C12; border: 3px solid #FF9A2E; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 16px">ن</span><span style="flex: 1; min-width: 0; line-height: 1.3"><span style="display: block; font-size: 14px; font-weight: 700">نورة العتيبي</span><span style="display: block; font-size: 12px; color: #FF9A2E">صنف</span></span><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px">125</span><span style="font-size: 11px; color: #A7ABBE; font-weight: 700">▼1</span></div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 16px; background: #151724; border: 1px solid #2A2E40"><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px; width: 32px; color: #A7ABBE">6</span><span style="width: 38px; height: 38px; border-radius: 999px; background: #0B0C12; border: 3px solid #FF4FB8; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 16px">ر</span><span style="flex: 1; min-width: 0; line-height: 1.3"><span style="display: block; font-size: 14px; font-weight: 700">ريم الشهري</span><span style="display: block; font-size: 12px; color: #FF4FB8">بنينسولا ستوري</span></span><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px">110</span><span style="font-size: 11px; color: #A7ABBE; font-weight: 700">—</span></div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 16px; background: #151724; border: 1px solid #2A2E40"><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px; width: 32px; color: #A7ABBE">7</span><span style="width: 38px; height: 38px; border-radius: 999px; background: #0B0C12; border: 3px solid #FFD23F; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 16px">س</span><span style="flex: 1; min-width: 0; line-height: 1.3"><span style="display: block; font-size: 14px; font-weight: 700">سلمى الحربي</span><span style="display: block; font-size: 12px; color: #FFD23F">دبابيس</span></span><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px">95</span><span style="font-size: 11px; color: #C6FF3D; font-weight: 700">▲4</span></div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 16px; background: #151724; border: 1px solid #2A2E40"><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px; width: 32px; color: #A7ABBE">8</span><span style="width: 38px; height: 38px; border-radius: 999px; background: #0B0C12; border: 3px solid #9B7CFF; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 16px">خ</span><span style="flex: 1; min-width: 0; line-height: 1.3"><span style="display: block; font-size: 14px; font-weight: 700">خالد الغامدي</span><span style="display: block; font-size: 12px; color: #9B7CFF">أيك</span></span><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px">90</span><span style="font-size: 11px; color: #A7ABBE; font-weight: 700">▼2</span></div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 16px; background: #151724; border: 1px solid #2A2E40"><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px; width: 32px; color: #A7ABBE">9</span><span style="width: 38px; height: 38px; border-radius: 999px; background: #0B0C12; border: 3px solid #E9E4D6; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 16px">ع</span><span style="flex: 1; min-width: 0; line-height: 1.3"><span style="display: block; font-size: 14px; font-weight: 700">عبدالله المطيري</span><span style="display: block; font-size: 12px; color: #A7ABBE">شبه الجزيرة</span></span><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px">70</span><span style="font-size: 11px; color: #A7ABBE; font-weight: 700">—</span></div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 16px; background: #151724; border: 1px solid #2A2E40"><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px; width: 32px; color: #A7ABBE">10</span><span style="width: 38px; height: 38px; border-radius: 999px; background: #0B0C12; border: 3px solid #3BE8B0; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 16px">ه</span><span style="flex: 1; min-width: 0; line-height: 1.3"><span style="display: block; font-size: 14px; font-weight: 700">هند الزهراني</span><span style="display: block; font-size: 12px; color: #3BE8B0">جذر</span></span><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px">65</span><span style="font-size: 11px; color: #C6FF3D; font-weight: 700">▲1</span></div>
+    <a href="#more" style="text-align: center; font-size: 12px; color: #A7ABBE; text-decoration: none; padding: 8px 0">المزيد</a>
+  </div>
+
+
+  
+</div></div></section>
+<section class="screen" data-screen="me" aria-label="me"><div class="scroll"><div class="inner" dir="rtl">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 16px 8px">
+    <h1 style="margin: 0; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 1">حسابي</h1>
+    <a data-push="settings" href="Settings.dc.html" aria-label="الإعدادات" style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #2A2E40; background: #151724; color: #F4F1EA; display: inline-flex; align-items: center; justify-content: center; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
+  </div>
+
+  <div style="margin: 0 12px; padding: 16px; border-radius: 22px; background: #151724; border: 1px solid #2A2E40; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <a data-open="sheet" href="AvatarPicker.dc.html" aria-label="صورتك" style="position: relative; width: 64px; height: 64px; box-sizing: border-box; border-radius: 999px; background: #0B0C12; border: 4px solid #FF9A2E; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; text-decoration: none"><svg style="width: 48px; height: 48px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="المخرج"><circle cx="60" cy="63.5" r="56.5" fill="#779828"/><circle cx="60" cy="56.5" r="56.5" fill="#C6FF3D"/><clipPath id="c-director-me"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-director-me)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#C98B5F" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#C98B5F" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 50 q2 -24 26 -24 q24 0 26 24 q-6 -10 -26 -10 q-20 0 -26 10z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M30 42 q30 -26 62 -2 q-10 -4 -30 2 q-20 -2 -32 0z" fill="#FF6E4F" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><circle cx="67.6" cy="54" r="2.66" fill="#0B0C12"/><path d="M55.25 63.5 q4.75 4.75 11.4 -3" stroke="#0B0C12" stroke-width="2.28" fill="none" stroke-linecap="round"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><path d="M84 76 h10 l20 -12 v40 l-20 -12 h-10z" fill="#FF6E4F" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></g></svg></a>
+      <div style="flex: 1; min-width: 0; line-height: 1.3"><div style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 22px">يمان</div><div style="font-size: 12px; color: #A7ABBE">أمين السر التنفيذي · <span style="color: #FF9A2E; font-weight: 600">صنف</span></div></div>
+      <a href="Profile.dc.html" style="font-size: 12px; font-weight: 700; padding: 8px 12px; border-radius: 999px; border: 1px solid #2A2E40; background: #1E2130; color: #F4F1EA; text-decoration: none; white-space: nowrap">هكذا يراك زملاؤك</a>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 52px; height: 52px; border-radius: 999px; background: #C6FF3D; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 0 #78AD12"><svg width="26" height="26" viewBox="0 0 24 24" fill="#0B0C12" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg></span>
+      <div style="flex: 1; line-height: 1.25"><div style="font-size: 12px; color: #A7ABBE; font-weight: 700">مستواك</div><div style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 24px; color: #C6FF3D">كريم معرفة</div></div>
+      <div style="text-align: center"><div style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 1">730</div><div style="font-size: 11px; color: #A7ABBE">نقطة</div></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: #A7ABBE"><span style="flex: 1; height: 8px; border-radius: 999px; background: #1E2130; overflow: hidden"><span style="display: block; width: 3%; height: 100%; border-radius: 999px; background: #C6FF3D"></span></span><span>«سفير المعرفة» بعد 1,270</span></div>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px">
+      <a href="Board.dc.html" style="padding: 10px 12px; border-radius: 14px; background: #1E2130; display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: #F4F1EA"><span style="font-size: 11px; color: #A7ABBE; font-weight: 600">هذا الأسبوع</span><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 24px; line-height: 1; color: #C6FF3D">#4</span></a>
+      <div style="padding: 10px 12px; border-radius: 14px; background: #1E2130; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; color: #A7ABBE; font-weight: 600">السلسلة</span><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 24px; line-height: 1; color: #FF6E4F">×8</span></div>
+      <div style="padding: 10px 12px; border-radius: 14px; background: #1E2130; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; color: #A7ABBE; font-weight: 600">الشارات</span><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 24px; line-height: 1">6</span></div>
+    </div>
+  </div>
+
+  <nav aria-label="صفحاتي" style="display: flex; gap: 6px; padding: 14px 12px 4px; overflow: hidden">
+    <a href="Me.dc.html" aria-current="page" style="padding: 8px 14px; border-radius: 999px; background: #C6FF3D; color: #0B0C12; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap">ملفي</a>
+    <a href="Points.dc.html" style="padding: 8px 14px; border-radius: 999px; background: #151724; border: 1px solid #2A2E40; color: #F4F1EA; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap">نقاطي</a>
+    <a href="Certificates.dc.html" style="padding: 8px 14px; border-radius: 999px; background: #151724; border: 1px solid #2A2E40; color: #F4F1EA; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap">شهاداتي</a>
+    <a href="Bookmarks.dc.html" style="padding: 8px 14px; border-radius: 999px; background: #151724; border: 1px solid #2A2E40; color: #F4F1EA; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap">المحفوظات</a>
+    <a href="Calendar.dc.html" style="padding: 8px 14px; border-radius: 999px; background: #151724; border: 1px solid #2A2E40; color: #F4F1EA; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap">التقويم</a>
+    <a href="Notifications.dc.html" style="padding: 8px 14px; border-radius: 999px; background: #151724; border: 1px solid #2A2E40; color: #F4F1EA; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap">الإشعارات</a>
+  </nav>
+
+  <div style="padding: 14px 16px 6px; display: flex; align-items: center; justify-content: space-between">
+    <h2 style="margin: 0; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px">ملفي</h2>
+  </div>
+  <div style="margin: 0 12px; padding: 0 10px; border-radius: 18px; background: #151724; border: 1px solid #2A2E40">
+    <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 4px; border-bottom: 1px solid #2A2E40"><span style="width: 104px; flex-shrink: 0; font-size: 12px; color: #A7ABBE; font-weight: 700; padding-top: 2px">الاسم</span><span style="flex: 1; min-width: 0; font-size: 14px; line-height: 1.5; ">يمان</span></div>
+    <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 4px; border-bottom: 1px solid #2A2E40"><span style="width: 104px; flex-shrink: 0; font-size: 12px; color: #A7ABBE; font-weight: 700; padding-top: 2px">الشركة</span><span style="flex: 1; min-width: 0; font-size: 14px; line-height: 1.5; "><span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 999px; background: #FF9A2E"></span>صنف</span></span></div>
+    <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 4px; border-bottom: 1px solid #2A2E40"><span style="width: 104px; flex-shrink: 0; font-size: 12px; color: #A7ABBE; font-weight: 700; padding-top: 2px">المسمى الوظيفي</span><span style="flex: 1; min-width: 0; font-size: 14px; line-height: 1.5; ">أمين السر التنفيذي</span></div>
+    <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 4px; border-bottom: 1px solid #2A2E40"><span style="width: 104px; flex-shrink: 0; font-size: 12px; color: #A7ABBE; font-weight: 700; padding-top: 2px">نبذة</span><span style="flex: 1; min-width: 0; font-size: 14px; line-height: 1.5; color: #A7ABBE">لا توجد نبذة بعد</span></div>
+    <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 4px; border-bottom: 1px solid #2A2E40"><span style="width: 104px; flex-shrink: 0; font-size: 12px; color: #A7ABBE; font-weight: 700; padding-top: 2px">الاهتمامات</span><span style="flex: 1; min-width: 0; font-size: 14px; line-height: 1.5; "><span style="display: inline-flex; flex-wrap: wrap; gap: 6px"><span style="padding: 3px 10px; border-radius: 999px; background: #1E2130; font-size: 12px; font-weight: 600">#حوكمة</span><span style="padding: 3px 10px; border-radius: 999px; background: #1E2130; font-size: 12px; font-weight: 600">#تقارير</span></span></span></div>
+    <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 4px; "><span style="width: 104px; flex-shrink: 0; font-size: 12px; color: #A7ABBE; font-weight: 700; padding-top: 2px">البريد</span><span style="flex: 1; min-width: 0; font-size: 14px; line-height: 1.5; "><bdi>yaman@pp.sa</bdi></span></div>
+  </div>
+  <div style="padding: 12px 16px 0; display: flex; align-items: center; gap: 12px">
+    <a href="MeEdit.dc.html" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 22px; border-radius: 999px; background: #C6FF3D; color: #0B0C12; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 18px; text-decoration: none; box-shadow: 0 4px 0 #78AD12"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z"/><path d="m12 8 4 4"/></svg>عدّل ملفك</a>
+    
+  </div>
+
+  
+</div></div></section>
+<section class="screen full" data-screen="event" aria-label="event"><div class="scroll"><div class="inner" dir="rtl">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 12px 8px">
+    <a href="Home.dc.html" aria-label="رجوع" style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #2A2E40; background: #151724; color: #F4F1EA; display: inline-flex; align-items: center; justify-content: center; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></a>
+    <span style="font-size: 12px; color: #A7ABBE">الجلسات › إداري</span>
+    <div style="display: flex; gap: 8px">
+      <button type="button" aria-label="حفظ" style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #2A2E40; background: #151724; color: #F4F1EA; display: inline-flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg></button>
+      <button type="button" aria-label="مشاركة" style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #2A2E40; background: #151724; color: #F4F1EA; display: inline-flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 15V3"/><path d="m8 7 4-4 4 4"/></svg></button>
+    </div>
+  </div>
+
+  <div style="padding: 0 12px; display: flex; flex-direction: column; gap: 12px">
+    <div data-hero="poster" style="position: relative; height: 457px; border-radius: 18px; background: #FF9A2E; color: #0B0C12; padding: 18px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start"><span style="font-size: 12px; font-weight: 700; padding: 6px 10px; border-radius: 999px; background: #0B0C12; color: #FF9A2E">جلسة إدارية</span><span style="display: inline-flex; padding: 6px 12px; border-radius: 999px; background: #C6FF3D; color: #0B0C12; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 16px; transform: rotate(6deg); box-shadow: 0 0 0 3px #FF9A2E, 0 0 0 6px #0B0C12">+50 عند الحضور</span></div>
+      <div style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 44px; line-height: 1.12; text-wrap: balance">لوحة تحكم لا يهجرها أحد بعد أسبوع</div>
+      <div style="display: flex; justify-content: space-between; align-items: flex-end"><div style="display: flex; flex-direction: column; gap: 2px; font-size: 14px; font-weight: 700"><span>الخميس 2 أكتوبر، 6:30 م</span><span style="font-weight: 500">نورة العتيبي، صنف</span></div><span style="width: 60px; height: 60px; border-radius: 8px; background: #0B0C12; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 7px; box-sizing: border-box" aria-hidden="true"><span style="background: #FF9A2E"></span><span style="background: #FF9A2E"></span><span style="background: #0B0C12"></span><span style="background: #0B0C12"></span><span style="background: #FF9A2E"></span><span style="background: #FF9A2E"></span><span style="background: #FF9A2E"></span><span style="background: #0B0C12"></span><span style="background: #FF9A2E"></span></span></div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+      <span style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: #1E2130; border: 1px solid #2A2E40; font-weight: 700; font-size: 13px">التسجيل مفتوح</span>
+      <span style="padding: 6px 12px; border-radius: 999px; background: #1E2130; font-weight: 600; font-size: 13px">تمهيدي</span>
+      <span style="padding: 6px 12px; border-radius: 999px; background: #1E2130; font-weight: 600; font-size: 13px">بالعربية</span>
+    </div>
+
+    <h1 style="margin: 0; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 26px; line-height: 1.25">لوحة تحكم لا يهجرها أحد بعد أسبوع</h1>
+
+    <a href="#profile" style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: #151724; border: 1px solid #2A2E40; text-decoration: none; color: #F4F1EA">
+      <span style="width: 44px; height: 44px; border-radius: 999px; background: #1E2130; border: 3px solid #FF9A2E; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 18px">ن</span>
+      <span style="flex: 1; line-height: 1.3"><span style="display: block; font-size: 15px; font-weight: 700">نورة العتيبي</span><span style="display: block; font-size: 12px; color: #A7ABBE">مديرة العمليات، صنف · قدّمت 4 جلسات</span></span>
+      <span style="font-size: 12px; color: #A7ABBE">الملف</span>
+    </a>
+
+    <div style="padding: 14px; border-radius: 22px; background: #151724; border: 1px solid #2A2E40; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px"><span style="font-weight: 700">12 من 40 مقعدًا</span><span style="color: #A7ABBE">يبقى 28 مقعدًا</span></div>
+      <div style="height: 10px; border-radius: 999px; background: #1E2130; overflow: hidden"><div style="width: 30%; height: 100%; border-radius: 999px; background: #C6FF3D"></div></div>
+      <button type="button" style="display: flex; align-items: center; justify-content: space-between; min-height: 52px; padding: 10px 16px; border-radius: 999px; border: 0; background: #C6FF3D; color: #0B0C12; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px; cursor: pointer; box-shadow: 0 5px 0 #78AD12"><span>احجز مقعدك</span><span style="font-family: 'IBM Plex Sans Arabic', sans-serif; font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 999px; background: #0B0C12; color: #C6FF3D">+50 عند الحضور</span></button>
+      <div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #A7ABBE">
+        <div style="display: flex; align-items: center; gap: 10px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span style="color: #F4F1EA">الخميس 2 أكتوبر 2026، 6:30 إلى 7:30 م</span></div>
+        <div style="display: flex; align-items: center; gap: 10px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s6-5.5 6-11a6 6 0 0 0-12 0c0 5.5 6 11 6 11z"/><circle cx="12" cy="10" r="2"/></svg><span style="color: #F4F1EA">قاعة الرياض، الدور الثالث</span><a href="#map" style="color: #C6FF3D; text-decoration: none; font-weight: 700">الخريطة</a></div>
+        <div style="display: flex; align-items: center; gap: 10px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>يُغلق التسجيل الأربعاء 1 أكتوبر 6:30 م · آخر موعد للإلغاء الخميس 12:00 م</span></div>
+        <div style="display: flex; align-items: center; gap: 10px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg><span>شهادة حضور تلقائية عند اكتمال الجلسة</span></div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 8px; overflow: hidden; padding: 2px 0">
+      <a href="#about" style="padding: 8px 14px; border-radius: 999px; background: #C6FF3D; color: #0B0C12; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap">نبذة</a>
+      <a href="#goals" style="padding: 8px 14px; border-radius: 999px; background: #151724; border: 1px solid #2A2E40; color: #F4F1EA; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap">ماذا ستتعلّم</a>
+      <a href="#tasks" style="padding: 8px 14px; border-radius: 999px; background: #151724; border: 1px solid #2A2E40; color: #F4F1EA; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap">المهام</a>
+      <a href="#materials" style="padding: 8px 14px; border-radius: 999px; background: #151724; border: 1px solid #2A2E40; color: #F4F1EA; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap">المواد</a>
+      <a href="#comments" style="padding: 8px 14px; border-radius: 999px; background: #151724; border: 1px solid #2A2E40; color: #F4F1EA; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap">النقاش 3</a>
+    </div>
+
+    <section id="goals" style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px">ماذا ستتعلّم؟</h2>
+      <div style="display: flex; align-items: flex-start; gap: 10px; font-size: 14px"><span style="width: 22px; height: 22px; border-radius: 999px; background: #C6FF3D; color: #0B0C12; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg></span><span>تختار ثلاثة مقاييس فقط تُقرأ كل أسبوع، وتتجاهل الباقي بضمير مرتاح</span></div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; font-size: 14px"><span style="width: 22px; height: 22px; border-radius: 999px; background: #C6FF3D; color: #0B0C12; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg></span><span>تبني اللوحة في جدول واحد، بلا أدوات جديدة</span></div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; font-size: 14px"><span style="width: 22px; height: 22px; border-radius: 999px; background: #C6FF3D; color: #0B0C12; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg></span><span>تعرف لماذا تموت معظم اللوحات بعد الإطلاق، وكيف تنجو لوحتك</span></div>
+    </section>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 6px">
+      <a href="Browse.dc.html" style="padding: 5px 10px; border-radius: 999px; background: #1E2130; color: #F4F1EA; font-size: 12px; font-weight: 600; text-decoration: none">#تقارير</a>
+      <a href="Browse.dc.html" style="padding: 5px 10px; border-radius: 999px; background: #1E2130; color: #F4F1EA; font-size: 12px; font-weight: 600; text-decoration: none">#إكسل</a>
+      <a href="Browse.dc.html" style="padding: 5px 10px; border-radius: 999px; background: #1E2130; color: #F4F1EA; font-size: 12px; font-weight: 600; text-decoration: none">#أتمتة</a>
+    </div>
+
+    <section id="about" style="display: flex; flex-direction: column; gap: 6px">
+      <h2 style="margin: 0; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px">نبذة</h2>
+      <p style="margin: 0; font-size: 15px; line-height: 1.7; color: #A7ABBE">جلسة عملية عن لوحات المتابعة في الشركات الصغيرة: ماذا نقيس، وماذا نتجاهل، ولماذا تموت معظم اللوحات بعد أسبوع من إطلاقها. سنبني لوحة حقيقية من بيانات شركة من المجموعة، ونخرج بقالب تستخدمه صباح اليوم التالي.</p>
+    </section>
+
+    <section id="tasks" style="display: flex; flex-direction: column; gap: 8px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between"><h2 style="margin: 0; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px">المهام التحضيرية</h2><span style="font-size: 12px; color: #A7ABBE">0 من 2</span></div>
+      <label style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: #151724; border: 1px solid #2A2E40; cursor: pointer"><input type="checkbox" style="width: 22px; height: 22px; margin: 0; accent-color: #C6FF3D"><span style="flex: 1; font-size: 14px">اقرأ نموذج لوحة المتابعة <span style="color: #A7ABBE">(المواد، صفحتان)</span></span></label>
+      <label style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: #151724; border: 1px solid #2A2E40; cursor: pointer"><input type="checkbox" style="width: 22px; height: 22px; margin: 0; accent-color: #C6FF3D"><span style="flex: 1; font-size: 14px">أحضر جهازك المحمول وملف بيانات من عملك</span></label>
+    </section>
+
+    <section id="materials" style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px">المواد</h2>
+      <a data-push="viewer" href="#m1" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: #151724; border: 1px solid #2A2E40; text-decoration: none; color: #F4F1EA"><span style="width: 40px; height: 40px; border-radius: 10px; background: #1E2130; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #C6FF3D">PDF</span><span style="flex: 1; line-height: 1.3"><span style="display: block; font-size: 14px; font-weight: 700">نموذج لوحة المتابعة</span><span style="display: block; font-size: 12px; color: #A7ABBE">قبل الجلسة · صفحتان · للقراءة والتحميل</span></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7ABBE" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg></a>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: #0B0C12; border: 1px dashed #2A2E40; color: #A7ABBE"><span style="width: 40px; height: 40px; border-radius: 10px; background: #151724; display: inline-flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><span style="flex: 1; font-size: 13px; line-height: 1.4">بعد الجلسة</span></div>
+    </section>
+
+    <section id="comments" style="display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between"><h2 style="margin: 0; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px">النقاش</h2><span style="font-size: 12px; color: #A7ABBE">3</span></div>
+      <div style="display: flex; align-items: center; gap: 10px">
+        <span style="width: 36px; height: 36px; border-radius: 999px; background: #0B0C12; border: 3px solid #FF9A2E; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 15px">ي</span>
+        <label for="c" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">اكتب تعليقًا</label>
+        <input id="c" type="text" placeholder="اكتب تعليقًا… @ لذكر عضو" style="flex: 1; min-height: 44px; padding: 10px 14px; border-radius: 999px; border: 1px solid #2A2E40; background: #151724; color: #F4F1EA; font-family: inherit; font-size: 14px">
+        <button type="button" aria-label="أضف صورة" style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #2A2E40; background: #151724; color: #A7ABBE; display: inline-flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-8 8"/></svg></button>
+      </div>
+      <article style="display: flex; gap: 10px">
+        <span style="width: 36px; height: 36px; border-radius: 999px; background: #0B0C12; border: 3px solid #35D0FF; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 15px; flex-shrink: 0">س</span>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+          <div style="padding: 10px 14px; border-radius: 16px; background: #151724; border: 1px solid #2A2E40"><div style="font-size: 13px; font-weight: 700">سارة القحطاني <span style="font-weight: 500; color: #A7ABBE">· مواهب · قبل ساعتين</span></div><div style="font-size: 14px">هل نحتاج إكسل أم يكفي Google Sheets؟</div></div>
+          <div style="display: flex; gap: 12px; font-size: 12px; color: #A7ABBE; padding-inline-start: 6px"><button type="button" style="display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; color: #A7ABBE; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; padding: 0"><svg width="14" height="14" viewBox="0 0 24 24" fill="#FF4FB8" stroke="#FF4FB8" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-4.6-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.4-9.5 9-9.5 9z"/></svg>4</button><button type="button" style="border: 0; background: transparent; color: #A7ABBE; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; padding: 0">رد</button></div>
+          <div style="display: flex; gap: 8px; padding-inline-start: 18px">
+            <span style="width: 28px; height: 28px; border-radius: 999px; background: #0B0C12; border: 3px solid #FF9A2E; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 12px; flex-shrink: 0">ن</span>
+            <div style="flex: 1; padding: 8px 12px; border-radius: 14px; background: #151724; border: 1px solid #2A2E40"><div style="font-size: 12px; font-weight: 700">نورة العتيبي <span style="font-weight: 500; color: #A7ABBE">· المُقدِّمة · قبل ساعة</span></div><div style="font-size: 13px">يكفي أي جدول. سنعمل على Sheets في القاعة.</div></div>
+          </div>
+        </div>
+      </article>
+    </section>
+  </div>
+
+  <div style="margin-top: auto; display: flex; align-items: center; gap: 8px; padding: 12px 16px 16px; background: #151724; border-top: 1px solid #2A2E40">
+    <button type="button" style="flex: 1; display: flex; align-items: center; justify-content: center; min-height: 52px; padding: 10px 16px; border-radius: 999px; border: 0; background: #C6FF3D; color: #0B0C12; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px; cursor: pointer; box-shadow: 0 5px 0 #78AD12">احجز مقعدك</button>
+    <button type="button" aria-label="حفظ" style="width: 48px; height: 48px; border-radius: 999px; border: 1px solid #2A2E40; background: #1E2130; color: #F4F1EA; display: inline-flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg></button>
+    <button type="button" aria-label="مشاركة" style="width: 48px; height: 48px; border-radius: 999px; border: 1px solid #2A2E40; background: #1E2130; color: #F4F1EA; display: inline-flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 15V3"/><path d="m8 7 4-4 4 4"/></svg></button>
+  </div>
+</div></div></section>
+<section class="screen full" data-screen="viewer" aria-label="viewer"><div class="scroll"><div class="inner" dir="rtl">
+
+  <div style="display: flex; align-items: center; gap: 10px; padding: 14px 12px; background: rgba(11, 12, 18, 0.92)">
+    <a href="EventDone.dc.html" aria-label="إغلاق العارض" style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #2A2E40; background: #151724; color: #F4F1EA; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></a>
+    <div style="flex: 1; min-width: 0; line-height: 1.3"><div style="font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">الشرائح — الأرقام التي تكذب</div><div style="font-size: 12px; color: #A7ABBE">صفحة 7 من 24</div></div>
+    <button type="button" aria-label="تحميل الملف" style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #2A2E40; background: #151724; color: #F4F1EA; display: inline-flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg></button>
+  </div>
+
+  <div style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 0 8px">
+    <div style="width: 374px; height: 280px; background: #F8F6F1; color: #12131A; border-radius: 6px; padding: 22px 26px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5)">
+      <div style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 24px; line-height: 1.15">ثلاثة أرقام تبدو جيدة، ورقم واحد يقول الحقيقة</div>
+      <div style="display: flex; gap: 10px; align-items: flex-end; height: 120px; padding: 0 10px">
+        <div style="flex: 1; height: 70%; background: #C8C4BA; border-radius: 4px 4px 0 0"></div>
+        <div style="flex: 1; height: 85%; background: #C8C4BA; border-radius: 4px 4px 0 0"></div>
+        <div style="flex: 1; height: 92%; background: #C8C4BA; border-radius: 4px 4px 0 0"></div>
+        <div style="flex: 1; height: 34%; background: #C2472C; border-radius: 4px 4px 0 0"></div>
+      </div>
+      <div style="display: flex; justify-content: space-between; font-size: 11px; color: #5B5F73"><span>جذر · الأرقام التي تكذب</span><span>7</span></div>
+    </div>
+  </div>
+
+  <div style="padding: 10px 12px 18px; background: rgba(11, 12, 18, 0.92); display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <button type="button" aria-label="الصفحة السابقة" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid #2A2E40; background: #151724; color: #F4F1EA; display: inline-flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+        <label for="pg" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">الانتقال إلى صفحة</label>
+        <input id="pg" type="range" min="1" max="24" value="7" style="width: 100%; accent-color: #C6FF3D; margin: 0">
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #A7ABBE"><span>1</span><span>7 من 24</span><span>24</span></div>
+      </div>
+      <button type="button" aria-label="الصفحة التالية" style="width: 44px; height: 44px; border-radius: 999px; border: 0; background: #C6FF3D; color: #0B0C12; display: inline-flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button>
+    </div>
+  </div>
+</div></div></section>
+<section class="screen full" data-screen="settings" aria-label="settings"><div class="scroll"><div class="inner" dir="rtl">
+
+  <div style="display: flex; align-items: center; gap: 10px; padding: 18px 16px 8px">
+    <a href="Me.dc.html" aria-label="حسابي" style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #2A2E40; background: #151724; color: #F4F1EA; display: inline-flex; align-items: center; justify-content: center; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></a>
+    <h1 style="margin: 0; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 1">الإعدادات</h1>
+  </div>
+  <div style="margin: 0 12px; padding: 0 10px; border-radius: 18px; background: #151724; border: 1px solid #2A2E40">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 13px 4px; border-bottom: 1px solid #2A2E40"><label for="m" style="flex: 1; cursor: pointer"><span style="flex: 1; font-size: 14px; font-weight: 700">إشعارات البريد</span></label><input id="m" type="checkbox" role="switch" checked style="width: 44px; height: 24px; margin: 0; accent-color: #C6FF3D"></div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 13px 4px; border-bottom: 1px solid #2A2E40"><label for="r" style="flex: 1; cursor: pointer"><span style="flex: 1; font-size: 14px; font-weight: 700">تذكيرات الجلسات</span></label><input id="r" type="checkbox" role="switch" checked style="width: 44px; height: 24px; margin: 0; accent-color: #C6FF3D"></div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 13px 4px; "><label for="v" style="flex: 1; cursor: pointer"><span style="flex: 1; font-size: 14px; font-weight: 700">الظهور في لوحات الصدارة</span></label><input id="v" type="checkbox" role="switch" checked style="width: 44px; height: 24px; margin: 0; accent-color: #C6FF3D"></div>
+  </div>
+  <div style="height: 12px"></div>
+  <div style="margin: 0 12px; padding: 0 10px; border-radius: 18px; background: #151724; border: 1px solid #2A2E40">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 13px 4px; border-bottom: 1px solid #2A2E40"><a href="Calendar.dc.html" style="display: flex; align-items: center; gap: 12px; flex: 1; text-decoration: none; color: #F4F1EA"><span style="flex: 1; font-size: 14px; font-weight: 700">تقويم Google</span><span style="font-size: 13px; color: #A7ABBE">متصل</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A7ABBE" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></a></div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 13px 4px; border-bottom: 1px solid #2A2E40"><a href="#lang" style="display: flex; align-items: center; gap: 12px; flex: 1; text-decoration: none; color: #F4F1EA"><span style="flex: 1; font-size: 14px; font-weight: 700">اللغة</span><span style="font-size: 13px; color: #A7ABBE">العربية</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A7ABBE" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></a></div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 13px 4px; "><a href="#privacy" style="display: flex; align-items: center; gap: 12px; flex: 1; text-decoration: none; color: #F4F1EA"><span style="flex: 1; font-size: 14px; font-weight: 700">البيانات والخصوصية</span><span style="font-size: 13px; color: #A7ABBE"></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A7ABBE" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></a></div>
+  </div>
+  <div style="padding: 20px 16px 0; display: flex; align-items: center; justify-content: space-between">
+    <button type="button" style="border: 0; background: transparent; color: #A7ABBE; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0">تسجيل الخروج</button>
+    <span style="font-size: 12px; color: #A7ABBE"><bdi>yaman@pp.sa</bdi></span>
+  </div>
+
+  
+</div></div></section>
+      </div>
+      <div class="tabbar" id="tabbar"><nav aria-label="التنقّل الرئيسي" style="display: flex; align-items: flex-end; justify-content: space-around; padding: 8px 8px 14px; background: #151724; border-top: 1px solid #2A2E40">
+    <a href="Home.dc.html" data-tab="home" aria-current="page" style="display: flex; flex-direction: column; align-items: center; gap: 3px; width: 62px; padding: 6px 0; text-decoration: none; color: #C6FF3D; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/></svg>الرئيسية</a>
+    <a href="Browse.dc.html" data-tab="browse" style="display: flex; flex-direction: column; align-items: center; gap: 3px; width: 62px; padding: 6px 0; text-decoration: none; color: #A7ABBE; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>الجلسات</a>
+    <a href="#propose" aria-label="اقترح جلسة" style="display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; margin-top: -26px; border-radius: 999px; background: #C6FF3D; color: #0B0C12; text-decoration: none; box-shadow: 0 5px 0 #78AD12, 0 0 0 5px #0B0C12"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    <a href="#board" data-tab="board" style="display: flex; flex-direction: column; align-items: center; gap: 3px; width: 62px; padding: 6px 0; text-decoration: none; color: #A7ABBE; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4"/><path d="M12 13v4M8 21h8M9 17h6"/></svg>الترتيب</a>
+    <a href="#me" data-tab="me" style="display: flex; flex-direction: column; align-items: center; gap: 3px; width: 62px; padding: 6px 0; text-decoration: none; color: #A7ABBE; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>حسابي</a>
+  </nav></div>
+      <div class="overlay" id="sheetOverlay"><div class="scrim" id="sheetScrim"></div><div class="sheet" id="sheet">
+    <span style="width: 40px; height: 4px; border-radius: 999px; background: #2A2E40; align-self: center"></span>
+    <div style="display: flex; align-items: center; gap: 14px">
+      <span style="width: 80px; height: 80px; box-sizing: border-box; border-radius: 999px; border: 4px solid #FF9A2E; background: #0B0C12; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg style="width: 64px; height: 64px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="المخرج"><circle cx="60" cy="63.5" r="56.5" fill="#779828"/><circle cx="60" cy="56.5" r="56.5" fill="#C6FF3D"/><clipPath id="c-director"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-director)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#C98B5F" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#C98B5F" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 50 q2 -24 26 -24 q24 0 26 24 q-6 -10 -26 -10 q-20 0 -26 10z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M30 42 q30 -26 62 -2 q-10 -4 -30 2 q-20 -2 -32 0z" fill="#FF6E4F" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><circle cx="67.6" cy="54" r="2.66" fill="#0B0C12"/><path d="M55.25 63.5 q4.75 4.75 11.4 -3" stroke="#0B0C12" stroke-width="2.28" fill="none" stroke-linecap="round"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><path d="M84 76 h10 l20 -12 v40 l-20 -12 h-10z" fill="#FF6E4F" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></g></svg></span>
+      <div style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 22px">صورتك</div>
+    </div>
+    <div style="display: flex; gap: 8px">
+      <button type="button" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; min-height: 48px; border-radius: 999px; border: 0; background: #C6FF3D; color: #0B0C12; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 17px; cursor: pointer; box-shadow: 0 4px 0 #78AD12">ارفع صورة</button>
+      <button type="button" style="display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 16px; border-radius: 999px; border: 1px solid #2A2E40; background: #1E2130; color: #F4F1EA; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer">من Google</button>
+    </div>
+    <div style="display: flex; gap: 6px"><span style="padding: 7px 14px; border-radius: 999px; background: #F4F1EA; color: #0B0C12; font-size: 13px; font-weight: 700">شخصيات</span><span style="padding: 7px 14px; border-radius: 999px; background: #1E2130; border: 1px solid #2A2E40; font-size: 13px; font-weight: 700">أشياء</span></div>
+    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; justify-items: center; max-height: 280px; overflow: hidden"><button type="button" aria-label="المخرج" style="padding: 0; border: 0; background: transparent; border-radius: 999px; outline: 3px solid #C6FF3D; outline-offset: 3px; cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="المخرج"><circle cx="60" cy="63.5" r="56.5" fill="#779828"/><circle cx="60" cy="56.5" r="56.5" fill="#C6FF3D"/><clipPath id="c-director"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-director)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#C98B5F" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#C98B5F" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 50 q2 -24 26 -24 q24 0 26 24 q-6 -10 -26 -10 q-20 0 -26 10z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M30 42 q30 -26 62 -2 q-10 -4 -30 2 q-20 -2 -32 0z" fill="#FF6E4F" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><circle cx="67.6" cy="54" r="2.66" fill="#0B0C12"/><path d="M55.25 63.5 q4.75 4.75 11.4 -3" stroke="#0B0C12" stroke-width="2.28" fill="none" stroke-linecap="round"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><path d="M84 76 h10 l20 -12 v40 l-20 -12 h-10z" fill="#FF6E4F" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></g></svg></button><button type="button" aria-label="مدير التصوير" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="مدير التصوير"><circle cx="60" cy="63.5" r="56.5" fill="#237d98"/><circle cx="60" cy="56.5" r="56.5" fill="#35D0FF"/><clipPath id="c-dop"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-dop)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#FF6E4F" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#E8B48E" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#E8B48E" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 46 q2 -24 26 -24 q24 0 26 24z" fill="#3B2A1E" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M30 46 h60 l12 5 h-72z" fill="#3B2A1E" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><path d="M63.8 54 q4 -4 8 0" stroke="#0B0C12" stroke-width="2.09" fill="none" stroke-linecap="round"/><path d="M53.35 63.5 q6.65 5.7 13.3 0" stroke="#0B0C12" stroke-width="2.28" fill="none" stroke-linecap="round"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><rect x="74" y="84" width="28" height="22" rx="5" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="88" cy="95" r="7" fill="#35D0FF" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g></svg></button><button type="button" aria-label="مهندس الصوت" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="مهندس الصوت"><circle cx="60" cy="63.5" r="56.5" fill="#985d1f"/><circle cx="60" cy="56.5" r="56.5" fill="#FF9A2E"/><clipPath id="c-sound"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-sound)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#9B7CFF" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#9C6644" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#9C6644" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 50 q2 -24 26 -24 q24 0 26 24 q-6 -10 -26 -10 q-20 0 -26 10z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M48.6 54 q4 3 8 0" stroke="#0B0C12" stroke-width="2.09" fill="none" stroke-linecap="round"/><path d="M63.8 54 q4 3 8 0" stroke="#0B0C12" stroke-width="2.09" fill="none" stroke-linecap="round"/><path d="M53.35 63.5 q6.65 5.7 13.3 0" stroke="#0B0C12" stroke-width="2.28" fill="none" stroke-linecap="round"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><path d="M34 54 v-6 a26 26 0 0 1 52 0 v6" fill="none" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="28" y="48" width="12" height="18" rx="5" fill="#9B7CFF" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="80" y="48" width="12" height="18" rx="5" fill="#9B7CFF" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></g></svg></button><button type="button" aria-label="الغافر" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="الغافر"><circle cx="60" cy="63.5" r="56.5" fill="#98326f"/><circle cx="60" cy="56.5" r="56.5" fill="#FF4FB8"/><clipPath id="c-gaffer"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-gaffer)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#FFD23F" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#6B4330" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#6B4330" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 46 q2 -24 26 -24 q24 0 26 24z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M32 46 q28 -8 56 0 l-4 8 q-24 -6 -48 0z" fill="#C6FF3D" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><circle cx="67.6" cy="54" r="2.66" fill="#0B0C12"/><path d="M52.4 61.6 q7.6 11.4 15.2 0 z" fill="#0B0C12"/><path d="M55.25 63.5 h9.5" stroke="#F4F1EA" stroke-width="1.9"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/></g></svg></button><button type="button" aria-label="فنانة المكياج" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="فنانة المكياج"><circle cx="60" cy="63.5" r="56.5" fill="#5e4c98"/><circle cx="60" cy="56.5" r="56.5" fill="#9B7CFF"/><clipPath id="c-makeup"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-makeup)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#FF4FB8" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#F6D2B5" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#F6D2B5" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 50 q2 -24 26 -24 q24 0 26 24 q-6 -10 -26 -10 q-20 0 -26 10z" fill="#D9A066" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="24" r="9" fill="#D9A066" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><path d="M63.8 54 q4 -4 8 0" stroke="#0B0C12" stroke-width="2.09" fill="none" stroke-linecap="round"/><path d="M53.35 63.5 q6.65 5.7 13.3 0" stroke="#0B0C12" stroke-width="2.28" fill="none" stroke-linecap="round"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><path d="M80 36 l10 -14" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M88 24 l6 -8 4 4 -6 8z" fill="#FF4FB8" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></g></svg></button><button type="button" aria-label="مصممة الأزياء" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="مصممة الأزياء"><circle cx="60" cy="63.5" r="56.5" fill="#987e29"/><circle cx="60" cy="56.5" r="56.5" fill="#FFD23F"/><clipPath id="c-wardrobe"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-wardrobe)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#35D0FF" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#C98B5F" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#C98B5F" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M30 60 q-2 -36 30 -36 q32 0 30 36 q0 30 -8 30 h-44 q-8 0 -8 -30z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="56" r="20" fill="#C98B5F"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><circle cx="67.6" cy="54" r="2.66" fill="#0B0C12"/><path d="M53.35 63.5 q6.65 5.7 13.3 0" stroke="#0B0C12" stroke-width="2.28" fill="none" stroke-linecap="round"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><path d="M44 92 q16 8 32 0" fill="none" stroke="#FFD23F" stroke-width="6"/><path d="M44 92 q16 8 32 0" fill="none" stroke="#0B0C12" stroke-width="2" stroke-dasharray="3 3"/></g></svg></button><button type="button" aria-label="المونتير" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="المونتير"><circle cx="60" cy="63.5" r="56.5" fill="#984432"/><circle cx="60" cy="56.5" r="56.5" fill="#FF6E4F"/><clipPath id="c-editor"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-editor)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#E8B48E" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#E8B48E" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 52 q-4 -28 26 -28 q30 0 26 28 q-4 -8 -8 -4 q-4 -10 -10 -6 q-4 -10 -8 -4 q-4 -10 -8 -4 q-4 -8 -10 -6 q-4 -4 -8 4z" fill="#6B4330" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><circle cx="67.6" cy="54" r="2.66" fill="#0B0C12"/><path d="M55.25 63.5 h9.5" stroke="#0B0C12" stroke-width="2.28" stroke-linecap="round"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="51" cy="54" r="8" fill="none" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="69" cy="54" r="8" fill="none" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M59 54 h2" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 92 h20 v16 a10 10 0 0 1 -20 0z" fill="#F4F1EA" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M38 96 h4 a5 5 0 0 1 0 10 h-4" fill="none" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></g></svg></button><button type="button" aria-label="المنتجة" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="المنتجة"><circle cx="60" cy="63.5" r="56.5" fill="#779828"/><circle cx="60" cy="56.5" r="56.5" fill="#C6FF3D"/><clipPath id="c-producer"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-producer)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#FFE3C4" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#FFE3C4" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 50 q2 -24 26 -24 q24 0 26 24 v16 q-6 -2 -8 -8 q-2 -14 -18 -14 q-16 0 -18 14 q-2 6 -8 8z" fill="#3B2A1E" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><circle cx="67.6" cy="54" r="2.66" fill="#0B0C12"/><path d="M55.25 63.5 q4.75 4.75 11.4 -3" stroke="#0B0C12" stroke-width="2.28" fill="none" stroke-linecap="round"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><rect x="78" y="84" width="16" height="30" rx="4" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="81" y="88" width="10" height="20" rx="2" fill="#35D0FF"/></g></svg></button><button type="button" aria-label="مشرفة النص" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="مشرفة النص"><circle cx="60" cy="63.5" r="56.5" fill="#237d98"/><circle cx="60" cy="56.5" r="56.5" fill="#35D0FF"/><clipPath id="c-script"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-script)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#FF9A2E" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#9C6644" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#9C6644" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 50 q2 -24 26 -24 q24 0 26 24 v30 h-8 v-24 q-2 -10 -18 -10 q-16 0 -18 10 v24 h-8z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><circle cx="67.6" cy="54" r="2.66" fill="#0B0C12"/><path d="M53.35 63.5 q6.65 5.7 13.3 0" stroke="#0B0C12" stroke-width="2.28" fill="none" stroke-linecap="round"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><path d="M36 40 l-8 -16" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M26 22 l-2 -6 5 1z" fill="#FFD23F" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="76" y="86" width="26" height="30" rx="4" fill="#F4F1EA" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="84" y="82" width="10" height="8" rx="2" fill="#A7ABBE" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></g></svg></button><button type="button" aria-label="الممثل" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="الممثل"><circle cx="60" cy="63.5" r="56.5" fill="#985d1f"/><circle cx="60" cy="56.5" r="56.5" fill="#FF9A2E"/><clipPath id="c-actor"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-actor)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#F4F1EA" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#C98B5F" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#C98B5F" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 50 q2 -24 26 -24 q24 0 26 24 q-6 -10 -26 -10 q-20 0 -26 10z" fill="#3B2A1E" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><circle cx="67.6" cy="54" r="2.66" fill="#0B0C12"/><path d="M52.4 61.6 q7.6 11.4 15.2 0 z" fill="#0B0C12"/><path d="M55.25 63.5 h9.5" stroke="#F4F1EA" stroke-width="1.9"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><path d="M40 60 q4 20 20 20 q16 0 20 -20 q-8 10 -20 10 q-12 0 -20 -10z" fill="#3B2A1E" opacity=".9" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><rect x="42" y="47" width="16" height="12" rx="4" fill="#0B0C12"/><rect x="62" y="47" width="16" height="12" rx="4" fill="#0B0C12"/><path d="M58 51 h4" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g></svg></button><button type="button" aria-label="الممثلة" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="الممثلة"><circle cx="60" cy="63.5" r="56.5" fill="#98326f"/><circle cx="60" cy="56.5" r="56.5" fill="#FF4FB8"/><clipPath id="c-actress"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-actress)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#C6FF3D" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#F6D2B5" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#F6D2B5" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 50 q2 -24 26 -24 q24 0 26 24 v16 q-6 -2 -8 -8 q-2 -14 -18 -14 q-16 0 -18 14 q-2 6 -8 8z" fill="#C2472C" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><path d="M63.8 54 q4 -4 8 0" stroke="#0B0C12" stroke-width="2.09" fill="none" stroke-linecap="round"/><path d="M52.4 61.6 q7.6 11.4 15.2 0 z" fill="#0B0C12"/><path d="M55.25 63.5 h9.5" stroke="#F4F1EA" stroke-width="1.9"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="36" cy="66" r="3" fill="#FFD23F" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g></svg></button><button type="button" aria-label="المساعد" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="المساعد"><circle cx="60" cy="63.5" r="56.5" fill="#5e4c98"/><circle cx="60" cy="56.5" r="56.5" fill="#9B7CFF"/><clipPath id="c-runner"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-runner)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#C6FF3D" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#6B4330" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#6B4330" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 46 q2 -24 26 -24 q24 0 26 24z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M30 46 h60 l12 5 h-72z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><circle cx="67.6" cy="54" r="2.66" fill="#0B0C12"/><ellipse cx="60" cy="64.45" rx="3.325" ry="4.75" fill="#0B0C12"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><rect x="84" y="88" width="14" height="28" rx="4" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M88 88 v-10" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></g></svg></button><button type="button" aria-label="فنان المؤثرات" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="فنان المؤثرات"><circle cx="60" cy="63.5" r="56.5" fill="#987e29"/><circle cx="60" cy="56.5" r="56.5" fill="#FFD23F"/><clipPath id="c-vfx"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-vfx)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#E8B48E" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#E8B48E" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 50 q2 -24 26 -24 q24 0 26 24 q-6 -10 -26 -10 q-20 0 -26 10z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><circle cx="67.6" cy="54" r="2.66" fill="#0B0C12"/><path d="M53.35 63.5 q6.65 5.7 13.3 0" stroke="#0B0C12" stroke-width="2.28" fill="none" stroke-linecap="round"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><rect x="36" y="44" width="48" height="18" rx="9" fill="#35D0FF" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M36 53 h-6 M84 53 h6" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g></svg></button><button type="button" aria-label="الملوّن" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="الملوّن"><circle cx="60" cy="63.5" r="56.5" fill="#984432"/><circle cx="60" cy="56.5" r="56.5" fill="#FF6E4F"/><clipPath id="c-colorist"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-colorist)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#35D0FF" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#FFE3C4" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#FFE3C4" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 50 q2 -24 26 -24 q24 0 26 24 q-6 -10 -26 -10 q-20 0 -26 10z" fill="#A7ABBE" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><circle cx="67.6" cy="54" r="2.66" fill="#0B0C12"/><path d="M53.35 63.5 q6.65 5.7 13.3 0" stroke="#0B0C12" stroke-width="2.28" fill="none" stroke-linecap="round"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="51" cy="54" r="8" fill="#FF4FB8" fill-opacity=".5" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="69" cy="54" r="8" fill="#FF4FB8" fill-opacity=".5" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M59 54 h2" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g></svg></button><button type="button" aria-label="الكاتبة" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="الكاتبة"><circle cx="60" cy="63.5" r="56.5" fill="#779828"/><circle cx="60" cy="56.5" r="56.5" fill="#C6FF3D"/><clipPath id="c-writer"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-writer)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#9B7CFF" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#F6D2B5" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#F6D2B5" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 52 q-4 -28 26 -28 q30 0 26 28 q-4 -8 -8 -4 q-4 -10 -10 -6 q-4 -10 -8 -4 q-4 -10 -8 -4 q-4 -8 -10 -6 q-4 -4 -8 4z" fill="#6B4330" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M48.6 54 q4 3 8 0" stroke="#0B0C12" stroke-width="2.09" fill="none" stroke-linecap="round"/><path d="M63.8 54 q4 3 8 0" stroke="#0B0C12" stroke-width="2.09" fill="none" stroke-linecap="round"/><path d="M53.35 63.5 q6.65 5.7 13.3 0" stroke="#0B0C12" stroke-width="2.28" fill="none" stroke-linecap="round"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><path d="M90 92 l10 -14" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M100 78 l4 -6 3 3 -4 6z" fill="#35D0FF" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></g></svg></button><button type="button" aria-label="منسق المواقع" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="منسق المواقع"><circle cx="60" cy="63.5" r="56.5" fill="#237d98"/><circle cx="60" cy="56.5" r="56.5" fill="#35D0FF"/><clipPath id="c-scout"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-scout)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#FF6E4F" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#9C6644" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#9C6644" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 46 q2 -24 26 -24 q24 0 26 24z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M30 46 h60 l12 5 h-72z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><circle cx="67.6" cy="54" r="2.66" fill="#0B0C12"/><path d="M53.35 63.5 q6.65 5.7 13.3 0" stroke="#0B0C12" stroke-width="2.28" fill="none" stroke-linecap="round"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><path d="M60 36 c-6 -8 -8 -11 -8 -15 a8 8 0 0 1 16 0 c0 4 -2 7 -8 15z" fill="#FF6E4F" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g></svg></button><button type="button" aria-label="مهندسة البث" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="مهندسة البث"><circle cx="60" cy="63.5" r="56.5" fill="#985d1f"/><circle cx="60" cy="56.5" r="56.5" fill="#FF9A2E"/><clipPath id="c-broadcast"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-broadcast)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#C98B5F" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#C98B5F" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 50 q2 -24 26 -24 q24 0 26 24 v30 h-8 v-24 q-2 -10 -18 -10 q-16 0 -18 10 v24 h-8z" fill="#3B2A1E" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><circle cx="67.6" cy="54" r="2.66" fill="#0B0C12"/><path d="M53.35 63.5 q6.65 5.7 13.3 0" stroke="#0B0C12" stroke-width="2.28" fill="none" stroke-linecap="round"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><path d="M34 54 v-6 a26 26 0 0 1 52 0 v6" fill="none" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="28" y="48" width="12" height="18" rx="5" fill="#9B7CFF" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="80" y="48" width="12" height="18" rx="5" fill="#9B7CFF" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M86 64 q-6 18 -20 18" fill="none" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="66" cy="82" r="4" fill="#0B0C12"/></g></svg></button><button type="button" aria-label="منسق الكاستينغ" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="منسق الكاستينغ"><circle cx="60" cy="63.5" r="56.5" fill="#98326f"/><circle cx="60" cy="56.5" r="56.5" fill="#FF4FB8"/><clipPath id="c-casting"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-casting)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#FFD23F" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#E8B48E" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#E8B48E" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 50 q2 -24 26 -24 q24 0 26 24 q-6 -10 -26 -10 q-20 0 -26 10z" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><circle cx="67.6" cy="54" r="2.66" fill="#0B0C12"/><path d="M53.35 63.5 q6.65 5.7 13.3 0" stroke="#0B0C12" stroke-width="2.28" fill="none" stroke-linecap="round"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><path d="M40 60 q4 20 20 20 q16 0 20 -20 q-8 10 -20 10 q-12 0 -20 -10z" fill="#0B0C12" opacity=".9" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><rect x="76" y="86" width="26" height="30" rx="4" fill="#F4F1EA" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="84" y="82" width="10" height="8" rx="2" fill="#A7ABBE" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M89 94 l2 4 4 1 -3 3 1 4 -4 -2 -4 2 1 -4 -3 -3 4 -1z" fill="#FFD23F" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g></svg></button><button type="button" aria-label="المصوّر" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="المصوّر"><circle cx="60" cy="63.5" r="56.5" fill="#5e4c98"/><circle cx="60" cy="56.5" r="56.5" fill="#9B7CFF"/><clipPath id="c-photographer"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-photographer)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#F4F1EA" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#6B4330" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#6B4330" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><path d="M63.8 54 q4 -4 8 0" stroke="#0B0C12" stroke-width="2.09" fill="none" stroke-linecap="round"/><path d="M53.35 63.5 q6.65 5.7 13.3 0" stroke="#0B0C12" stroke-width="2.28" fill="none" stroke-linecap="round"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><path d="M40 60 q4 20 20 20 q16 0 20 -20 q-8 10 -20 10 q-12 0 -20 -10z" fill="#0B0C12" opacity=".9" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><rect x="74" y="84" width="28" height="22" rx="5" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="88" cy="95" r="7" fill="#35D0FF" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M40 90 q20 6 40 0" fill="none" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g></svg></button><button type="button" aria-label="طيّار الدرون" style="padding: 0; border: 0; background: transparent; border-radius: 999px;  cursor: pointer"><svg style="width: 56px; height: 56px; display: block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="طيّار الدرون"><circle cx="60" cy="63.5" r="56.5" fill="#987e29"/><circle cx="60" cy="56.5" r="56.5" fill="#FFD23F"/><clipPath id="c-drone-pilot"><circle cx="60" cy="56.5" r="56.5"/></clipPath><g clip-path="url(#c-drone-pilot)" transform="translate(0 -3.5)"><path d="M22 118 q0 -30 38 -30 q38 0 38 30z" fill="#35D0FF" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="52" y="74" width="16" height="16" fill="#FFE3C4" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="60" cy="54" r="26" fill="#FFE3C4" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M34 46 q2 -24 26 -24 q24 0 26 24z" fill="#D9A066" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M30 46 h60 l12 5 h-72z" fill="#D9A066" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="52.4" cy="54" r="2.66" fill="#0B0C12"/><circle cx="67.6" cy="54" r="2.66" fill="#0B0C12"/><ellipse cx="60" cy="64.45" rx="3.325" ry="4.75" fill="#0B0C12"/><circle cx="44" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><circle cx="76" cy="62" r="3.5" fill="#FF6E4F" opacity=".4"/><rect x="76" y="92" width="26" height="18" rx="5" fill="#0B0C12" stroke="#0B0C12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M82 92 v-10 M96 92 v-10" stroke="#0B0C12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="84" cy="101" r="3" fill="#C6FF3D"/><circle cx="94" cy="101" r="3" fill="#C6FF3D"/></g></svg></button></div>
+    <button type="button" style="display: flex; align-items: center; justify-content: center; min-height: 48px; border-radius: 999px; border: 0; background: #F4F1EA; color: #0B0C12; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 17px; cursor: pointer">حفظ</button>
+  </div></div>
+      <div class="overlay" id="storyOverlay"><div class="story" id="story"><div class="inner">
+  <div style="position: absolute; inset: 0; background: #35D0FF"></div>
+  <div style="position: absolute; top: 0; inset-inline: 0; height: 160px; background: linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,0))"></div>
+  <div style="position: absolute; top: 14px; inset-inline: 12px; display: flex; gap: 4px"><span style="flex: 1; height: 3px; border-radius: 999px; background: #F4F1EA"></span><span style="flex: 1; height: 3px; border-radius: 999px; background: #F4F1EA"></span><span style="flex: 1; height: 3px; border-radius: 999px; background: rgba(244,241,234,.95)"></span><span style="flex: 1; height: 3px; border-radius: 999px; background: rgba(244,241,234,.35)"></span><span style="flex: 1; height: 3px; border-radius: 999px; background: rgba(244,241,234,.35)"></span><span style="flex: 1; height: 3px; border-radius: 999px; background: rgba(244,241,234,.35)"></span></div>
+  <div style="position: absolute; top: 28px; inset-inline: 12px; display: flex; align-items: center; gap: 10px">
+    <span style="width: 36px; height: 36px; border-radius: 999px; background: #0B0C12; border: 3px solid #F4F1EA; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 15px">ا</span>
+    <span style="flex: 1; min-width: 0; line-height: 1.3"><span style="display: block; font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">العرض في 5 شرائح</span><span style="display: block; font-size: 12px; opacity: .8">سارة القحطاني · مواهب · قبل 12 دقيقة</span></span>
+    <a href="Home.dc.html" aria-label="إغلاق" style="width: 36px; height: 36px; border-radius: 999px; background: rgba(0,0,0,.35); color: #F4F1EA; display: inline-flex; align-items: center; justify-content: center; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></a>
+  </div>
+  <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 40px; color: #0B0C12; text-align: center">
+    <span style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: #0B0C12; color: #FF6E4F; font-size: 13px; font-weight: 700"><span style="width: 8px; height: 8px; border-radius: 999px; background: #FF6E4F"></span>جارية الآن</span>
+    <div style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 40px; line-height: 1.1">العرض في 5 شرائح: كيف تُقنع اللجنة التنفيذية</div>
+    <div style="display: flex; align-items: baseline; gap: 8px"><span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 64px; line-height: 1">23</span><span style="font-size: 16px; font-weight: 700">في القاعة</span></div>
+    <div style="font-size: 14px; font-weight: 700">قاعة الرياض · حتى 7:30 م</div>
+  </div>
+  <div style="position: absolute; bottom: 0; inset-inline: 0; height: 200px; background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,.6))"></div>
+  <div style="position: absolute; bottom: 24px; inset-inline: 16px; display: flex; align-items: center; gap: 8px"><span style="display: inline-flex; gap: 6px"><span style="width: 40px; height: 40px; border-radius: 999px; background: rgba(0,0,0,.4); display: inline-flex; align-items: center; justify-content: center; font-size: 18px">❤️</span><span style="width: 40px; height: 40px; border-radius: 999px; background: rgba(0,0,0,.4); display: inline-flex; align-items: center; justify-content: center; font-size: 18px">🔥</span><span style="width: 40px; height: 40px; border-radius: 999px; background: rgba(0,0,0,.4); display: inline-flex; align-items: center; justify-content: center; font-size: 18px">👏</span><span style="width: 40px; height: 40px; border-radius: 999px; background: rgba(0,0,0,.4); display: inline-flex; align-items: center; justify-content: center; font-size: 18px">💡</span></span><span style="flex: 1"></span><a href="EventLive.dc.html" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: 999px; background: #F4F1EA; color: #0B0C12; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 16px; text-decoration: none">افتح الجلسة</a></div>
+</div></div></div>
+    </div>
+
+    <aside class="controls">
+      <div class="ctl-group">
+        <h2 class="display">جرّب</h2>
+        <div class="row">
+          <button class="b primary" data-demo="hero">قفزة · بطاقة ← جلسة</button>
+          <button class="b primary" data-demo="push">دفع · حسابي ← الإعدادات</button>
+          <button class="b primary" data-demo="switch">تبديل · تبويب</button>
+          <button class="b primary" data-demo="sheet">ورقة · صورتك</button>
+          <button class="b primary" data-demo="story">قفزة · حلقة ← قصة</button>
+          <button class="b" data-demo="back">رجوع</button>
+          <button class="b" data-demo="reset">البداية</button>
+        </div>
+      </div>
+      <div class="ctl-group">
+        <h2 class="display">الظروف</h2>
+        <div class="row">
+          <button class="b" id="tReduced" aria-pressed="false">حركة أقل</button>
+          <button class="b" id="tSlow" aria-pressed="false">×4 أبطأ</button>
+          <button class="b" id="tNet" aria-pressed="false">شبكة بطيئة</button>
+        </div>
+      </div>
+      <div class="readout" id="readout">
+        <span class="k">الحركة</span><b id="rName">—</b>
+        <span class="k">المدة</span><span id="rDur">—</span>
+        <span class="k">المنحنى</span><span id="rEase"><code>—</code></span>
+        <span class="k">الزمن</span><span class="lane"><i id="lane"></i></span>
+      </div>
+      <p class="note">كل شيء في الهاتف قابل للنقر: البطاقة، الحلقات، التبويبات، الصورة والترس في «حسابي»، المادة في الجلسة، أزرار الرجوع.</p>
+    </aside>
+  </div>
+
+  <table class="rules">
+    <thead><tr><th>الحركة</th><th>متى</th><th>ماذا يحدث</th><th>المدة · المنحنى</th><th>الرجوع</th></tr></thead>
+    <tbody>
+      <tr><td>ضغطة</td><td>قبل كل حركة</td><td>ما نقرته ينضغط إلى 96٪ ويعود — الزر، البطاقة، الحلقة، التبويب</td><td><code>--dur-fast</code> · <code>--ease-pop</code></td><td>—</td></tr>
+      <tr><td>قفزة · الملصق</td><td>من بطاقة الجلسة إلى صفحتها</td><td>الملصق يقفز من البطاقة إلى مكانه كبطل ونافذته تتسع لتكشف باقيه؛ الصفحة خلفه تغوص: 94٪، معتمة، مموّهة؛ بقية الصفحة تهبط من الأسفل كتلة بعد كتلة (40 ms بين كل اثنتين) وتستقر بارتداد خفيف</td><td><code>--dur-play</code> 480 · <code>--ease-pop</code></td><td>الملصق يعود إلى بطاقته والصفحة تطفو من جديد، <code>--ease-out</code></td></tr>
+      <tr><td>قفزة · القصة</td><td>من الحلقة إلى القصة</td><td>كما في إنستغرام: الصفحة تقترب نحو الحلقة (108٪) وتعتم، والقصة تخرج من الحلقة نفسها — دائرة بحجمها تكبر حتى تملأ الشاشة وتستقر بارتداد</td><td><code>--dur-play</code> 480 · <code>--ease-pop</code></td><td>تنكمش إلى حلقتها، <code>--dur-slow</code> · <code>--ease-out</code></td></tr>
+      <tr><td>دفع</td><td>من شاشة إلى ابنتها</td><td>الابنة تدخل من طرف السطر النهائي؛ الأم تغوص: 94٪، نصف معتمة، مموّهة 6 px؛ شريط التبويبات يهبط</td><td><code>--dur-slow</code> 360 · <code>--ease-pop</code> للابنة</td><td>المرآة، <code>--ease-out</code>؛ زر المتصفح أيضًا</td></tr>
+      <tr><td>تبديل</td><td>بين التبويبات</td><td>أيقونة التبويب تقفز (130٪ وتعود)؛ المحتوى يأتي من جهة التبويب المنقور — يمينه أو يساره بحسب ترتيبه — والقديم يخرج من الجهة الأخرى</td><td><code>--dur-base</code> 200 · <code>--ease-out</code> · القفزة <code>--dur-slow</code> · <code>--ease-pop</code></td><td>تبديل آخر</td></tr>
+      <tr><td>ورقة</td><td>الأوراق والقوائم والمُنتقيات</td><td>تصعد وتهبط بثقل (ارتداد 5٪)، الستار يخفت، والصفحة خلفها تغوص إلى 97٪</td><td><code>--dur-slow</code> 360 · <code>--ease-pop</code></td><td>تهبط، <code>--dur-base</code> · <code>--ease-out</code></td></tr>
+      <tr><td>لا شيء</td><td>لوحة المؤسسة والمنصة · حركة أقل · الخطأ</td><td>قطع. شريط التقدّم وحده يبقى</td><td>0</td><td>قطع</td></tr>
+    </tbody>
+  </table>
+  <p class="note">الارتداد للوصول فقط؛ الرجوع والإغلاق يستقرّان بلا ارتداد. الحركة تبدأ حين تصل الشاشة التالية (أو هيكلها)، لا عند النقر: بعد 150 ms يظهر شريط التقدّم. transform · opacity · filter فقط — والمنفذان الموثّقان: حجم لقطة الملصق (view-transition) وزاوية بوابة القصة (border-radius). اللحظات الخمس تبدأ بعد أن تستقر الشاشة.</p>
+</div>
+
+<script>
+(() => {
+  const root = document.documentElement;
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const OUT = 'cubic-bezier(.2,.8,.2,1)', POP = 'cubic-bezier(.3,1.4,.5,1)';
+  const phone = $('#phone'), screens = $('#screens'), tabbar = $('#tabbar'), progress = $('#progress');
+  const sheetOverlay = $('#sheetOverlay'), sheet = $('#sheet'), sheetScrim = $('#sheetScrim');
+  const storyOverlay = $('#storyOverlay'), story = $('#story');
+  const rName = $('#rName'), rDur = $('#rDur'), rEase = $('#rEase'), lane = $('#lane');
+  const state = { reduced: false, slow: false, net: false, stack: ['home'], tab: 'home', busy: false, overlay: null };
+  const TABS = ['home', 'browse', 'board', 'me'];
+  const PARENT = { event: 'home', viewer: 'event', settings: 'me' };
+  const D = (k) => (state.reduced ? 0 : { fast: 120, base: 200, slow: 360, play: 480 }[k] * (state.slow ? 4 : 1));
+  const sign = () => (root.dir === 'rtl' ? -1 : 1); // inline-end
+  const scr = (n) => $(`.screen[data-screen="${n}"]`);
+  const show = (el) => el.setAttribute('data-on', '');
+  const hide = (el) => el.removeAttribute('data-on');
+  const wait = (ms) => new Promise(r => setTimeout(r, ms));
+  const anim = (el, kf, dur, easing = OUT, opts = {}) => {
+    const last = kf[kf.length - 1];
+    const settle = () => { for (const k in last) if (k !== 'offset' && k !== 'easing') el.style[k] = last[k]; };
+    if (dur === 0) { settle(); return Promise.resolve(); }
+    const a = el.animate(kf, { duration: dur, easing, fill: 'both', ...opts });
+    return a.finished.then(() => { settle(); a.cancel(); });
+  };
+  const clear = (el) => { el.style.transform = ''; el.style.opacity = ''; el.style.filter = ''; el.style.transformOrigin = ''; el.style.borderRadius = ''; };
+  const readout = (name, dur, parts, ease) => { rName.textContent = name; rDur.textContent = parts; rEase.innerHTML = `<code>${ease}</code>`; lane.style.transition = 'none'; lane.style.transform = 'scaleX(0)'; requestAnimationFrame(() => requestAnimationFrame(() => { lane.style.transition = `transform ${Math.max(dur, 1)}ms linear`; lane.style.transform = 'scaleX(1)'; })); };
+  const tabState = (name) => { $$('a[data-tab]', tabbar).forEach(a => { const on = a.dataset.tab === name; a.style.color = on ? '#C6FF3D' : '#A7ABBE'; if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }); };
+  const barHidden = (h) => { if (h) tabbar.setAttribute('data-hidden', ''); else tabbar.removeAttribute('data-hidden'); };
+  const sink = (el, dur) => anim(el, [{ transform: 'scale(1)', filter: 'brightness(1) blur(0px)' }, { transform: 'scale(.94)', filter: 'brightness(.5) blur(6px)' }], dur, OUT);
+  const rise = (el, dur) => anim(el, [{ transform: 'scale(.94)', filter: 'brightness(.5) blur(6px)' }, { transform: 'scale(1)', filter: 'brightness(1) blur(0px)' }], dur, OUT);
+
+  // ---- ضغطة — everything that starts a move presses first
+  async function press(el) {
+    if (!el) return;
+    const dur = D('fast'); if (!dur) return;
+    el.style.transformOrigin = '50% 50%';
+    await anim(el, [{ transform: 'scale(1)' }, { transform: 'scale(.96)' }], dur * .5, OUT);
+    await anim(el, [{ transform: 'scale(.96)' }, { transform: 'scale(1)' }], dur, POP);
+    clear(el);
+  }
+
+  // ---- the pending affordance and the progress bar — only under «شبكة بطيئة»
+  let progAnim = null;
+  async function pending(link) {
+    if (!state.net) return;
+    if (link) link.setAttribute('data-pending', '');
+    const bar = setTimeout(() => { progress.style.opacity = '1'; progAnim = progress.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(.8)' }], { duration: 1400, easing: OUT, fill: 'forwards' }); }, 150);
+    await wait(1300);
+    clearTimeout(bar);
+    if (progAnim) { progAnim.cancel(); progAnim = null; progress.animate([{ transform: 'scaleX(.8)', opacity: 1 }, { transform: 'scaleX(1)', opacity: 0 }], { duration: D('base') || 1, easing: OUT, fill: 'forwards' }); }
+    if (link) link.removeAttribute('data-pending');
+  }
+
+  // ---- تبديل — the icon jumps, the content comes from the tapped tab's side
+  async function switchTo(name, link) {
+    if (state.busy || name === state.tab) return; state.busy = true;
+    const icon = link && link.querySelector('svg');
+    if (icon) anim(icon, [{ transform: 'scale(1)' }, { transform: 'scale(1.3)', offset: .4 }, { transform: 'scale(1)' }], D('slow'), POP).then(() => clear(icon));
+    await pending(link);
+    const from = scr(state.tab), to = scr(name);
+    const dur = D('base');
+    const dirn = (TABS.indexOf(name) > TABS.indexOf(state.tab) ? 1 : -1) * sign(); // the new tab's side
+    readout('تبديل', dur, `--dur-base ${dur} ms · من جهة التبويب · الأيقونة تقفز --dur-slow`, 'ease-out · القفزة ease-pop');
+    show(to); to.style.zIndex = 2; from.style.zIndex = 1; tabState(name); state.tab = name; state.stack = [name];
+    await Promise.all([
+      anim(to, [{ opacity: 0, transform: `translateX(${dirn * 24}%)` }, { opacity: 1, transform: 'translateX(0)' }], dur, OUT),
+      anim(from, [{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: `translateX(${-dirn * 24}%)` }], dur, OUT),
+    ]);
+    hide(from); clear(from); clear(to); to.style.zIndex = ''; from.style.zIndex = ''; state.busy = false;
+  }
+
+  // ---- دفع / رجوع — the child slides over, the parent sinks
+  async function push(name, link) {
+    if (state.busy) return; state.busy = true;
+    await press(link); await pending(link);
+    const from = scr(state.stack[state.stack.length - 1]), to = scr(name);
+    const dur = D('slow'), s = sign();
+    readout('دفع', dur, `--dur-slow ${dur} ms · الابنة من طرف السطر النهائي · الأم تغوص 94٪ مموّهة`, 'ease-pop للابنة · ease-out للأم');
+    show(to); to.style.zIndex = 3; from.style.zIndex = 1; barHidden(true);
+    await Promise.all([
+      anim(to, [{ transform: `translateX(${s * 100}%)` }, { transform: 'translateX(0)' }], dur, POP),
+      sink(from, dur),
+    ]);
+    state.stack.push(name); state.busy = false;
+  }
+  async function pop() {
+    const name = state.stack[state.stack.length - 1], parent = state.stack[state.stack.length - 2];
+    const from = scr(name), to = scr(parent);
+    const dur = D('slow'), s = sign();
+    readout('رجوع', dur, `--dur-slow ${dur} ms · المرآة، بلا ارتداد`, 'ease-out');
+    show(to); to.style.zIndex = 1; from.style.zIndex = 3;
+    if (TABS.includes(parent)) barHidden(false);
+    await Promise.all([
+      anim(from, [{ transform: 'translateX(0)' }, { transform: `translateX(${s * 100}%)` }], dur, OUT),
+      rise(to, dur),
+    ]);
+    hide(from); clear(from); clear(to); from.style.zIndex = ''; to.style.zIndex = ''; state.stack.pop();
+  }
+
+  // ---- قفزة · الملصق — the poster jumps from the card to its hero slot; the rest drops in
+  const rectIn = (el) => { const r = el.getBoundingClientRect(), p = phone.getBoundingClientRect(); return { top: r.top - p.top, left: r.left - p.left, width: r.width, height: r.height }; };
+  function windowClone(src, r) {
+    const c = document.createElement('div'); c.className = 'clone';
+    const inner = src.cloneNode(true); inner.removeAttribute('href'); inner.removeAttribute('data-hero');
+    Object.assign(inner.style, { position: 'absolute', top: 0, left: 0, width: src.offsetWidth + 'px', height: src.offsetHeight + 'px', margin: 0, transform: 'none', visibility: 'visible' });
+    c.appendChild(inner);
+    Object.assign(c.style, { top: r.top + 'px', left: r.left + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: '16px' });
+    phone.appendChild(c); return c;
+  }
+  const restOf = (screenEl, hero) => {
+    const out = [];
+    $$('.inner > *', screenEl).forEach(el => { if (!el.contains(hero)) out.push(el); else [...el.children].forEach(ch => { if (!ch.contains(hero)) out.push(ch); }); });
+    return out;
+  };
+  const box = (r, radius) => ({ top: r.top + 'px', left: r.left + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: radius });
+  async function hero(link) {
+    if (state.busy || state.stack[state.stack.length - 1] !== 'home') return; state.busy = true;
+    const from = scr('home'), to = scr('event');
+    const a = from.querySelector('[data-hero="poster"]'), b = to.querySelector('[data-hero="poster"]');
+    await press(link || a); await pending(link);
+    const play = D('play'), slow = D('slow'), fast = D('fast'), step = state.reduced ? 0 : 40 * (state.slow ? 4 : 1);
+    readout('قفزة · الملصق', play + 160 + step * 6, `--dur-play ${play} ms للملصق · الصفحة تغوص · الكتل تهبط كل ${step} ms`, 'ease-pop · الغوص ease-out');
+    show(to); to.style.zIndex = 3; to.querySelector('.scroll').scrollTop = 0;
+    const ra = rectIn(a), rb = rectIn(b);
+    const ca = windowClone(a, ra), cb = windowClone(b, ra);
+    a.style.visibility = 'hidden'; b.style.visibility = 'hidden';
+    const rest = restOf(to, b).slice(0, 7);   // the first screenful drops in; the rest is simply there
+    rest.forEach(el => { el.style.opacity = '0'; });
+    barHidden(true);
+    const fly = (el) => anim(el, [box(ra, '16px'), box(rb, '18px')], play, POP);
+    const drops = (async () => {
+      await wait(160 * (state.slow ? 4 : 1) * (state.reduced ? 0 : 1));
+      await Promise.all(rest.map((el, i) => anim(el, [{ opacity: 0, transform: 'translateY(48px)' }, { opacity: 1, transform: 'translateY(0)' }], slow, POP, { delay: i * step })));
+    })();
+    await Promise.all([
+      anim(to, [{ opacity: 0 }, { opacity: 1 }], fast, OUT),
+      sink(from, play),
+      fly(ca), fly(cb),
+      anim(ca, [{ opacity: 1 }, { opacity: 0 }], play * .45, OUT),
+      anim(cb, [{ opacity: 0 }, { opacity: 1 }], play * .45, OUT),
+      drops,
+    ]);
+    a.style.visibility = ''; b.style.visibility = ''; ca.remove(); cb.remove(); rest.forEach(clear); clear(to);
+    hide(from); clear(from); from.style.zIndex = ''; to.style.zIndex = '';
+    state.stack.push('event'); state.busy = false;
+  }
+  async function heroBack() {
+    const from = scr('event'), to = scr('home');
+    const play = D('play'), slow = D('slow'), fast = D('fast');
+    readout('قفزة · رجوع', play, `--dur-play ${play} ms · الملصق يعود إلى بطاقته، بلا ارتداد`, 'ease-out');
+    show(to); to.style.zIndex = 1; from.style.zIndex = 3;
+    const a = to.querySelector('[data-hero="poster"]'), b = from.querySelector('[data-hero="poster"]');
+    const savedT = to.style.transform; to.style.transform = 'none';     // measure the card where it will be once the page has risen
+    const ra = rectIn(a), rb = rectIn(b);
+    to.style.transform = savedT;
+    const ca = windowClone(a, rb), cb = windowClone(b, rb);
+    a.style.visibility = 'hidden'; b.style.visibility = 'hidden';
+    const rest = restOf(from, b).slice(0, 7);
+    barHidden(false);
+    const fly = (el) => anim(el, [box(rb, '18px'), box(ra, '16px')], play, OUT);
+    await Promise.all([
+      Promise.all(rest.map((el, i) => anim(el, [{ opacity: 1, transform: 'translateY(0)' }, { opacity: 0, transform: 'translateY(40px)' }], fast + 80, OUT))).then(() => anim(from, [{ opacity: 1 }, { opacity: 0 }], fast, OUT)),
+      rise(to, play),
+      fly(ca), fly(cb),
+      anim(cb, [{ opacity: 1 }, { opacity: 0 }], play * .45, OUT),
+      anim(ca, [{ opacity: 0 }, { opacity: 1 }], play * .45, OUT),
+    ]);
+    a.style.visibility = ''; b.style.visibility = ''; ca.remove(); cb.remove(); rest.forEach(clear); clear(from); clear(to);
+    hide(from); from.style.zIndex = ''; to.style.zIndex = ''; state.stack.pop();
+  }
+
+  // ---- قفزة · القصة — the story grows out of the ring you tapped; the page leans in
+  let ringRect = null;
+  async function openStory(link) {
+    if (state.busy || state.overlay) return; state.busy = true;
+    const ring = link ? (link.querySelector('span') || link) : null;
+    await press(ring); await pending(link);
+    const play = D('play');
+    readout('قفزة · القصة', play, `--dur-play ${play} ms · دائرة بحجم الحلقة تكبر حتى تملأ الشاشة · الصفحة تقترب 108٪`, 'ease-pop');
+    const r = ring ? rectIn(ring) : { top: 80, left: 300, width: 58, height: 58 };
+    ringRect = r;
+    const home = scr(state.tab);
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    home.style.transformOrigin = `${cx}px ${cy}px`;
+    show(storyOverlay); state.overlay = 'story';
+    story.style.transformOrigin = '50% 50%';
+    const sx = r.width / 390, sy = r.height / 844;
+    const start = { transform: `translate(${cx - 195}px, ${cy - 422}px) scale(${sx}, ${sy})`, borderRadius: '50%' };
+    const mid = { transform: `translate(${(cx - 195) * .6}px, ${(cy - 422) * .6}px) scale(.42, .42)`, borderRadius: '40%', offset: .3 };
+    const end = { transform: 'translate(0, 0) scale(1, 1)', borderRadius: '0%' };
+    await Promise.all([
+      anim(story, [start, mid, end], play, POP),
+      anim(home, [{ transform: 'scale(1)', filter: 'brightness(1)' }, { transform: 'scale(1.08)', filter: 'brightness(.35)' }], play, OUT),
+    ]);
+    state.busy = false;
+  }
+  async function closeStory() {
+    const dur = D('slow'), r = ringRect || { top: 80, left: 300, width: 58, height: 58 };
+    const home = scr(state.tab), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    readout('قصة · إغلاق', dur, `--dur-slow ${dur} ms · تنكمش إلى حلقتها`, 'ease-out');
+    const end = { transform: `translate(${cx - 195}px, ${cy - 422}px) scale(${r.width / 390}, ${r.height / 844})`, borderRadius: '50%', opacity: 1 };
+    await Promise.all([
+      anim(story, [{ transform: 'translate(0, 0) scale(1, 1)', borderRadius: '0%' }, { transform: `translate(${(cx - 195) * .6}px, ${(cy - 422) * .6}px) scale(.42, .42)`, borderRadius: '40%', offset: .7 }, end], dur, OUT),
+      anim(home, [{ transform: 'scale(1.08)', filter: 'brightness(.35)' }, { transform: 'scale(1)', filter: 'brightness(1)' }], dur, OUT),
+    ]);
+    hide(storyOverlay); clear(story); clear(home); state.overlay = null;
+  }
+
+  // ---- ورقة — rises with weight; the page sinks a little
+  async function openSheet(link) {
+    if (state.busy || state.overlay) return; state.busy = true;
+    await press(link); await pending(link);
+    const dur = D('slow');
+    readout('ورقة', dur, `--dur-slow ${dur} ms · تصعد بثقل، الصفحة تغوص 97٪`, 'ease-pop');
+    show(sheetOverlay); state.overlay = 'sheet';
+    await Promise.all([
+      anim(sheetScrim, [{ opacity: 0 }, { opacity: 1 }], D('base'), OUT),
+      anim(sheet, [{ transform: 'translateY(100%)' }, { transform: 'translateY(0)' }], dur, POP),
+      anim(screens, [{ transform: 'scale(1)', filter: 'brightness(1)' }, { transform: 'scale(.97)', filter: 'brightness(.7)' }], dur, OUT),
+    ]);
+    state.busy = false;
+  }
+  async function closeSheet() {
+    const dur = D('base');
+    readout('ورقة · إغلاق', dur, `--dur-base ${dur} ms · تهبط`, 'ease-out');
+    await Promise.all([
+      anim(sheetScrim, [{ opacity: 1 }, { opacity: 0 }], dur, OUT),
+      anim(sheet, [{ transform: 'translateY(0)' }, { transform: 'translateY(100%)' }], dur, OUT),
+      anim(screens, [{ transform: 'scale(.97)', filter: 'brightness(.7)' }, { transform: 'scale(1)', filter: 'brightness(1)' }], dur, OUT),
+    ]);
+    hide(sheetOverlay); clear(sheet); clear(sheetScrim); clear(screens); state.overlay = null;
+  }
+
+  async function back() {
+    if (state.busy) return;
+    if (state.overlay === 'sheet') { state.busy = true; await closeSheet(); state.busy = false; return; }
+    if (state.overlay === 'story') { state.busy = true; await closeStory(); state.busy = false; return; }
+    if (state.stack.length < 2) return;
+    state.busy = true;
+    if (state.stack[state.stack.length - 1] === 'event') await heroBack(); else await pop();
+    state.busy = false;
+  }
+  function reset() {
+    if (state.busy) return;
+    $$('.clone', phone).forEach(c => c.remove());
+    $$('.screen').forEach(s => { hide(s); clear(s); s.style.zIndex = ''; $$('[data-hero]', s).forEach(h => h.style.visibility = ''); $$('.inner > *', s).forEach(clear); });
+    hide(sheetOverlay); hide(storyOverlay); clear(sheet); clear(sheetScrim); clear(story); clear(screens);
+    state.stack = ['home']; state.tab = 'home'; state.overlay = null; show(scr('home')); tabState('home'); barHidden(false);
+    const hs = scr('home').querySelector('.scroll'), hp = scr('home').querySelector('[data-hero="poster"]'); hs.scrollTop = 0; hs.scrollTop = hp.getBoundingClientRect().top - hs.getBoundingClientRect().top - 86;
+    readout('—', 0, '—', '—');
+  }
+
+  // ---- wiring: everything in the phone is clickable
+  phone.addEventListener('click', (e) => {
+    const a = e.target.closest('a, button'); if (!a || !phone.contains(a)) return;
+    if (a.closest('#tabbar')) { e.preventDefault(); const t = a.dataset.tab; if (t) switchTo(t, a); return; }
+    if (a.matches('[data-hero="poster"]')) { e.preventDefault(); hero(a); return; }
+    if (a.matches('[data-open="story"]')) { e.preventDefault(); openStory(a); return; }
+    if (a.matches('[data-open="sheet"]')) { e.preventDefault(); openSheet(a); return; }
+    const pu = a.closest('[data-push]'); if (pu) { e.preventDefault(); const target = pu.dataset.push; if (PARENT[target] === state.stack[state.stack.length - 1]) push(target, pu); return; }
+    if (a.matches('[aria-label="رجوع"], [aria-label="إغلاق العارض"], [aria-label="إغلاق"]') || (a.closest('.screen.full') && /^(Me|Home|Event|EventDone)\.dc\.html$/.test(a.getAttribute('href') || ''))) { e.preventDefault(); back(); return; }
+    e.preventDefault();
+  });
+  sheetScrim.addEventListener('click', () => back());
+  $$('[data-demo]').forEach(b => b.addEventListener('click', async () => {
+    const d = b.dataset.demo;
+    if (d === 'hero') { if (state.overlay || state.stack.length > 1) reset(); hero(null); }
+    else if (d === 'push') { if (state.overlay) return; if (state.tab !== 'me' || state.stack.length > 1) { reset(); await switchTo('me', $('a[data-tab="me"]', tabbar)); } push('settings', $('[data-push="settings"]', scr('me'))); }
+    else if (d === 'switch') { if (state.overlay || state.stack.length > 1) reset(); const i = TABS.indexOf(state.tab); const n = TABS[(i + 1) % TABS.length]; switchTo(n, $(`a[data-tab="${n}"]`, tabbar)); }
+    else if (d === 'sheet') { if (state.overlay) return; if (state.tab !== 'me' || state.stack.length > 1) { reset(); await switchTo('me', $('a[data-tab="me"]', tabbar)); } openSheet($('[data-open="sheet"]', scr('me'))); }
+    else if (d === 'story') { if (state.overlay) return; if (state.tab !== 'home' || state.stack.length > 1) reset(); openStory($('[data-open="story"]', scr('home'))); }
+    else if (d === 'back') back();
+    else if (d === 'reset') reset();
+  }));
+  const toggle = (id, fn) => { const b = $(id); b.addEventListener('click', () => { const on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', String(on)); fn(on); }); };
+  toggle('#tReduced', (on) => { state.reduced = on; if (on) root.setAttribute('data-reduced', '1'); else root.removeAttribute('data-reduced'); });
+  toggle('#tSlow', (on) => { state.slow = on; });
+  toggle('#tNet', (on) => { state.net = on; });
+  reset();
+})();
+</script>
+</body>
+</html>

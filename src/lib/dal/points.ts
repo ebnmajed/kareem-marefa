@@ -747,12 +747,12 @@ export const getHubStanding = cache(async (locale: string): Promise<HubStanding>
   const [head, week, memberRes, badgesRes] = await Promise.all([
     headOnce(locale),
     getWeekStanding(locale),
-    supabase.from("members").select("display_name, avatar_version, job_title, company_id, created_at").eq("id", session.memberId).maybeSingle(),
+    supabase.from("members").select("display_name, avatar_version, avatar_key, job_title, company_id, created_at").eq("id", session.memberId).maybeSingle(),
     supabase.from("member_badges").select("id", { count: "exact", head: true }).eq("member_id", session.memberId),
   ]);
   if (memberRes.error) throw new Error(`members (standing): ${memberRes.error.message}`);
   if (badgesRes.error) throw new Error(`member_badges (standing): ${badgesRes.error.message}`);
-  const m = memberRes.data as { display_name: string | null; avatar_version: number | string | null; job_title: string | null; company_id: string | null; created_at: string } | null;
+  const m = memberRes.data as { display_name: string | null; avatar_version: number | string | null; avatar_key?: string | null; job_title: string | null; company_id: string | null; created_at: string } | null;
 
   let company: HubStanding["member"]["company"] = null;
   if (m?.company_id) {
@@ -766,7 +766,7 @@ export const getHubStanding = cache(async (locale: string): Promise<HubStanding>
     member: {
       id: session.memberId,
       displayName: m?.display_name ?? "",
-      avatarUrl: avatarHref({ id: session.memberId, avatarVersion: m?.avatar_version }, 192),
+      avatarUrl: avatarHref({ id: session.memberId, avatarVersion: m?.avatar_version, avatarKey: m?.avatar_key }, 192),
       jobTitle: m?.job_title ?? null,
       company,
       memberSince: m?.created_at ?? "",

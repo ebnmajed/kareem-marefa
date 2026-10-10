@@ -57,7 +57,11 @@ describe("the six objects", () => {
       }
     };
     // The public site's constellation SVGs predate the wave and are the public site's own.
-    const added = served("public").filter((f) => f.endsWith(".svg") && !/\/constellation[^/]*\.svg$/.test(f));
+    // ★ Wave 29 (DEC-280): the avatar library is served from `public/avatars/<set>/` by decision — fifty shipped files,
+    // never a member's upload — and `tests/unit/avatar-library.test.ts` holds each one inert and equal to the list.
+    const added = served("public").filter(
+      (f) => f.endsWith(".svg") && !/\/constellation[^/]*\.svg$/.test(f) && !/^public\/avatars\/(characters|objects)\/[a-z-]+\.svg$/.test(f),
+    );
     expect(added).toEqual([]);
     for (const f of files) expect(source(f)).not.toMatch(/from ["'][^"']+\.svg["']/);
   });

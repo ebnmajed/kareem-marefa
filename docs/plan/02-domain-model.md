@@ -307,6 +307,8 @@ neither validates the other. **No client role writes it** — `save_company()` i
 | `auth_user_id` | `uuid not null unique references auth.users(id)` | keyed to the auth user, **not** to an email or a provider ID — `REQ-AUT-002` |
 | `email` | `citext not null` | `unique (org_id, email)` |
 | `display_name`, `avatar_url` | `text` | refreshed from Google on sign-in |
+| ★ `avatar_key` | `text` | `DEC-280` (`0221`): the library avatar held, `<set>/<key>`, checked against `avatar_library()`; assigned at random on insert, null once anonymised |
+| ★ `avatar_source` | `avatar_source` | `DEC-280` (`0221`): `google` · `upload` — which photo the one stored object is; null exactly when `avatar_version` is |
 | `company_id` | `uuid references companies(id)` | ★ **not in the member's own update grant since `0208`** · follows the member's email domain or an admin's placement (`REQ-PRF-012`, `DEC-254` §2); **never required** — the «required before RSVP or proposal» line is withdrawn |
 | `company_assigned_by` | `company_source` (`'domain'` · `'admin'`), nullable | ★ `0203` — who placed the member. `'admin'` is never moved by a domain change, a deliberate null company included; null only while nobody has ever placed them. Kept by a normalising trigger; in no column grant |
 | `job_title`, `bio` | `text` | `bio` capped at 600 chars |

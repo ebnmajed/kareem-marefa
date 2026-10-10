@@ -90,9 +90,9 @@ async function presenterProfiles(
   memberIds: string[],
 ): Promise<Map<string, EventPresenter>> {
   if (memberIds.length === 0) return new Map();
-  const { data, error } = await supabase.from("members_member_view").select("id, display_name, job_title, bio, company_id, avatar_version").in("id", memberIds);
+  const { data, error } = await supabase.from("members_member_view").select("id, display_name, job_title, bio, company_id, avatar_version, avatar_key").in("id", memberIds);
   if (error) throw new Error(`members_member_view: ${error.message}`);
-  const rows = (data ?? []) as { id: string; display_name: string | null; job_title: string | null; bio: string | null; company_id: string | null; avatar_version: number | null }[];
+  const rows = (data ?? []) as { id: string; display_name: string | null; job_title: string | null; bio: string | null; company_id: string | null; avatar_version: number | null; avatar_key?: string | null }[];
 
   const companyIds = [...new Set(rows.map((r) => r.company_id).filter((v): v is string => v !== null))];
   const companies = new Map<string, { name: string; teamColor: string | null }>();
@@ -112,7 +112,7 @@ async function presenterProfiles(
         companyName: r.company_id ? (companies.get(r.company_id)?.name ?? null) : null,
         bio: r.bio,
         // wave 18 (SCR-012, add-only): our copy of the picture, never Google's (DEC-099), and the team ring.
-        avatarUrl: avatarHref({ id: r.id, avatarVersion: r.avatar_version }, 96),
+        avatarUrl: avatarHref({ id: r.id, avatarVersion: r.avatar_version, avatarKey: r.avatar_key }, 96),
         teamColor: r.company_id ? (companies.get(r.company_id)?.teamColor ?? null) : null,
       },
     ]),

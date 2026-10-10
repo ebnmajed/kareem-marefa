@@ -27,6 +27,8 @@ type Payload = {
   authorDisplayName: string | null;
   authorAvatarUrl: string | null;
   authorAvatarVersion?: number | string | null;
+  /** 0221 (DEC-280): the library key the author holds, beside the version. */
+  authorAvatarKey?: string | null;
   authorCompanyName?: string | null;
   authorTeamColor?: string | null;
   authorIsPresenter?: boolean | null;
@@ -50,7 +52,7 @@ function fromPayload(p: Payload, known: Map<string, CommentAuthor>, viewer: stri
     author: {
       id: p.authorId,
       displayName: p.authorDisplayName,
-      avatarUrl: avatarHref({ id: p.authorId, avatarVersion: p.authorAvatarVersion }),
+      avatarUrl: avatarHref({ id: p.authorId, avatarVersion: p.authorAvatarVersion, avatarKey: p.authorAvatarKey }),
       company,
       isPresenter: p.authorIsPresenter ?? before?.isPresenter ?? false,
     },

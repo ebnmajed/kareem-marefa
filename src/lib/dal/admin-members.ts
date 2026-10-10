@@ -124,13 +124,13 @@ export async function listMembersForConsole(locale: string, query: MemberQuery):
 
   const [members, extras, companies, balances, levels] = await Promise.all([
     readMembers(supabase),
-    readAll("members", (from, to) => supabase.from("members").select("id, avatar_version").order("id").range(from, to)),
+    readAll("members", (from, to) => supabase.from("members").select("id, avatar_version, avatar_key").order("id").range(from, to)),
     readAll("companies", (from, to) => supabase.from("companies").select("id, name, team_color, deactivated_at").order("id").range(from, to)),
     readAll("points_balances", (from, to) => supabase.from("points_balances").select("member_id, total_points, current_level_id").order("member_id").range(from, to)),
     readAll("levels", (from, to) => supabase.from("levels").select("id, name, threshold_points").eq("org_id", session.orgId).order("id").range(from, to)),
   ]);
 
-  const avatar = new Map(extras.map((m) => [m.id as string, m.avatar_version as number | string | null]));
+  const avatar = new Map(extras.map((m) => [m.id as string, { version: m.avatar_version as number | string | null, key: m.avatar_key as string | null }]));
   const company = new Map(companies.map((c) => [c.id as string, { name: c.name as string, teamColor: c.team_color as string | null }]));
   const balance = new Map(balances.map((b) => [b.member_id as string, { points: b.total_points as number, levelId: b.current_level_id as string | null }]));
   const level = new Map(levels.map((l) => [l.id as string, l.name as string]));
@@ -151,7 +151,7 @@ export async function listMembersForConsole(locale: string, query: MemberQuery):
       const b = balance.get(m.id);
       return {
         ...m,
-        avatarUrl: avatarHref({ id: m.id, avatarVersion: avatar.get(m.id) }, 96),
+        avatarUrl: avatarHref({ id: m.id, avatarVersion: avatar.get(m.id)?.version, avatarKey: avatar.get(m.id)?.key }, 96),
         companyName: c?.name ?? null,
         teamColor: c ? c.teamColor : undefined,
         points: b?.points ?? 0,

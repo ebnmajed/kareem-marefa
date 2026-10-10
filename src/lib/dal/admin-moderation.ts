@@ -42,9 +42,9 @@ export interface ModerationPerson {
 async function people(supabase: Supabase, ids: (string | null | undefined)[]): Promise<Map<string, ModerationPerson>> {
   const unique = [...new Set(ids.filter((v): v is string => typeof v === "string" && v.length > 0))];
   if (unique.length === 0) return new Map();
-  const { data, error } = await supabase.from("members_member_view").select("id, display_name, company_id, avatar_version").in("id", unique);
+  const { data, error } = await supabase.from("members_member_view").select("id, display_name, company_id, avatar_version, avatar_key").in("id", unique);
   if (error) throw new Error(`members_member_view (moderation): ${error.message}`);
-  const rows = (data ?? []) as { id: string; display_name: string | null; company_id: string | null; avatar_version: number | null }[];
+  const rows = (data ?? []) as { id: string; display_name: string | null; company_id: string | null; avatar_version: number | null; avatar_key?: string | null }[];
   const companyIds = [...new Set(rows.map((r) => r.company_id).filter((v): v is string => v !== null))];
   const colours = new Map<string, string | null>();
   if (companyIds.length > 0) {
@@ -58,7 +58,7 @@ async function people(supabase: Supabase, ids: (string | null | undefined)[]): P
       {
         memberId: r.id,
         name: r.display_name,
-        avatarUrl: avatarHref({ id: r.id, avatarVersion: r.avatar_version }, 96),
+        avatarUrl: avatarHref({ id: r.id, avatarVersion: r.avatar_version, avatarKey: r.avatar_key }, 96),
         teamColor: r.company_id ? (colours.get(r.company_id) ?? null) : null,
       },
     ]),

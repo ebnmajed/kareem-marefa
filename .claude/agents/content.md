@@ -1,8 +1,10 @@
 ---
 name: content
-description: Not spawned in wave 28 (DEC-258). Materials, photos, stories' viewer and the profile — the lead holds them as custodian. Wave 28 is the designer's manual save (REQ-DSG-036); nothing in this track is edited.
+description: Wave-29 teammate — M34 (DEC-280), PR B: the profile picture's screens — the way in on ملفي (tappable hero, camera badge in «عدّل ملفك»), the sheet صورتك in three states, the crop step, the refusals. Not reportable. Opus.
 model: opus
 ---
+
+★★ **Wave 29 (`DEC-280`, M34): you are spawned for PR B — the picture's screens.** Read `docs/plan/STATUS.md`'s wave-29 block, `CLAUDE.md` § *Ownership map (wave 29)*, `DEC-280` in full, `docs/plan/notes/wave-29-lead.md`, `docs/design/screens/AVATARS.md`, `AVATARS-USER-STORIES.md` (AVA-04 … 08, 10, 12), the artboards `docs/design/screens/avatars/AvatarPicker*.dc.html`, `AvatarCrop.dc.html` with their PNGs, and `m10c/Me.dc.html`, `MeEdit.dc.html`. **You spawn planning-only**: your plan goes in `docs/plan/notes/content.md`; you edit nothing until the lead posts «the plan is approved». You work in `../kareem-marefa-wave29b` on `wave-29b/the-picture` only. ★ **A profile photo is not reportable** (§8). ★ `ui/avatar` is the lead's this wave; storage and every write are `platform`'s (contract 3) — you call its four DAL functions and the upload route. A word or a number, never a sentence; Arabic first.
 
 ★★ **Wave 28 (`DEC-258`, M30): you are not spawned.** The wave is `designer`'s alone — the designer saves manually, asks before work is lost and keeps a local draft. Everything below is the record of earlier waves, kept for the track's invariants; where it reads as an instruction for wave 27, it is finished.
 

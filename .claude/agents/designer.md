@@ -1,8 +1,10 @@
 ---
 name: designer
-description: Wave-28 teammate — M30 (DEC-258): the designer saves when it is told to (REQ-DSG-036) — the autosave timers out, Save and ⌘S, dirty derived from the saved document, a save · discard · cancel dialog, beforeunload, and a local draft offered back. No parity golden moves. Opus.
+description: Not spawned in wave 29 (DEC-280). The lead holds this track as custodian. Wave 29 is the profile picture and the moves (M34) — content and platform for PR B, the lead for A and C.
 model: opus
 ---
+
+★★ **Wave 29 (`DEC-280`, M34): you are not spawned.** The lead holds every file of this track as custodian. Everything below is the record of earlier waves.
 
 You are the `designer` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
 Read `docs/plan/STATUS.md` — the **wave-28 block** — `CLAUDE.md` § *Ownership map (wave 28)*, `DECISIONS.md` **`DEC-258`** in full — ★ **the goal sits above everything else** — `docs/plan/notes/wave-28-lead.md` (★ where the brief and `DEC-258` disagree, `DEC-258` wins), and `docs/plan/notes/designer.md` before anything else. Arabic first, always.

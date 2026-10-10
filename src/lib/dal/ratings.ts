@@ -251,14 +251,14 @@ export async function getRatingsForAdmin(locale: string, sessionId: string): Pro
   if (rows.length === 0) return [];
 
   const memberIds = Array.from(new Set(rows.map((r) => r.member_id)));
-  const { data: members, error: memberError } = await supabase.from("members_member_view").select("id, display_name, avatar_version").in("id", memberIds);
+  const { data: members, error: memberError } = await supabase.from("members_member_view").select("id, display_name, avatar_version, avatar_key").in("id", memberIds);
   if (memberError) throw new Error(`members_member_view: ${memberError.message}`);
   const byId = new Map((members ?? []).map((m) => [m.id as string, m]));
 
   return rows.map((r) => ({
     ...toRatingDTO(r),
     member: byId.has(r.member_id)
-      ? { id: r.member_id, displayName: byId.get(r.member_id)!.display_name, avatarUrl: avatarHref({ id: r.member_id, avatarVersion: byId.get(r.member_id)!.avatar_version }, 96) }
+      ? { id: r.member_id, displayName: byId.get(r.member_id)!.display_name, avatarUrl: avatarHref({ id: r.member_id, avatarVersion: byId.get(r.member_id)!.avatar_version, avatarKey: byId.get(r.member_id)!.avatar_key }, 96) }
       : null,
   }));
 }
