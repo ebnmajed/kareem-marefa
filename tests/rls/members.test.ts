@@ -39,7 +39,8 @@ describe("POL-members", () => {
       const rows = await tx.q<Record<string, unknown>>(`select * from public.members_member_view`);
       expect(rows.length).toBe(4);
       // `avatar_version` appended by 0157 (DEC-182): the version of OUR stored copy, never a URL.
-      expect(Object.keys(rows[0]).sort()).toEqual(["avatar_url", "avatar_version", "bio", "company_id", "created_at", "display_name", "id", "job_title", "org_id", "org_role"]);
+      // ★ `avatar_key` appended by 0221 (DEC-280): the library avatar held — a key, never a URL.
+      expect(Object.keys(rows[0]).sort()).toEqual(["avatar_key", "avatar_url", "avatar_version", "bio", "company_id", "created_at", "display_name", "id", "job_title", "org_id", "org_role"]);
       expect(rows.every((r) => r.org_id === f.a.id)).toBe(true);
     });
   });
