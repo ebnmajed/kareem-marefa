@@ -293,7 +293,10 @@ test("★★ TRN-10: on a 4× throttled CPU no frame of the jump, the push or th
       document.startViewTransition = ((arg: unknown) => {
         const t = start(arg as never);
         const label = document.documentElement.dataset.nav ?? "none";
-        void t.ready.then(() => sample(label, t.finished)).catch(() => undefined);
+        const started = performance.now();
+        void t.ready
+          .then(() => sample(label, t.finished))
+          .catch((e: Error) => ((w as unknown as { __skipped: string[] }).__skipped ??= []).push(`${label}:${e.name}:${e.message.slice(0, 80)}:${Math.round(performance.now() - started)}ms`));
         return t;
       }) as typeof document.startViewTransition;
     }
@@ -313,27 +316,48 @@ test("★★ TRN-10: on a 4× throttled CPU no frame of the jump, the push or th
   const keep = (got: Record<string, number[]>) => {
     for (const [k, v] of Object.entries(got)) frames[k] = [...(frames[k] ?? []), ...v];
   };
+  // A move's samples arrive when its transition is READY — later than a fixed wait under a 4× throttle — and stop
+  // when it finishes. Wait for them to arrive, then for the count to hold still, then collect.
+  const settled = async (move: string) => {
+    await expect
+      .poll(async () => ((await take())[move] ?? []).length, { timeout: 20_000 })
+      .toBeGreaterThan(5)
+      .catch(async (e: unknown) => {
+        console.log("SKIPPED", move, await page.evaluate(() => JSON.stringify((window as unknown as { __skipped?: string[] }).__skipped ?? [])));
+        throw e;
+      });
+    let last = -1;
+    await expect
+      .poll(async () => {
+        const n = ((await take())[move] ?? []).length;
+        const still = n === last;
+        last = n;
+        return still;
+      }, { timeout: 20_000, intervals: [400] })
+      .toBe(true);
+    keep(await take());
+  };
+  // As TRN-02: the member taps a poster they can see — decoded — before the CPU is throttled.
+  const card = page.locator(`#main a[data-nav-kind="jump"][href$="/app/sessions/${sessionId}"]`).first();
+  await expect.poll(() => card.locator("img").evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
 
-  await page.locator(`#main a[data-nav-kind="jump"][href$="/app/sessions/${sessionId}"]`).first().click();
+  await card.click();
   await page.waitForURL(new RegExp(`/app/sessions/${sessionId}$`));
-  await page.waitForTimeout(1500);
-  keep(await take());
+  await settled("jump");
 
   await page.goto("/ar/app/me");
 
   await page.waitForLoadState("networkidle");
   await page.locator('#main a[href$="/app/me/settings"]').first().click();
   await page.waitForURL(/\/app\/me\/settings$/);
-  await page.waitForTimeout(1500);
-  keep(await take());
+  await settled("push");
 
   await page.goto("/ar/app");
 
   await page.waitForLoadState("networkidle");
   await page.locator('button[data-state][aria-haspopup="dialog"]').filter({ visible: true }).first().click();
-  await page.waitForTimeout(1500);
-  keep(await take());
+  await settled("story");
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
 
   const FRAME_MS = 1000 / 60;
