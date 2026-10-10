@@ -10834,3 +10834,23 @@ suite.
 5. Upload, measured on the real worker: recorded 363 – 880 ms after the route's 202.
 
 - **Documents changed:** `STATUS.md`, `CLAUDE.md`
+
+## DEC-283 — The app's server code runs in Singapore, beside its database
+
+- **Date:** 2026-10-10 · **Decided by:** the lead, on the owner's ask («can we do something on the app's lag and slowness?») · **Amends:** nothing; `04-architecture.md`'s deployment (Vercel's default region was never chosen) · **Migration:** none
+
+**Measured.** Production's `x-vercel-id` reads `bom1::iad1::…`: a request from Saudi Arabia enters Vercel at Mumbai and
+its server code runs in **Washington, DC** (`iad1`, Vercel's default — no region was ever set). The database is in
+**Singapore** (`ap-southeast-1`, Supabase project `qnwbgzsgkftqaixzuhdo`), and so is the Railway worker
+(`asia-southeast1`). Every query a page makes therefore crosses Washington ↔ Singapore and back — about a quarter of a
+second each — before the first byte leaves. The public session card, two or three queries, measured **0.8 – 1.0 s** to
+its first byte; a signed-in screen makes many more. Every page renders on the server (the CSP nonce, `proxy.ts`), so
+the landing pays too (0.5 – 0.65 s).
+
+**Ruling.** `vercel.json` sets `"regions": ["sin1"]`: the server code runs in Singapore, beside the database and the
+worker. A query becomes a hop inside one region. Saudi Arabia → Singapore is no further than Saudi Arabia → Washington.
+Nothing else moves: no code, no environment variable, no route. The proxy still runs at Vercel's edge.
+
+**Measured again on the preview before the merge** — the PR records both numbers.
+
+- **Documents changed:** `vercel.json` (new), `STATUS.md`
