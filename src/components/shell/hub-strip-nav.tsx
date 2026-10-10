@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { Link } from "@/components/ui/link";
+import { switchKind } from "@/lib/ui/nav-motion";
 
 export interface HubStripItem {
   /** Locale-less, as `Link` takes it — `/app/me/points`. */
@@ -28,12 +29,15 @@ export function HubStripNav({ label, items, className = "" }: { label: string; i
   return (
     <nav aria-label={label} className={`overflow-x-auto ${className}`}>
       <ul className="flex w-max gap-1.5 py-1">
-        {items.map((item) => {
+        {items.map((item, index) => {
           const current = path === item.href;
+          // ★ Wave 29 (REQ-UIX-125): the hub strip switches as the tabs do — from the tapped chip's side.
+          const nav = switchKind(index, items.findIndex((i) => path === i.href));
           return (
             <li key={item.href} ref={current ? currentRef : undefined}>
               <Link
                 href={item.href}
+                nav={nav}
                 quiet
                 aria-current={current ? "page" : undefined}
                 className={`inline-flex min-h-9 items-center rounded-pill border px-3.5 text-[0.8125rem] font-bold whitespace-nowrap focus-visible:outline-[length:var(--focus-width)] focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] ${

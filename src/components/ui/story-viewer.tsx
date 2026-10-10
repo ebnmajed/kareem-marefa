@@ -9,6 +9,7 @@ import { Link } from "@/components/ui/link";
 import { Menu } from "@/components/ui/menu";
 import { ReactionBar } from "@/components/ui/reaction-bar";
 import { usePlayPortal } from "@/components/ui/scope-portal";
+import { zoomOpen, zoomShut } from "@/lib/ui/story-zoom";
 
 // content's file — REQ-STO-007, REQ-STO-009, REQ-STO-005, DEC-093 (its seventh place), DEC-248 §7.7, DEC-251 §4.7.
 // A session's story, and the next ring's after it. A dialog over the whole viewport, on the ink ground; from `lg` the
@@ -158,10 +159,40 @@ const CONTROL = "inline-flex size-11 shrink-0 items-center justify-center rounde
 const FOCUS_CONTROL =
   "sr-only focus-visible:not-sr-only focus-visible:inline-flex focus-visible:size-11 focus-visible:shrink-0 focus-visible:items-center focus-visible:justify-center focus-visible:rounded-pill focus-visible:bg-chrome focus-visible:text-fg-heading focus-visible:pointer-events-auto";
 
-export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, returnFocusTo, paused: heldOutside = false, labels }: StoryViewerProps) {
+export function StoryViewer({ open, stories, storyIndex, onClose: closeNow, onFrameShown, returnFocusTo, paused: heldOutside = false, labels }: StoryViewerProps) {
   const rtl = Direction.useDirection() === "rtl";
   const reduced = usePrefersReducedMotion();
   const landing = usePlayPortal();
+
+  // ★ Wave 29 (DEC-280 §5, REQ-UIX-123): the viewer grows out of the ring it was opened from (`returnFocusTo`) and
+  // every close — «إغلاق», Escape, swipe-down, the end of the last story — shrinks it back into that ring before the
+  // dialog closes. Nothing moves under reduced motion or without a ring: `onClose` then closes at once.
+  const viewerRef = useRef<HTMLDivElement | null>(null);
+  const shutting = useRef(false);
+  // A callback ref, not an effect on `open`: Radix mounts the content through its portal a commit AFTER `open` turns
+  // true, so an effect would find no element (measured). It zooms ONCE per opening — `zoomed` resets when the viewer
+  // closes, never when the ref is re-attached on a render.
+  const zoomed = useRef(false);
+  useEffect(() => {
+    if (!open) zoomed.current = false;
+  }, [open]);
+  function attach(el: HTMLDivElement | null) {
+    viewerRef.current = el;
+    if (el && !zoomed.current) {
+      zoomed.current = true;
+      zoomOpen(el, returnFocusTo?.current);
+    }
+  }
+  function onClose() {
+    if (shutting.current) return;
+    const shrink = zoomShut(viewerRef.current, returnFocusTo?.current);
+    if (!shrink) return closeNow();
+    shutting.current = true;
+    void shrink.finished.catch(() => undefined).then(() => {
+      shutting.current = false;
+      closeNow();
+    });
+  }
 
   const startOf = (s: number) => Math.min(Math.max(0, stories[s]?.startIndex ?? 0), Math.max(0, (stories[s]?.frames.length ?? 1) - 1));
   const [pos, setPos] = useState({ s: storyIndex, f: startOf(storyIndex) });
@@ -334,6 +365,7 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
             event.preventDefault();
             if (returnFocusTo?.current?.isConnected) returnFocusTo.current.focus();
           }}
+          ref={attach}
           tabIndex={-1}
           data-story-viewer=""
           className="fixed inset-0 z-50 flex justify-center bg-canvas text-fg-heading outline-none"
@@ -447,7 +479,7 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
               ) : null}
               <span className="flex-1" />
               {frame.action ? (
-                <Link href={frame.action.href} onClick={onClose} className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-pill bg-fg-heading px-4 font-display text-body font-extrabold text-canvas">
+                <Link href={frame.action.href} onClick={closeNow} className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-pill bg-fg-heading px-4 font-display text-body font-extrabold text-canvas">
                   {frame.action.label}
                 </Link>
               ) : null}

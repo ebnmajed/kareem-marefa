@@ -1,4 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { PendingPoster } from "@/components/shell/pending-poster";
 
 // The event page's skeleton — REQ-UIX-005, `16` §7.1 layer 2, the shape of `Event.dc.html`: the top row, the
 // poster at 4:5, the chips, the title, the action card, the sub-nav and two sections; from `lg` the poster
@@ -16,7 +17,8 @@ export default function Loading() {
         <Skeleton variant="text" width="5rem" />
       </div>
       <div className="flex flex-col gap-3 lg:mt-6 lg:grid lg:grid-cols-[360px_minmax(0,1fr)] lg:gap-8">
-        <Skeleton variant="media" />
+        {/* ★ Wave 29 (REQ-UIX-122): the poster a jump carried, under its shared name — or the box. */}
+        <PendingPoster fallback={<Skeleton variant="media" />} />
         <div className="flex flex-col gap-3">
           <div className="flex gap-2">
             <Skeleton variant="text" width="5rem" />

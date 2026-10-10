@@ -17,6 +17,9 @@ const STAFF_DIRS = [
   "src/app/[locale]/app/platform",
   ...["admin", "platform", "designer", "branding", "email", "survey"].map((d) => `src/components/${d}`),
 ];
+// ★ wave 29 (DEC-280 §6): what the shell's navigation boundary reaches under `lib/ui/` — the kind, the poster's flight
+// and the two neutral readers they use. Each one checks `isStillPath()` before anything moves; none celebrates.
+const NAVIGATION = new Set(["lib/ui/nav-motion.ts", "lib/ui/poster-flight.ts", "lib/ui/reduced-motion.ts", "lib/ui/duration.ts"]);
 // ★ wave 21 (DEC-227 §2, the owner): the console's three primitives live in `ui/`, outside the staff directories, so
 // they are named here — the one amendment this file has had, and it reads more, never less.
 const PRIMITIVES = ["data-table", "combobox", "menu", "tabs", "sheet", "date-time", "admin-rail", "split-view", "kv-card"].map((n) => `src/components/ui/${n}.tsx`);
@@ -116,7 +119,9 @@ describe("the console's import graph (REQ-UIX-053)", () => {
   it("reaches no moment, confetti, object or sticker", () => {
     const forbidden = [...reached.keys()].filter((f) => {
       const r = rel(f);
-      return r.startsWith("lib/ui/") || r.startsWith("components/ui/objects/") || r === "components/ui/sticker.tsx" || /(^|\/)moment-[^/]*$/.test(r);
+      // ★ wave 29 (DEC-280 §6): `lib/ui/nav-motion.ts` is reached through the shell's boundary, and it is what KEEPS the
+      // console still — its `isStillPath()` clears every kind in the staff tree. It celebrates nothing; it is named.
+      return (r.startsWith("lib/ui/") && !NAVIGATION.has(r)) || r.startsWith("components/ui/objects/") || r === "components/ui/sticker.tsx" || /(^|\/)moment-[^/]*$/.test(r);
     });
     expect(forbidden.map(chain), "the console reaches a celebration").toEqual([]);
   });
@@ -124,6 +129,30 @@ describe("the console's import graph (REQ-UIX-053)", () => {
   it("renders no scope of its own: the layout's is theirs", () => {
     const staff = STAFF_DIRS.flatMap((d) => filesUnder(resolve(d)));
     for (const file of staff) expect(/<PlayScope\b/.test(readFileSync(file, "utf8")), `${rel(file)} renders the scope`).toBe(false);
+  });
+});
+
+// ★ wave 29 (DEC-280 §6, REQ-UIX-129, TRN-09): the console and the platform cut. No staff file asks for a move — no
+// `nav` kind on a link, no `data-nav-kind`, no shared name — and the shell's boundary says the staff tree is still.
+const MOVE = /\bnav=["{]|data-nav-kind|<ViewTransition\b|<PosterName\b|view-transition-name|viewTransitionName|\bzoomOpen\b|\bzoomShut\b/;
+
+describe("the console moves nowhere (REQ-UIX-129)", () => {
+  it("no file of the staff tree asks for a navigation move", () => {
+    for (const file of STAFF_DIRS.flatMap((d) => filesUnder(resolve(d)))) {
+      expect(stripComments(readFileSync(file, "utf8")).match(MOVE)?.[0] ?? null, `${rel(file)} asks for a move`).toBeNull();
+    }
+  });
+
+  it("the console's primitives ask for none either", () => {
+    for (const file of SIX_AND_PICKER) expect(stripComments(readFileSync(resolve(file), "utf8")).match(MOVE)?.[0] ?? null, file).toBeNull();
+  });
+
+  it("the shell's boundary and every setter treat /app/admin and /app/platform as still", async () => {
+    const { isStillPath } = await import("@/lib/ui/nav-motion");
+    for (const path of ["/ar/app/admin", "/ar/app/admin/sessions/x", "/en/app/platform/orgs", "/app/admin"]) expect(isStillPath(path), path).toBe(true);
+    for (const path of ["/ar/app", "/ar/app/sessions/x", "/ar/app/administrator", "/ar/app/me"]) expect(isStillPath(path), path).toBe(false);
+    const motion = readFileSync(resolve("src/components/shell/route-motion.tsx"), "utf8");
+    expect(motion).toMatch(/update=\{still \? "none" : "route"\}/);
   });
 });
 

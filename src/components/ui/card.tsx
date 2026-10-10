@@ -48,7 +48,7 @@ const SCOPE_CARD = "pg:rounded-panel pg:shadow-none pg:transition-none pg:hover:
 // focus rings included.
 const POST = "@container flex min-w-0 flex-col gap-2.5 rounded-panel border border-edge bg-surface p-3 sm:p-4";
 
-export function Card({ density = "grid", href, children, className = "" }: CardProps) {
+export function Card({ density = "grid", href, nav, children, className = "" }: CardProps) {
   if (density === "post") {
     return (
       <article data-density="post" className={`${POST} ${className}`}>
@@ -78,6 +78,7 @@ export function Card({ density = "grid", href, children, className = "" }: CardP
         <Link
           href={href}
           quiet
+          nav={nav}
           // ★ Inside the scope the card's focus ring is a PSEUDO-ELEMENT on the link, drawn ABOVE
           // the media (the lead's two reviews, measured in a browser):
           //   · the article is `overflow: hidden` and the link fills it, so the link's own outline

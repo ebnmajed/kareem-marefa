@@ -14,6 +14,7 @@ import { SearchEntry } from "@/components/shell/search-entry";
 import { ShellFooter, ShellMain } from "@/components/shell/shell-frame";
 import { TabBar } from "@/components/shell/tab-bar";
 import { RouteProgress } from "@/components/ui/route-progress";
+import { RouteMotion } from "@/components/shell/route-motion";
 import { PlayScope } from "@/components/ui/scope";
 import { ToastProvider } from "@/components/ui/toast";
 
@@ -182,7 +183,8 @@ export default async function AppLayout({
             ) : null
           }
         >
-          {children}
+          {/* ★ Wave 29 (DEC-280 §5): the page's one transition boundary; the console and the platform cut. */}
+          <RouteMotion>{children}</RouteMotion>
         </ShellMain>
 
         <ShellFooter>

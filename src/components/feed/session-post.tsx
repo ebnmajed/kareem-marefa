@@ -154,7 +154,7 @@ export async function SessionPost({ post, locale, today }: { post: SessionPostDa
           </div>
 
           <div className="flex flex-col gap-3 @min-[34rem]:flex-row @min-[34rem]:items-start">
-            <Link href={post.href} quiet aria-label={t("post.posterName", { title: post.title })} className={`block rounded-tile @min-[34rem]:shrink-0 ${live ? "@min-[34rem]:w-[260px]" : "@min-[34rem]:w-40"}`}>
+            <Link href={post.href} quiet nav="jump" aria-label={t("post.posterName", { title: post.title })} className={`block rounded-tile @min-[34rem]:shrink-0 ${live ? "@min-[34rem]:w-[260px]" : "@min-[34rem]:w-40"}`}>
               <Poster
                 src={post.posterUrl}
                 title={post.title}

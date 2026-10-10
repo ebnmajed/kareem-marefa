@@ -8,6 +8,7 @@ import { SessionStatusBadge } from "@/components/ui/badge";
 import { Link } from "@/components/ui/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { Poster } from "@/components/ui/poster";
+import { PosterLanding } from "@/components/shell/poster-landing";
 import { Prose } from "@/components/ui/prose";
 import { Sticker } from "@/components/ui/sticker";
 import { TagChip } from "@/components/ui/tag-chip";
@@ -69,7 +70,8 @@ export async function EventHero({ session, phase, seat, closingSoon, dayCount, p
             category and meta to 3.8:1 (the lead's a11y sweep, REQ-NFR-007). Under `grayscale` the ink on
             the seven team colours and the six sticker fills is 4.68:1 at worst (magenta, the filter taken
             in sRGB) and the neutral ground is unchanged. */}
-        <div className={washed ? (poster?.imageUrl ? "grayscale opacity-45" : "grayscale") : undefined}>
+        <div data-poster-hero={session.id} className={washed ? (poster?.imageUrl ? "grayscale opacity-45" : "grayscale") : undefined}>
+          <PosterLanding sessionId={session.id}>
           <Poster
             src={poster?.imageUrl ?? null}
             width={poster?.width ?? undefined}
@@ -82,6 +84,7 @@ export async function EventHero({ session, phase, seat, closingSoon, dayCount, p
             sticker={!poster?.imageUrl && points !== null && points > 0 ? <Sticker rotate={6}>{t("pointsChip", { value: formatNumber(points) })}</Sticker> : undefined}
             priority
           />
+          </PosterLanding>
         </div>
         {/* Staff learn when details moved under a detached poster (DEC-012) — said once, quietly. */}
         {session.viewerIsStaff && poster?.staleSince ? (

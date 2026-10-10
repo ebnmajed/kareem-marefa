@@ -78,6 +78,11 @@
   --dur-fast: 120ms;
   --dur-base: 200ms;
   --dur-slow: 360ms;
+  /* ★ Wave 29 (DEC-280 §5, REQ-UIX-121): navigation carries the game. `--ease-pop` overshoots ≈ 5 % and is used on
+     ARRIVAL only — every return and close settles on `--ease-out`. `--dur-play` is the jump and the story zoom. Both
+     collapse with the rest at the bottom of this file. */
+  --ease-pop: cubic-bezier(0.3, 1.4, 0.5, 1);
+  --dur-play: 480ms;
 
   --font-sans: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
   --font-arabic:
@@ -605,6 +610,7 @@ html:has([data-play-root].theme-play-light) {
    each delay by `both` — so if no animation runs (reduced motion, a console, an old browser) the mark is simply
    there, never invisible waiting for one. */
 [data-logo] [data-arc] { stroke-dasharray: 1; stroke-dashoffset: 0; }
+/* ui-lint-keyframes: the mark draws its own stroke (REQ-UIX-119); a stroke cannot draw by transform */
 @keyframes logo-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @keyframes logo-settle { 0% { transform: scale(1); } 40% { transform: scale(1.06); } 100% { transform: scale(1); } }
 @keyframes logo-breathe { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
@@ -1273,6 +1279,7 @@ html[data-sting="skip"] .sting {
     opacity: 0;
   }
 }
+/* ui-lint-keyframes: the sting draws its stroke; a stroke cannot draw by transform */
 @keyframes sting-draw {
   to {
     stroke-dashoffset: 0;
@@ -1397,7 +1404,8 @@ html[data-sting="done"] {
    (Chrome/Edge/Safari); elsewhere content is simply visible. */
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
-    @keyframes cut-in {
+    /* ui-lint-keyframes: a clip reveals, by design; clip-path is composited */
+@keyframes cut-in {
       from {
         opacity: 0;
         clip-path: inset(0rem 0rem 100% 0rem);
@@ -1432,7 +1440,8 @@ html[data-sting="done"] {
       animation-range: entry 0% entry 60%;
     }
 
-    @keyframes step-light {
+    /* ui-lint-keyframes: the stepper lights its step by colour, a state change, not a move */
+@keyframes step-light {
       to {
         background-color: var(--color-navy-950);
         border-color: var(--color-navy-950);
@@ -1494,7 +1503,8 @@ html[data-sting="done"] {
       animation-range: entry 15% entry 55%;
     }
 
-    @keyframes line-draw {
+    /* ui-lint-keyframes: a line draws its stroke; a stroke cannot draw by transform */
+@keyframes line-draw {
       from {
         stroke-dashoffset: 1;
       }
@@ -1607,6 +1617,222 @@ html[data-sting="done"] {
   animation: loader-dot 1.2s ease-in-out infinite;
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ★ Wave 29 — navigation motion (DEC-280 §5 – §6; REQ-UIX-121 … REQ-UIX-130; `TRANSITIONS.md`).
+   The View Transitions API through React's <ViewTransition> (Next 16.3.5's vendored canary — no flag): the page
+   wrapper in the app shell is one update boundary of class `route`; the poster flies by a FLIP of its own.
+   WHICH move plays is `<html data-nav>`, set by `ui/link`'s `nav` on press and by the browser's back
+   (`src/lib/ui/nav-motion.ts`); with no kind, or in the console, nothing moves. Transform, opacity and filter only
+   (REQ-UIX-020) — blur on the sinking page alone. Browsers without the API cut: the static state is the design.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Inline-end is the left in Arabic, the right in English (REQ-UIX-124). */
+  --nav-end: 100%;
+}
+:root[dir="rtl"] {
+  --nav-end: -100%;
+}
+
+/* The press — REQ-UIX-121. On press, never on hover; a pop button keeps its own (it goes down 3 px already). */
+[data-press] {
+  transition: transform var(--dur-fast) var(--ease-pop);
+}
+[data-press]:active {
+  transform: scale(0.96);
+}
+
+/* The shell does not move: only the page does — its group included, or the browser runs its own 250 ms on it. */
+::view-transition-group(root),
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+/* ورقة · a sheet rises with weight, a dialog scales in; both settle on close with no overshoot (TRN-06). Keyed off the
+   staff tree's `data-still`, so the console's sheets never move; Radix waits for the closing animation to end. */
+@keyframes sheet-from-below {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes sheet-to-below {
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes sheet-from-end {
+  from {
+    transform: translateX(var(--nav-end));
+  }
+}
+@keyframes sheet-to-end {
+  to {
+    transform: translateX(var(--nav-end));
+  }
+}
+@keyframes sheet-from-start {
+  from {
+    transform: translateX(calc(var(--nav-end) * -1));
+  }
+}
+@keyframes sheet-to-start {
+  to {
+    transform: translateX(calc(var(--nav-end) * -1));
+  }
+}
+@keyframes dialog-in {
+  from {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+}
+@keyframes dialog-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes scrim-out {
+  to {
+    opacity: 0;
+  }
+}
+:root:not([data-still]) [data-sheet="bottom"][data-state="open"] {
+  animation: sheet-from-below var(--dur-slow) var(--ease-pop) both;
+}
+:root:not([data-still]) [data-sheet="bottom"][data-state="closed"] {
+  animation: sheet-to-below var(--dur-base) var(--ease-out) both;
+}
+:root:not([data-still]) [data-sheet="inline-end"][data-state="open"] {
+  animation: sheet-from-end var(--dur-slow) var(--ease-pop) both;
+}
+:root:not([data-still]) [data-sheet="inline-end"][data-state="closed"] {
+  animation: sheet-to-end var(--dur-base) var(--ease-out) both;
+}
+:root:not([data-still]) [data-sheet="inline-start"][data-state="open"] {
+  animation: sheet-from-start var(--dur-slow) var(--ease-pop) both;
+}
+:root:not([data-still]) [data-sheet="inline-start"][data-state="closed"] {
+  animation: sheet-to-start var(--dur-base) var(--ease-out) both;
+}
+:root:not([data-still]) [data-dialog][data-state="open"] {
+  animation: dialog-in var(--dur-slow) var(--ease-pop) both;
+}
+:root:not([data-still]) [data-dialog][data-state="closed"] {
+  animation: dialog-out var(--dur-base) var(--ease-out) both;
+}
+:root:not([data-still]) [data-sheet-scrim][data-state="closed"] {
+  animation: scrim-out var(--dur-base) var(--ease-out) both;
+}
+
+/* No kind, or `none` (the console, a redirect after a form, a refresh): a cut — never the browser's own crossfade. */
+::view-transition-group(.route) {
+  animation: none;
+}
+:root:not([data-nav])::view-transition-old(.route),
+:root:not([data-nav])::view-transition-new(.route),
+:root[data-nav="none"]::view-transition-old(.route),
+:root[data-nav="none"]::view-transition-new(.route) {
+  animation: none;
+}
+
+@keyframes nav-sink {
+  to {
+    transform: scale(0.94);
+    filter: brightness(0.5) blur(6px);
+  }
+}
+@keyframes nav-unsink {
+  from {
+    transform: scale(0.94);
+    filter: brightness(0.5) blur(6px);
+  }
+}
+@keyframes nav-from-end {
+  from {
+    transform: translateX(var(--nav-end));
+  }
+}
+@keyframes nav-to-end {
+  to {
+    transform: translateX(var(--nav-end));
+  }
+}
+@keyframes nav-switch-in {
+  from {
+    transform: translateX(var(--nav-switch-from));
+    opacity: 0;
+  }
+}
+@keyframes nav-switch-out {
+  to {
+    transform: translateX(var(--nav-switch-to));
+    opacity: 0;
+  }
+}
+@keyframes nav-drop {
+  from {
+    transform: translateY(1.5rem);
+    opacity: 0;
+  }
+}
+@keyframes nav-jump-icon {
+  50% {
+    transform: scale(1.3);
+  }
+}
+
+/* دفع · push — the child slides in from the inline-end over a parent that sinks (TRN-04). */
+:root[data-nav="push"]::view-transition-old(.route) {
+  animation: nav-sink var(--dur-slow) var(--ease-out) both;
+}
+:root[data-nav="push"]::view-transition-new(.route) {
+  animation: nav-from-end var(--dur-slow) var(--ease-pop) both;
+}
+/* back — the mirror, on `--ease-out`, the leaving child above the rising parent. */
+:root[data-nav="back"]::view-transition-old(.route) {
+  z-index: 1;
+  animation: nav-to-end var(--dur-slow) var(--ease-out) both;
+}
+:root[data-nav="back"]::view-transition-new(.route) {
+  animation: nav-unsink var(--dur-slow) var(--ease-out) both;
+}
+
+/* تبديل · switch — from the tapped tab's side; no depth (TRN-05). */
+:root[data-nav="switch-end"] {
+  --nav-switch-from: calc(var(--nav-end) * 0.12);
+  --nav-switch-to: calc(var(--nav-end) * -0.12);
+}
+:root[data-nav="switch-start"] {
+  --nav-switch-from: calc(var(--nav-end) * -0.12);
+  --nav-switch-to: calc(var(--nav-end) * 0.12);
+}
+:root[data-nav^="switch"]::view-transition-old(.route) {
+  animation: nav-switch-out var(--dur-base) var(--ease-out) both;
+}
+:root[data-nav^="switch"]::view-transition-new(.route) {
+  animation: nav-switch-in var(--dur-base) var(--ease-out) both;
+}
+:root[data-nav^="switch"] [data-nav-tapped] [data-nav-jump-icon] {
+  animation: nav-jump-icon var(--dur-slow) var(--ease-pop) 1;
+}
+
+/* قفزة · the poster jump — the page sinks, the blocks drop (TRN-02), and the poster flies from the card by a FLIP
+   (`src/lib/ui/poster-flight.ts` — React's shared pair cannot form, because Next keeps the route it leaves alive).
+   The new page itself does not move: its blocks do, 40 ms apart, from `--i`. */
+:root[data-nav="jump"]::view-transition-old(.route) {
+  animation: nav-sink var(--dur-play) var(--ease-out) both;
+}
+:root[data-nav="jump"]::view-transition-new(.route) {
+  animation: none;
+}
+:root[data-nav="jump"] .nav-drop {
+  /* `backwards`, never `both`: once landed nothing stays applied — the action card's wrapper is never left
+     transformed, because moment 1 thuds inside it. */
+  animation: nav-drop var(--dur-slow) var(--ease-pop) backwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* REQ-UIX-014: the duration tokens collapse HERE and nowhere else, so no
      component declares its own duration and none can forget this.
@@ -1617,6 +1843,7 @@ html[data-sting="done"] {
     --dur-fast: 0ms;
     --dur-base: 0ms;
     --dur-slow: 0ms;
+    --dur-play: 0ms;
     /* The playground's ramp collapses here too, and nowhere else (DEC-183 §4.3). */
     --duration-fast: 0ms;
     --duration-base: 0ms;
@@ -1634,6 +1861,14 @@ html[data-sting="done"] {
   .ripple-ring,
   .reaction-ring {
     display: none;
+  }
+  /* ★ Wave 29 (REQ-UIX-128): every move is a cut. `*` does not reach the transition's pseudo-elements. The press
+     stays — its transition collapses above, so it is a step, not a spring. */
+  ::view-transition-group(*),
+  ::view-transition-image-pair(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
   .sting {
     display: none !important;

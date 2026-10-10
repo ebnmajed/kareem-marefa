@@ -68,8 +68,8 @@ export async function SessionCard({ session, locale, pinned = false }: { session
   })();
 
   return (
-    <Card density={pinned ? "wide" : "row"} href={`/app/sessions/${session.id}`}>
-      <CardMedia src={session.posterUrl} placeholderFrom={session.title} aspect="4/5" dimmed={ended} />
+    <Card density={pinned ? "wide" : "row"} href={`/app/sessions/${session.id}`} nav="jump">
+        <CardMedia src={session.posterUrl} placeholderFrom={session.title} aspect="4/5" dimmed={ended} />
       <CardBody>
         <div className="flex flex-wrap items-center gap-2">
           {pinned ? <span className="text-label text-fg-heading">{t("timeline.pinned")}</span> : null}

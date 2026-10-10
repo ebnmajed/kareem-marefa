@@ -23,9 +23,12 @@ import { Link as LocaleLink } from "@/i18n/navigation";
 // class, that class needs a design: `tests/unit/ui-playground.test.ts` holds it
 // as a composition, and `link-scope.test.tsx` that it adds nothing.
 
-export function Link({ href, children, quiet, ...props }: UiLinkProps) {
+// ★★ WAVE 29 (DEC-280 §5, REQ-UIX-121): `nav` names the move. It is two DATA attributes and still no class — the
+// press and the move are `globals.css`'s, keyed on `[data-press]` and `<html data-nav>` (set from `data-nav-kind` by
+// `src/lib/ui/nav-motion.ts`), so this file stays a server component and still draws nothing of its own.
+export function Link({ href, children, quiet, nav, ...props }: UiLinkProps) {
   return (
-    <LocaleLink href={href} data-quiet={quiet || undefined} {...props}>
+    <LocaleLink href={href} data-quiet={quiet || undefined} data-nav-kind={nav} data-press={nav ? "" : undefined} {...props}>
       {children}
       <LinkPendingReporter quiet={quiet} />
     </LocaleLink>

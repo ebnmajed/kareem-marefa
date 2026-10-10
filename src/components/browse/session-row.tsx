@@ -70,8 +70,8 @@ export async function SessionRow({ session, locale, points, now = new Date() }: 
   const shownPoints = points !== null && points > 0 && (session.phase === "open" || session.phase === "live") ? points : null;
 
   return (
-    <Card density="compact" href={`/app/sessions/${session.id}`}>
-      <CardMedia src={session.posterUrl} placeholderFrom={session.title} aspect="4/5" dimmed={ended} />
+    <Card density="compact" href={`/app/sessions/${session.id}`} nav="jump">
+        <CardMedia src={session.posterUrl} placeholderFrom={session.title} aspect="4/5" dimmed={ended} />
       <CardBody className="gap-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <SessionStatusBadge phase={session.phase} seat={session.phase === "open" ? session.seat : undefined} closingSoon={session.closingSoon} size="sm" />
