@@ -193,14 +193,20 @@ for (const width of WIDTHS) {
       const article = demo.locator("article:has(> a [data-slot=media])").first();
       const link = article.locator(":scope > a");
       await article.scrollIntoViewIfNeeded();
-      // Start just before the card: focus the demo's root for the moment, then Tab once.
-      await demo.evaluate((el) => {
-        el.setAttribute("tabindex", "-1");
-        (el as HTMLElement).focus();
-      });
-      await page.keyboard.press("Tab");
-      await demo.evaluate((el) => el.removeAttribute("tabindex"));
-      await expect(link).toBeFocused();
+      // ★ The gallery is ~40,000 px of demos; on CI's slower runner it is still hydrating when the Tab lands, and a
+      // demo that settles afterwards can take the focus back (CI only — 30/30 locally). So the page is idle first, and
+      // a Tab whose focus was taken is pressed again. What is asserted is unchanged: one Tab reaches the link.
+      await page.waitForLoadState("load");
+      await expect(async () => {
+        // Start just before the card: focus the demo's root for the moment, then Tab once.
+        await demo.evaluate((el) => {
+          el.setAttribute("tabindex", "-1");
+          (el as HTMLElement).focus();
+        });
+        await page.keyboard.press("Tab");
+        await demo.evaluate((el) => el.removeAttribute("tabindex"));
+        await expect(link).toBeFocused({ timeout: 1_000 });
+      }).toPass({ timeout: 15_000 });
 
       const facts = await link.evaluate((a) => {
         const art = a.closest("article")!;
