@@ -1,6 +1,6 @@
 import "server-only";
 import { sessionClient } from "@/lib/dal/session";
-import { getSessionPoster } from "@/lib/dal/posters";
+import { getSessionPosters, type SessionPosterData } from "@/lib/dal/posters";
 import { avatarHref } from "@/lib/dal/avatars";
 import { getRatingEligibility } from "@/lib/dal/ratings";
 import {
@@ -266,17 +266,31 @@ async function attendanceRulePoints(supabase: Client, orgId: string): Promise<nu
 
 /** Seats for the open cards on screen and posters for every card on screen, then the cards. */
 async function finishCards(locale: string, supabase: Client, shown: TimelineCandidate[], attended: Set<string>, now: Date): Promise<TimelineSession[]> {
+  return cardsFrom(shown, await cardMedia(locale, supabase, shown), attended, now);
+}
+
+type CardMedia = { counts: Map<string, { confirmed_count: number; waitlist_count: number }>; posters: Map<string, SessionPosterData> };
+
+/** What a card draws that needs no viewer state — seats and the poster — so a caller can ask for it in parallel. */
+async function cardMedia(locale: string, supabase: Client, shown: TimelineCandidate[]): Promise<CardMedia> {
   const openIds = shown.filter((c) => c.phase === "open").map((c) => c.id);
   const [seatCounts, posters] = await Promise.all([
     Promise.all(openIds.map((id) => supabase.rpc("session_seat_counts", { p_session: id }).single())),
-    Promise.all(shown.map((c) => getSessionPoster(locale, c.id).catch(() => null))),
+    getSessionPosters(
+      locale,
+      shown.map((c) => c.id),
+    ).catch(() => new Map<string, SessionPosterData>()),
   ]);
   const counts = new Map(openIds.map((id, i) => [id, (seatCounts[i].data as { confirmed_count: number; waitlist_count: number } | null) ?? { confirmed_count: 0, waitlist_count: 0 }]));
-  return shown.map((c, i) => {
-    const seatCount = counts.get(c.id) ?? { confirmed_count: 0, waitlist_count: 0 };
+  return { counts, posters };
+}
+
+function cardsFrom(shown: TimelineCandidate[], media: CardMedia, attended: Set<string>, now: Date): TimelineSession[] {
+  return shown.map((c) => {
+    const seatCount = media.counts.get(c.id) ?? { confirmed_count: 0, waitlist_count: 0 };
     return finishTimelineSession(
       c,
-      { confirmedCount: seatCount.confirmed_count, waitlistCount: seatCount.waitlist_count, posterUrl: posters[i]?.imageUrl ?? null, attended: attended.has(c.id) },
+      { confirmedCount: seatCount.confirmed_count, waitlistCount: seatCount.waitlist_count, posterUrl: media.posters.get(c.id)?.imageUrl ?? null, attended: attended.has(c.id) },
       now,
     );
   });
@@ -408,14 +422,30 @@ export async function getSessionPosts(locale: string, options: { now?: Date } = 
   const ids = shown.map((c) => c.id);
   if (ids.length === 0) return { posts: [], orgTimeZone, attendanceRulePoints: rulePoints };
 
-  const [checkInsRes, commentsRes, likesRes] = await Promise.all([
-    supabase.from("check_ins").select("session_id, session_day_id").eq("member_id", session.memberId).in("session_id", ids).is("removed_at", null),
-    supabase.from("comments").select("session_id").in("session_id", ids).is("deleted_at", null),
-    supabase.from("reactions").select("session_id, member_id").in("session_id", ids).eq("kind", "like"),
+  // ★ DEC-286: everything below depends on `ids` alone, so it is asked in ONE round, not four — the viewer's
+  // check-ins and the counts, the attendance figures, and the seats and posters. Only the rating waits, because it is
+  // asked only where the viewer attended.
+  const counted = shown.filter((c) => c.phase === "live" || c.phase === "ended");
+  const [[checkInsRes, commentsRes, likesRes], attendedCountRows, media] = await Promise.all([
+    Promise.all([
+      supabase.from("check_ins").select("session_id, session_day_id").eq("member_id", session.memberId).in("session_id", ids).is("removed_at", null),
+      supabase.from("comments").select("session_id").in("session_id", ids).is("deleted_at", null),
+      supabase.from("reactions").select("session_id, member_id").in("session_id", ids).eq("kind", "like"),
+    ]),
+    // How many attended — `session_attendance_count()` (0165, §4.54): a number, never who. Asked only where
+    // the post can draw it — a live session and an ended one — so an open post costs no round trip.
+    Promise.all(
+      counted.map(async (c) => {
+        const { data, error } = await supabase.rpc("session_attendance_count", { p_session: c.id });
+        return [c.id, error || typeof data !== "number" ? null : data] as const;
+      }),
+    ),
+    cardMedia(locale, supabase, shown),
   ]);
   if (checkInsRes.error) throw new Error(`check_ins: ${checkInsRes.error.message}`);
   if (commentsRes.error) throw new Error(`comments: ${commentsRes.error.message}`);
   if (likesRes.error) throw new Error(`reactions: ${likesRes.error.message}`);
+  const attendedCounts = new Map(attendedCountRows);
 
   const checkInDays = new Map<string, string[]>();
   for (const r of (checkInsRes.data ?? []) as { session_id: string; session_day_id: string | null }[]) {
@@ -439,19 +469,7 @@ export async function getSessionPosts(locale: string, options: { now?: Date } = 
     ),
   );
 
-  // How many attended — `session_attendance_count()` (0165, §4.54): a number, never who. Asked only where
-  // the post can draw it — a live session and an ended one — so an open post costs no round trip.
-  const counted = shown.filter((c) => c.phase === "live" || c.phase === "ended");
-  const attendedCounts = new Map(
-    await Promise.all(
-      counted.map(async (c) => {
-        const { data, error } = await supabase.rpc("session_attendance_count", { p_session: c.id });
-        return [c.id, error || typeof data !== "number" ? null : data] as const;
-      }),
-    ),
-  );
-
-  const cards = await finishCards(locale, supabase, shown, attended, now);
+  const cards = cardsFrom(shown, media, attended, now);
   const today = orgDay(now, orgTimeZone);
   const isStaff = session.role === "admin" || session.role === "moderator";
 
