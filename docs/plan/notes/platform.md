@@ -5,6 +5,315 @@ found. `docs/plan/` is otherwise the lead's; this file is mine.
 
 ---
 
+## Wave 29 — the plan (PR B, the picture's storage · `DEC-280` · M34)
+
+**Status:** approved 2026-10-10 with all five W29.9 rulings as proposed (`DEC-281`); the lead's `0222` landed the
+table, enum, bucket and policy. ★ **Built** — W29.10 below is what exists and what is owed. **Serves:** `REQ-PRF-008`, `010`, `011`, `016` … `019`, `REQ-NFR-014`,
+`REQ-ADM-010` · `STORY-PRF-011` (route and job), `012`, `013` · AVA-06 … 09, 12, 16, 17.
+
+### W29.0 What was measured first
+
+- **0158's invariant, as written:** `avatar_version` is non-null only while `avatar_import = 'accepted'`. Every 0158
+  writer keeps it: `set_avatar_import('declined')` nulls the version, `record_avatar_copy()` writes only while
+  `accepted`, `anonymise_members()` nulls both, and `import_avatar` purges **everything** under the member's prefix
+  whenever the answer is not `accepted`. ★ **An upload breaks all four**: a decline would delete it, a refresh would
+  overwrite it, an in-flight import would record over it. W29.3 is the fix.
+- **0221 (PR A):** `members_avatar()` nulls `avatar_source` whenever `avatar_version` is null and defaults it to
+  `google` otherwise; an explicit `'upload'` is kept. So every writer below moves only the **version** (and says
+  `'upload'` when it is one); the trigger keeps the pair honest.
+- ★ **`avatars_storage_read` (0157) needs no change.** It admits the member's **current version** in their org and
+  never asks where the bytes came from. An upload lives at the same shape
+  (`{org}/members/{member}/{version}/{96|192}.webp`), so it is served, and stops being served, exactly as a copy is.
+- **«One stored object» is two WebP derivatives under one version.** «Deleted in the same transaction» is, as in
+  0158, **unreadable in the same statement** (the version moves; the policy stops serving the old one) and **deleted
+  by the reconcile job seconds after** — the only shape possible, since only the worker can delete from Storage.
+- **`report_target` today is `comment | photo | story_frame`** (0198 added the third); `DEC-280` §8 says «stays
+  `comment | photo`». The substance — no value for a picture — is what this plan holds. Noted, not argued.
+- **Queues:** `import_avatar` runs on `convert`, a named queue — **serial across every org** and shared with document
+  conversion. «The ring shows the result» cannot wait behind a 40-page PDF (W29.2).
+
+### W29.1 The upload path — `POST /api/avatars/upload`
+
+**Bytes through the route** (a Route Handler, not an action: binary, and an action's 1 MB cap includes encoding).
+The client's crop step sends **one 1024 px JPEG ≤ 1 MB** as the raw body.
+
+1. **Validate first** (Zod over the headers): `content-type` ∈ `image/jpeg`, `image/png`, else **415**
+   `{ error: "png_jpg_only" }`; `content-length` present and ≤ **1 048 576**, else **413** `{ error: "too_large" }`.
+   The body is then **read as a stream and counted** — a lying header is cut at 1 MiB + 1 byte, 413. ★ **No sniff
+   here**: `REQ-PRF-017` wants the SVG-renamed-`.png` refused **after the bytes land**; the route stores what the
+   header admits and the worker decides.
+2. `sessionClient(locale)` — the member from the session; no member row (a platform admin) → 401.
+3. Mint `uploadId = crypto.randomUUID()`; the path from **the one builder**, new in
+   `packages/storage-paths/src/avatar.ts` (`index.ts`'s `export *` re-exports it, no lead edit):
+   `avatarStagingPath(orgId, memberId, uploadId)` → `{ bucket: "avatar-staging", path: "{org}/members/{member}/{uploadId}" }`.
+   No extension: the name never claims a type the sniff has not proven.
+4. **Upload as the member** (`upsert: false`); the staging bucket's insert policy is the authority. No `service_role`
+   on Vercel (invariant 7).
+5. `rpc("begin_avatar_upload", { p_upload: uploadId })` — the member and the path re-derived from the session (the
+   client never names a path); the upload recorded pending, any older pending one replaced, the job enqueued.
+   **202** `{ uploadId }`. A Storage or RPC error → **500** `{ error: "upload_failed" }`. ★ An RPC failure after the
+   bytes landed leaves one orphan staged object: the member's next avatar job purges their staging prefix whole, and
+   the nightly assertion sees it until then.
+
+**Status — `GET /api/avatars/upload/{uploadId}`** (a Route Handler, so polling does not serialise behind the page's
+Server Actions). It reads `my_avatar_upload(p_upload)` (self only) and answers `{ state: "pending" }` ·
+`{ state: "done", href }` (`avatarHref(…, 192)` of the new version) · `{ state: "refused" }` · `{ state: "failed" }` ·
+`{ state: "cancelled" }`; another member's id or an unknown one is the same 404. `content` maps `refused` →
+«PNG أو JPG فقط»; `failed`, 404 or its own timeout → «تعذّر الرفع» with «أعد المحاولة». The ring stays as it was until
+`done` (the brief's undrawn «upload in flight»).
+
+**Requests to the lead for `0222`** — named, never written:
+
+| Thing | What |
+|---|---|
+| bucket **`avatar-staging`** | private · `file_size_limit` **1 048 576** · `allowed_mime_types` `{image/jpeg, image/png}` |
+| policy **`avatar_staging_insert`** | `for insert to authenticated with check (bucket_id = 'avatar-staging' and [1] = auth_org_id()::text and [2] = 'members' and [3] = auth_member_id()::text)` |
+| no select / update / delete policy there | a member never reads a staged file back; the worker reads and deletes |
+| table **`avatar_uploads`** | one row per member: `member_id uuid primary key references members on delete cascade`, `org_id uuid not null references orgs on delete cascade`, `upload_id uuid not null`, `state public.avatar_upload_state not null`, `updated_at timestamptz not null default now()` |
+| enum **`avatar_upload_state`** | `pending`, `done`, `refused`, `failed`, `cancelled` |
+| its policy set | RLS on, **no policy and no grant** — read and written only through the definer functions below (the survey register's documented shape). RLS case: a client select or insert → 42501 |
+
+★ **Why a table and not a column:** the job must know *which* staged file is current (a second upload replaces the
+first), the sheet needs a refusal it can read, and a pick or a removal must be able to cancel an upload still in
+flight. One row per member keeps it bounded with no retention job; it holds no bytes, no URL and no name.
+
+### W29.2 `JOB-process_avatar_upload`
+
+New `worker/src/tasks/process_avatar_upload.ts`. **Key `avatar-upload:{member_id}`** (replace mode — a second upload
+before the first ran loses nothing, because the job reads the row, not the payload) · ★ **queue `avatar:{member_id}`**
+· **5 attempts**. Payload `{ member_id }`.
+
+★ **One queue per member, for both avatar jobs.** `import_avatar` moves from `convert` to the same queue: graphile
+runs a named queue serially, so **every write to one member's picture is serial** — no upload racing a copy — while
+members never wait on each other or on a PDF. ★ **5 attempts, not 3:** on merge, Vercel may take an upload before
+Railway's worker knows the task; an unknown task fails and backs off (≈ 3 s, 7 s, 20 s, 55 s), and five spans a
+redeploy. The lead rules both.
+
+One reconcile, as `import_avatar` is:
+
+1. `avatar_job_target(member)` (extended, W29.3). Gone → return. **Anonymised → purge the member's `avatars` and
+   `avatar-staging` prefixes, return.**
+2. No upload row, or not `pending` → purge the staging prefix, return.
+3. Download `avatarStagingPath(org, member, upload_id)` (`content/storage.ts`'s `downloadObject`). Missing →
+   `fail_avatar_upload(…, 'failed')`, purge, return.
+4. **`inspectSource(bytes)`** — `platform/avatar.ts`'s, imported unchanged: `sniffImageKind()` on content (an SVG, a
+   WebP, a GIF or garbage renamed `.png` answers its true kind), `stripImageMetadata()`, `assertsNoExifRemains()`, the
+   4096 px edge. `AvatarRefused` `kind_*` or `malformed` → **`refused`**; any other refusal → **`failed`**; purge
+   staging; return. **No version moves on a refusal.**
+5. **`renderDerivatives()`** — `cwebp -metadata none`, 96 and 192 px from the square (the crop already squared it).
+   **No npm image package** (`DEC-181`).
+6. Version = `max(now, current + 1)`; upload both WebPs to `avatarPath(…)`; then `record_avatar_upload(member, upload,
+   version)`: `recorded` → purge `avatars` keeping **this** version — ★ **the previous upload or Google copy goes** —
+   and purge staging; `stale` (cancelled, superseded, anonymised meanwhile) → purge `avatars` keeping the row's current
+   version (what was just written goes) and purge staging.
+7. A transient error rethrows; ★ on the **last** attempt (`helpers.job.attempts >= helpers.job.max_attempts`) it first
+   calls `fail_avatar_upload(…, 'failed')` and purges staging, so the sheet reads «تعذّر الرفع» rather than polling a
+   pending row for ever.
+
+The registration in `worker/src/index.ts` and `11` §2's row are the lead's.
+
+### W29.3 The invariant, changed — the function bodies in prose (the lead writes `0222`)
+
+**The new invariant:** `avatar_version` is non-null only while a photo is stored, and `avatar_source` says which —
+`google` (then `avatar_import = 'accepted'`) or `upload` (whatever the answer). **A Google path never writes over an
+upload; only the member's own «من Google» clears one first.** ★ And **every way of leaving a photo — a library pick,
+«أزل الصورة», an admin's takedown — sets an `accepted` answer to `declined`.** That answer is what keeps 0158's
+refresh trigger and an in-flight import alive; left `accepted`, the next sign-in with a changed Google picture would
+copy Google over the library avatar the member just chose. The flip is audited as the answer it is
+(`member.avatar_import_answered`, `REQ-NFR-012`).
+
+| Function | Change |
+|---|---|
+| **`record_avatar_copy(member, version, source)`** | one more predicate, `and avatar_source is distinct from 'upload'`: an import that fetched while an upload landed answers `stale` and deletes its own objects. Sets `avatar_source = 'google'` explicitly. |
+| **`set_avatar_import(answer)`** (the prompt, `/app/me/privacy`) | **declined:** clears the version **only while `avatar_source = 'google'`** — ★ a decline never deletes an upload; enqueues the reconcile only if it cleared something. **accepted:** records the answer; enqueues the import **only while the source is not `upload`** — ★ the privacy page's «نعم» never replaces an upload (`REQ-PRF-016`: the sheet is the only place the picture changes). Envelope and audit unchanged. |
+| **`members_avatar_source_changed`** (the refresh trigger) | `when (old.avatar_url is distinct from new.avatar_url and new.avatar_import = 'accepted' and new.avatar_source is distinct from 'upload')`; the body changes only its queue. |
+| **`avatar_job_target(member)`** | additive keys `source` (`google` · `upload` · null) and `upload` (`{ id, state }` or null). |
+| **`my_avatar()`** | additive keys `key` and `source`. |
+| **`anonymise_members()`** | also deletes the member's `avatar_uploads` row; enqueues the reconcile when `avatar_import = 'accepted' or avatar_version is not null or a row existed` (the job purges both prefixes). 0221's trigger already nulls key and source. |
+| every `enqueue_job('import_avatar', …)` | queue `'avatar:' \|\| member_id`; the key `avatar:{member}` unchanged |
+
+**New, member-callable** (`authenticated` only, `assert_active_member()` first; a refusal before the first write is
+an envelope, and after it an envelope, never a raise — `DEC-043`):
+
+- **`begin_avatar_upload(p_upload uuid)` → `{status:'ok'}`** — upserts the member's `avatar_uploads` row to
+  `(p_upload, 'pending')` and enqueues `process_avatar_upload`. It does **not** touch `members`: the picture changes
+  when the job records it.
+- **`set_avatar_library(p_key text)` → `{status:'ok'|'invalid_key'}`** — `invalid_key` unless the key is in
+  `avatar_library()` (before any write). Else, one statement: `avatar_key = p_key`, `avatar_version = null` (the
+  trigger nulls the source), `avatar_import` `accepted → declined`; a pending upload `cancelled`; the reconcile
+  enqueued if a version or a pending upload existed; the flip audited if there was one.
+- **`remove_avatar_photo()` → `{status:'ok'|'no_photo'}`** — the same, with the key the member holds; `no_photo`
+  when there is neither a version nor a pending upload.
+- **`request_avatar_google()` → `{status:'ok'|'no_source'}`** — `no_source` when `avatar_url` is null (before any
+  write). Else `avatar_import = 'accepted'`; ★ **while `avatar_source = 'upload'` the version is cleared in the same
+  statement** (`REQ-PRF-018`: the upload is deleted); a Google copy already current stays until the fresh one lands; a
+  pending upload `cancelled`; the flip audited; `import_avatar` enqueued.
+- **`my_avatar_upload(p_upload uuid)`** — the caller's own row, only when its `upload_id` matches; else null.
+
+**New, `service_role` only:** **`record_avatar_upload(member, upload, version)`** — `avatar_version = version,
+avatar_source = 'upload'` **only while** the row's upload is that id and `pending`, the member is not anonymised and
+the version moves forward; marks the row `done`; else `stale` with the current version. **`fail_avatar_upload(member,
+upload, state)`** — `refused` or `failed`, only for that id while `pending`.
+
+### W29.4 Contract 3 — the sheet's writes, for `content` (`src/lib/dal/avatars.ts`, day one)
+
+```ts
+export type AvatarKey = string;                        // narrowed by isAvatarKey() (src/lib/avatar-library, PR A)
+export type AvatarPhotoSource = "google" | "upload";
+export type AvatarUploadState = "pending" | "done" | "refused" | "failed" | "cancelled";
+
+export interface AvatarSheet {
+  href: string | null;               // avatarHref(…, 192): photo → library → null
+  key: AvatarKey | null;             // the library avatar held — outlined in the grid when no photo is current
+  source: AvatarPhotoSource | null;  // null: the library avatar shows → «أزل الصورة» absent
+  googleAvailable: boolean;          // Google gave a picture → «من Google» present
+}
+export type AvatarWriteResult =
+  | { status: "ok"; sheet: AvatarSheet }   // the state after the write, so the ring updates without a refetch
+  | { status: "invalid_key" | "no_photo" | "no_source" | "failed" };
+
+export function getAvatarSheet(locale: string): Promise<AvatarSheet>;
+export function pickAvatarKey(locale: string, key: unknown): Promise<AvatarWriteResult>;   // Zod: isAvatarKey
+export function removeAvatarPhoto(locale: string): Promise<AvatarWriteResult>;
+export function requestAvatarGoogle(locale: string): Promise<AvatarWriteResult>;
+
+// Behind the two routes — content calls the ROUTES from the browser, never these. ★ As built: no `locale` — a fetch
+// gets a status, never a redirect, so both read `getSessionState()` rather than `sessionClient()`.
+export function uploadAvatar(body: ReadableStream<Uint8Array> | null, contentType: string | null, contentLength: string | null):
+  Promise<{ status: "accepted"; uploadId: string } | { status: "png_jpg_only" | "too_large" | "unauthorised" | "failed" }>;
+export function readAvatarUpload(uploadId: string):
+  Promise<{ state: AvatarUploadState; href: string | null } | null>;
+
+// ★ As built — shared with the browser, from `src/lib/avatar-upload.ts` (not server-only):
+export const MAX_UPLOAD_BYTES = 1_048_576;
+export const UPLOAD_CONTENT_TYPES: readonly ["image/jpeg", "image/png"];
+export type AvatarUploadState = "pending" | "done" | "refused" | "failed" | "cancelled";
+```
+
+Each write is **one RPC, one transaction** (`DEC-280` §2). `content` calls the three writes from its own Server
+Actions on «حفظ» and never touches Storage. ★ `requestAvatarGoogle()` returns `ok` while the copy is being made; the
+sheet shows the current picture until `getAvatarSheet()` reads the new version — the same pending shape as an upload.
+`getMyAvatar()` and `setMyAvatarImport()` (the prompt, the privacy page) keep their names and types.
+
+### W29.5 The takedown on `SCR-049`
+
+- **`take_down_avatar(p_member uuid)` → `{status:'ok'|'no_photo'|'not_found'}`** — `assert_fresh_admin()` (an
+  **admin**; a moderator is refused); the target **in the actor's org**, else `not_found`; `avatar_version` null →
+  `no_photo` and nothing written — ★ **a library avatar cannot be taken down**. Else, one statement: version null
+  (source null), `accepted → declined` (so no refresh restores it); a pending upload `cancelled`; ★ **audit
+  `member.avatar_taken_down`**, before `{ source, version, answer }`, after `{ source: null, answer }`, the actor's
+  role and id (`REQ-ADM-010`); the reconcile enqueued, which deletes the bytes. The key is untouched, so the member
+  shows their library avatar at once (`REQ-PRF-019`), never initials.
+- ★ **Not reportable** (`DEC-280` §8): no `report_target` value, no `reports` row, nothing in `SCR-051` / `052`.
+- **The row action, add-only:** `ConsoleMember` gains `hasPhoto: boolean`, from the `avatar_version` already
+  selected at `admin-members.ts:127`; `member-row-menu.tsx` adds «أزل الصورة» (tone error, its own group) **only
+  when `hasPhoto`**, behind the confirm the menu already uses for a deactivation; `actions.ts` gains one action calling
+  the new `takeDownMemberPhoto(locale, memberId)` in `admin-members.ts`; the result is a toast.
+- ★ **Request — strings.** `admin.json` is not in my list. I ask the lead, as custodian, for (Arabic first, English
+  after): `admin.members.takeDownPhoto` «أزل الصورة» · `takeDownTitle` «أزل صورة <bdi>{name}</bdi>؟» ·
+  `takeDownConfirm` «أزل» · `takeDownDone` «أُزيلت الصورة» · `takeDownFailed` «تعذّر».
+- Not built: telling the member, or a reason field — nothing asks for either.
+
+### W29.6 Anonymisation, export, the prefix assertion, the reconcile
+
+- **Anonymisation:** 0221's trigger nulls key and source; `anonymise_members()` (W29.3) nulls version and answer and
+  deletes the uploads row. ★ **The job must still delete the bytes** — `import_avatar`'s anonymised branch purges the
+  member's `avatars` prefix **and** `avatar-staging` prefix. `anonymise_members.ts` itself is unchanged (it calls the SQL).
+- **Export** (`build_data_export.ts`'s `exportAvatar`): today it exports only when `answer = 'accepted'`, which **would
+  drop an upload**. New condition: not anonymised and a version held, **whatever the source**. ★ As built, the payload
+  is unchanged (no `source` key — nothing reads one). Never a Google URL.
+- **`assert_storage_prefixes`:** `avatar-staging` joins `BUCKETS` (org-prefixed — so `delete_org` removes it with the
+  org at no edit of its own). The owner check widens to both buckets with each one's shape —
+  `avatars/{org}/members/{member}/{version}/{96|192}.webp`, `avatar-staging/{org}/members/{member}/{uuid}` — and the
+  member must exist and belong to the prefix's org. Before `0222` the bucket answers «Bucket not found», which the job
+  already treats as an environment fact.
+- **`import_avatar`, the reconcile:** anonymised → purge both prefixes; ★ **`source = 'upload'` → purge `avatars`
+  keeping the current version and never fetch**; answer not `accepted` → purge keeping the current version; otherwise
+  fetch, as today. One rule for both jobs: *storage under a member's prefix is exactly the row's current version.*
+
+### W29.7 Tests, by name
+
+**RLS** — new `tests/rls/avatar-upload.test.ts`, `avatar-sheet.test.ts`, `avatar-takedown.test.ts`, the SQL proven
+first with `applyProposed()` from `supabase/proposed/platform/` (functions only; the bucket, table and policy are
+stubbed in the test's transaction from the lead's names until `0222` lands — or the lead lands the tables first).
+`avatar-copy` and `avatar-import` are evidence; any line W29.3 changes on purpose is a ledger line.
+
+| Case | Asserts |
+|---|---|
+| `POL-avatar_staging_insert.own_prefix` · `.other_member_refused` · `.other_org_refused` | a member writes only `{own org}/members/{self}/…` |
+| `POL-avatar_staging.no_read_back` · `.no_delete` | a member cannot select or delete a staged object, their own included |
+| `TBL-avatar_uploads.no_client_access` | select, insert and update by `authenticated` → 42501 |
+| `RPC-begin_avatar_upload.self_only` · `.replaces_pending` · `.enqueues` | the caller's row; a second id replaces the first; one job under `avatar-upload:{id}` |
+| `RPC-record_avatar_upload.worker_only` · `.replaces_google_copy` · `.stale_when_cancelled` · `.stale_when_superseded` · `.stale_when_anonymised` | ★ **an upload replaces a Google copy**: version moves, source `upload`, the old version unreadable at once |
+| ★ `RPC-record_avatar_copy.never_over_upload` | **a refresh never overwrites an upload** |
+| ★ `TRG-members_avatar_source_changed.not_while_upload` | a changed `avatar_url` enqueues nothing while an upload is current |
+| `RPC-set_avatar_import.decline_keeps_upload` · `.accept_keeps_upload` | ★ a «لا» never deletes an upload; a «نعم» never replaces one |
+| `RPC-request_avatar_google.replaces_upload` · `.no_source` · `.cancels_pending` · `.keeps_current_copy` | the upload's version cleared in the statement; `no_source` writes nothing |
+| `RPC-set_avatar_library.clears_photo` · `.invalid_key` · `.declines_and_audits` · `.cancels_pending` | ★ **a library pick leaves no readable object**, and no later refresh brings Google back |
+| `RPC-remove_avatar_photo.clears` · `.no_photo` | ★ **removal leaves no readable object**; the key shows |
+| `RPC-take_down_avatar.admin_only` (member ✗, moderator ✗, other org ✗) · `.audited` · `.library_refused` · `.reverts_to_key` | ★ **the takedown is audited and admin-only** |
+| `RPC-anonymise_members.upload` | version, key, source and answer null; the uploads row gone; the reconcile enqueued |
+| `RPC-my_avatar.sheet_keys` · `RPC-my_avatar_upload.self_only` · `RPC-avatar_job_target.source_and_upload` | the reads |
+| `POL-avatars_storage_read.upload_current` | an upload's current version is served to the org like a copy; a replaced one is not |
+| `ENUM-report_target.no_picture` | the enum's values are exactly what they were before `0222` |
+
+**Unit** — new `tests/unit/avatar-upload-task.test.ts`: ★ **an SVG renamed `.png` is refused after it lands** (state
+`refused`, no version, the staged object deleted); a JPEG with EXIF → derivatives carry none; ★ **an upload replaces
+a Google copy and deletes its objects**; `stale` deletes what it wrote; anonymised purges both prefixes; a missing
+staged file → `failed`; the last attempt marks `failed`; a transient error rethrows. New
+`tests/unit/avatar-upload-route.test.ts`: 415; 413 by header **and** by stream; 401; 202; the status route's five
+states and its 404. New `tests/unit/avatar-staging-path.test.ts`: the shape and its refusals. Additions, each a ledger
+line, to `avatar-import-job.test.ts` (an upload is never fetched over; a decline keeps it), `avatar-storage-tasks.test.ts`
+(the staging shapes in the assertion; ★ **anonymisation deletes both prefixes**; the export carries an upload) and
+`avatar-route.test.ts` (an upload is served).
+
+**E2E** — new `tests/e2e/wave29-platform-takedown.spec.ts`: an admin takes a member's photo down from `SCR-049` with
+`page.click()` alone; the row's avatar becomes the library SVG; the audit row exists; a row whose member holds only a
+library avatar offers no «أزل الصورة». The upload walk is `content`'s spec, on the real worker.
+
+### W29.8 `main` on `0222` before B's code
+
+**Nothing different.** No upload exists until B's route ships, so `avatar_source` is never `upload` and every guard
+W29.3 adds is true exactly when 0158's was — `record_avatar_copy`, the trigger and `set_avatar_import` behave as
+today. `main`'s `import_avatar` ignores `avatar_job_target()`'s extra keys; `main`'s `getMyAvatar()` Zod object strips
+`my_avatar()`'s. The queue change moves only where `main`'s worker picks the same job up. `anonymise_members()`
+enqueues under today's condition (no uploads row exists yet). The new bucket, table and functions are unread.
+★ **On merge**, Railway's worker should be live before Vercel's route takes an upload; the 5 attempts cover the gap,
+and a lost job ends as «تعذّر الرفع», never a broken frame.
+
+### W29.9 For the lead to rule
+
+1. The per-member queue `avatar:{member}` for both jobs, and 5 attempts (W29.2).
+2. Bytes through the route rather than a signed upload URL the browser PUTs to: a 1 MB body fits a Route Handler, the
+   declared type and size are refused before Storage, and it is one round trip.
+3. `/app/me/privacy`'s «نعم» / «لا» stays — a consent must be withdrawable (`REQ-NFR-012`) — but its «نعم» no longer
+   replaces an upload; `REQ-PRF-016` puts that in the sheet alone.
+4. The takedown is **admin**-only; a moderator does not see the row action.
+5. The table `avatar_uploads` (W29.1) — or, if the lead prefers no table, the alternative I would accept: two columns
+   on `members` (`avatar_upload_id uuid`, `avatar_upload_state`), outside every client grant. The table is cleaner:
+   it keeps upload bookkeeping off the most-read row in the product.
+
+### W29.10 As built (uncommitted — the lead commits)
+
+| Piece | Path |
+|---|---|
+| the functions, for the lead to promote as `0223` (its `03` §8.2 rows in its header) | `supabase/proposed/platform/0011_avatar_uploads.sql` |
+| the shared constants | `src/lib/avatar-upload.ts` |
+| the staging path | `packages/storage-paths/src/avatar.ts` (`avatarStagingPath`) |
+| the DAL — contract 3, the upload, the status | `src/lib/dal/avatars.ts` |
+| the two routes | `src/app/api/avatars/upload/route.ts`, `src/app/api/avatars/upload/[uploadId]/route.ts` |
+| the job | `worker/src/tasks/process_avatar_upload.ts` — ★ **its registration in `worker/src/index.ts` and `11` §2's row are the lead's** |
+| the reconcile, the export, the assertion, the bucket list | `worker/src/tasks/{import_avatar,build_data_export,assert_storage_prefixes}.ts`, `worker/src/platform/storage.ts` |
+| the takedown | `take_down_avatar()` · `takeDownMemberPhoto()` in `src/lib/dal/admin-members.ts` (+ optional `hasPhoto`) · `takeDownPhoto` in `admin/members/actions.ts` · the item and its confirm in `member-row-menu.tsx` |
+| tests | `tests/rls/avatar-{upload,sheet,takedown}.test.ts` · `tests/unit/avatar-{upload-route,upload-task,sheet,staging-path}.test.ts` · `tests/e2e/wave29-platform-takedown.spec.ts` · additions to `tests/unit/{avatar-import-job,avatar-storage-tasks}.test.ts`, `tests/rls/avatar-import.test.ts` (ledger lines in `wave-29-ledger-b.md`) |
+
+★ **Owed by the lead** (custodian): the five `admin.members.*` strings (W29.5) **and a sixth** — the audit log's label
+`admin.audit.actions.member.avatar_taken_down` («إزالة صورة عضو» / «Took down a member's photo»), beside
+`avatar_import_answered`; the job's registration; promotion. ★ The e2e spec needs the strings and `0223` before it
+can pass.
+
+---
+
 ## 0. The plan (bundle 1, written before any code)
 
 ### 0.1 The one property everything else serves

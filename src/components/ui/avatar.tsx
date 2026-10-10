@@ -80,7 +80,8 @@ export function tintIndex(memberId: string): number {
 // ★ Wave 19, add-only (DEC-214 §4, `scoring`'s R1): 44 for the directory's rows, 84 for the profile's header on the
 // phone, 104 on desktop (`Directory.dc.html:38`, `Profile.dc.html:27`, `ProfileDesktop.dc.html:40`). The union in
 // `ui/index.ts` is the lead's; until it gains the three, the widened type lives here and callers import it by path.
-export type AvatarSize = NonNullable<AvatarProps["size"]> | 44 | 84 | 104;
+// ★ Wave 29 (DEC-281, `content`'s R4, add-only): 80 for the sheet «صورتك»'s picture, with a 4 px ring (`AvatarPicker.dc.html`).
+export type AvatarSize = NonNullable<AvatarProps["size"]> | 44 | 80 | 84 | 104;
 export type AvatarSizedProps = Omit<AvatarProps, "size"> & { size?: AvatarSize };
 
 const DIMENSION: Record<AvatarSize, string> = {
@@ -92,6 +93,7 @@ const DIMENSION: Record<AvatarSize, string> = {
   56: "h-14 w-14 text-[1.375rem]",
   // ★ Wave 20, add-only (`scoring`'s request): the hub standing card's avatar, 64 px with a 4 px ring (`Me.dc.html`).
   64: "h-16 w-16 text-[1.625rem]",
+  80: "h-20 w-20 text-[1.875rem]",
   84: "h-[84px] w-[84px] text-[2rem]",
   96: "h-24 w-24 text-[2.25rem]",
   104: "h-[104px] w-[104px] text-[2.5rem]",
@@ -103,7 +105,7 @@ const DIMENSION: Record<AvatarSize, string> = {
 function ringWidth(size: AvatarSize): string {
   if (size === 104) return "border-[6px]";
   if (size === 84) return "border-[5px]";
-  if (size === 64) return "border-4";
+  if (size === 64 || size === 80) return "border-4";
   return "border-[3px]";
 }
 

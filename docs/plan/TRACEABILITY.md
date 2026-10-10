@@ -9,10 +9,10 @@
 | Artifact | Count |
 |---|---|
 | Requirements (`REQ-*`) | **474** |
-| Entities (`ENT-*`) | **90** |
+| Entities (`ENT-*`) | **91** |
 | Stories (`STORY-*`) | **296** |
 | Screens cited (`SCR-*`) | 60 |
-| Jobs cited (`JOB-*`) | 46 |
+| Jobs cited (`JOB-*`) | 47 |
 | Messages cited (`MSG-*`) | 24 |
 
 ## Cross-cutting requirements
@@ -345,14 +345,14 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-PRF-007` | — | — | `SCR-020` `SCR-021` `SCR-029` +1 | `JOB-anonymise_members` `JOB-enforce_retention` +1 | — | `STORY-PRF-004` | M8 |
 | `REQ-PRF-008` | — | — | `SCR-012` `SCR-020` `SCR-021` +4 | `JOB-anonymise_members` `JOB-import_avatar` +1 | — | `STORY-PRF-005` | M10, M16 |
 | `REQ-PRF-009` | `ENT-companies` | — | `SCR-016` `SCR-020` `SCR-048` +3 | `JOB-anonymise_members` `JOB-import_avatar` +1 | — | `STORY-PRF-005` | M10, M16 |
-| `REQ-PRF-010` | — | — | `SCR-020` `SCR-021` `SCR-029` +4 | `JOB-anonymise_members` | `MSG-photo_album_ready` | `STORY-PRF-005` | M10, M16 |
+| `REQ-PRF-010` | — | — | `SCR-020` `SCR-021` `SCR-029` +4 | `JOB-anonymise_members` `JOB-process_avatar_upload` | `MSG-photo_album_ready` | `STORY-PRF-005` | M10, M16 |
 | `REQ-PRF-011` | — | — | `SCR-020` `SCR-021` `SCR-029` +3 | `JOB-anonymise_members` `JOB-zip_session_photos` | — | `STORY-PRF-005` `STORY-PRF-013` | M10, M16, M34 |
 | `REQ-PRF-012` | `ENT-company_domains` `ENT-org_domains` `ENT-sessions` | `POL-members.update.self` | `SCR-021` `SCR-045` `SCR-048` +1 | — | — | `STORY-ADM-012` `STORY-PRF-006` +1 | M29 |
 | `REQ-PRF-013` | `ENT-sessions` | — | `SCR-021` `SCR-045` `SCR-048` +1 | — | — | `STORY-ADM-013` | M29 |
 | `REQ-PRF-014` | — | — | `SCR-049` `SCR-051` `SCR-052` | — | — | `STORY-PRF-008` | M34 |
 | `REQ-PRF-015` | — | — | `SCR-049` `SCR-051` `SCR-052` | — | — | `STORY-PRF-009` | M34 |
-| `REQ-PRF-016` | — | — | `SCR-021` `SCR-049` `SCR-051` +1 | — | — | `STORY-PRF-010` | M34 |
-| `REQ-PRF-017` | — | — | `SCR-049` `SCR-051` `SCR-052` | — | — | `STORY-PRF-011` | M34 |
+| `REQ-PRF-016` | `ENT-avatar_uploads` | — | `SCR-021` `SCR-049` `SCR-051` +1 | — | — | `STORY-PRF-010` | M34 |
+| `REQ-PRF-017` | — | — | `SCR-049` `SCR-051` `SCR-052` | `JOB-process_avatar_upload` | — | `STORY-PRF-011` | M34 |
 | `REQ-PRF-018` | — | — | `SCR-049` `SCR-051` `SCR-052` | — | — | `STORY-PRF-012` | M34 |
 | `REQ-PRF-019` | — | — | `SCR-049` `SCR-051` `SCR-052` | — | — | `STORY-PRF-012` `STORY-PRF-013` | M34 |
 

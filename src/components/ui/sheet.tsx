@@ -29,7 +29,7 @@ const sidePosition: Record<NonNullable<SheetProps["side"]>, string> = {
   "inline-end": "inset-y-0 end-0 h-dvh w-[min(22rem,86vw)] border-s",
 };
 
-export function Sheet({ open, onOpenChange, title, description, side = "bottom", children }: SheetProps) {
+export function Sheet({ open, onOpenChange, title, description, side = "bottom", leading, belowTitle, children }: SheetProps) {
   // ★ Wave 15 (DEC-188): inside the playground's scope the portal lands
   // INSIDE the scope's element, so the sheet wears the scope. Outside a
   // scope this is `undefined` — Radix's default, `<body>`, exactly as
@@ -45,7 +45,19 @@ export function Sheet({ open, onOpenChange, title, description, side = "bottom",
           {side === "bottom" ? (
             <div aria-hidden="true" className="mx-auto mb-3 h-1 w-10 rounded-full bg-edge-strong" />
           ) : null}
-          <RadixDialog.Title className="text-h3 text-fg-heading">{title}</RadixDialog.Title>
+          {/* ★ Wave 29 (DEC-281, add-only): a caller may draw beside and under the title; without either, the title
+              stands alone exactly as before. */}
+          {leading || belowTitle ? (
+            <div className="flex items-center gap-4">
+              {leading}
+              <div className="min-w-0">
+                <RadixDialog.Title className="text-h3 text-fg-heading">{title}</RadixDialog.Title>
+                {belowTitle}
+              </div>
+            </div>
+          ) : (
+            <RadixDialog.Title className="text-h3 text-fg-heading">{title}</RadixDialog.Title>
+          )}
           {description ? (
             <RadixDialog.Description className="mt-1 text-body-sm text-fg-muted">{description}</RadixDialog.Description>
           ) : null}

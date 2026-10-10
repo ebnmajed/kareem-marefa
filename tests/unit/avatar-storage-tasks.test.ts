@@ -27,6 +27,17 @@ describe("exportAvatar — the archive's picture", () => {
     expect(JSON.stringify(got)).not.toContain("googleusercontent");
   });
 
+  it("★ wave 29: an UPLOAD is exported whatever the Google answer — the version alone says a picture exists", async () => {
+    const download = vi.fn(async () => new Uint8Array([1, 2, 3]));
+    const got = await exportAvatar(
+      helpersReturning([{ target: { org_id: ORG_A, answer: "declined", source_url: null, version: 1790000000500, anonymised: false, source: "upload" } }]),
+      MEMBER,
+      download,
+    );
+    expect(download).toHaveBeenCalledWith("avatars", `${ORG_A}/members/${MEMBER}/1790000000500/192.webp`);
+    expect(got).toEqual({ content_type: "image/webp", size: 192, data_base64: "AQID" });
+  });
+
   it.each([
     ["no copy", { answer: "accepted", version: null, anonymised: false }],
     ["declined", { answer: "declined", version: null, anonymised: false }],
@@ -35,6 +46,17 @@ describe("exportAvatar — the archive's picture", () => {
     const download = vi.fn();
     expect(await exportAvatar(helpersReturning([{ target: { org_id: ORG_A, source_url: null, ...t } }]), MEMBER, download)).toBeNull();
     expect(download).not.toHaveBeenCalled();
+  });
+});
+
+describe("avatarOwnerViolations — wave 29: the staging bucket asks the same question", () => {
+  const staged = `${ORG_A}/members/${MEMBER}/6f0d8a52-6a43-4c55-8f53-0f8d7e1d2c01`;
+
+  it("a staged upload under its own org is clean; under another org's prefix it is a violation, named by its bucket", async () => {
+    expect(await avatarOwnerViolations(helpersReturning([{ member_id: MEMBER, org_id: ORG_A }]), [staged], "avatar-staging")).toEqual([]);
+    expect(await avatarOwnerViolations(helpersReturning([{ member_id: MEMBER, org_id: ORG_B }]), [staged], "avatar-staging")).toEqual([
+      { bucket: "avatar-staging", path: staged, reason: "member belongs to another org" },
+    ]);
   });
 });
 

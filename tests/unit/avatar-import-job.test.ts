@@ -24,12 +24,24 @@ function jpeg(): Uint8Array {
 }
 const WEBP = Uint8Array.from([..."RIFF"].map((c) => c.charCodeAt(0)).concat([4, 0, 0, 0], [..."WEBP"].map((c) => c.charCodeAt(0))));
 
-type Target = { org_id: string; answer: "accepted" | "declined" | null; source_url: string | null; version: number | null; anonymised: boolean };
+type Target = {
+  org_id: string;
+  answer: "accepted" | "declined" | null;
+  source_url: string | null;
+  version: number | null;
+  anonymised: boolean;
+  source?: "google" | "upload" | null;
+};
 
-function harness(target: Target | null, opts: { record?: { status: "recorded" | "stale"; version: number | null }; existing?: string[]; fetchStatus?: number; body?: Uint8Array } = {}) {
+function harness(
+  target: Target | null,
+  opts: { record?: { status: "recorded" | "stale"; version: number | null }; existing?: string[]; staged?: string[]; fetchStatus?: number; body?: Uint8Array } = {},
+) {
   const queries: { sql: string; params: unknown[] }[] = [];
   const uploads: string[] = [];
   const deleted: string[] = [];
+  const deletedStaged: string[] = [];
+  let fetched = 0;
   const helpers = {
     query: vi.fn(async (sql: string, params: unknown[] = []) => {
       queries.push({ sql, params });
@@ -41,18 +53,23 @@ function harness(target: Target | null, opts: { record?: { status: "recorded" | 
   };
   const task = makeImportAvatar({
     now: () => NOW,
-    fetcher: async () => new Response(new Blob([(opts.body ?? jpeg()) as BlobPart]), { status: opts.fetchStatus ?? 200 }),
+    fetcher: async () => {
+      fetched += 1;
+      return new Response(new Blob([(opts.body ?? jpeg()) as BlobPart]), { status: opts.fetchStatus ?? 200 });
+    },
     run: async (_cmd, args) => writeFile(args[args.indexOf("-o") + 1], WEBP),
     upload: async (_bucket, path) => {
       uploads.push(path);
     },
-    list: async (_bucket, prefix) => [...(opts.existing ?? []), ...uploads].filter((p) => p.startsWith(`${prefix}/`)),
-    remove: async (_bucket, paths) => {
-      deleted.push(...paths);
+    // ★ Wave 29: the fake storage answers BY BUCKET — `avatar-staging` holds a member's uploads under the same prefix.
+    list: async (bucket, prefix) =>
+      (bucket === "avatars" ? [...(opts.existing ?? []), ...uploads] : (opts.staged ?? [])).filter((p) => p.startsWith(`${prefix}/`)),
+    remove: async (bucket, paths) => {
+      (bucket === "avatars" ? deleted : deletedStaged).push(...paths);
       return paths.length;
     },
   });
-  return { run: () => task({ member_id: MEMBER }, helpers as never), queries, uploads, deleted, helpers };
+  return { run: () => task({ member_id: MEMBER }, helpers as never), queries, uploads, deleted, deletedStaged, helpers, fetched: () => fetched };
 }
 
 const accepted: Target = { org_id: ORG, answer: "accepted", source_url: SOURCE, version: null, anonymised: false };
@@ -120,5 +137,33 @@ describe("import_avatar — removal (REQ-PRF-011, «removal is immediate and rea
     const h = harness(null);
     await expect(h.run()).resolves.toBeUndefined();
     expect(h.helpers.logger.warn).toHaveBeenCalledWith(expect.stringContaining("no longer exists"));
+  });
+});
+
+describe("import_avatar — wave 29: a member's own upload (DEC-280 §3, DEC-281; REQ-PRF-018)", () => {
+  const upload = [`${PREFIX}/1790000000500/96.webp`, `${PREFIX}/1790000000500/192.webp`];
+  const stray = [`${PREFIX}/1700000000000/96.webp`, `${PREFIX}/1700000000000/192.webp`];
+
+  it("★ an upload is never fetched over — a refresh keeps it and deletes only what is not current", async () => {
+    const h = harness({ ...accepted, version: 1790000000500, source: "upload" }, { existing: [...upload, ...stray] });
+    await h.run();
+    expect(h.fetched()).toBe(0);
+    expect(h.uploads).toEqual([]);
+    expect(h.queries.some((q) => q.sql.includes("record_avatar_copy"))).toBe(false);
+    expect(h.deleted.sort()).toEqual([...stray].sort());
+  });
+
+  it("★ a «لا» keeps an upload — the declined branch keeps the current version", async () => {
+    const h = harness({ ...accepted, answer: "declined", version: 1790000000500, source: "upload" }, { existing: upload });
+    await h.run();
+    expect(h.deleted).toEqual([]);
+  });
+
+  it("★ anonymised — the member's staged uploads go with their photos", async () => {
+    const staged = [`${PREFIX}/6f0d8a52-6a43-4c55-8f53-0f8d7e1d2c01`];
+    const h = harness({ ...accepted, source_url: null, version: null, anonymised: true }, { existing: upload, staged });
+    await h.run();
+    expect(h.deleted.sort()).toEqual([...upload].sort());
+    expect(h.deletedStaged).toEqual(staged);
   });
 });

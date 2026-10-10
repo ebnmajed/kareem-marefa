@@ -480,7 +480,12 @@
       "changeCompany": "غيّر الشركة",
       "companyTitle": "شركة «<t>{name}</t>»",
       "companySave": "احفظ",
-      "companyChanged": "حُفظت الشركة."
+      "companyChanged": "حُفظت الشركة.",
+      "takeDownPhoto": "أزل الصورة",
+      "takeDownTitle": "أزل صورة «<t>{name}</t>»؟",
+      "takeDownConfirm": "أزل",
+      "takeDownDone": "أُزيلت الصورة",
+      "takeDownFailed": "تعذّر"
     },
     "exports": {
       "title": "التصدير",
@@ -647,6 +652,7 @@
           "reactivated": "إعادة تفعيل عضوية",
           "role_changed": "تغيير دور عضو",
           "avatar_import_answered": "أجاب عن سؤال صورة Google",
+          "avatar_taken_down": "إزالة صورة عضو",
           "added": "إضافة عضو",
           "add_undone": "حذف عضو مضاف قبل تسجيل دخوله",
           "invite_resent": "إعادة إرسال دعوة عضو",

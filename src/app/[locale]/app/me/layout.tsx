@@ -2,6 +2,7 @@ import { Suspense, type ReactNode } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { HubStanding, HubStandingSkeleton } from "@/components/hub/standing";
 import { HubStrip } from "@/components/shell/hub-strip";
+import { pictureWrap } from "@/components/avatar-picker/picture-wrap";
 
 // The `/app/me` hub's frame — `REQ-UIX-070`, `STORY-UIX-059`, `HubDesktop.dc.html`; rebuilt in wave 20 (`DEC-208`).
 //
@@ -18,7 +19,7 @@ export default async function MeLayout({ children, params }: { children: ReactNo
   return (
     <>
       <Suspense fallback={<HubStandingSkeleton form="band" className="mb-4 hidden lg:block" />}>
-        <HubStanding locale={locale} form="band" className="mb-4 hidden lg:block" />
+        <BandStanding locale={locale} />
       </Suspense>
       <div className="mb-6 hidden lg:block">
         <HubStrip desktop />
@@ -26,4 +27,13 @@ export default async function MeLayout({ children, params }: { children: ReactNo
       {children}
     </>
   );
+}
+
+/**
+ * ★ Wave 29 (DEC-281 §6, `content`'s R2): on desktop the band's picture is the way into «صورتك» from every hub page —
+ * without the camera badge, which is ملفي's edit mode alone. Inside the band's own Suspense, so the layout awaits
+ * nothing of its own.
+ */
+async function BandStanding({ locale }: { locale: string }) {
+  return <HubStanding locale={locale} form="band" className="mb-4 hidden lg:block" picture={await pictureWrap(locale)} />;
 }

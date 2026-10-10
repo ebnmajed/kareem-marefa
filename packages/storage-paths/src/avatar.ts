@@ -14,6 +14,13 @@
 // repeats: a member who declines and later accepts never reuses a URL a browser
 // cached as immutable. No original is kept — the 192 px derivative is the
 // largest copy of a face the platform holds.
+//
+// ★ Wave 29 (DEC-280 §2, DEC-281): a member's own upload lands first in
+// `avatar-staging/{org_id}/members/{member_id}/{upload_id}` — the same three
+// leading segments, so `avatar_staging_insert` (0222) reads [1]–[3] exactly as
+// the read policy does, and `delete_org` and the prefix assertion cover it the
+// day it exists. No extension: the name never claims a type the worker's sniff
+// has not proven. The worker derives, records, and deletes it.
 import { assertUuid, InvalidStoragePathError, type StorageLocation } from "./guards.js";
 
 export const AVATAR_SIZES = [96, 192] as const;
@@ -44,4 +51,9 @@ export function avatarPath(orgId: string, memberId: string, version: number | st
     bucket: "avatars",
     path: [avatarMemberPrefix(orgId, memberId), assertVersion(version, "version"), `${assertAvatarSize(size, "size")}.webp`].join("/"),
   };
+}
+
+/** `avatar-staging/{org_id}/members/{member_id}/{upload_id}` — the upload's bytes, until the worker derives them. */
+export function avatarStagingPath(orgId: string, memberId: string, uploadId: string): { bucket: "avatar-staging"; path: string } {
+  return { bucket: "avatar-staging", path: [avatarMemberPrefix(orgId, memberId), assertUuid(uploadId, "uploadId")].join("/") };
 }

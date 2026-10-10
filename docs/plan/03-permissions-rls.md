@@ -694,6 +694,7 @@ moderation material (`REQ-ADM-020`).
 | `survey_participations` | — | — | — | — | **No policy at all.** The REGISTER: who answered, with no answer, no time and no surrogate id (`DEC-160` §3). Written by `submit_survey_response()` alone. |
 | `survey_responses` | — | — | — | — | **No policy at all.** The BOX: a random id, an org and a survey, **and nothing else, ever** — no member, no timestamp. Written by the jittered job alone; read by `survey_results()` alone. |
 | `survey_answers` | — | — | — | — | **No policy at all.** One value of one response. No member, no timestamp. |
+| `avatar_uploads` | — | — | — | — | **No policy at all.** One row per member: the current avatar upload's id and outcome (`DEC-281`, `0222`). No bytes, no URL, no name. Written and read by `platform`'s definer functions alone. |
 | `photo_albums` | §5.6g | — | — | — | One album per session (`0156`, `REQ-ADM-021`). Staff of the org read it; the three audit definers and `content`'s service_role functions are its only writers. |
 
 #### §5.6g — the photo album (`0156`, `DEC-180`, `DEC-182`)
@@ -1168,6 +1169,7 @@ create policy "exports_storage_read"         on storage.objects for select to au
 create policy "exports_storage_read_public_card" on storage.objects for select to anon, authenticated;  -- DEC-066 (0080): ONLY the og.png of a card-eligible session's poster, via export_is_public_card(name); a member of another org sees what a stranger sees
 create policy "exports_storage_certificate_restricted" on storage.objects as restrictive for select to authenticated;  -- DEC-178 (0153): a certificate's render only to staff of its org or its own member once released, via export_object_is_foreign_certificate(name); narrows exports_storage_read, which admitted the whole org prefix
 create policy "photo_albums_storage_read"          on storage.objects for select to authenticated;  -- DEC-182 (0156): staff of the org, and only the album's CURRENT build (path segment 5 = build_id), ready and unexpired — a stale, superseded or expired zip is unreadable with its path in hand
+create policy "avatar_staging_insert"               on storage.objects for insert to authenticated;  -- DEC-281 (0222): a member's own {org}/members/{self}/ prefix in `avatar-staging`, and no read back or delete — the worker reads, sniffs and deletes
 create policy "avatars_storage_read"                on storage.objects for select to authenticated;  -- DEC-182 (0157): same org, and only a member's CURRENT avatar_version (path segment 4) — clearing the version cuts access in the same statement
 create policy "story_media_read"                    on storage.objects for select to authenticated;  -- DEC-248 §5 (0198): a story video's rendition and poster — never its source — for a frame the caller may read now (the frame is looked up under the caller's own policies); the write policy lands with content's capture gate
 create policy "story_media_write"                   on storage.objects for insert to authenticated;  -- DEC-251 §5 (0199): a SOURCE only (source.mp4|mov|webm), under the caller's org and a session whose capture window is open for them — story_capture_open(): checked in, from the start until 24 h after the end — ★ DEC-278 (0219): or reserved (confirmed), a presenter or staff, from 24 h BEFORE the start; no update policy, so no overwrite
@@ -2265,6 +2267,26 @@ generated suite is the highest-value test in the product.
 | `TRG-members_avatar.source_follows_version` | A recorded copy is `google`; a cleared copy has no source; the key is untouched by either. |
 | `TRG-comments_broadcast.avatar_key` | The live comment payload carries `authorAvatarKey` beside the version, and still no URL. |
 
+| ★ **wave 29, migration `0222`** — lead — the upload's schema (`DEC-281`, `REQ-PRF-017` … `REQ-PRF-019`) |
+| `POL-avatar_staging_insert.own_prefix` | A member writes under `{own org}/members/{self}/` in `avatar-staging` ✓. |
+| `POL-avatar_staging_insert.other_member_refused` · `.other_org_refused` | Another member's prefix, or another org's, ✗. |
+| `POL-avatar_staging.no_read_back` · `.no_delete` | A member's select or delete of a staged object, their own included, ✗. |
+| `TBL-avatar_uploads.no_client_access` | A select, insert or update of `avatar_uploads` by `authenticated` → 42501. |
+| ★ **wave 29, migration `0223`** — `platform` — the member's own picture: upload, «من Google», a pick, «أزل الصورة», the takedown (`DEC-281`) |
+  | `RPC-begin_avatar_upload.self_only` · `.replaces_pending` · `.enqueues` | the caller's row; a second id replaces the first; one job |
+  | `RPC-record_avatar_upload.worker_only` · `.replaces_google_copy` · `.stale_when_cancelled` · `.stale_when_superseded` · `.stale_when_anonymised` | |
+  | `RPC-fail_avatar_upload.worker_only` · `.only_pending` | |
+  | `RPC-record_avatar_copy.never_over_upload` | a refresh never overwrites an upload |
+  | `TRG-members_avatar_source_changed.not_while_upload` | a changed source enqueues nothing while an upload is current |
+  | `RPC-set_avatar_import.decline_keeps_upload` · `.accept_keeps_upload` | |
+  | `RPC-request_avatar_google.replaces_upload` · `.no_source` · `.cancels_pending` · `.keeps_current_copy` | |
+  | `RPC-set_avatar_library.clears_photo` · `.invalid_key` · `.declines_and_audits` · `.cancels_pending` | |
+  | `RPC-remove_avatar_photo.clears` · `.no_photo` | |
+  | `RPC-take_down_avatar.admin_only` · `.audited` · `.library_refused` · `.reverts_to_key` | |
+  | `RPC-anonymise_members.upload` | version, key, source, answer null; the uploads row gone; the reconcile enqueued |
+  | `RPC-my_avatar.sheet_keys` · `RPC-my_avatar_upload.self_only` · `RPC-avatar_job_target.source_and_upload` | |
+  | `POL-avatars_storage_read.upload_current` | an upload's current version is served like a copy |
+  | `ENUM-report_target.no_picture` | unchanged |
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.
 

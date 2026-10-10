@@ -480,7 +480,12 @@
       "changeCompany": "Change company",
       "companyTitle": "Company of “<t>{name}</t>”",
       "companySave": "Save",
-      "companyChanged": "Company saved."
+      "companyChanged": "Company saved.",
+      "takeDownPhoto": "Remove photo",
+      "takeDownTitle": "Remove «<t>{name}</t>»'s photo?",
+      "takeDownConfirm": "Remove",
+      "takeDownDone": "Photo removed",
+      "takeDownFailed": "Couldn't remove"
     },
     "exports": {
       "title": "Exports",
@@ -647,6 +652,7 @@
           "reactivated": "Membership reactivated",
           "role_changed": "Member's role changed",
           "avatar_import_answered": "Answered the Google photo question",
+          "avatar_taken_down": "Took down a member's photo",
           "added": "Member added",
           "add_undone": "Added member removed before signing in",
           "invite_resent": "Member invitation resent",

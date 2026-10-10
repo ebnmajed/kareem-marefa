@@ -99,6 +99,8 @@ export interface ConsoleMemberRow extends AdminMemberRow {
   teamColor: string | null | undefined;
   points: number;
   levelName: string | null;
+  /** ★ wave 29 (add-only, `REQ-PRF-019`): a photo is stored — the row offers «أزل الصورة»; a library avatar alone does not. Absent reads as none. */
+  hasPhoto?: boolean;
 }
 
 export interface ConsoleMembers {
@@ -156,6 +158,7 @@ export async function listMembersForConsole(locale: string, query: MemberQuery):
         teamColor: c ? c.teamColor : undefined,
         points: b?.points ?? 0,
         levelName: levelOf(b?.points ?? 0, b?.levelId ?? null),
+        hasPhoto: avatar.get(m.id)?.version !== null && avatar.get(m.id)?.version !== undefined,
       };
     }),
     total: matching.length,
@@ -353,4 +356,29 @@ export async function setMemberCompany(locale: string, input: MemberCompanyInput
     return { error: hit ?? "failed", changed: false };
   }
   return { error: null, changed: (data as { status?: string } | null)?.status === "saved" };
+}
+
+// ── wave 29 · M34 — an admin takes a member's photo down (`REQ-PRF-019`, `DEC-280` §4, §8, `DEC-281`) ──────────────────
+//
+// One thin call into `take_down_avatar()` (`supabase/proposed/platform/`): `assert_fresh_admin()` is the gate (a
+// moderator is refused), the target must be in the admin's org, and the audit row (`member.avatar_taken_down`, the
+// photo's source and version before) is the RPC's. The member keeps their library key, so they show it at once —
+// never initials. ★ A library avatar cannot be taken down (`no_photo`), and a picture is not reportable: no report row,
+// no queue (`DEC-280` §8).
+
+export type TakeDownResult = { error: null } | { error: "no_photo" | "member_not_found" | "not_an_admin" | "stale_claims" | "failed" };
+
+export async function takeDownMemberPhoto(locale: string, memberId: string): Promise<TakeDownResult> {
+  if (!z.uuid().safeParse(memberId).success) return { error: "failed" };
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.rpc("take_down_avatar", { p_member: memberId });
+  if (error) {
+    const known = classify(error.message, ["not_an_admin", "stale_claims"]);
+    return { error: known === "not_an_admin" || known === "stale_claims" ? known : "failed" };
+  }
+  const status = (data as { status?: string } | null)?.status;
+  if (status === "ok") return { error: null };
+  if (status === "no_photo") return { error: "no_photo" };
+  if (status === "not_found") return { error: "member_not_found" };
+  return { error: "failed" };
 }

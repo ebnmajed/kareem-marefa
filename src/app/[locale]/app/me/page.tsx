@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getMe, getMyInterests, listCompanies } from "@/lib/dal/members";
+import { pictureWrap } from "@/components/avatar-picker/picture-wrap";
 import { HubStanding, HubStandingSkeleton } from "@/components/hub/standing";
 import { ProfileEdit } from "@/components/me/profile-edit";
 import { ProfileRead } from "@/components/me/profile-read";
@@ -28,6 +29,9 @@ import type { Locale } from "@/i18n/routing";
 // ★ wave 27 (`DEC-254` §2.5, `REQ-PRF-012`): the company is SHOWN, never chosen — no picker in edit mode, no
 // «choose one» banner in read mode. `companies` is read for the name and the dot only.
 //
+// ★ wave 29 (`DEC-280`, `DEC-281` §6, `REQ-PRF-016`): the standing card's picture is the way into «صورتك» — a button
+// through `HubStanding`'s `picture` slot, with the camera badge in edit mode. Nothing else on the page moves.
+//
 // ★ The auth boundary is the DAL's (`sessionClient` → `requireSession`); the self tier is `me()`'s (REQ-PRF-004).
 export default async function MePage({
   params,
@@ -41,13 +45,14 @@ export default async function MePage({
   const query = ((await searchParams) ?? {}) as { edit?: string | string[] };
   const editing = query.edit !== undefined;
 
-  const [t, tShell, tMembers, me, companies, interests] = await Promise.all([
+  const [t, tShell, tMembers, me, companies, interests, picture] = await Promise.all([
     getTranslations("profile"),
     getTranslations("app.shell"),
     getTranslations("members.profile"),
     getMe(locale),
     listCompanies(locale),
     getMyInterests(locale),
+    pictureWrap(locale, { badge: editing }),
   ]);
   const company = companies.find((c) => c.id === me.companyId) ?? null;
 
@@ -68,7 +73,7 @@ export default async function MePage({
       />
       {/* Contract 3 — `scoring`'s standing, the phone's card; from `lg` the layout draws the band instead. */}
       <Suspense fallback={<HubStandingSkeleton form="card" className="lg:hidden" />}>
-        <HubStanding locale={locale} form="card" className="lg:hidden" />
+        <HubStanding locale={locale} form="card" className="lg:hidden" picture={picture} />
       </Suspense>
       <HubStrip />
       {editing ? (
