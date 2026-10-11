@@ -66,7 +66,19 @@ describe("RankRow — what it draws", () => {
     expect(screen.getByText("5")).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("★ draws initials in the team ring and never a photograph (DEC-183 §3)", () => {
+  it("★ DEC-287: draws the member's picture in the team ring when it has one", () => {
+    const { container } = render(
+      <ul>
+        <RankRow {...BASE} avatarSrc="/api/avatars/0b8e1c3a-1b2c-4d5e-8f90-123456789abc?v=1&s=96" />
+      </ul>,
+    );
+    const img = container.querySelector("img");
+    expect(img).not.toBeNull();
+    expect(img!.getAttribute("src")).toBe("/api/avatars/0b8e1c3a-1b2c-4d5e-8f90-123456789abc?v=1&s=96");
+    expect(img!.getAttribute("alt")).toBe("");
+  });
+
+  it("★ draws initials in the team ring when there is no picture", () => {
     const { container } = render(
       <ul>
         <RankRow {...BASE} />
@@ -215,7 +227,8 @@ describe("RankRow — the source", () => {
     expect(source).not.toMatch(/overflow-hidden|truncate/);
   });
 
-  it("★ passes no `src` to the avatar", () => {
-    expect(source).not.toMatch(/\bsrc\b/);
+  it("★ DEC-287: the avatar's `src` is the caller's `avatarSrc`, never a URL built here", () => {
+    expect(source).toMatch(/src=\{avatarSrc\}/);
+    expect(source).not.toMatch(/avatar_url|googleusercontent/);
   });
 });

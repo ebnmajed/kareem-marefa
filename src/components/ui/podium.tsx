@@ -16,7 +16,7 @@ import { RankRow } from "@/components/ui/rank-row";
 // through CSS `order`. A block's HEIGHT follows its position; the NUMBER on it is the place's own rank, so a tie
 // draws two «1»s without lying about either.
 //
-// ★ INITIALS, NEVER A PHOTOGRAPH — like `rank-row` there is no `src` (DEC-183 §3, DEC-099). The company is the ring,
+// ★ The member's picture, or initials — like `rank-row` (DEC-287, reversing DEC-099's leaderboard exclusion). The company is the ring,
 // never the fill (REQ-PRF-009). The viewer's own place is outlined AND says «أنت» in words.
 //
 // ★ It collapses to the same places as `rank-row`s (REQ-UIX-081) where three columns do not fit — below a 21rem
@@ -39,7 +39,7 @@ function Place({ place, position }: { place: PodiumPlace; position: number }) {
   return (
     <li className={`relative flex w-26 min-w-0 flex-col items-center gap-1.5 ${look.order}`}>
       {position === 0 ? <CupObject size={36} shadow={false} /> : null}
-      <Avatar memberId={place.memberId} displayName={place.displayName} size={64} decorative teamColor={place.teamColor} />
+      <Avatar memberId={place.memberId} displayName={place.displayName} src={place.avatarSrc ?? null} size={64} decorative teamColor={place.teamColor} />
       <span className="flex max-w-full flex-col items-center text-center">
         <span className="text-body-sm font-bold text-fg-heading">
           {place.href ? (
@@ -96,6 +96,7 @@ export function Podium({ label, places, className = "" }: PodiumProps) {
             displayName={place.displayName}
             company={place.company}
             teamColor={place.teamColor}
+            avatarSrc={place.avatarSrc ?? null}
             points={place.points}
             pointsLabel={place.pointsLabel}
             selfLabel={place.selfLabel ?? null}

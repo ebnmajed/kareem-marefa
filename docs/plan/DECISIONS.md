@@ -10953,3 +10953,24 @@ mid-zoom. Found and left: `wave20-content-hub` and `wave20-notify-inbox` fail on
 heading and the inbox's «لا شيء غير مقروء»), stale since wave 29's sheet.
 
 - **Documents changed:** `STATUS.md`
+
+## DEC-287 — A leaderboard row shows the member's picture
+
+**Date:** 2026-10-11 · **Status:** accepted · **By:** the owner · **Refs:** REQ-LDR-001, REQ-UIX-037, REQ-UIX-081, REQ-PRF-009, REQ-PRF-015
+
+**The owner:** «In the leaderboard it doesn't seem to show the users photo it is showing the first letter of their
+names, fix that.»
+
+**This reverses** the leaderboard exclusion in `DEC-099` (§ the six placements: «Not in leaderboards»), kept by
+`DEC-181`, `DEC-183` §3 (`DEC-NEXT-8`) and `DEC-280` («the leaderboards stay initials»). Nothing else in those entries
+moves: email, posters and certificates still carry no face, and the console's cuts stay initials.
+
+1. **Every member board draws the member's picture** — all time, the month, the week and a category, on the podium
+   and the rows. It is `avatarHref()`'s answer (our copy → the library avatar → `null`), read as the viewer from
+   `avatar_version` and `avatar_key` (`0157`, `0221` grants) — **never `members.avatar_url`** (`DEC-099`'s hotlink rule
+   stands). `null` draws the initials, as everywhere else.
+2. **`rank-row` and `podium` gain an optional `avatarSrc`** (add-only, `ui/index.ts`); absent, they draw what they drew.
+   The company is still the ring, never the fill (`REQ-PRF-009`).
+3. **Opt-out is unchanged** (`REQ-LDR-008`): an opted-out member's row is absent, so is their picture.
+
+- **Documents changed:** `STATUS.md` (ledger L-287)

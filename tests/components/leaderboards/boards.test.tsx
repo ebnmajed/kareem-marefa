@@ -85,10 +85,18 @@ describe("MemberBoard", () => {
     expect(screen.getAllByText("عضو 5")).toHaveLength(1);
   });
 
-  it("links a name to the member's profile, and draws no photograph anywhere — podium included (DEC-099)", async () => {
+  it("links a name to the member's profile, and draws initials for a member with no picture — podium included", async () => {
     const c = await board(Array.from({ length: 5 }, (_, i) => member(i + 1)));
     expect(screen.getAllByRole("link", { name: "عضو 1" })[0]).toHaveAttribute("href", expect.stringContaining("/app/members/00000000-0000-4000-8000-000000000001"));
     expect(c.querySelector("img")).toBeNull();
+  });
+
+  it("★ DEC-287: draws each member's picture on the podium and the rows", async () => {
+    const src = (n: number) => `/api/avatars/00000000-0000-4000-8000-00000000000${n}?v=1&s=96`;
+    const c = await board(Array.from({ length: 5 }, (_, i) => member(i + 1, { avatarSrc: src(i + 1) })));
+    const srcs = Array.from(c.querySelectorAll("img")).map((img) => img.getAttribute("src"));
+    expect(srcs).toContain(src(1));
+    expect(srcs).toContain(src(5));
   });
 
   it("an empty board names what to do next, and the rank card stays", async () => {

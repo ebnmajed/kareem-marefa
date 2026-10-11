@@ -1062,6 +1062,8 @@ export interface RankRowProps extends Styleable {
   displayName: string;
   company: string | null;
   teamColor: TeamColor;
+  /** DEC-287 (add-only): the member's picture from `avatarHref()`; absent or null draws the initials. */
+  avatarSrc?: string | null;
   /** The digits shown, formatted by the caller. */
   points: string;
   /** What a screen reader hears — «1,410 نقطة». */
@@ -1468,6 +1470,8 @@ export interface PodiumPlace {
   displayName: string;
   company: string | null;
   teamColor: TeamColor;
+  /** DEC-287 (add-only): the member's picture from `avatarHref()`; absent or null draws the initials. */
+  avatarSrc?: string | null;
   /** Formatted by the caller. */
   points: string;
   pointsLabel: string;
@@ -1479,7 +1483,7 @@ export interface PodiumPlace {
 /**
  * `scoring` · `podium.tsx` — the first three, drawn second · first · third from the inline-start, the cup over first,
  * blocks in `--color-podium-{1,2,3}`. STATIC: no keyframe, no transition, no hover scale (`DEC-216` §5.10). DOM
- * order is rank order; the visual order is CSS `order`. Initials only, like `rank-row`. Below its collapse width and
+ * order is rank order; the visual order is CSS `order`. The member's picture, or initials, like `rank-row` (`DEC-287`). Below its collapse width and
  * under reduced motion it renders the same places as `rank-row`s.
  */
 export interface PodiumProps extends Styleable {

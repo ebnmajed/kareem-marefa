@@ -17,7 +17,7 @@ import type { BoardMoment, MemberBoardRow } from "@/lib/dal/leaderboards";
 // ★ REQ-LDR-001: the viewer's own rank is always visible — the card, and the row wherever it falls. REQ-LDR-008: an
 // opted-out member's row is absent for everyone else, by the database (`all_time_leaderboard()`, `boards_read`,
 // `weekly_leaderboard()`); this draws what it is given.
-// ★ Initials in the team ring, never a photograph (DEC-099, DEC-183 §3), on the podium and the rows alike. A name links
+// ★ The member's picture in the team ring, or initials without one (DEC-287), on the podium and the rows alike. A name links
 // to the member's profile. Only the viewer's RISE draws an arrow — other members' movement is not recorded anywhere
 // (the seen marks are the viewer's own) and a fall never draws one (REQ-UIX-037).
 // ★ Moment 5 (DEC-218 §3.4): one claim, two parts — the card's figure counts, and the rows FLIP — once per change,
@@ -81,6 +81,7 @@ export async function MemberBoard({
       displayName={r.displayName}
       company={r.company ?? null}
       teamColor={r.teamColor ?? null}
+      avatarSrc={r.avatarSrc ?? null}
       points={formatNumber(r.points)}
       pointsLabel={t("pointsValue", { count: r.points, value: formatNumber(r.points) })}
       selfLabel={r.isSelf ? t("you") : null}
@@ -101,6 +102,7 @@ export async function MemberBoard({
           displayName: r.displayName,
           company: r.company ?? null,
           teamColor: r.teamColor ?? null,
+          avatarSrc: r.avatarSrc ?? null,
           points: formatNumber(r.points),
           pointsLabel: t("pointsValue", { count: r.points, value: formatNumber(r.points) }),
           href: `/app/members/${r.memberId}`,

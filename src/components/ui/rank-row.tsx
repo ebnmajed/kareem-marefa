@@ -5,7 +5,7 @@ import { Link } from "@/components/ui/link";
 
 // scoring's file — REQ-UIX-037, REQ-LDR-001, REQ-LDR-008, DEC-183 §3, DEC-186 §7.
 //
-// One member's row on a board: the rank in the display face, the initials in
+// One member's row on a board: the rank in the display face, the picture in
 // the team ring, the name over the company, a marker when the rank rose, and
 // the points.
 //
@@ -15,9 +15,10 @@ import { Link } from "@/components/ui/link";
 // byte-identical to a neutral one — no colour, no icon, no motion.
 // `rank-row.test.tsx` asserts exactly that.
 //
-// ★ INITIALS, NEVER A PHOTOGRAPH (DEC-183 §3, DEC-099): there is no `src` in
-// the props, and `avatar` is drawn without one. The company is the ring, never
-// the fill (REQ-PRF-009).
+// ★ DEC-287 (the owner, reversing DEC-099's leaderboard exclusion): the
+// member's picture — `avatarHref()`'s answer, passed as `avatarSrc` — and the
+// initials when there is none. The company is the ring, never the fill
+// (REQ-PRF-009).
 //
 // ★ The viewer's own row is outlined AND carries a word — the name stays, and
 // `selfLabel` («أنت») is visible text beside it.
@@ -36,6 +37,7 @@ export function RankRow({
   displayName,
   company,
   teamColor,
+  avatarSrc = null,
   points,
   pointsLabel,
   selfLabel,
@@ -57,7 +59,7 @@ export function RankRow({
         <bdi aria-hidden="true">{String(rank)}</bdi>
       </span>
 
-      <Avatar memberId={memberId} displayName={displayName} size={32} decorative teamColor={teamColor} />
+      <Avatar memberId={memberId} displayName={displayName} src={avatarSrc} size={32} decorative teamColor={teamColor} />
 
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="flex flex-wrap items-center gap-x-2 text-body font-bold text-fg-heading">

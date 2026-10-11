@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
+import { avatarHref } from "@/lib/dal/avatars";
 import { companyFractions } from "@/components/scoring/race-fractions";
 
 // The four boards (SCR-027, SCR-028, `05` §6). All-time reads live from
@@ -49,6 +50,14 @@ export interface MemberBoardRow {
   company?: string | null;
   /** wave 16 (add-only): `companies.team_color` (0160), reaching the DOM only as `--team`. */
   teamColor?: string | null;
+  /** DEC-287 (add-only): `avatarHref()`'s answer — our copy, else the library avatar, else null (initials). */
+  avatarSrc?: string | null;
+}
+
+type BoardMemberRow = { id: string; display_name: string | null; company_id: string | null; avatar_version?: number | null; avatar_key?: string | null };
+/** DEC-287: a board member's picture through the one resolver — never `members.avatar_url` (DEC-099). */
+function boardAvatar(m: BoardMemberRow | undefined): string | null {
+  return m ? avatarHref({ id: m.id, avatarVersion: m.avatar_version ?? null, avatarKey: m.avatar_key ?? null }, 96) : null;
 }
 
 export interface CompanyBoardRow {
@@ -108,9 +117,10 @@ export async function getLeaderboards(locale: string): Promise<Leaderboards> {
   const allTimeRows = (allTimeRes.data ?? []) as AllTimeRow[];
   const memberIds = allTimeRows.map((r) => r.member_id);
   const { data: members } = memberIds.length
-    ? await supabase.from("members").select("id, display_name, company_id").in("id", memberIds)
+    ? await supabase.from("members").select("id, display_name, company_id, avatar_version, avatar_key").in("id", memberIds)
     : { data: [] as Array<{ id: string; display_name: string | null; company_id: string | null }> };
   const nameOf = new Map((members ?? []).map((m) => [m.id, m.display_name ?? ""]));
+  const avatarOf = new Map(((members ?? []) as BoardMemberRow[]).map((m) => [m.id, boardAvatar(m)]));
   const companyIdOf = new Map((members ?? []).map((m) => [m.id, (m.company_id as string | null) ?? null]));
 
   const allTime: MemberBoardRow[] = allTimeRows.map((r) => ({
@@ -121,6 +131,7 @@ export async function getLeaderboards(locale: string): Promise<Leaderboards> {
     isSelf: r.member_id === session.memberId,
     company: null,
     teamColor: null,
+    avatarSrc: avatarOf.get(r.member_id) ?? null,
   }));
 
   let monthly: Leaderboards["monthly"] = null;
@@ -133,9 +144,10 @@ export async function getLeaderboards(locale: string): Promise<Leaderboards> {
     if (error) throw new Error(`leaderboard_entries (monthly): ${error.message}`);
     const ids = (entries ?? []).map((e) => e.member_id).filter((id): id is string => Boolean(id));
     const { data: monthlyMembers } = ids.length
-      ? await supabase.from("members").select("id, display_name, company_id").in("id", ids)
+      ? await supabase.from("members").select("id, display_name, company_id, avatar_version, avatar_key").in("id", ids)
       : { data: [] as Array<{ id: string; display_name: string | null; company_id: string | null }> };
     const monthlyNameOf = new Map((monthlyMembers ?? []).map((m) => [m.id, m.display_name ?? ""]));
+    const monthlyAvatarOf = new Map(((monthlyMembers ?? []) as BoardMemberRow[]).map((m) => [m.id, boardAvatar(m)]));
     for (const m of monthlyMembers ?? []) companyIdOf.set(m.id, (m.company_id as string | null) ?? null);
     monthly = {
       periodStart: monthlySnapRes.data.period_start,
@@ -151,6 +163,7 @@ export async function getLeaderboards(locale: string): Promise<Leaderboards> {
           isSelf: e.member_id === session.memberId,
           company: null,
           teamColor: null,
+          avatarSrc: monthlyAvatarOf.get(e.member_id) ?? null,
         })),
     };
   }
@@ -891,7 +904,7 @@ export async function getWeeklyBoard(locale: string): Promise<WeeklyBoard> {
   const raw = (boardRes.data ?? []) as WeekRow[];
   const ids = raw.map((r) => r.member_id);
   const { data: members, error } = ids.length
-    ? await supabase.from("members").select("id, display_name, company_id").in("id", ids)
+    ? await supabase.from("members").select("id, display_name, company_id, avatar_version, avatar_key").in("id", ids)
     : { data: [] as Array<{ id: string; display_name: string | null; company_id: string | null }>, error: null };
   if (error) throw new Error(`members (weekly board): ${error.message}`);
   const byId = new Map(((members ?? []) as Array<{ id: string; display_name: string | null; company_id: string | null }>).map((m) => [m.id, m]));
@@ -912,6 +925,7 @@ export async function getWeeklyBoard(locale: string): Promise<WeeklyBoard> {
       isSelf: r.member_id === session.memberId,
       company: c?.name ?? null,
       teamColor: c?.team_color ?? null,
+      avatarSrc: boardAvatar(m as BoardMemberRow | undefined),
     };
   });
   return { window: standing.window, rows, ranked: rows.length };
@@ -1074,7 +1088,7 @@ export async function getTopicBoard(locale: string, categoryId: string): Promise
   if (error) throw new Error(`leaderboard_entries (topic): ${error.message}`);
   const list = (entries ?? []) as Array<{ member_id: string; rank: number; points: number }>;
   const { data: members, error: mError } = list.length
-    ? await supabase.from("members").select("id, display_name, company_id").in("id", list.map((e) => e.member_id))
+    ? await supabase.from("members").select("id, display_name, company_id, avatar_version, avatar_key").in("id", list.map((e) => e.member_id))
     : { data: [] as Array<{ id: string; display_name: string | null; company_id: string | null }>, error: null };
   if (mError) throw new Error(`members (topic): ${mError.message}`);
   const byId = new Map(((members ?? []) as Array<{ id: string; display_name: string | null; company_id: string | null }>).map((m) => [m.id, m]));
@@ -1090,7 +1104,7 @@ export async function getTopicBoard(locale: string, categoryId: string): Promise
     rows: list.map((e) => {
       const m = byId.get(e.member_id);
       const c = m?.company_id ? companyOf.get(m.company_id) : undefined;
-      return { memberId: e.member_id, displayName: m?.display_name ?? "", rank: e.rank, points: e.points, isSelf: e.member_id === session.memberId, company: c?.name ?? null, teamColor: c?.team_color ?? null };
+      return { memberId: e.member_id, displayName: m?.display_name ?? "", rank: e.rank, points: e.points, isSelf: e.member_id === session.memberId, company: c?.name ?? null, teamColor: c?.team_color ?? null, avatarSrc: boardAvatar(m as BoardMemberRow | undefined) };
     }),
   };
 }

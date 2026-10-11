@@ -1,5 +1,5 @@
-// `<Podium>` — REQ-UIX-081, REQ-UIX-078, DEC-216 §5.10, DEC-218 §3.4, §3.7. Static; DOM order is rank order; initials
-// only; the collapse to `rank-row`s is CSS and only one of the two is ever displayed.
+// `<Podium>` — REQ-UIX-081, REQ-UIX-078, DEC-216 §5.10, DEC-218 §3.4, §3.7. Static; DOM order is rank order; the
+// picture or initials (DEC-287); the collapse to `rank-row`s is CSS and only one of the two is ever displayed.
 import { readFileSync } from "node:fs";
 import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
@@ -63,8 +63,15 @@ describe("ui/podium", () => {
     expect(ranks).toEqual(["1", "1", "3"]);
   });
 
-  it("★ initials only — no photograph anywhere (DEC-099)", () => {
+  it("★ initials when no place has a picture", () => {
     expect(mount(THREE).querySelector("img")).toBeNull();
+  });
+
+  it("★ DEC-287: a place's picture is drawn on the podium and in the collapsed rows", () => {
+    const src = "/avatars/characters/actor.svg";
+    const c = mount([place(1, "أ", { avatarSrc: src }), THREE[1], THREE[2]]);
+    expect(c.querySelector("[data-slot=podium] img")?.getAttribute("src")).toBe(src);
+    expect(c.querySelector("[data-slot=rows] img")?.getAttribute("src")).toBe(src);
   });
 
   it("the viewer's place says «أنت» in words and is outlined", () => {
