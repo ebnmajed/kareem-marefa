@@ -99,6 +99,14 @@ export function bindingsUsed(blocks: readonly EmailBlock[], subject: string): st
     }
     if (block.type === "certificate") scan(block.label);
     if (block.type === "social") for (const item of block.items) [item.label, item.value].forEach(scan);
+    // Wave 30 (`REQ-NTF-018`) — the same `text` / `label` / `items` fields `bindings_in_blocks()` reads.
+    if (block.type === "eyebrow") scan(block.text);
+    if (block.type === "hero") {
+      scan(block.text);
+      scan(block.label);
+    }
+    if (block.type === "ticket" || block.type === "quote" || block.type === "rating") scan(block.label);
+    if (block.type === "stats" || block.type === "links") for (const item of block.items) [item.label, item.value].forEach(scan);
   }
   return [...found];
 }

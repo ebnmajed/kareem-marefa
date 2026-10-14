@@ -809,6 +809,8 @@ inventory screens have no route yet), and **49 pages under `app/[locale]/app/**`
 | ★ `(auth)/no-access` | SCR-004 | **M9 ✓ done in wave 6** (`f8a977ca`, `DEC-130`) · ★ **the playground: the member-screens milestone, third** (`DEC-195` §5) | The product's only answer to «فتحت الرابط ولا شيء يعمل» |
 | `legal/privacy` · `legal/terms` | SCR-005 | **M13** | Public, and the home of the accessibility statement |
 | `verify/[code]` | SCR-006 | **M12** | Reached from a **printed** certificate; where `DEC-095`'s numeral bug fails silently |
+| ★ `unsubscribe` | — | **M35** | ★ `DEC-289`, `REQ-NTF-019`: public, from a mail's footer — names the category, asks once, a POST switches it off; no `SCR-*` (a single confirmation, not a screen anyone navigates to) |
+| ★ `(dev)/ui/emails` | — | **M35** | ★ `DEC-289`: the seven designed mails from the sample set, at 600 and 390 — behind the gallery's edge gate, a dev tool and never a product surface |
 | ★ `s/[id]` | SCR-007 | **M10** | How members actually arrive — the WhatsApp entry path |
 | `app/page.tsx` | SCR-010 | **M10** | One «التالية لك» card, not five rails (`DEC-098`) |
 | `app/sessions` | SCR-011 | **M10** | A date-grouped schedule, not a nine-facet catalogue (`DEC-098`) |

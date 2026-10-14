@@ -57,11 +57,7 @@ export const send_member_invitation: Task = async (rawPayload, helpers) => {
     return;
   }
 
-  const { rows: kitRows } = await helpers.query<{ kit: { light?: Record<string, string>; dark?: Record<string, string> } | null }>(
-    `select public.brand_kit($1::uuid) as kit`,
-    [p.org_id],
-  );
-  const kit = kitRows[0]?.kit;
+  // ★ Wave 30 (`DEC-289`): no brand kit — the invitation wears the approved dark design like every mail.
 
   const appUrl = process.env.APP_URL?.replace(/\/+$/, "") || null;
   let logoUrl: string | null = null;
@@ -82,7 +78,6 @@ export const send_member_invitation: Task = async (rawPayload, helpers) => {
       payload: { org: ctx.org.name, url: appUrl ?? "/" },
       member: { name: ctx.member.display_name, email: ctx.member.email },
       org: { name: ctx.org.name, timeZone: ctx.org.time_zone },
-      brand: kit?.light ? { light: kit.light, dark: kit.dark } : null,
       logoUrl,
       appUrl,
     });

@@ -25,16 +25,15 @@ function ctx(payload: Record<string, unknown> = {}, extra: Partial<CompileContex
   };
 }
 const compile = (block: EmailBlock, payload: Record<string, unknown> = {}, extra: Partial<CompileContext> = {}) => {
-  const out = compileBlocks({ schemaVersion: 1, blocks: [block] }, ctx(payload, extra));
-  // The composed footer's rule is appended to every document; `rows` here is
-  // what the BLOCK wrote.
-  return { ...out, rows: out.rows.slice(0, -1) };
+  // ★ Wave 30 (`DEC-289`): the composed footer moved to the shell, so `rows` is exactly what the BLOCK wrote.
+  return compileBlocks({ schemaVersion: 1, blocks: [block] }, ctx(payload, extra));
 };
 
 describe("the union", () => {
-  it("adds five types and leaves the wave-10 list of eight as it was", () => {
+  it("adds five types and leaves the wave-10 list of eight as it was — and wave 30's eleven follow", () => {
     expect(BLOCK_TYPES).toHaveLength(8);
-    expect(ALL_BLOCK_TYPES.slice(8)).toEqual(["poster", "qr", "logo", "certificate", "social"]);
+    expect(ALL_BLOCK_TYPES.slice(8, 13)).toEqual(["poster", "qr", "logo", "certificate", "social"]);
+    expect(ALL_BLOCK_TYPES.slice(13)).toEqual(["eyebrow", "hero", "when", "presenter", "seats", "ticket", "stats", "quote", "leaderboard", "rating", "links"]);
     expect(ALL_BLOCK_TYPES).not.toContain("points");
   });
 
@@ -50,7 +49,8 @@ describe("الملصق — the poster card", () => {
   it("draws the card the worker hands over, full width", () => {
     const out = compile(block, { title: "جلسة", session_card_image_url: `${ORIGIN}/api/s/${SESSION}/og` });
     expect(out.rows.join("")).toContain(`src="${ORIGIN}/api/s/${SESSION}/og"`);
-    expect(out.rows.join("")).toContain('width="512"');
+    // Wave 30: the design's 536 px column (600 − 2 × 32).
+    expect(out.rows.join("")).toContain('width="536"');
     expect(out.text).toEqual([]);
   });
   it("no card (draft, cancelled, none) drops the row — never a broken image", () => {
@@ -104,11 +104,13 @@ describe("الشعار", () => {
 describe("شهادة", () => {
   const block: EmailBlock = { type: "certificate", id: "c", label: "اعرض الشهادة" };
   const payload = { kind: "attendance", title: "أساسيات التصميم", serial: "KM-000001", url: `${ORIGIN}/ar/app/me/certificates` };
-  it("the kind in Arabic, the title, the serial isolated, and a button", () => {
+  it("the kind in Arabic, the title, the serial left-to-right, and a button", () => {
     const out = compile(block, payload);
     const html = out.rows.join("");
     expect(html).toContain("شهادة حضور");
-    expect(html).toContain(`${FSI}KM-000001${PDI}`);
+    // Wave 30 (`DEC-289` §2): a serial is drawn in an LTR span, as the design does, so it never flips.
+    expect(html).toMatch(/<div dir="ltr"[^>]*>KM-000001<\/div>/);
+    expect(out.text[0]).toContain(`${FSI}KM-000001${PDI}`);
     expect(html).toContain(`href="${payload.url}"`);
     expect(out.text[0]).toContain("KM-000001");
     expect(out.text[1]).toContain("اعرض الشهادة: ");

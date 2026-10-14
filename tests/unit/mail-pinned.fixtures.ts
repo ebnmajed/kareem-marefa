@@ -95,6 +95,8 @@ export function renderPinned(sample: PinnedCase, variant: "brand" | "plain") {
     brand: variant === "brand" ? BRAND : null,
     logoUrl: variant === "brand" ? LOGO_URL : null,
     appUrl: APP_URL,
+    // ★ Wave 30 (`REQ-NTF-019`): the footer's per-type link, as the worker passes it for an optional message.
+    unsubscribeUrl: `${APP_URL}/ar/unsubscribe?t=pinned`,
   });
 }
 

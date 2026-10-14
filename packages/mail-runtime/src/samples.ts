@@ -124,6 +124,29 @@ const AT_MOVED = "2026-10-02T16:00:00.123456+00:00";
 const TITLE = "الذكاء الاصطناعي في العمل";
 const VENUE = "قاعة الابتكار";
 
+/**
+ * ★ WAVE 30 (`REQ-NTF-018`, `DEC-289`) — THE FACTS THE WORKER ADDS, in the shape `email_facts()` (`0224`) and
+ * `send_notification.ts`'s formatting produce them, for the same session as `AT` (Thursday 1 October, 6:00 PM in
+ * Riyadh). The approved design draws these — the date strip, the presenter, the seats, the ticket — and a sample
+ * without them would preview a design nobody receives.
+ */
+const SESSION_FACTS = {
+  type: "ورشة",
+  date_day: "1",
+  date_month: "أكتوبر",
+  weekday: "الخميس",
+  time: "6:00 م",
+  company: "شبه الجزيرة",
+  presenter: "الوليد باعقبة",
+  presenter_initials: "وب",
+  seats_left: 12,
+  seats_taken_pct: 70,
+  poster_wide: true,
+  directions_url: "https://maps.example.com/innovation-hall",
+} as const;
+
+const MEMBER_FACTS = { first_name: "سارة", full_name: "سارة العتيبي", initials: "سع" } as const;
+
 export const SAMPLE_CASES: readonly SampleCase[] = [
   // ── 08 §1.1 proposals ────────────────────────────────────────────────────
   // `0039`'s proposals_notify(): proposal_id, title, proposer. No `category`,
@@ -137,7 +160,9 @@ export const SAMPLE_CASES: readonly SampleCase[] = [
   { id: "MSG-copresenter_invited", key: "MSG-copresenter_invited", payload: { proposal_id: PROPOSAL, title: TITLE, inviter: "خالد المطيري" } },
 
   // ── 08 §1.2 sessions ─────────────────────────────────────────────────────
-  { id: "MSG-session_published", key: "MSG-session_published", payload: { session_id: SESSION, title: TITLE, startsAt: AT, venue: VENUE } },
+  { id: "MSG-session_published", key: "MSG-session_published", payload: { session_id: SESSION, title: TITLE, startsAt: AT, venue: VENUE, ...SESSION_FACTS } },
+  // ★ wave 30: the design with NO facts — a session with no poster, presenter, capacity or type draws none of them.
+  { id: "MSG-session_published.bare", key: "MSG-session_published", payload: { session_id: SESSION, title: TITLE, startsAt: AT, venue: VENUE } },
   // `0213`'s publish_announcement(): announcement_id and the admin's text, nothing else.
   { id: "MSG-announcement_published", key: "MSG-announcement_published", payload: { announcement_id: ANNOUNCEMENT, body: "يسعدنا أن نعلن عن افتتاح قاعة الابتكار الجديدة في الطابق الثالث، وهي متاحة للحجز من الأسبوع القادم." } },
   { id: "MSG-presenter_assigned", key: "MSG-presenter_assigned", payload: { session_id: SESSION, title: TITLE, startsAt: AT, venue: VENUE } },
@@ -181,12 +206,18 @@ export const SAMPLE_CASES: readonly SampleCase[] = [
   // ── 08 §1.3 RSVP ─────────────────────────────────────────────────────────
   // `0034`'s rsvps_notify(): no `venue`, which the template interpolates.
   { id: "MSG-rsvp_promoted", key: "MSG-rsvp_promoted", payload: { session_id: SESSION, title: TITLE, startsAt: AT, rsvp_id: RSVP } },
+  // ★ wave 30 (`DEC-289`): `0034`'s payload, now mailed, with the ticket's facts.
+  {
+    id: "MSG-rsvp_confirmed",
+    key: "MSG-rsvp_confirmed",
+    payload: { session_id: SESSION, title: TITLE, startsAt: AT, rsvp_id: RSVP, venue: VENUE, ...SESSION_FACTS, ...MEMBER_FACTS, ticket_ref: "KM-444444", points_on_attend: "+20", going_count: 38 },
+  },
 
   // ── 08 §1.2 reminders — `0110`, per day (wave 9) ─────────────────────────
   // `dayCount: 1` is the common session, and `dayBlock()` returns "" for it, so
   // `toParagraphs()` drops the line and the mail is the one M3 shipped.
-  { id: "MSG-reminder_7d", key: "MSG-reminder_7d", payload: { session_id: SESSION, title: TITLE, startsAt: AT, venue: VENUE, offset_minutes: 10080, dayPosition: 1, dayCount: 1 } },
-  { id: "MSG-reminder_1d", key: "MSG-reminder_1d", payload: { session_id: SESSION, title: TITLE, startsAt: AT, venue: VENUE, offset_minutes: 1440, dayPosition: 1, dayCount: 1 } },
+  { id: "MSG-reminder_7d", key: "MSG-reminder_7d", payload: { session_id: SESSION, title: TITLE, startsAt: AT, venue: VENUE, offset_minutes: 10080, dayPosition: 1, dayCount: 1, ...SESSION_FACTS, ticket_ref: "KM-444444" } },
+  { id: "MSG-reminder_1d", key: "MSG-reminder_1d", payload: { session_id: SESSION, title: TITLE, startsAt: AT, venue: VENUE, offset_minutes: 1440, dayPosition: 1, dayCount: 1, ...SESSION_FACTS, ticket_ref: "KM-444444" } },
   { id: "MSG-reminder_2h", key: "MSG-reminder_2h", payload: { session_id: SESSION, title: TITLE, startsAt: AT, venue: VENUE, offset_minutes: 120, dayPosition: 1, dayCount: 1 } },
   // DEC-047's fourth, offset-agnostic message: any org offset outside ±20% of
   // the three fixed ones. 4320 minutes is three days.
@@ -203,7 +234,44 @@ export const SAMPLE_CASES: readonly SampleCase[] = [
   { id: "MSG-rating_prompt.no-display-name", key: "MSG-rating_prompt", payload: { session_id: SESSION, title: TITLE }, member: { name: null, email: "sara@kareem.example" } },
   // ★ no sender: the template's own bindings.
   { id: "MSG-materials_added", key: "MSG-materials_added", payload: { session_id: SESSION, title: TITLE } },
-  { id: "MSG-comment_reply", key: "MSG-comment_reply", payload: { session_id: SESSION, title: TITLE, comment_id: COMMENT, author: "نورة القحطاني" } },
+  {
+    id: "MSG-comment_reply",
+    key: "MSG-comment_reply",
+    payload: { session_id: SESSION, title: TITLE, comment_id: COMMENT, author: "نورة القحطاني", actor: "نورة القحطاني", actor_initials: "نق", ago: "قبل 5 دقائق", comment: "أتفق تمامًا، وأضيف أن التجربة العملية أهم من الشرائح.", comment_short: "أتفق تمامًا، وأضيف أن التجربة العملية أهم من الشرائح.", likes: 3, comments: 7, company: "شبه الجزيرة" },
+  },
+  // ★ wave 30 (`REQ-EVT-017`): a comment on a session the recipient presents — the activity design.
+  {
+    id: "MSG-session_comment",
+    key: "MSG-session_comment",
+    payload: { session_id: SESSION, title: TITLE, comment_id: COMMENT, actor: "سارة القحطاني", actor_initials: "سق", ago: "قبل 5 دقائق", comment: "الجزء عن تسعير الخدمات كان أوضح شرح سمعته. هل يمكن مشاركة الشرائح؟", comment_short: "الجزء عن تسعير الخدمات كان أوضح شرح سمعته. هل يمكن مشاركة…", likes: 24, comments: 7, company: "شبه الجزيرة" },
+  },
+  // ★ wave 30 (`DEC-289` §3): check-in confirmed — no points figure; a certificate only when one is issued.
+  { id: "MSG-check_in_confirmed", key: "MSG-check_in_confirmed", payload: { session_id: SESSION, title: TITLE, company: "شبه الجزيرة", ...MEMBER_FACTS } },
+  {
+    id: "MSG-check_in_confirmed.certificate",
+    key: "MSG-check_in_confirmed",
+    payload: { session_id: SESSION, title: TITLE, company: "شبه الجزيرة", ...MEMBER_FACTS, kind: "attendance", serial: "KM-000001", verification_code: "AB12-CD34" },
+  },
+  // ★ wave 30 (`REQ-LDR-009`): the week's close — the recipient fourth, below the top three.
+  {
+    id: "MSG-leaderboard_weekly",
+    key: "MSG-leaderboard_weekly",
+    payload: {
+      week_label: "27 سبتمبر – 3 أكتوبر",
+      rank: 4,
+      rank_change: "↑ 2",
+      points: 860,
+      attended: 3,
+      presented: 1,
+      interactions: 42,
+      top: [
+        { rank: 1, name: "سارة القحطاني", initials: "سق", team: "#FF9A2E", points: 1240 },
+        { rank: 2, name: "خالد حامد", initials: "خح", team: "#9B7CFF", points: 1105 },
+        { rank: 3, name: "عصام الدروبي", initials: "عد", team: null, points: 980 },
+      ],
+      me: { rank: 4, name: "سارة العتيبي", initials: "سع", team: null, points: 860 },
+    },
+  },
   { id: "MSG-mentioned", key: "MSG-mentioned", payload: { session_id: SESSION, title: TITLE, comment_id: COMMENT, name: "نورة القحطاني" } },
 
   // ── 08 §1.5 recognition and certificates ─────────────────────────────────

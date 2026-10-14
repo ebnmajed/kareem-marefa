@@ -51,13 +51,23 @@ function client(logoRows: unknown, candidates: Candidates = {}) {
   };
 }
 
+// ★ Wave 30 (`DEC-289`): no platform design opens with the org's logo any more — the shell's header carries the
+// platform mark. The org's logo is still a block an admin may add, so the document here is the rsvp design (a family
+// design with a session card) with the admin's own `logo` block on top.
+const DOCUMENT = (() => {
+  const design = platformDesign("MSG-rsvp_promoted")!;
+  return { ...design, blocks: [{ type: "logo" as const, id: "org-logo", width: 160 }, ...design.blocks] };
+})();
+const MARK = "/email/logo-mark@2x.png";
+const orgImgs = (html: string) => (html.match(/<img\b[^>]*>/g) ?? []).filter((img) => !img.includes(MARK));
+
 const preview = (logoRows: unknown, candidates: Candidates = {}) => {
   sessionClient.mockResolvedValue(client(logoRows, candidates));
   return compileEmailPreview("ar", {
-    key: "MSG-reminder_1d",
-    subject: "غدًا: {{title}}",
+    key: "MSG-rsvp_promoted",
+    subject: "حصلت على مقعد: {{title}}",
     body: "نص",
-    blocks: JSON.stringify(platformDesign("MSG-reminder_1d")),
+    blocks: JSON.stringify(DOCUMENT),
     appUrl: "https://kareem.pp.sa",
   });
 };
@@ -71,9 +81,10 @@ describe("★ a PNG logo reaches the framed preview", () => {
   it("one `<img>`, and its src is the logo route for THIS org", async () => {
     const out = await preview([{ storage_path: "orgs/x/logo.png" }]);
     expect(out).not.toBeNull();
-    const imgs = out!.html.match(/<img\b/g) ?? [];
-    expect(imgs).toHaveLength(1);
+    // The admin's logo block, once — beside the shell's own mark, which every mail carries.
+    expect(orgImgs(out!.html)).toHaveLength(1);
     expect(out!.html).toContain(`https://kareem.pp.sa/api/brand/${ORG}/logo`);
+    expect(out!.html).toContain(`https://kareem.pp.sa${MARK}`);
   });
 
   it("the preview ASKS — `org_public_logo` is called with this org, which is what was missing", async () => {
@@ -88,13 +99,13 @@ describe("★ no logo renders the org's NAME, never a broken image", () => {
     // logo, and an org whose logo is WebP — Outlook's Word engine draws no
     // WebP, so that last one is deliberate rather than an oversight.
     const out = await preview([]);
-    expect(out!.html).not.toContain("<img");
+    expect(orgImgs(out!.html)).toEqual([]);
     expect(out!.html).toContain("كريم معرفة");
   });
 
   it("a null answer is treated as no logo rather than crashing the frame", async () => {
     const out = await preview(null);
-    expect(out!.html).not.toContain("<img");
+    expect(orgImgs(out!.html)).toEqual([]);
   });
 });
 
@@ -102,10 +113,10 @@ describe("the preview is wrong exactly when the mail would be", () => {
   it("★ with no origin there is no logo — the same rule the worker applies without `APP_URL`", async () => {
     sessionClient.mockResolvedValue(client([{ storage_path: "orgs/x/logo.png" }]));
     const out = await compileEmailPreview("ar", {
-      key: "MSG-reminder_1d",
-      subject: "غدًا: {{title}}",
+      key: "MSG-rsvp_promoted",
+      subject: "حصلت على مقعد: {{title}}",
       body: "نص",
-      blocks: JSON.stringify(platformDesign("MSG-reminder_1d")),
+      blocks: JSON.stringify(DOCUMENT),
       appUrl: "",
     });
     // A relative image src in a mail is a broken image, so half an origin is
@@ -149,7 +160,7 @@ describe("★ the session card's image — the logo's twin, and the same «never
   it("no card-bearing session renders one row fewer, never a broken image", async () => {
     const out = await preview([], { card: null });
     expect(out!.html).not.toContain("/api/s/");
-    expect(out!.html).not.toContain("<img");
+    expect(orgImgs(out!.html)).toEqual([]);
   });
 
   it("★ the SAMPLE's fake session id is never used — it names no row and would 404", async () => {

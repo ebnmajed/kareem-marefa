@@ -34,6 +34,7 @@ export {
   // palette, exported so `tests/unit/mail-palette-default.test.ts` can hold it
   // equal to `brand.ts`'s rather than scraping the source for literals.
   PLATFORM_LIGHT,
+  MAIL_PALETTE,
 } from "./render.js";
 export type { RenderInput, RenderedEmail, ChangedField, LegacyBrand, FullBrand, BrandPalette } from "./render.js";
 
@@ -41,7 +42,12 @@ export type { RenderInput, RenderedEmail, ChangedField, LegacyBrand, FullBrand, 
 // The editor and the preview build documents with these types; the worker and
 // the preview render them with the same compiler, which is the whole of
 // REQ-NTF-010's «there is exactly one mail renderer».
-export { SCHEMA_VERSION, BLOCK_TYPES, NEW_BLOCK_TYPES, ALL_BLOCK_TYPES, PALETTE_TOKENS, ROW_LAYOUTS, isBlockDocument, readBlocks, readDocument } from "./blocks.js";
+export { SCHEMA_VERSION, BLOCK_TYPES, NEW_BLOCK_TYPES, DESIGN_BLOCK_TYPES, ALL_BLOCK_TYPES, PALETTE_TOKENS, ROW_LAYOUTS, TONES, isBlockDocument, readBlocks, readDocument } from "./blocks.js";
+// ★ Wave 30 (`REQ-NTF-018`, `DEC-289`): the approved dark design's tokens, its face and its plural helper.
+export { MAIL, MAIL_FONT, MAIL_FONT_LINK, LOGO_PATH, arabicCount } from "./theme.js";
+export type { ArabicForms } from "./theme.js";
+export { formatFacts, initials, ago, ticketRef, weekLabel } from "./facts.js";
+export type { RawFacts } from "./facts.js";
 export type {
   EmailBlock,
   EmailBlockDocument,
@@ -50,6 +56,7 @@ export type {
   ImageSource,
   DroppedBlock,
   BlockStyle,
+  Tone,
   EmailRow,
   EmailStyles,
   PaletteToken,
@@ -67,8 +74,8 @@ export { SAMPLE_CASES, SAMPLE_ORG, SAMPLE_MEMBER, SAMPLE_BRAND, sampleFor } from
 // The eight designed platform templates (REQ-NTF-014, DEC-082). Constants, not
 // rows: an org DUPLICATES one to own it and the original is never mutated,
 // which is true by construction when the original is code.
-export { linkFor, logoUrlFor, ROUTE_FOR } from "./links.js";
-export { DESIGN_FAMILIES, DESIGN_FOR, platformDesign, documentFromText, invitationDesign, INVITATION_SUBJECT } from "./designs.js";
+export { linkFor, logoUrlFor, designLinks, ROUTE_FOR } from "./links.js";
+export { DESIGN_FAMILIES, DESIGN_FOR, platformDesign, preheaderFor, documentFromText, invitationDesign, INVITATION_SUBJECT } from "./designs.js";
 export type { DesignFamily } from "./designs.js";
 export type { SampleCase } from "./samples.js";
 export type { CompileContext, CompiledBlocks, CompilePalette } from "./compile.js";

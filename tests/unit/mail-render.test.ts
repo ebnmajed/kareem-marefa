@@ -37,7 +37,8 @@ describe("REQ-NTF-002 — every email row of the matrix has an Arabic template",
   it("parsed the matrix out of the migration at all", () => {
     // 40 since 0156: MSG-photo_album_ready, in-app only (DEC-182), so no template is owed.
     // 41 since 0213: MSG-announcement_published (REQ-ADM-025), in-app and email — its template is owed and written.
-    expect(matrix).toHaveLength(41);
+    // 43 since 0224 (DEC-289): MSG-session_comment and MSG-leaderboard_weekly.
+    expect(matrix).toHaveLength(43);
   });
 
   it("has a subject and a body for every message with an email channel", () => {
@@ -64,7 +65,7 @@ describe("08 §3.1 — the constraints email clients impose", () => {
   const out = render("MSG-session_published", { title: "الذكاء الاصطناعي في العمل", startsAt: "الأحد 6:00 م", venue: "قاعة الابتكار", url: "https://kareem.pp.sa/x" });
 
   it("puts dir=rtl on <html> and on every table cell", () => {
-    expect(out.html).toContain('<html dir="rtl" lang="ar">');
+    expect(out.html).toMatch(/<html lang="ar" dir="rtl"[ >]/);
     const cells = out.html.match(/<td[^>]*>/g) ?? [];
     expect(cells.length).toBeGreaterThan(1);
     // Outlook ignores inherited direction more often than it honours it, so
@@ -74,22 +75,25 @@ describe("08 §3.1 — the constraints email clients impose", () => {
 
   it("uses tables for layout and inline CSS only", () => {
     expect(out.html).toContain("<table");
-    // The one `<style>` is F1's colour-scheme opt-out (`DEC-162`) and carries no
-    // presentation; every rule that draws anything is inline.
-    expect(out.html.match(/<style[\s>][\s\S]*?<\/style>/g)).toEqual(["<style>:root{color-scheme:light;supported-color-schemes:light;}</style>"]);
-    expect(out.html).not.toContain("class=");
+    // ★ Wave 30 (`DEC-289`): one `<style>`, `build.py`'s — the dark opt-out and the phone rules. Every rule that DRAWS
+    // (a colour, a face, a size) is inline; the classes only reflow at 620 px.
+    expect(out.html.match(/<style[\s>]/g)).toHaveLength(1);
+    expect(out.html).toContain(":root{color-scheme:dark;supported-color-schemes:dark}");
+    const classes = new Set((out.html.match(/class="[^"]*"/g) ?? []).map((c) => c.slice(7, -1)));
+    for (const cls of classes) expect(["shell", "px", "h1", "hero", "btn-wrap", "btn"]).toContain(cls);
   });
 
-  it("declares a fallback font stack and loads no web font", () => {
+  it("declares its font stack and loads the product's face by <link>, never @font-face (`DEC-289`)", () => {
     expect(out.html).toContain("Tahoma");
     expect(out.html).not.toContain("@font-face");
-    expect(out.html).not.toContain("fonts.googleapis");
+    expect(out.html).toContain('<link href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2');
   });
 
   it("never clips a text line and never letter-spaces Arabic", () => {
     expect(out.html).not.toContain("overflow:hidden");
     expect(out.html).not.toContain("letter-spacing");
-    expect(out.html).toContain("line-height:1.7");
+    // Body text at 1.7 — read off a message with a paragraph (the new-session design is a title, a strip and figures).
+    expect(render("MSG-proposal_rejected", { title: "جلسة", reason: "سبب" }).html).toContain("line-height:1.7");
   });
 
   it("carries a plain-text alternative that stands on its own", () => {
@@ -163,7 +167,8 @@ describe("REQ-NTF-007 — the org's template wins", () => {
   });
 
   it("raises rather than sending a blank when a key has no template at all", () => {
-    expect(() => render("MSG-rsvp_confirmed")).toThrow(TemplateMissingError);
+    // An in-app-only message (`MSG-rsvp_confirmed` is mailed since 0224).
+    expect(() => render("MSG-rsvp_waitlisted")).toThrow(TemplateMissingError);
   });
 });
 

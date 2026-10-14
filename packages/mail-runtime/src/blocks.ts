@@ -83,7 +83,44 @@ export type EmailBlock =
   | { type: "certificate"; id: BlockId; label: string; style?: BlockStyle }
   /** «اجتماعي» — links an admin types, as text. No icons: an icon is an image,
    *  and we host no PNG set (and SVG is forbidden). */
-  | { type: "social"; id: BlockId; items: { label: string; value: string }[]; style?: BlockStyle };
+  | { type: "social"; id: BlockId; items: { label: string; value: string }[]; style?: BlockStyle }
+  // ── wave 30, `REQ-NTF-018` — the approved design's pieces (`DEC-289`, `docs/design/emails/build.py`) ──
+  //
+  // ★ ADDITIVE, AND NAMED BY WHAT THEY DRAW. Each is one of `build.py`'s components, so the seven designed
+  // messages are blocks an admin can reorder, edit and delete in the studio — not a second, fixed template system.
+  // Author-typed fields keep the four names `bindings_in_blocks()` (`0133`) reads: `text`, `label`, `alt`, `items`.
+  // `tone` is a closed enum, never text. ★ None emits SVG (invariant 11).
+  /** A small coloured label — `chip()` with `chip: true`, or the plain «تم الحجز» line without. */
+  | { type: "eyebrow"; id: BlockId; text: string; tone: Tone; chip?: boolean; style?: BlockStyle }
+  /** The hero — a figure or a word at display size, and a short line at the inline end («4:00 م», «↑ 2»). */
+  | { type: "hero"; id: BlockId; text: string; label: string; tone: Tone; style?: BlockStyle }
+  /** `when_strip()` — the day block, the weekday and time, the venue. Implicit bindings: `date_day`,
+   *  `date_month`, `weekday`, `time`, `venue` (and `day`, the «اليوم الثاني من 3» line, in the text part). */
+  | { type: "when"; id: BlockId; style?: BlockStyle }
+  /** `presenter()` — initials and the presenter's name. Implicit: `presenter`, `presenter_initials`. */
+  | { type: "presenter"; id: BlockId; style?: BlockStyle }
+  /** `seats_bar()` — seats left, in words, over a filled bar. Implicit: `seats_left`, `seats_taken_pct`. */
+  | { type: "seats"; id: BlockId; style?: BlockStyle }
+  /** `ticket()` — the seat as an object: a coloured stub with the title, the date, the venue, the reference, and a
+   *  QR of the session's EVENT PAGE (never a check-in code — `DEC-289` §4). `label` is the stub's small line. */
+  | { type: "ticket"; id: BlockId; label: string; tone: "lime" | "violet"; style?: BlockStyle }
+  /** `stats()` — two or three figures, each over its word. `value` is a template, `{{going_count}}`. */
+  | { type: "stats"; id: BlockId; items: { label: string; value: string }[]; style?: BlockStyle }
+  /** `activity()` — who wrote, the comment in a bubble, the session it is on, its likes and comments. `label` is
+   *  the line under the name («علّق على جلستك»). Implicit: `actor`, `actor_initials`, `ago`, `comment`, `title`,
+   *  `likes`, `comments`. */
+  | { type: "quote"; id: BlockId; label: string; style?: BlockStyle }
+  /** `leaderboard()`'s rows — the top three, «···», and always the recipient's own row. Implicit: `top` and `me`. */
+  | { type: "leaderboard"; id: BlockId; style?: BlockStyle }
+  /** «قيّم الجلسة» and five numbered links, 1 – 5, to the rating page. Implicit: `rate_url`. */
+  | { type: "rating"; id: BlockId; label: string; style?: BlockStyle }
+  /** Quiet secondary actions — text links in a row, never a second button (one lime CTA per mail). `value` is a
+   *  `{{binding}}` that resolves to a URL. */
+  | { type: "links"; id: BlockId; items: { label: string; value: string }[]; style?: BlockStyle };
+
+/** The design's four accents. */
+export type Tone = "lime" | "violet" | "orange" | "coral";
+export const TONES: readonly Tone[] = ["lime", "violet", "orange", "coral"];
 
 export type BlockType = EmailBlock["type"];
 
@@ -109,6 +146,8 @@ export interface BlockStyle {
 /** The five types wave 23 adds (`REQ-NTF-015`). `BLOCK_TYPES` stays the eight
  *  the wave-10 editor offers until that editor is rebuilt. */
 export const NEW_BLOCK_TYPES: readonly BlockType[] = ["poster", "qr", "logo", "certificate", "social"];
+/** The eleven wave 30 adds (`REQ-NTF-018`) — the approved design's components. */
+export const DESIGN_BLOCK_TYPES: readonly BlockType[] = ["eyebrow", "hero", "when", "presenter", "seats", "ticket", "stats", "quote", "leaderboard", "rating", "links"];
 export const ALL_BLOCK_TYPES: readonly BlockType[] = [
   "heading",
   "paragraph",
@@ -119,6 +158,7 @@ export const ALL_BLOCK_TYPES: readonly BlockType[] = [
   "spacer",
   "image",
   ...NEW_BLOCK_TYPES,
+  ...DESIGN_BLOCK_TYPES,
 ];
 
 export const BLOCK_TYPES: readonly BlockType[] = [
@@ -200,6 +240,8 @@ const SPACER_HEIGHTS = new Set(["sm", "md", "lg"]);
 const BUTTON_STYLES = new Set(["primary", "secondary"]);
 const IMAGE_KINDS = new Set(["org_logo", "session_card_image"]);
 const QR_SIZES = new Set(["sm", "md"]);
+const TONE_SET = new Set<string>(["lime", "violet", "orange", "coral"]);
+const isTone = (value: unknown): boolean => str(value) && TONE_SET.has(value);
 const isItems = (value: unknown): boolean =>
   Array.isArray(value) && value.every((item) => isRecord(item) && str(item.label) && str(item.value));
 
@@ -257,6 +299,24 @@ function isRenderable(block: Record<string, unknown>): block is EmailBlock & Rec
       return str(block.label);
     case "social":
       return isItems(block.items);
+    // Wave 30. A missing `tone` drops the block rather than guessing a colour.
+    case "eyebrow":
+      return str(block.text) && isTone(block.tone) && (block.chip === undefined || typeof block.chip === "boolean");
+    case "hero":
+      return str(block.text) && str(block.label) && isTone(block.tone);
+    case "when":
+    case "presenter":
+    case "seats":
+    case "leaderboard":
+      return true;
+    case "ticket":
+      return str(block.label) && (block.tone === "lime" || block.tone === "violet");
+    case "stats":
+    case "links":
+      return isItems(block.items);
+    case "quote":
+    case "rating":
+      return str(block.label);
     default:
       // An unrecognised type: a NEWER build wrote it, and this one skips it.
       return false;

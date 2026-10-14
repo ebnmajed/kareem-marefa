@@ -1,7 +1,7 @@
 // Wave 20 — this week, live (DEC-216 §2.2, DEC-217 §3.3 – §3.4, REQ-UIX-078, REQ-LDR-007, REQ-LDR-008).
 //
 // supabase/proposed/scoring/w20_0001_week.sql — `org_week()` and `weekly_leaderboard()`. The week is summed from
-// `points_ledger` at read time — no enum value, no snapshot, no job — over Saturday to Friday in the org's own
+// `points_ledger` at read time — no enum value, no snapshot, no job — over Sunday to Saturday (0224, DEC-289; it was Saturday to Friday) in the org's own
 // time zone, following `all_time_leaderboard()`'s (0044) opt-out and active rules.
 //
 // 03 §8.2 rows proven here: RPC-org_week.boundary, RPC-weekly_leaderboard.{window,opt_out,active,org,net_positive},
@@ -26,6 +26,8 @@ async function award(tx: Tx, orgId: string, memberId: string, amount: number, at
 
 async function ready(tx: Tx) {
   await applyProposed(tx, FILE);
+  // ★ 0224 moved the week to Sunday (DEC-289); a no-op once promoted, as FILE's is.
+  await applyProposed(tx, "lead/0224_email_redesign.sql");
   const f = await seed(tx);
   await tx.asOwner();
   return f;
@@ -35,22 +37,23 @@ type Bounds = { week_start: string; week_end: string; starts_at: Date; ends_at: 
 const bounds = (tx: Tx, at: string) => tx.q<Bounds>(`select week_start::text, week_end::text, starts_at, ends_at, time_zone from public.org_week($1::timestamptz)`, [at]);
 
 describe("RPC-org_week.boundary", () => {
-  it("★ Saturday 00:00 to Friday 23:59 in the org's zone — Riyadh, UTC+3, crossing the UTC date line", async () => {
+  // ★ 0224 (DEC-289, the owner's week): Sunday to Saturday — it was Saturday to Friday (DEC-217 §3.4).
+  it("★ Sunday 00:00 to Saturday 23:59 in the org's zone — Riyadh, UTC+3, crossing the UTC date line", async () => {
     await withTx(async (tx) => {
       const f = await ready(tx);
       await tx.q(`update public.org_settings set time_zone = 'Asia/Riyadh' where org_id = $1`, [f.a.id]);
       await tx.as(f.a.members[0].claims);
-      // 2026-10-02 is a Friday. 20:59 UTC is Friday 23:59 in Riyadh — the week's last minute.
-      const [friday] = await bounds(tx, "2026-10-02T20:59:00Z");
-      expect(friday.week_start).toBe("2026-09-26");
-      expect(friday.week_end).toBe("2026-10-02");
-      expect(friday.time_zone).toBe("Asia/Riyadh");
-      expect(friday.starts_at.toISOString()).toBe("2026-09-25T21:00:00.000Z");
-      expect(friday.ends_at.toISOString()).toBe("2026-10-02T21:00:00.000Z");
-      // 21:00 UTC Friday is Saturday 00:00 in Riyadh — already the next week, though UTC still says Friday.
-      const [saturday] = await bounds(tx, "2026-10-02T21:00:00Z");
-      expect(saturday.week_start).toBe("2026-10-03");
-      expect(saturday.week_end).toBe("2026-10-09");
+      // 2026-10-03 is a Saturday. 20:59 UTC is Saturday 23:59 in Riyadh — the week's last minute.
+      const [saturday] = await bounds(tx, "2026-10-03T20:59:00Z");
+      expect(saturday.week_start).toBe("2026-09-27");
+      expect(saturday.week_end).toBe("2026-10-03");
+      expect(saturday.time_zone).toBe("Asia/Riyadh");
+      expect(saturday.starts_at.toISOString()).toBe("2026-09-26T21:00:00.000Z");
+      expect(saturday.ends_at.toISOString()).toBe("2026-10-03T21:00:00.000Z");
+      // 21:00 UTC Saturday is Sunday 00:00 in Riyadh — already the next week, though UTC still says Saturday.
+      const [sunday] = await bounds(tx, "2026-10-03T21:00:00Z");
+      expect(sunday.week_start).toBe("2026-10-04");
+      expect(sunday.week_end).toBe("2026-10-10");
     });
   });
 
@@ -59,16 +62,16 @@ describe("RPC-org_week.boundary", () => {
       const f = await ready(tx);
       await tx.q(`update public.org_settings set time_zone = 'America/New_York' where org_id = $1`, [f.a.id]);
       await tx.as(f.a.members[0].claims);
-      // Saturday 2026-10-03 02:00 UTC is still Friday 22:00 in New York.
-      const [r] = await bounds(tx, "2026-10-03T02:00:00Z");
-      expect(r.week_start).toBe("2026-09-26");
+      // Sunday 2026-10-04 02:00 UTC is still Saturday 22:00 in New York.
+      const [r] = await bounds(tx, "2026-10-04T02:00:00Z");
+      expect(r.week_start).toBe("2026-09-27");
       expect(r.time_zone).toBe("America/New_York");
     });
   });
 });
 
 describe("RPC-weekly_leaderboard", () => {
-  it("★ window: only this week's rows count — a row a second before Saturday 00:00 is last week's", async () => {
+  it("★ window: only this week's rows count — a row a second before Sunday 00:00 is last week's", async () => {
     await withTx(async (tx) => {
       const f = await ready(tx);
       const [{ starts_at }] = await tx.q<{ starts_at: Date }>(`select starts_at from public.org_week() limit 1`);

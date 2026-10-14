@@ -1043,6 +1043,21 @@ Google or the library; and navigation that presses, jumps and sinks. Three PRs, 
 **Demonstrable:** a new member signs in holding an avatar, uploads and crops a photo, and taps a session card whose
 poster jumps into the event page.
 
+## M35 — the approved email design · wave 30 · `DEC-289`
+
+The owner's ask: every notification email in the approved dark design (`docs/design/emails/`), seven of them designed
+one by one, with a per-type unsubscribe, a comment mail for presenters and a weekly leaderboard close. One PR, one
+migration (`0224`).
+
+| Work | Requirements | Track | PR |
+|---|---|---|---|
+| The shell, the blocks, the seven designs, the facts, the poster route, the preview | `REQ-NTF-018` | lead | — |
+| The signed one-click unsubscribe | `REQ-NTF-019` | lead | — |
+| The comment mail, the week's close | `REQ-EVT-017`, `REQ-LDR-009` | lead | — |
+
+**Demonstrable:** the seven messages rendered from real data at 600 px and 390 px; the owner's own read in Gmail web,
+the Gmail app, Apple Mail and Outlook.
+
 ## 3. Dependencies
 
 ```mermaid

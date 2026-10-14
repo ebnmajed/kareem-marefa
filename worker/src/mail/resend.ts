@@ -46,6 +46,10 @@ export class ResendTransport implements MailTransport {
         subject: message.subject,
         html: message.html,
         text: message.text,
+        // ★ Wave 30 (`REQ-NTF-019`): Resend passes custom headers through.
+        ...(message.listUnsubscribe
+          ? { headers: { "List-Unsubscribe": `<${message.listUnsubscribe.url}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } }
+          : {}),
       }),
       signal: AbortSignal.timeout(RESEND_TIMEOUT_MS),
     });

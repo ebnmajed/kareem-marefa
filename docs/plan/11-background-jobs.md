@@ -285,6 +285,16 @@ A failed font reports **which** goldens failed, so the admin gets an answer rath
 **Notes:** checks preferences at **send** time, not at enqueue time — a member may have changed
 them in between. The eleven non-optional messages bypass the check (`08` §1.7). **All mail is sent
 from the worker**, which is why `RESEND_API_KEY` is not on Vercel.
+★ Since `0224` (`DEC-289`): it reads `email_facts()` for what the approved design draws and words it with
+`formatFacts()`; it no longer reads the brand kit; and for an optional message it asks
+`email_unsubscribe_token()` for the footer's per-type link and the `List-Unsubscribe` header (`REQ-NTF-019`).
+
+#### `JOB-send_weekly_leaderboard`
+**Serves:** `REQ-LDR-009` · ★ `0224`, `DEC-289`
+**Cron:** hourly (`5 * * * *`) · **Key:** none — the guard is a row, `leaderboard_weekly_digests (org_id, week_start)`
+**Notes:** calls `send_weekly_leaderboard_digests()`, which closes, for each active org whose clock has passed Sunday
+08:00, the week that ended at Sunday 00:00 — **once**: the guard row is inserted before any `notify()`, so a retry, an
+overlapping run or a second worker sends nothing twice, and a worker down on Sunday morning catches up when it returns.
 
 #### `JOB-schedule_reminders` · `JOB-send_reminder`
 **Serves:** `REQ-NTF-004`, A19
@@ -475,6 +485,8 @@ that can differ between renders, which is D66's failure mode with no error attac
 | `JOB-record_survey_response` | `REQ-SUR-004`, `REQ-SUR-009` |
 | `JOB-send_test_email` | `REQ-NTF-011` |
 | `JOB-send_member_invitation` | `REQ-NTF-017`, `REQ-TEN-009` |
+| `JOB-send_notification` (★ `0224`) | `REQ-NTF-018`, `REQ-NTF-019`, `REQ-EVT-017` |
+| `JOB-send_weekly_leaderboard` | `REQ-LDR-009` |
 | `JOB-enforce_retention`, `JOB-anonymise_members` | `REQ-NFR-012`, `REQ-PRF-007` |
 | `JOB-assert_storage_prefixes` | `REQ-TEN-003` |
 | `JOB-expire_impersonation` | `REQ-ADM-002` |

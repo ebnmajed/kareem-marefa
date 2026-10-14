@@ -22,9 +22,10 @@ const render = () =>
 
 describe("★ REQ-NTF-017 — it is transactional, not a matrix message", () => {
   // 26 since 0213 (REQ-ADM-025): MSG-announcement_published is a matrix message; the invitation still is not.
-  it("is absent from the template table and from DESIGN_FOR, which stay at 26", () => {
-    expect(Object.keys(DEFAULT_TEMPLATES)).toHaveLength(26);
-    expect(Object.keys(DESIGN_FOR)).toHaveLength(26);
+  // 30 since 0224 (DEC-289): four messages join; the invitation is still none of them.
+  it("is absent from the template table and from DESIGN_FOR, which stand at 30", () => {
+    expect(Object.keys(DEFAULT_TEMPLATES)).toHaveLength(30);
+    expect(Object.keys(DESIGN_FOR)).toHaveLength(30);
     expect(DEFAULT_TEMPLATES).not.toHaveProperty(KEY);
     expect(DESIGN_FOR).not.toHaveProperty(KEY);
     // So a key lookup could never find it — which is why the worker passes the document itself.
@@ -44,10 +45,10 @@ describe("the mail itself", () => {
     const doc = readDocument(invitationDesign());
     expect(doc).not.toBeNull();
     const types = doc!.blocks.map((b) => b.type);
-    // The logo first — every design carries it, and `compileBlocks()` appends the footer — then the
-    // heading and the greeting, which is the shape the other eight wear.
-    expect(types[0]).toBe("image");
-    expect(types[1]).toBe("heading");
+    // ★ Wave 30 (`DEC-289`): the shell's header carries the platform mark, so no design opens with the org's logo —
+    // the heading first, then the greeting, which the invitation alone keeps (a person is being welcomed by name).
+    expect(types[0]).toBe("heading");
+    expect(types[1]).toBe("paragraph");
     expect(types).toContain("paragraph");
     expect(types.filter((t) => t === "button")).toHaveLength(1);
     // The house style wave 24 gave every design (`DEC-242`) — read off the document itself, and

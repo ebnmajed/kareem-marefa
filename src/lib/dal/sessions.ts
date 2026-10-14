@@ -1730,6 +1730,21 @@ export async function getPublicCardImage(id: string): Promise<{ bytes: ArrayBuff
 }
 
 /**
+ * ★ Wave 30 (`DEC-289` §5, add-only): the poster's 16:9 `landscape` render (1920 × 1080) for a mail client — the same
+ * door as `getPublicCardImage()`: `session_wide_poster_path()` (`0224`) names it only for a card-eligible session, and
+ * the bytes are read as the caller through `exports_storage_read_public_card`, which `0224` widened to this one preset.
+ */
+export async function getPublicWidePoster(id: string): Promise<{ bytes: ArrayBuffer; contentType: string } | null> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return null;
+  const supabase = await createServerClient();
+  const { data: path, error } = await supabase.rpc("session_wide_poster_path", { p_session: id });
+  if (error || typeof path !== "string" || path === "") return null;
+  const { data, error: readError } = await supabase.storage.from("exports").download(path);
+  if (readError || !data) return null;
+  return { bytes: await data.arrayBuffer(), contentType: "image/png" };
+}
+
+/**
  * wave 18 (DEC-210, add-only): the viewer's own company — its name and colour — for the event page's «لفريقك».
  * Null when the member has none. Read from the caller's own row, so it names no one else.
  */

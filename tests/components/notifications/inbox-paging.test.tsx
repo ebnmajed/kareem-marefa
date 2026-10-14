@@ -4,15 +4,15 @@ import { groupInbox, inboxGroup } from "@/components/notifications/inbox-groups"
 import { decodeInboxCursor, encodeInboxCursor } from "@/components/notifications/inbox-cursor";
 
 const RIYADH = "Asia/Riyadh";
-// Wednesday 2026-09-30, 12:00 in Riyadh. The org's week (Sat–Fri) began Saturday 2026-09-26.
+// Wednesday 2026-09-30, 12:00 in Riyadh. The org's week (Sun–Sat since 0224, DEC-289) began Sunday 2026-09-27.
 const NOW = new Date("2026-09-30T09:00:00Z");
 
-describe("inboxGroup — the day is the org's, the week is Saturday to Friday", () => {
+describe("inboxGroup — the day is the org's, the week is Sunday to Saturday (DEC-289)", () => {
   it("today", () => expect(inboxGroup("2026-09-30T05:00:00Z", NOW, RIYADH)).toBe("today"));
   it("★ a moment past midnight in Riyadh is today though UTC still says yesterday", () => expect(inboxGroup("2026-09-29T21:30:00Z", NOW, RIYADH)).toBe("today"));
   it("yesterday is this week (the artboard's «أمس» under «اليوم» is the drawing's slip)", () => expect(inboxGroup("2026-09-29T10:00:00Z", NOW, RIYADH)).toBe("week"));
-  it("Saturday is the week's first day", () => expect(inboxGroup("2026-09-26T08:00:00Z", NOW, RIYADH)).toBe("week"));
-  it("Friday before it is older", () => expect(inboxGroup("2026-09-25T08:00:00Z", NOW, RIYADH)).toBe("older"));
+  it("Sunday is the week's first day", () => expect(inboxGroup("2026-09-27T08:00:00Z", NOW, RIYADH)).toBe("week"));
+  it("Saturday before it is older", () => expect(inboxGroup("2026-09-26T08:00:00Z", NOW, RIYADH)).toBe("older"));
 
   it("groups a newest-first list into consecutive groups, each once", () => {
     const groups = groupInbox(

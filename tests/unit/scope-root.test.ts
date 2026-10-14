@@ -44,6 +44,7 @@ const ROOT_LAYOUTS = [
   "app/[locale]/legal/layout.tsx",
   "app/[locale]/s/layout.tsx", // the public session card
   "app/[locale]/verify/layout.tsx", // the certificate's verification page
+  "app/[locale]/unsubscribe/layout.tsx", // ★ DEC-289: a mail's per-type stop, public (REQ-NTF-019)
   "app/[locale]/(marketing)/layout.tsx", // the public site: the landing and the interest form (wave 26, DEC-247)
 ];
 // The gallery shows both of the scope's grounds, so it renders two scopes side by side.

@@ -1,6 +1,13 @@
 import "server-only";
 import { z } from "zod";
-import { DEFAULT_TEMPLATES, emailDocumentFor, logoUrlFor, readBlocks, renderEmail, SAMPLE_MEMBER, SAMPLE_ORG, sampleFor } from "@kareem/mail-runtime";
+import { DEFAULT_TEMPLATES, emailDocumentFor, formatFacts, logoUrlFor, readBlocks, renderEmail, SAMPLE_MEMBER, SAMPLE_ORG, sampleFor, type RawFacts } from "@kareem/mail-runtime";
+
+/** ★ Wave 30 (`DEC-289`): the facts a designed mail draws about a SESSION. A preview over a real session replaces the
+ *  sample's — an admin must never see a sample presenter or seat count on their own session's mail. */
+const SESSION_FACT_KEYS = [
+  "type", "date_day", "date_month", "weekday", "time", "company", "presenter", "presenter_initials", "seats_left",
+  "seats_taken_pct", "poster_wide", "poster_url", "directions_url", "going_count", "points_on_attend", "likes", "comments",
+] as const;
 import type { SaveReceipt } from "@/lib/dal/admin-settings";
 import { sessionClient } from "@/lib/dal/session";
 import { getOrgPrefs } from "@/lib/dal/proposals";
@@ -509,10 +516,8 @@ export async function compileEmailPreview(
   }
 
   const client = await sessionClient(locale);
-  // The org's OWN name, palette and zone — a preview of a branded mail that
-  // showed the sample org's would be a picture of somebody else's message.
-  const [{ data: kit }, { data: org }, prefs, { data: logo }] = await Promise.all([
-    client.supabase.rpc("brand_kit", { p_org: client.session.orgId }),
+  // The org's OWN name and zone. ★ Wave 30 (`DEC-289`): no brand kit — every mail is the approved dark design.
+  const [{ data: org }, prefs, { data: logo }] = await Promise.all([
     client.supabase.from("orgs").select("name").eq("id", client.session.orgId).maybeSingle(),
     getOrgPrefs(locale),
     // ★ The preview ASKS for the logo, which it did not before — and «never
@@ -521,8 +526,6 @@ export async function compileEmailPreview(
     // the preview is wrong exactly when the mail would be.
     client.supabase.rpc("org_public_logo", { p_org: client.session.orgId }),
   ]);
-  const light = (kit as { light?: Record<string, string> } | null)?.light;
-  const dark = (kit as { dark?: Record<string, string> } | null)?.dark;
 
   // ★ THE SESSION CARD'S IMAGE — the logo's twin, found by looking for it.
   //
@@ -548,7 +551,10 @@ export async function compileEmailPreview(
   const wantsCard =
     input.realSession === true ||
     readBlocks(emailDocumentFor(input.key, { subject, body, blocks })).some(
-      (block) => (block.type === "session_card" && block.withImage !== false) || block.type === "poster",
+      (block) =>
+        (block.type === "session_card" && block.withImage !== false) ||
+        // Wave 30 — the design's session pieces.
+        ["poster", "ticket", "when", "presenter", "seats"].includes(block.type),
     );
   const cardSession = wantsCard && input.appUrl
     ? ((await client.supabase.rpc("preview_card_session", { p_org: client.session.orgId })).data as string | null)
@@ -559,9 +565,13 @@ export async function compileEmailPreview(
   // built from `payload.session_id`, and the sample's names no row — so
   // without this the preview's button points at a 404 while the sent mail's
   // points at the session. One answer fixes both.
+  // ★ Wave 30: the sample's `poster_wide` names a render its fake session does not have — the preview draws the card
+  // it found (or no poster), never a 16:9 URL that 404s.
+  const { poster_wide: _sampleWide, ...samplePayload } = sample.payload as Record<string, unknown> & { poster_wide?: unknown };
+  void _sampleWide;
   let payload: Record<string, unknown> = cardSession
-    ? { ...sample.payload, session_id: cardSession, session_card_image_url: cardImageUrl }
-    : sample.payload;
+    ? { ...samplePayload, session_id: cardSession, session_card_image_url: cardImageUrl }
+    : samplePayload;
   let member: { name: string | null; email: string } = sample.member ?? SAMPLE_MEMBER;
   // ★ Wave 23, «معاينة واختبار»: the real session's words too, not only its id and card — the same function the test
   // send reads (`send_test_email.ts`), so the two show one session.
@@ -569,6 +579,11 @@ export async function compileEmailPreview(
     const { data } = await client.supabase.rpc("session_public_card", { p_session: cardSession });
     const card = (Array.isArray(data) ? data[0] : data) as { title?: string; starts_at?: string; venue_name?: string | null } | null;
     if (card?.title) payload = { ...payload, title: card.title, startsAt: card.starts_at ?? payload.startsAt, venue: card.venue_name ?? payload.venue };
+    // ★ Wave 30 (`DEC-289`): and that session's own facts — the presenter, the seats, the company, the poster — read
+    // by the function the worker reads (`email_preview_facts()` wraps `email_facts()`, staff of this org only).
+    const { data: raw } = await client.supabase.rpc("email_preview_facts", { p_session: cardSession, p_key: input.key });
+    const own = Object.fromEntries(Object.entries(payload).filter(([k]) => !(SESSION_FACT_KEYS as readonly string[]).includes(k)));
+    payload = { ...own, ...formatFacts((raw ?? {}) as RawFacts, own, prefs.timeZone) };
   }
   // ★ Wave 23, the CANVAS: each binding as its token, so the admin edits «{اسم العضو}» rather than one sample member's
   // name. A URL stays real — a button whose href is a token is not sendable and the compiler would drop it.
@@ -588,7 +603,6 @@ export async function compileEmailPreview(
     annotate: input.editor === true,
     member,
     org: { name: (org?.name as string | undefined) ?? SAMPLE_ORG.name, timeZone: prefs.timeZone },
-    brand: light ? { light, dark } : null,
     // `org_public_logo()` returns a row only for an ACTIVE org with a PNG or
     // JPEG logo, so an empty result is the same «render the org's NAME» the
     // worker produces rather than a broken image.
