@@ -31,6 +31,18 @@ not a failed request (§2.3).
 | 3 | `POST /api/stories/video/complete` `{ frameId, sessionId, path: upload.path, byteSize, caption? }` — idempotent: a retry of the same `frameId` is `202` again | `202 { status: "processing", frameId }` | as step 1, plus `400 caption_too_long` |
 | 4 ★ new | `GET /api/stories/video/{frameId}` — poll every 2 s while `processing`, stop at 90 s | `200 { state: "processing" }` · `200 { state: "visible", durationMs, posterUrl }` · `200 { state: "failed", reason: "too_long"\|"too_large"\|"unsupported"\|"failed" }` | `404 not_found` (not yours, removed, or never completed) · `400 invalid_input` |
 
+**Retrying a PUT** (photo and video alike). There is **no upsert**: `story-media` has an insert-only write policy by
+design (0199 §A — an uploaded source can never be overwritten), and `photos` likewise. So:
+- **do not send `x-upsert`** on the PUT; the signed URL is minted without it;
+- a PUT retried after one that actually landed answers **`400` with a JSON body whose `statusCode` is `"409"` /
+  `error` `"Duplicate"` / message «The resource already exists» — treat exactly that as success** and go on to
+  `/complete`;
+- retry only network failures (status 0), `408`, `429` and `5xx`. Every route's own errors are 4xx with
+  `{ error }`; its only 5xx is `500 { error: "upload_failed" }` (a database or Storage failure — retryable);
+- `/complete` is idempotent on its id (a frame or photo already recorded answers `202` again), so retry it freely;
+- a signed upload URL is valid for 2 hours; past that, start over at step 1 (a new id).
+- No TUS/resumable endpoint: ≤ 60 MB over one PUT is the design; a dropped PUT is retried whole.
+
 **Choosing `ext`** — the worker sniffs the bytes and never trusts the extension, so `ext` only picks the PUT's content
 type (the bucket admits `video/mp4`, `video/quicktime`, `video/webm`):
 - `video/quicktime` → `mov`;
