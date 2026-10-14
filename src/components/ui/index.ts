@@ -1938,12 +1938,16 @@ export interface StoryCaptureProps {
   onClose: () => void;
   /** The status line for the non-idle states — «جارٍ التجهيز», «أطول من 15 ثانية», «تعذّر». */
   message?: string;
+  /** 0..1 while `state` is "uploading"; absent → indeterminate. */
+  progress?: number;
   labels: {
     dialog: string; close: string; photoMode: string; videoMode: string;
     shutterPhoto: string; recordStart: string; recordStop: string;
     gallery: string; flip: string; caption: string; submit: string; retake: string;
     /** REQ-EVT-013: «تُشارَك مع الجميع في المؤسسة» — at the point of upload, never buried. */
     notice: string;
+    /** «أعد المحاولة» — the "error" state keeps the draft; this button calls `onSubmit`. */
+    retry?: string;
     elapsed: (seconds: number, limit: number) => string;
   };
 }
