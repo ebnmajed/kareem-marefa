@@ -10,6 +10,8 @@
 
 export type ReactionBody =
   | { target: "comment"; id: string; kind: "like"; on: boolean }
+  // DEC-291: the home feed's like on a session post (REQ-EVT-003), on the same queue as a comment's.
+  | { target: "session"; id: string; kind: "like"; on: boolean }
   | { target: "story"; id: string; kind: string | null };
 
 export type Settled = { ok: true; data: Record<string, unknown> } | { ok: false };

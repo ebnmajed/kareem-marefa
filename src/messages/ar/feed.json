@@ -30,6 +30,7 @@
       "attendedLive": "{count, plural, zero {لم يسجّل أحد حضوره بعد} one {حاضر واحد الآن} two {حاضران الآن} few {{value} حاضرين الآن} many {{value} حاضرًا الآن} other {{value} حاضر الآن}}",
       "reactions": "التفاعل مع الجلسة",
       "like": "إعجاب",
+      "likeFailed": "تعذّر تسجيل إعجابك",
       "comments": "{count, plural, zero {لا تعليقات، افتح النقاش} one {تعليق واحد} two {تعليقان} few {{value} تعليقات} many {{value} تعليقًا} other {{value} تعليق}}",
       "posterName": "ملصق جلسة {title}",
       "points": "+{value}",

@@ -39,7 +39,7 @@ export async function RecapPost({ post, extra, locale, now, today }: { post: Ses
         </>
       }
       photos={extra.photos.map((p) => ({ src: p.url, alt: t("recap.photoAlt", { title: post.title }), width: p.width, height: p.height }))}
-      reactions={<LikeButton locale={locale} sessionId={post.id} liked={post.likedByMe} count={post.likeCount} groupLabel={t("post.reactions")} likeLabel={t("post.like")} />}
+      reactions={<LikeButton locale={locale} sessionId={post.id} liked={post.likedByMe} count={post.likeCount} groupLabel={t("post.reactions")} likeLabel={t("post.like")} failedLabel={t("post.likeFailed")} />}
       materials={extra.hasMaterials ? { href: `${post.href}#materials`, label: t("recap.materials") } : null}
     />
   );

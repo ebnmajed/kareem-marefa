@@ -187,7 +187,7 @@ export async function SessionPost({ post, locale, today }: { post: SessionPostDa
 
           {cancelled ? null : (
             <div className="flex flex-wrap items-center gap-2">
-              <LikeButton locale={locale} sessionId={post.id} liked={post.likedByMe} count={post.likeCount} groupLabel={t("post.reactions")} likeLabel={t("post.like")} />
+              <LikeButton locale={locale} sessionId={post.id} liked={post.likedByMe} count={post.likeCount} groupLabel={t("post.reactions")} likeLabel={t("post.like")} failedLabel={t("post.likeFailed")} />
               <Link
                 href={`${post.href}#discussion`}
                 quiet
