@@ -3,7 +3,8 @@ import { z } from "zod";
 import { getSessionState } from "@/lib/dal/session";
 import { setReaction, setStoryReaction, STORY_REACTION_KINDS } from "@/lib/dal/reactions";
 
-// POST /api/reactions — a like on a comment, a reaction on a story frame (DEC-290; REQ-EVT-004, REQ-STO-005).
+// POST /api/reactions — a like on a comment or a session post, a reaction on a story frame (DEC-290, DEC-291;
+// REQ-EVT-003, REQ-EVT-004, REQ-STO-005).
 //
 // ★ A Route Handler, not a Server Action: Server Actions run ONE AT A TIME per client, so a tap waited behind any
 // other action in flight — a story's batched views, a comment being posted — and felt slow. This runs beside them.
@@ -21,6 +22,7 @@ const NO_STORE = { "cache-control": "no-store" };
 
 const input = z.discriminatedUnion("target", [
   z.object({ target: z.literal("comment"), id: z.uuid(), kind: z.literal("like"), on: z.boolean() }),
+  z.object({ target: z.literal("session"), id: z.uuid(), kind: z.literal("like"), on: z.boolean() }),
   z.object({ target: z.literal("story"), id: z.uuid(), kind: z.enum(STORY_REACTION_KINDS).nullable() }),
 ]);
 
@@ -38,6 +40,10 @@ export async function POST(request: Request) {
     const body = parsed.data;
     if (body.target === "comment") {
       const on = await setReaction("ar", { commentId: body.id }, body.kind, body.on);
+      return NextResponse.json({ on }, { headers: NO_STORE });
+    }
+    if (body.target === "session") {
+      const on = await setReaction("ar", { sessionId: body.id }, body.kind, body.on);
       return NextResponse.json({ on }, { headers: NO_STORE });
     }
     const mine = await setStoryReaction("ar", body.id, body.kind);

@@ -197,17 +197,31 @@ export function StoryViewer({ open, stories, storyIndex, onClose: closeNow, onFr
   const startOf = (s: number) => Math.min(Math.max(0, stories[s]?.startIndex ?? 0), Math.max(0, (stories[s]?.frames.length ?? 1) - 1));
   const [pos, setPos] = useState({ s: storyIndex, f: startOf(storyIndex) });
   const [opened, setOpened] = useState(open);
-  // Re-opened, or opened on another ring: start where that ring's story starts (React's «adjust state during render»).
-  if (open !== opened) {
-    setOpened(open);
-    if (open) setPos({ s: storyIndex, f: startOf(storyIndex) });
-  }
 
   const [paused, setPaused] = useState(false);
   const [held, setHeld] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [restart, setRestart] = useState(0);
   const elapsedRef = useRef(0);
+
+  // Re-opened, or opened on another ring: start where that ring's story starts (React's «adjust state during render»).
+  // ★ DEC-291 — AND ON A FRESH CLOCK. A frame that ran out left its elapsed time at the full duration, and reopening
+  // on the same frame kept the same clock key (`frame.id:restart`), so the first tick read «done» and the viewer shut
+  // the moment it opened: a watched story could not be watched again. A reopening bumps the key and drops a leftover
+  // pause or hold; the elapsed time is zeroed when the viewer closes (the effect below — a ref is not written in
+  // render).
+  if (open !== opened) {
+    setOpened(open);
+    if (open) {
+      setPos({ s: storyIndex, f: startOf(storyIndex) });
+      setRestart((n) => n + 1);
+      setPaused(false);
+      setHeld(false);
+    }
+  }
+  useEffect(() => {
+    if (!open) elapsedRef.current = 0;
+  }, [open]);
   const pointer = useRef<{ x: number; y: number; at: number; timer: number } | null>(null);
   const shown = useRef(new Set<string>());
 
