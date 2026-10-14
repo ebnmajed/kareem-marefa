@@ -24,7 +24,7 @@
 // courtesy; the database refuses the write regardless.
 
 import type { DayWindow, PhaseInput, SessionPhase, SessionState, ViewerInput, ViewerRelation } from "@/lib/session-status";
-import { canGrantOn, checkInDay, parseInstant, resolveDay, scheduledEnd, sessionPhase } from "@/lib/session-status";
+import { CHECK_IN_CEILING_MS, canGrantOn, checkInDay, parseInstant, resolveDay, scheduledEnd, sessionPhase } from "@/lib/session-status";
 
 /** «قبل» · «أثناء» · «بعد» · مواد الجلسة الخاصة بمقدِّم أو مشرف قبل النشر. */
 export type MaterialsWindow = "none" | "pre" | "during" | "after" | "own";
@@ -208,7 +208,6 @@ export function rateAllowed(session: PhaseInput, relation: ViewerRelation, now: 
  *  whose scheduled start has passed. */
 export const CHECK_IN_ATTENDANCE_STATES: readonly SessionState[] = ["published", "in_progress", "completed"] as const;
 
-const TWO_HOURS_MS = 2 * 60 * 60_000;
 
 /**
  * The day a check-in on this session is about, right now — `resolve_session_day()`'s
@@ -285,7 +284,7 @@ export function checkInIneligibleReason(session: PhaseInput, viewer: ViewerInput
     const end = scheduledEnd(session, start);
     if (!start || !end) return "not_published"; // defensive; unreachable for these three states (0010's check constraint).
     if (now.getTime() < start.getTime()) return "not_started"; // the floor.
-    if (now.getTime() >= end.getTime() + TWO_HOURS_MS) return "session_ended"; // the ceiling, REQ-CHK-016.
+    if (now.getTime() >= end.getTime() + CHECK_IN_CEILING_MS) return "session_ended"; // the ceiling, REQ-CHK-016 (DEC-294).
     if (!checkInOpen) return "check_in_closed"; // the switch, REQ-CHK-015.
   }
 

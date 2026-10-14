@@ -85,10 +85,10 @@ describe("getHostView — wave 18's add-only fields", () => {
     expect((await getHostView("ar", SESSION))!.capacity).toBeNull();
   });
 
-  it("★ the ceiling at one day is the end + 2 h (REQ-CHK-016)", async () => {
+  it("★ the ceiling at one day is the end + 8 h (REQ-CHK-016, DEC-294)", async () => {
     const v = (await getHostView("ar", SESSION))!;
     const end = Date.parse(v.day!.endsAt);
-    expect(Date.parse(v.closesAt!) - end).toBe(2 * 3_600_000);
+    expect(Date.parse(v.closesAt!) - end).toBe(8 * 3_600_000);
   });
 
   it("★ the ceiling is capped by the next day's start (DEC-151)", async () => {

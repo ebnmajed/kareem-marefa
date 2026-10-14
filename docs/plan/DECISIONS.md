@@ -11226,3 +11226,32 @@ switch is open, and the viewer has not checked in to that day. The dead timeline
 `check_in()` remains the authority (`REQ-NFR-001`); nothing here widens what the database accepts.
 
 - **Documents changed:** `STATUS.md`
+
+## DEC-294 — Check-in stays open eight hours after the session; the host side follows the window, not the clock; the button reads «Check-in»
+
+**Date:** 2026-10-14 · **Status:** accepted · **By:** the owner · **Refs:** REQ-CHK-016, REQ-CHK-014, REQ-CHK-015, REQ-CHK-008, REQ-UIX-015 · **Amends:** `REQ-CHK-016`, `DEC-141`'s two hours · **Migration:** `0225`
+
+**The owner:** «i want it to change the name of it to "Check-in" yes in english as is, and want it to stay visible until 8
+hours after the session» · «btw even the 2hours ceiling isn't working» · «i want it to also apply on current sessions, and
+i need it live asap».
+
+**Why the two hours never worked.** The database honoured the grace window — `check_in()` accepts a code to
+`check_in_ceiling()` — but everything on the host side was keyed on the clock phase, which reads `ended` at `ends_at`:
+(1) the matrix took «شاشة التقديم» away from presenters and staff at the end, so nobody could reach the code; (2) the
+host view stopped listening and rotating at the end, so a rotating code on the wall went stale within its period and
+every attempt failed `invalid_code`; (3) the switch and marking by hand disappeared with it. And the event page's
+outcome told a member «لم تُسجّل حضورك» beside a working check-in button.
+
+**Ruling.**
+1. **The ceiling is `ends_at + 8 h`** (`0225`: `check_in_ceiling()` replaced — every gate calls it, so the code issuer,
+   the switch, the rotation, the manual mark and the day resolver move together; `CHECK_IN_CEILING_MS` is its twin).
+   `DEC-151`'s cap by the next day's start is unchanged. ★ **It applies to every existing session at once**: the ceiling
+   is computed from each day's `ends_at` on every call — nothing is stored.
+2. **The host side follows the window, not the phase.** A presenter or staff member keeps «شاشة التقديم» while a day
+   takes attendance; the host view listens, rotates and keeps the switch and the manual mark while a code exists
+   (the RPC mints none outside the window).
+3. **The outcome card waits** until check-in is no longer offered.
+4. **The button reads «Check-in»**, in English, in both catalogues — the event page's and the feed post's. The
+   check-in screen's own title and submit are unchanged.
+
+- **Documents changed:** `01-prd.md` (`REQ-CHK-016`), `03-permissions-rls.md`, `STATUS.md`

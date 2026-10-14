@@ -66,8 +66,8 @@ describe("the event page's check-in link", () => {
     expect(eventCheckInLink(session, NOW)).toBe(true);
   });
 
-  it("hides past the ceiling — ends_at + 2 h", () => {
-    const late = new Date("2026-09-16T19:00:00Z");
+  it("hides past the ceiling — ends_at + 8 h (DEC-294)", () => {
+    const late = new Date("2026-09-17T01:00:00Z");
     expect(eventCheckInLink(event({ state: "completed", startsAt: "2026-09-16T16:00:00Z", endsAt: "2026-09-16T17:00:00Z" }), late)).toBe(false);
   });
 

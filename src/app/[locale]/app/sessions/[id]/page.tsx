@@ -2,7 +2,7 @@ import { cache, type CSSProperties, type ReactNode } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { affordancesFor, rateAllowed } from "@/components/checkin/session-matrix";
+import { affordancesFor, CHECK_IN_ATTENDANCE_STATES, rateAllowed } from "@/components/checkin/session-matrix";
 import { Comments, commentsSummary } from "@/components/event/comments";
 import { Ratings, ratingsSummary } from "@/components/event/ratings";
 import { Materials, materialsSummary } from "@/components/materials/list";
@@ -41,7 +41,7 @@ import { canAddToStory } from "@/lib/dal/story-frames";
 import { getSessionState, requireSession } from "@/lib/dal/session";
 import { isCompanyAttendanceRuleEnabled } from "@/lib/dal/leaderboards";
 import { getEventAttendeeFaces, getEventFigures, getSessionForEvent, getViewerCompany, listSessionDays, type EventSession } from "@/lib/dal/sessions";
-import { canGrantOn, closingSoon, sessionPhase, type SessionPhase, type ViewerRelation } from "@/lib/session-status";
+import { canGrantOn, checkInDay, closingSoon, sessionPhase, type SessionPhase, type ViewerRelation } from "@/lib/session-status";
 
 // SCR-012 · /app/sessions/[id] ★ — the event page, rebuilt in wave 18 from `Event.dc.html`,
 // `EventLive.dc.html`, `EventDone.dc.html` and `EventDesktop.dc.html` (REQ-UIX-061, STORY-UIX-048, DEC-205,
@@ -112,7 +112,12 @@ export default async function EventPage({
   const phase = sessionPhase({ ...session, days });
   const relation = session.viewerRelation;
   // ★ Every gate is the matrix's (REQ-UIX-015, DEC-090) — derived once, never re-written at a call site.
-  const can = affordancesFor(phase, relation);
+  // ★ DEC-294: the room keeps its host view while the day takes attendance — past the scheduled end, up to the
+  // ceiling. The phase reads `ended` at `ends_at`, and the matrix took the host view away with it, so nobody could
+  // reach the code during the grace window the database still honoured.
+  const cell = affordancesFor(phase, relation);
+  const takingAttendance = CHECK_IN_ATTENDANCE_STATES.includes(session.state) && checkInDay(days) !== null;
+  const can = (session.viewerIsStaff || session.viewerIsPresenter) && takingAttendance ? { ...cell, hostConsole: true } : cell;
   // ★ One check-in answer for the whole page, with the days (contract 2): the primary, the card and the bar read it.
   const checkIn = eventCheckIn(session, days);
   const canCheckIn = checkIn === "offer";

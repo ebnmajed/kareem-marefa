@@ -62,8 +62,8 @@ describe("postAction — a feed never reserves; every action is a link (§4.57)"
   it("★ the grace window: an ended session still taking attendance offers check-in, as the event page does", () => {
     const grace = candidate({ state: "completed", phase: "ended", startsAt: at(-1.5), endsAt: at(-0.5), checkInOpen: true });
     expect(postAction(grace, "closed", viewer({ mine: "confirmed" }), NOW).kind).toBe("checkIn");
-    // Past the ceiling (ends_at + 2 h), never.
-    const late = candidate({ state: "completed", phase: "ended", startsAt: at(-3.5), endsAt: at(-2.5), checkInOpen: true });
+    // Past the ceiling (ends_at + 8 h, DEC-294), never.
+    const late = candidate({ state: "completed", phase: "ended", startsAt: at(-9.5), endsAt: at(-8.5), checkInOpen: true });
     expect(postAction(late, "closed", viewer({ mine: "confirmed" }), NOW).kind).toBe("none");
   });
 

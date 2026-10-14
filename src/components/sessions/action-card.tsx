@@ -135,7 +135,9 @@ export async function ActionCard(props: ActionCardProps) {
 
           {live ? <LiveCount session={session} figures={figures} faces={props.faces} /> : null}
 
-          {ended ? <OutcomeCard session={session} slot={slot} /> : null}
+          {/* ★ DEC-294: the outcome is a fact only once the door has shut — while check-in is still offered (the grace
+              window, to the ceiling) «لم تُسجّل حضورك» would contradict the button beside it. */}
+          {ended && checkIn !== "offer" ? <OutcomeCard session={session} slot={slot} /> : null}
 
           {/* From `lg` the primary is compact, as `EventDesktop.dc.html:48` draws it: it takes its own width, never the row's. */}
           <div className="flex flex-col gap-3 lg:w-auto lg:max-w-sm lg:flex-none">

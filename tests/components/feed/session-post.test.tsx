@@ -143,7 +143,7 @@ describe("SessionPost", () => {
     const { container } = await show(post({ phase: "live", state: "in_progress", attendedCount: 23, action: { kind: "checkIn", href: "/app/sessions/x/check-in", booked: true } }));
     expect(screen.getByText("23 حاضرًا الآن")).toBeInTheDocument();
     expect(container.querySelectorAll('[role="img"][aria-label]').length).toBeLessThanOrEqual(1);
-    expect(screen.getByRole("link", { name: /سجّل حضورك/ })).toHaveAttribute("href", "/ar/app/sessions/x/check-in");
+    expect(screen.getByRole("link", { name: /Check-in/ })).toHaveAttribute("href", "/ar/app/sessions/x/check-in");
   });
 
   it("the poster is a link to the event page, named in words — an accessible name holds no markup", async () => {
