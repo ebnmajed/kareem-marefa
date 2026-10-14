@@ -50,7 +50,7 @@ the category it belongs to for preferences.
 
 | Trigger | `MSG-*` | To | Channels | Optional? | Category |
 |---|---|---|---|---|---|
-| Seat confirmed | `MSG-rsvp_confirmed` | the member | in-app | yes | `my_sessions` |
+| Seat confirmed | `MSG-rsvp_confirmed` | the member | in-app, ★ email (`0224`, `DEC-289` — the design's ticket) | yes | `my_sessions` |
 | Joined the waitlist | `MSG-rsvp_waitlisted` | the member | in-app | yes | `my_sessions` |
 | **Promoted off the waitlist** | `MSG-rsvp_promoted` | the member | in-app, email | **no** | `my_sessions` |
 | RSVP deadline approaching (**no job schedules it — `11` §7 gap, DEC-047; not implemented in wave 2**) | `MSG-rsvp_deadline_soon` | waitlisted | in-app | yes | `my_sessions` |
@@ -60,10 +60,11 @@ the category it belongs to for preferences.
 
 | Trigger | `MSG-*` | To | Channels | Optional? | Category |
 |---|---|---|---|---|---|
-| Check-in recorded | `MSG-check_in_confirmed` | the member | in-app | yes | `my_sessions` |
+| Check-in recorded | `MSG-check_in_confirmed` | the member | in-app, ★ email (`0224`, `DEC-289` — after-session, no points figure; fired by `check_ins_notify()` on the first check-in) | yes | `my_sessions` |
 | Rating prompt (+1h) | `MSG-rating_prompt` | checked-in attendees | in-app, email | yes | `ratings` |
 | Materials added after | `MSG-materials_added` | checked-in attendees | in-app, email | yes | `my_sessions` |
 | Reply to your comment | `MSG-comment_reply` | comment author | in-app, email | yes | `social` |
+| ★ A comment on a session you present (`REQ-EVT-017`, `0224`) | `MSG-session_comment` | the session's accepted presenters, not the author, once per comment | in-app, email | yes | `social` |
 | Mentioned in a comment | `MSG-mentioned` | mentioned member | in-app, email | yes | `social` |
 | **Your photo was hidden** | `MSG-photo_hidden` | uploader | in-app | **no** | `moderation` |
 | Content removed | `MSG-content_removed` | author | in-app | **no** | `moderation` |
@@ -78,6 +79,7 @@ the category it belongs to for preferences.
 | Streak completed | `MSG-streak_completed` | the member | in-app | yes | `recognition` |
 | Points adjusted manually | `MSG-points_adjusted` | the member | in-app | **no** | `recognition` |
 | Monthly board closed | `MSG-leaderboard_closed` | top 10 + the member's own rank | in-app | yes | `recognition` |
+| ★ The week closed (`REQ-LDR-009`, `0224`) — Sunday 08:00, org's zone | `MSG-leaderboard_weekly` | every active member ranked that week who has not opted out | in-app, email | yes | `recognition` |
 | **Certificate issued** | `MSG-certificate_issued` | recipient | in-app, **email** | **no** | `certificates` |
 | Certificate revoked | `MSG-certificate_revoked` | recipient | in-app, email | **no** | `certificates` |
 
@@ -166,13 +168,23 @@ export that does.
 - **Tables for layout, inline CSS.** Email clients in 2026 still do not support modern CSS reliably.
 - **`dir="rtl"` on `<html>` and on every table cell.** Outlook ignores inherited direction more
   often than it honours it.
-- **Web fonts do not load in most clients** — so email falls back to a declared stack, and the
-  templates are designed to look right in the fallback rather than to depend on the brand face.
+- ~~**Web fonts do not load in most clients** — so email falls back to a declared stack.~~ ★ **Amended by
+  `DEC-289` (`REQ-NTF-018`):** the product's face, Baloo Bhaijaan 2, is LOADED by a Google Fonts `<link>` — Apple
+  Mail, iOS Mail and Outlook.com render it — and `'Segoe UI', Tahoma, Arial` stand behind it where it is stripped
+  (Gmail). Never `@font-face`, never a font file of our own.
+- ★ **Dark only, one fixed design** (`DEC-289`): `color-scheme: dark` declared, the tokens of
+  `docs/design/emails/build.py`, the hosted PNG mark and «كريم معرفة» in the header; an org's brand kit no longer
+  restyles mail. A preheader on every message; a footer with the settings link and, for an optional message, the
+  per-type one-click unsubscribe (`REQ-NTF-019`).
 - **Western digits, always** — `REQ-INT-006`, `DEC-124`. (This line read «numerals follow the org setting» until `DEC-161`; the setting was abolished by `DEC-124` and its column dropped by `0082`.)
 - **A plain-text alternative** for every message. Some corporate clients strip HTML entirely.
 
 ### 3.2 The templates
 
+> ★ **Since `0224` (`DEC-289`): 30 messages have an email channel** — `MSG-rsvp_confirmed` and `MSG-check_in_confirmed`
+> gained email, `MSG-session_comment` and `MSG-leaderboard_weekly` are new — and the pinned set is 37 cases × 4 parts
+> (148 files). The paragraph below is the record of wave 10.
+>
 > **Corrected under `DEC-160` §4 and `DEC-161`.** The matrix in force (`0062`) gives **25** messages an email channel and the mail renderer carries **25** templates; this list carried 23 until wave 10. `MSG-proposal_submitted` and `MSG-presenter_assigned` have had templates since wave 2. `tests/unit/mail-render.test.ts` diffs the template file against the matrix read out of the promoted migration, and `tests/unit/mail-pinned.test.ts` pins all 25 rendered messages, so the gap cannot reopen quietly in either direction.
 
 | `MSG-*` | Arabic subject |

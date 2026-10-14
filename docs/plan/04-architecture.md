@@ -221,7 +221,7 @@ transpiles workspace packages automatically under the App Router**, so there is 
 URL segment. **`(dev)` groups the component gallery** (`DEC-083`), which is not a product surface:
 it reads no data, renders only props, and is **gated at the edge** — `proxy.ts` returns 404 for
 `/[locale]/ui` unless `KAREEM_GALLERY=1`, which `scripts/visual-diff.mjs` sets when it spawns
-`next start`. `NODE_ENV` cannot do this job: `stubbed-server.mjs` refuses to start without `.next`
+`next start` (★ and, since `DEC-289`, on a development server, for the email preview at `/[locale]/ui/emails`). `NODE_ENV` alone cannot do this job: `stubbed-server.mjs` refuses to start without `.next`
 and serves the **production build**, so a route excluded from that build makes `npm run visual`
 404, and a route included in it is publicly reachable on the live domain. The frozen marketing routes stay exactly where they are — **`REQ-NFR-019` means
 `/`, `/ar`, `/en`, `/ar/register` and `/og.png` do not move**, and a route group would not change
@@ -236,6 +236,8 @@ their URLs but would change their files, which is a diff on a live page for no b
 | Admin configuration writes | Designer autosave (layer trees get large) |
 | Anything wanting read-your-own-writes via `updateTag()` | ICS generation |
 | | Public `/verify` (needs per-IP rate limiting before the DB) |
+| | ★ `POST /api/email/unsubscribe?t=` — RFC 8058's one-click, no cookie (`DEC-289`); the token is checked in the database |
+| | ★ `GET /api/s/{id}/wide` — the poster's 16:9 render for a mail client, `og`'s door widened by one preset (`0224`) |
 | | Webhooks |
 
 **Never `Promise.all` over Server Actions from a client component** [v16] — they serialise, so the

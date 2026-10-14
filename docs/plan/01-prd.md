@@ -1396,6 +1396,16 @@ see, and never a hidden or removed one.
   «3 من 12», with Western numerals (`DEC-124`).
 - At 390 px in Arabic the controls meet `SC 2.5.8` and cause no horizontal page scroll.
 
+#### REQ-EVT-017 — A presenter is told of every comment on their session
+**Serves:** owner 2026-10-14 · `DEC-289` · `REQ-EVT-007`
+Every comment on a session notifies that session's **accepted presenters** — in the inbox and by email, as
+`MSG-session_comment`, in the `social` category a member may switch off. A reply to a member's own comment still
+notifies them as `MSG-comment_reply`, and a mention as `MSG-mentioned`.
+**Acceptance:**
+- The comment's author is never told of their own comment.
+- One comment is one message per person: a presenter already told by the reply or the mention is not told again.
+- Only accepted presenters; a co-presenter who declined or has not answered is told nothing.
+
 ---
 
 ## 11. Ratings — `RAT`
@@ -1656,6 +1666,18 @@ toward their شركة's total.
 - An opted-out member still sees their own rank privately.
 - Company aggregates are unchanged by an opt-out, so the perverse incentive to opt out to protect
   a company average does not exist.
+
+#### REQ-LDR-009 — The week closes on Sunday morning, and each ranked member is told where they finished
+**Serves:** owner 2026-10-14 · `DEC-289` · amends `DEC-217` §3.4
+The week runs **Sunday 00:00 to Saturday 23:59 in the org's own zone** — for the weekly board in the app and for its
+close. At **Sunday 08:00** the week that just ended is closed once, and every active member who earned net points in
+it and has not opted out (`REQ-LDR-008`) is sent `MSG-leaderboard_weekly`: their rank, its change from the week
+before, their attending, presenting and interaction counts, the week's top three and their own row.
+**Acceptance:**
+- A week is closed once per org whatever runs twice; a worker down on Sunday morning closes it when it returns.
+- The ranks are the board's own: opted-out and deactivated members are absent, a net of zero or less is unranked.
+- The in-app weekly board, the inbox's «هذا الأسبوع» and the mail agree on the week.
+- Optional, in the `recognition` category.
 
 ---
 
@@ -2451,6 +2473,39 @@ families.
 - The mail carries a generated text alternative and no SVG; the copy is authored in Arabic first.
 - Re-sending is the same mail to the same address, and every send is in the delivery log with its reason.
 - A member who has already signed in, or who has been deactivated, is sent nothing however the job is triggered.
+
+#### REQ-NTF-018 — Every mail wears the approved dark design
+**Serves:** owner 2026-10-14 · `DEC-289` · `docs/design/emails/` · amends `REQ-NTF-014`, `REQ-NTF-016`
+Every message is rendered in the owner's approved design: **dark only**, 600 px, table layout with inline styles,
+`dir="rtl"` and `lang="ar"`, Baloo Bhaijaan 2 through the Google Fonts link with `'Segoe UI', Tahoma, Arial` behind
+it, the hosted PNG mark and «كريم معرفة» in the header with the host company — from the session's venue — beside
+them. The exact tokens of `build.py`. **An org's brand kit no longer restyles mail** (posters and certificates still
+read it). Seven messages wear their own design — new session, booking confirmed, the two reminders, a comment on
+your session, the week's close, and after-session (sent at check-in) — built from blocks the studio edits; every
+other message wears its family's layout on the same shell.
+**Acceptance:**
+- Every mail carries a preheader, a generated plain-text alternative and the composed footer; one lime button at most,
+  secondary actions as quiet text links; no greeting paragraph and no explanatory copy.
+- Western numerals everywhere (`DEC-124`); «+20», «↑ 2», a ticket reference and a certificate serial are left-to-right.
+- The VML button fallback is kept for Outlook; no SVG anywhere (invariant 11); no `overflow:hidden` on text.
+- Every figure is read, never a literal: the seats from confirmed reservations, the amount from the org's `check_in`
+  rule, the presenter, the company, the certificate. A fact that does not exist draws no row.
+- The new-session poster is the 16:9 `landscape` render (1920 × 1080) through `/api/s/{id}/wide`; none, no row.
+- The booking's QR is the session's event page, never a personal code. The after-session mail names no points
+  (`REQ-PTS-015`) and shows the certificate only when one is issued.
+- A dev-only preview (`/ar/ui/emails`) renders all seven from the sample set; the pinned files move once.
+
+#### REQ-NTF-019 — A message a member may switch off can be switched off from the message
+**Serves:** owner 2026-10-14 · `DEC-289` · RFC 2369, RFC 8058 · `REQ-NTF-005`
+A mail whose message is optional carries a **per-type link** that switches its category's email off — in the
+footer, beside the settings link, and as `List-Unsubscribe` with `List-Unsubscribe-Post: List-Unsubscribe=One-Click`.
+The link works without signing in. `08` §1.7's set carries the settings link alone.
+**Acceptance:**
+- The token names a member and a category and is signed with a per-org key no client role can read; it is checked
+  in the database, so nothing secret reaches Vercel and no `service_role` is used.
+- The footer link opens a page that asks first; only a POST switches mail off — a link scanner cannot.
+- Applying a token twice leaves one preference, off; a forged token, another member's id or a category with no
+  optional message is refused with one answer.
 
 
 ---
