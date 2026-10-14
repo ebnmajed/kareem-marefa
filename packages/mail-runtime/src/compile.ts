@@ -947,8 +947,10 @@ function compileDesignBlock(
       }
       const label = say(block.label);
       const glue = base.includes("?") ? "&" : "?";
+      // ★ `?stars=N` PRE-SELECTS the tapped star on the rating page; the member still submits (the owner's ruling on
+      // PR #115). A GET link never writes a rating.
       const cells = [1, 2, 3, 4, 5]
-        .map((n) => `<td style="padding-left:8px"><a href="${escapeHtml(`${base}${glue}r=${n}`)}" style="display:inline-block;width:44px;height:44px;line-height:44px;text-align:center;border-radius:14px;background:${MAIL.raised};text-decoration:none;${t(17, 800, MAIL.text, 44 / 17)}">${formatNumber(n)}</a></td>`)
+        .map((n) => `<td style="padding-left:8px"><a href="${escapeHtml(`${base}${glue}stars=${n}`)}" style="display:inline-block;width:44px;height:44px;line-height:44px;text-align:center;border-radius:14px;background:${MAIL.raised};text-decoration:none;${t(17, 800, MAIL.text, 44 / 17)}">${formatNumber(n)}</a></td>`)
         .join("");
       rows.push(designRow(block, ctx, 28, `${label ? `<div style="${t(15, 600, MAIL.muted, 1)}padding-bottom:12px">${escapeHtml(label)}</div>` : ""}<table ${TABLE}><tr>${cells}</tr></table>`));
       text.push(`${label ? `${label}: ` : ""}${isolate(base)}`);

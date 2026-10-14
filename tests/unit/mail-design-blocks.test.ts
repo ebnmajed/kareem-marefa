@@ -112,7 +112,7 @@ describe("the eleven blocks — each draws what its facts say, and nothing when 
 
   it("rating: five numbered links to the rating page, and none to a page we would not send", () => {
     const html = one({ type: "rating", id: "r", label: "قيّم الجلسة" }, { rate_url: `${ORIGIN}/ar/app/sessions/${SESSION}/rate` }).rows.join("");
-    for (const n of [1, 2, 3, 4, 5]) expect(html).toContain(`/rate?r=${n}"`);
+    for (const n of [1, 2, 3, 4, 5]) expect(html).toContain(`/rate?stars=${n}"`);
     expect(one({ type: "rating", id: "r", label: "x" }, { rate_url: "javascript:alert(1)" }).dropped).toHaveLength(1);
   });
 
