@@ -64,6 +64,24 @@ describe("CaptureFlow", () => {
     expect(document.querySelector("[data-story-capture]")).toHaveAttribute("data-state", "review");
   });
 
+  it("★ a camera that never answers (a prompt left open) still draws every control — close, mode, gallery, shutter", async () => {
+    Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia: vi.fn(() => new Promise(() => {})) } });
+    show();
+    await act(async () => {});
+    expect(screen.getByRole("button", { name: "إغلاق" })).toBeEnabled();
+    expect(screen.getByRole("radio", { name: "فيديو" })).toBeEnabled();
+    expect(screen.getByLabelText("من الاستوديو")).toBeEnabled();
+    expect(screen.getByRole("button", { name: "التقط صورة" })).toBeInTheDocument();
+  });
+
+  it("a camera with no mediaDevices at all (an insecure page) still draws close and the gallery", async () => {
+    Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: undefined });
+    show();
+    await act(async () => {});
+    expect(screen.getByRole("button", { name: "إغلاق" })).toBeEnabled();
+    expect(screen.getByLabelText("من الاستوديو")).toBeEnabled();
+  });
+
   it("a refused camera says so, keeps its reason, and leaves the gallery open", async () => {
     Object.defineProperty(navigator, "mediaDevices", {
       configurable: true,

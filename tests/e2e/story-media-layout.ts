@@ -12,9 +12,14 @@ const SIZES = [
 async function openDemo(page: Page, state: string) {
   const res = await page.goto("/ar/ui");
   test.skip(res?.status() === 404, "the gallery is off (KAREEM_GALLERY)");
-  await page.locator('[data-demo="story-capture"]').first().getByRole("button", { name: state, exact: true }).click();
   const capture = page.locator("[data-story-capture]");
-  await expect(capture).toBeVisible();
+  // ★ The gallery is the heaviest page in the app: under a full parallel run WebKit hydrates it well after it paints, and
+  // a click on a button React does not yet own does nothing (the first WebKit run, 8/8 «no dialog»; alone it passes).
+  // The click is repeated until the dialog answers — the harness waits for hydration, it never hides a dialog that fails.
+  await expect(async () => {
+    await page.locator('[data-demo="story-capture"]').first().getByRole("button", { name: state, exact: true }).click();
+    await expect(capture).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 30_000 });
   return capture;
 }
 
