@@ -38,6 +38,34 @@ const PATHS: Record<string, ReactNode> = {
     </>
   ),
   logo: <circle cx="12" cy="12" r="9" />,
+  // Wave 30 (`REQ-NTF-018`) — the design's pieces.
+  eyebrow: <rect x="4" y="9" width="12" height="6" rx="3" />,
+  hero: <path d="M6 5v14M10 5h6l-6 14" />,
+  when: (
+    <>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
+    </>
+  ),
+  presenter: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
+    </>
+  ),
+  seats: <path d="M4 12h16M4 12h10" />,
+  ticket: <path d="M3 7h18v4a2 2 0 0 0 0 4v4H3v-4a2 2 0 0 0 0-4z" />,
+  stats: <path d="M6 20V10M12 20V4M18 20v-7" />,
+  quote: <path d="M4 5h16v11H9l-5 4z" />,
+  leaderboard: <path d="M4 20V12h5v8M10 20V6h5v14M16 20v-5h4v5" />,
+  rating: (
+    <>
+      <rect x="3" y="9" width="5" height="6" rx="1" />
+      <rect x="10" y="9" width="5" height="6" rx="1" />
+      <rect x="17" y="9" width="4" height="6" rx="1" />
+    </>
+  ),
+  links: <path d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1" />,
   social: (
     <>
       <circle cx="6" cy="12" r="2" />

@@ -51,5 +51,26 @@ export function emptyBlock(type: BlockType): EmailBlock {
       return { type, id, label: "اعرض الشهادة" };
     case "social":
       return { type, id, items: [{ label: "", value: "" }] };
+    // Wave 30 (`REQ-NTF-018`, `DEC-289`) — the approved design's pieces. Those that read only the message's own
+    // facts need no field at all; the rest start with the design's own words.
+    case "eyebrow":
+      return { type, id, text: "", tone: "lime", chip: true };
+    case "hero":
+      return { type, id, text: "", label: "", tone: "lime" };
+    case "when":
+    case "presenter":
+    case "seats":
+    case "leaderboard":
+      return { type, id };
+    case "ticket":
+      return { type, id, label: "تذكرتك", tone: "lime" };
+    case "stats":
+      return { type, id, items: [{ label: "", value: "" }] };
+    case "quote":
+      return { type, id, label: "علّق على جلستك" };
+    case "rating":
+      return { type, id, label: "قيّم الجلسة" };
+    case "links":
+      return { type, id, items: [{ label: "", value: "" }] };
   }
 }

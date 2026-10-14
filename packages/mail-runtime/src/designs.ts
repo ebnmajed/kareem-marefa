@@ -82,6 +82,8 @@ export const DESIGN_FOR: Readonly<Record<string, DesignFamily>> = {
   "MSG-materials_added": "reminder",
 
   "MSG-rsvp_promoted": "rsvp",
+  // ★ Wave 30 (`DEC-289`): a reservation is mailed now, as the design's ticket.
+  "MSG-rsvp_confirmed": "rsvp",
   "MSG-session_changed": "rescheduled",
 
   "MSG-session_cancelled": "cancelled",
@@ -94,6 +96,10 @@ export const DESIGN_FOR: Readonly<Record<string, DesignFamily>> = {
   "MSG-proposal_changes": "rating",
   "MSG-comment_reply": "rating",
   "MSG-mentioned": "rating",
+  // ★ Wave 30 (`DEC-289`, `REQ-EVT-017`): every comment on a session a member presents.
+  "MSG-session_comment": "rating",
+  // ★ Wave 30: check-in confirmed — the after-session design, with no points figure (`DEC-289` §3).
+  "MSG-check_in_confirmed": "certificate",
 
   "MSG-certificate_issued": "certificate",
   "MSG-certificate_revoked": "certificate",
@@ -101,6 +107,8 @@ export const DESIGN_FOR: Readonly<Record<string, DesignFamily>> = {
 
   "MSG-badge_earned": "recognition",
   "MSG-level_reached": "recognition",
+  // ★ Wave 30 (`REQ-LDR-009`): the week's close, Sunday 08:00 in the org's zone.
+  "MSG-leaderboard_weekly": "recognition",
 };
 
 /** The words one message says, inside its family's shape. */
@@ -144,14 +152,16 @@ const COPY: Readonly<Record<string, Copy>> = {
   "MSG-certificate_revoked": { heading: "بخصوص شهادتك", body: "سُحبت الشهادة رقم {{serial}}.\n\nالسبب: {{reason}}\n\nإن كان لديك سؤال، ردّ على هذه الرسالة." },
   "MSG-export_ready": { heading: "بياناتك جاهزة", body: "جهّزنا نسخة من بياناتك. الرابط صالح لمدة محدودة.", action: { label: "نزّل بياناتك", urlBinding: "url" } },
 
+  "MSG-rsvp_confirmed": { heading: "مقعدك محجوز", body: "", action: { label: "أضف إلى التقويم", urlBinding: "calendar_url" } },
+  "MSG-session_comment": { heading: "تعليق على جلستك", body: "", action: { label: "ردّ", urlBinding: "url" } },
+  "MSG-check_in_confirmed": { heading: "أنت هنا!", body: "", action: { label: "حمّل الشهادة", urlBinding: "certificate_url" } },
+  "MSG-leaderboard_weekly": { heading: "ترتيبك هذا الأسبوع", body: "", action: { label: "لوحة الصدارة", urlBinding: "url" } },
   "MSG-badge_earned": { heading: "حصلت على شارة", body: "حصلت على شارة «{{badge}}».", action: { label: "اعرض شاراتك", urlBinding: "url" } },
   "MSG-level_reached": { heading: "وصلت إلى مستوى جديد", body: "وصلت إلى مستوى «{{level}}».", action: { label: "اعرض نقاطك", urlBinding: "url" } },
 };
 
-/** The org's mark, or — when `logoUrl` is null — its NAME as a heading. The
- *  compiler drops an image with no URL, so this block is safe to include in
- *  every design (contract 9). */
-const logo = (): EmailBlock => ({ type: "image", id: "logo", src: { kind: "org_logo" }, alt: "{{org}}", width: 160 });
+// ★ Wave 30 (`DEC-289`): the org's logo no longer opens a design — the shell's header carries the platform mark and
+// «كريم معرفة» on every mail. The `logo` and `image` blocks stay in the studio for an org that wants its own.
 
 /**
  * A family's LAYOUT, filled with one message's words.
@@ -228,10 +238,11 @@ const logo = (): EmailBlock => ({ type: "image", id: "logo", src: { kind: "org_l
  * colour used as a fill, which is the kind of substitution that reads as a
  * token meaning two things. Named, not worked around.
  */
-/** The greeting, once — the `recognition` family builds its own heading pair so
- *  it can centre it, and a second literal there would be the first thing to
- *  drift from the other seven. */
+/** The greeting, once — the families, the `recognition` family's centred pair and the seven designs all read it, so
+ *  no copy can drift. ★ The owner's ruling on PR #115 (`DEC-289` §2, as amended): every message keeps its greeting,
+ *  the seven designed ones included — overriding the brief's «no added greeting paragraphs». */
 const GREETING = "مرحبًا {{member.name}}،";
+const greeting = (): EmailBlock => ({ type: "paragraph", id: "greeting", text: GREETING });
 
 const HOUSE: EmailStyles = {
   ground: "canvas",
@@ -241,15 +252,9 @@ const HOUSE: EmailStyles = {
 };
 
 function layout(family: DesignFamily, copy: Copy): EmailBlock[] {
-  // ★ The heading, then the member by name — every string template greeted
-  // since M3, and `notify-jobs.test.ts` holds the sent mail to it. The designs
-  // dropped the greeting while only adopters received them; the retirement
-  // makes them every member's mail, so it comes back as a block an org may
-  // edit or remove (`DEC-081`).
-  const heading: EmailBlock[] = [
-    { type: "heading", id: "h", text: copy.heading, level: 1 },
-    { type: "paragraph", id: "greeting", text: GREETING },
-  ];
+  // ★ The heading, then the member by name — every string template greeted since M3, and the owner kept it on
+  // PR #115 (`DEC-289` §2). It is a block an org may edit or remove (`DEC-081`).
+  const heading: EmailBlock[] = [{ type: "heading", id: "h", text: copy.heading, level: 1 }, greeting()];
   const body: EmailBlock = { type: "paragraph", id: "body", text: copy.body };
   // ★ Typed as the button MEMBER, not as `EmailBlock`: a family that adds a
   // block style to it (the `recognition` one centres it) would otherwise spread
@@ -263,11 +268,11 @@ function layout(family: DesignFamily, copy: Copy): EmailBlock[] {
 
   switch (family) {
     case "announcement":
-      return [logo(), ...heading, body, { type: "session_card", id: "card", withImage: true }, ...button];
+      return [...heading, body, { type: "session_card", id: "card", withImage: true }, ...button];
     case "reminder":
-      return [logo(), ...heading, { type: "session_card", id: "card", withImage: true }, body, ...button];
+      return [...heading, { type: "session_card", id: "card", withImage: true }, body, ...button];
     case "rsvp":
-      return [logo(), ...heading, { type: "session_card", id: "card", withImage: true }, body, ...button];
+      return [...heading, { type: "session_card", id: "card", withImage: true }, body, ...button];
     case "rescheduled":
       // The change block is the point of this one: `{{changes}}` is the
       // renderer's pre-built «old ← new» (`08` §3.3, `REQ-SES-009`).
@@ -278,7 +283,6 @@ function layout(family: DesignFamily, copy: Copy): EmailBlock[] {
       // `divider` writes no line into the text alternative, so the plain part is
       // unchanged.
       return [
-        logo(),
         ...heading,
         body,
         { type: "divider", id: "changes-top" },
@@ -293,11 +297,11 @@ function layout(family: DesignFamily, copy: Copy): EmailBlock[] {
       // ★ Wave 24: the reason gets room after it, because this is the one mail a
       // member reads carefully and it ends here — there is no action below to
       // separate it from.
-      return [logo(), ...heading, { ...body, style: { padBottom: 24 } }];
+      return [...heading, { ...body, style: { padBottom: 24 } }];
     case "rating":
-      return [logo(), ...heading, body, ...button];
+      return [...heading, body, ...button];
     case "certificate":
-      return [logo(), ...heading, body, { type: "detail_list", id: "meta", items: [{ label: "رقم الشهادة", value: "{{serial}}" }] }, ...button];
+      return [...heading, body, { type: "detail_list", id: "meta", items: [{ label: "رقم الشهادة", value: "{{serial}}" }] }, ...button];
     case "recognition": {
       // ★ Wave 24: the one celebratory family, so the heading, the words and the
       // action are centred. `center` is `center` in both directions, so it needs
@@ -305,9 +309,8 @@ function layout(family: DesignFamily, copy: Copy): EmailBlock[] {
       // the right edge of an RTL mail.
       const centred = { align: "center" } as const;
       return [
-        logo(),
         { type: "heading", id: "h", text: copy.heading, level: 1, style: centred },
-        { type: "paragraph", id: "greeting", text: GREETING },
+        greeting(),
         { type: "paragraph", id: "body", text: copy.body, style: centred },
         ...(cta ? [{ ...cta, blockStyle: centred }] : []),
       ];
@@ -344,7 +347,130 @@ export function invitationDesign(): EmailBlockDocument {
   return { schemaVersion: SCHEMA_VERSION, blocks: layout("announcement", copy), styles: HOUSE };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// ★★ THE SEVEN APPROVED DESIGNS (wave 30, `REQ-NTF-018`, `DEC-289`) — `docs/design/emails/build.py`, as blocks.
+//
+// Each is the block document its `build.py` function draws, component for component and in the same order, so an
+// untouched org sends the approved mail and an admin who duplicates one edits THAT mail in the studio. Every other
+// key keeps its family layout above, on the same dark shell. A word or a figure, never a sentence of explanation;
+// the member's greeting first (the owner's ruling on PR #115); one lime button; secondary actions are quiet links.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+const ticketLinks = (): EmailBlock => ({
+  type: "links",
+  id: "more",
+  items: [
+    { label: "عرض الجلسة", value: "{{url}}" },
+    { label: "إلغاء الحجز", value: "{{cancel_url}}" },
+  ],
+});
+
+function reminderDesign(countdown: string): EmailBlock[] {
+  return [
+    { type: "hero", id: "when", text: countdown, label: "{{time}}", tone: "lime" },
+    { type: "paragraph", id: "day", text: "{{day}}" },
+    { type: "ticket", id: "ticket", label: "امسح عند الوصول", tone: "violet" },
+    { type: "presenter", id: "presenter" },
+    { type: "button", id: "cta", label: "الاتجاهات", urlBinding: "directions_url", style: "primary" },
+    {
+      type: "links",
+      id: "more",
+      items: [
+        { label: "عرض الجلسة", value: "{{url}}" },
+        { label: "لن أحضر", value: "{{cancel_url}}" },
+      ],
+    },
+  ];
+}
+
+const activityDesign = (line: string): EmailBlock[] => [
+  { type: "quote", id: "comment", label: line },
+  { type: "button", id: "cta", label: "ردّ", urlBinding: "url", style: "primary" },
+];
+
+const BESPOKE: Readonly<Record<string, () => EmailBlock[]>> = {
+  // new-session.html
+  "MSG-session_published": () => [
+    { type: "eyebrow", id: "type", text: "{{type}}", tone: "violet", chip: true },
+    { type: "poster", id: "poster", alt: "{{title}}" },
+    { type: "heading", id: "h", text: "{{title}}", level: 1 },
+    { type: "when", id: "when" },
+    { type: "presenter", id: "presenter" },
+    { type: "seats", id: "seats" },
+    { type: "button", id: "cta", label: "احجز مقعدك", urlBinding: "url", style: "primary" },
+  ],
+  // booking-confirmed.html
+  "MSG-rsvp_confirmed": () => [
+    { type: "eyebrow", id: "done", text: "تم الحجز", tone: "lime" },
+    { type: "heading", id: "h", text: "مقعدك محجوز، {{first_name}}", level: 1 },
+    { type: "ticket", id: "ticket", label: "تذكرتك", tone: "lime" },
+    {
+      type: "stats",
+      id: "stats",
+      items: [
+        { label: "نقطة عند الحضور", value: "{{points_on_attend}}" },
+        { label: "سيحضرون", value: "{{going_count}}" },
+      ],
+    },
+    { type: "button", id: "cta", label: "أضف إلى التقويم", urlBinding: "calendar_url", style: "primary" },
+    ticketLinks(),
+  ],
+  // reminder-week.html / reminder-tomorrow.html — one design, the countdown its one difference
+  "MSG-reminder_7d": () => reminderDesign("7 أيام"),
+  "MSG-reminder_1d": () => reminderDesign("غدًا"),
+  "MSG-reminder_2h": () => reminderDesign("ساعتان"),
+  "MSG-reminder_generic": () => reminderDesign("قريبًا"),
+  // activity-comment.html — a comment on a session you present, and a reply to your own comment
+  "MSG-session_comment": () => activityDesign("علّق على جلستك"),
+  "MSG-comment_reply": () => activityDesign("ردّ على تعليقك"),
+  // weekly-leaderboard.html
+  "MSG-leaderboard_weekly": () => [
+    { type: "eyebrow", id: "week", text: "{{week_label}}", tone: "lime", chip: true },
+    { type: "hero", id: "rank", text: "#{{rank}}", label: "{{rank_change}}", tone: "lime" },
+    {
+      type: "stats",
+      id: "stats",
+      items: [
+        { label: "حضور", value: "{{attended}}" },
+        { label: "تقديم", value: "{{presented}}" },
+        { label: "تفاعل", value: "{{interactions}}" },
+      ],
+    },
+    { type: "leaderboard", id: "board" },
+    { type: "button", id: "cta", label: "لوحة الصدارة", urlBinding: "url", style: "primary" },
+  ],
+  // after-session.html — at check-in, with no points figure (`DEC-289` §3) and the certificate only if it exists
+  "MSG-check_in_confirmed": () => [
+    { type: "hero", id: "here", text: "أنت هنا!", label: "", tone: "lime" },
+    { type: "paragraph", id: "thanks", text: "شكرًا لحضورك {{title}}" },
+    { type: "rating", id: "rate", label: "قيّم الجلسة" },
+    { type: "certificate", id: "certificate", label: "حمّل الشهادة" },
+  ],
+};
+
+/** The approved design's preheader per key — the line a client shows after the subject. Empty: the subject. */
+const PREHEADER: Readonly<Record<string, string>> = {
+  "MSG-session_published": "{{weekday}} {{date_day}} {{date_month}} · {{venue}}",
+  "MSG-rsvp_confirmed": "{{title}} — {{weekday}} {{time}}",
+  "MSG-reminder_7d": "{{title}} · {{time}} · {{venue}}",
+  "MSG-reminder_1d": "{{title}} · {{time}} · {{venue}}",
+  "MSG-reminder_2h": "{{title}} · {{time}} · {{venue}}",
+  "MSG-reminder_generic": "{{title}} · {{time}} · {{venue}}",
+  "MSG-session_comment": "{{actor}}: {{comment_short}}",
+  "MSG-comment_reply": "{{actor}}: {{comment_short}}",
+  "MSG-leaderboard_weekly": "#{{rank}} هذا الأسبوع · {{points}} نقطة",
+  "MSG-check_in_confirmed": "{{title}}",
+};
+
+/** Every mail carries a preheader (`REQ-NTF-018`); a key without its own uses the subject. */
+export function preheaderFor(key: string): string {
+  return PREHEADER[key] ?? "";
+}
+
 export function platformDesign(key: string): EmailBlockDocument | null {
+  const bespoke = BESPOKE[key];
+  // ★ The seven open with the greeting too — the owner's ruling on PR #115 (`DEC-289` §2).
+  if (bespoke) return { schemaVersion: SCHEMA_VERSION, blocks: [greeting(), ...bespoke()], styles: HOUSE };
   const family = DESIGN_FOR[key];
   const copy = COPY[key];
   if (!family || !copy) return null;
@@ -386,5 +512,5 @@ export function documentFromText(body: string): EmailBlockDocument {
     .map((p) => p.trim())
     .filter(Boolean)
     .map((text, index): EmailBlock => ({ type: "paragraph", id: `p${index + 1}`, text }));
-  return { schemaVersion: SCHEMA_VERSION, blocks: [logo(), ...paragraphs] };
+  return { schemaVersion: SCHEMA_VERSION, blocks: paragraphs };
 }

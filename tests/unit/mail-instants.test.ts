@@ -61,7 +61,9 @@ describe("an instant in the payload is formatted in the ORG's zone", () => {
   });
 
   it("a payload that already carries a formatted date is untouched — the old fixtures still read the same", () => {
-    const out = render("MSG-session_published", {
+    // A family design with a session card, which prints `startsAt` as given (the new-session design words its own
+    // date from the facts since wave 30).
+    const out = render("MSG-presenter_assigned", {
       title: "جلسة",
       startsAt: "الأحد 6:00 م",
       venue: "قاعة الابتكار",

@@ -95,7 +95,8 @@ describe("notification_matrix — 08 §1", () => {
       // reminder, DEC-047 → migration 0062), plus MSG-photo_album_ready
       // (§1.6a, in-app only, DEC-182 → migration 0156), plus MSG-announcement_published (§1.8, an org announcement
       // going live, REQ-ADM-025, DEC-267 → migration 0213).
-      expect(rows).toHaveLength(41);
+      // ★ 43 since 0224 (DEC-289): MSG-session_comment (REQ-EVT-017) and MSG-leaderboard_weekly (REQ-LDR-009).
+      expect(rows).toHaveLength(43);
       expect(rows.map((r) => r.key)).toContain("MSG-announcement_published");
       expect(rows.map((r) => r.key)).toContain("MSG-photo_album_ready");
       expect(rows.map((r) => r.key)).toContain("MSG-reminder_generic");

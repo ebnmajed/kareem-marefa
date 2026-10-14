@@ -21,8 +21,9 @@ const KEYS = Object.keys(DEFAULT_TEMPLATES);
 
 describe("★ REQ-NTF-014 — every message key resolves to a design", () => {
   // 26 since 0213 (REQ-ADM-025, DEC-267): MSG-announcement_published, an org's announcement.
-  it("all 26, and the map is exactly the template table", () => {
-    expect(KEYS).toHaveLength(26);
+  // 30 since 0224 (DEC-289): rsvp_confirmed and check_in_confirmed are mailed; session_comment and leaderboard_weekly.
+  it("all 30, and the map is exactly the template table", () => {
+    expect(KEYS).toHaveLength(30);
     const mapped = Object.keys(DESIGN_FOR).sort();
     expect(mapped).toEqual([...KEYS].sort());
     for (const key of KEYS) expect(platformDesign(key), key).not.toBeNull();
@@ -77,31 +78,32 @@ describe("a design renders, and says what its message says", () => {
       const card = design.blocks.find((b) => b.type === "session_card");
       expect(card, key).toBeUndefined();
     }
-    // And the families that DO show a card ask for its image.
-    const reminder = platformDesign("MSG-reminder_1d")!.blocks.find((b) => b.type === "session_card");
-    expect(reminder).toMatchObject({ withImage: true });
+    // And the families that DO show a card ask for its image. (The reminders wear the approved design since wave 30 —
+    // a ticket, not a card — so the rsvp family is the one asked here.)
+    const promoted = platformDesign("MSG-rsvp_promoted")!.blocks.find((b) => b.type === "session_card");
+    expect(promoted).toMatchObject({ withImage: true });
   });
 
-  it("an org with no public logo renders its NAME rather than a broken image", () => {
-    const sample = sampleFor("MSG-reminder_1d")!;
-    const out = compileBlocks(platformDesign("MSG-reminder_1d"), { ...ctx(sample.payload), logoUrl: null });
-    expect(out.rows.join("")).not.toContain("<img");
-    // The heading still names the org's message, so the mail is not headless.
-    expect(out.text[0]).toContain("جلستك غدًا");
+  it("an org with no public logo draws no broken image — the shell's mark is the platform's (`DEC-289`)", () => {
+    const sample = sampleFor("MSG-rsvp_promoted")!;
+    const out = compileBlocks(platformDesign("MSG-rsvp_promoted"), { ...ctx(sample.payload), logoUrl: null });
+    expect(out.rows.join("")).not.toContain("/api/brand/");
+    // The heading still names the message, so the mail is not headless.
+    expect(out.text[0]).toContain("حصلت على مقعد");
   });
 });
 
 describe("★ the string path retired — every key renders a design (DEC-081, M13)", () => {
-  it("a key with no row renders its design, and the design greets the member", () => {
-    // DEC-161 R3 held adoption explicit «until M13». In M13 a key with no row
-    // renders its platform design, which greets by name as the string
-    // templates always did.
+  it("a key with no row renders its design, and the design greets the member (`DEC-289` §2)", () => {
+    // DEC-161 R3 held adoption explicit «until M13». In M13 a key with no row renders its platform design, which greets
+    // by name as the string templates always did — the owner kept the greeting on PR #115, the seven included.
     const withoutOverride = renderEmail({
       key: "MSG-reminder_1d",
       payload: sampleFor("MSG-reminder_1d")!.payload,
       member: SAMPLE_MEMBER,
       org: SAMPLE_ORG,
     });
+    expect(withoutOverride.text).toContain("غدًا");
     expect(withoutOverride.text).toContain("مرحبًا");
     expect(withoutOverride.dropped).toEqual([]);
   });
@@ -115,7 +117,9 @@ describe("★ the string path retired — every key renders a design (DEC-081, M
       org: SAMPLE_ORG,
       appUrl: "https://kareem.pp.sa",
     });
-    expect(adopted.html).toContain("جلستك غدًا");
+    // The approved reminder: its countdown hero and its ticket's stub.
+    expect(adopted.html).toContain("غدًا");
+    expect(adopted.html).toContain("امسح عند الوصول");
   });
 
   it("★ duplicating cannot mutate the original — the design is a fresh object each call", () => {

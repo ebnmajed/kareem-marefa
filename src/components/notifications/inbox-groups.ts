@@ -1,15 +1,15 @@
 // The inbox's date groups — `Notifications.dc.html`, `M10c.md` §6, REQ-UIX-076.
 //
 // «اليوم», then «هذا الأسبوع», then «أقدم», each read in the ORG's zone (A20): an item's day is the room's day, not the
-// reader's. The week is `DEC-217` §3.4's — Saturday to Friday — the same week the board ranks, so «هذا الأسبوع» means
+// reader's. The week is `DEC-289`'s — Sunday to Saturday (it was `DEC-217` §3.4's Saturday to Friday) — the same week the board ranks, so «هذا الأسبوع» means
 // one thing in the app. An item is grouped by ITS OWN day (D10, DEC-218 §2.4): the artboard draws «أمس 8:02 م» under
 // «اليوم», and that is the drawing's slip, not a rule.
 
 export type InboxGroup = "today" | "week" | "older";
 
-const WEEKDAY_INDEX: Record<string, number> = { Sat: 0, Sun: 1, Mon: 2, Tue: 3, Wed: 4, Thu: 5, Fri: 6 };
+const WEEKDAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 
-/** The calendar day of an instant in a zone, as a day number since the epoch, and its place in a Sat–Fri week. */
+/** The calendar day of an instant in a zone, as a day number since the epoch, and its place in a Sun–Sat week. */
 function dayOf(instant: Date, timeZone: string): { day: number; weekday: number } {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" })

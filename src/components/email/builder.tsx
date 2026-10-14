@@ -83,7 +83,8 @@ const wideNow = () => (typeof window.matchMedia === "function" ? window.matchMed
 const useWide = () => useSyncExternalStore(subscribeWide, wideNow, () => null);
 
 /** The drawn order of the library — نقاطك is drawn and not built (DEC-238 §4). */
-const LIBRARY: readonly BlockType[] = ["paragraph", "image", "button", "divider", "spacer", "session_card", "poster", "qr", "logo", "certificate", "social"];
+// ★ Wave 30 (`REQ-NTF-018`): the approved design's eleven pieces join the library, after the wave-23 set.
+const LIBRARY: readonly BlockType[] = ["paragraph", "image", "button", "divider", "spacer", "session_card", "poster", "qr", "logo", "certificate", "social", "eyebrow", "hero", "when", "presenter", "seats", "ticket", "stats", "quote", "leaderboard", "rating", "links"];
 const LAYOUTS = Object.keys(ROW_LAYOUTS) as RowLayout[];
 
 export interface EmailBuilderProps {

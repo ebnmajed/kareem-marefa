@@ -22,7 +22,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { emailDocumentFor, renderEmail, readRows, readStyles, type EmailBlock, type EmailBlockDocument } from "@kareem/mail-runtime";
+import { emailDocumentFor, MAIL, renderEmail, readRows, readStyles, type EmailBlock, type EmailBlockDocument } from "@kareem/mail-runtime";
 import { APP_URL, BRAND, CASES, LOGO_URL, MEMBER, ORG, type PinnedCase } from "./mail-pinned.fixtures";
 
 const DIR = join(process.cwd(), "tests", "unit", "mail-pinned");
@@ -38,6 +38,7 @@ function renderWith(sample: PinnedCase, document: EmailBlockDocument, variant: "
     brand: variant === "brand" ? BRAND : null,
     logoUrl: variant === "brand" ? LOGO_URL : null,
     appUrl: APP_URL,
+    unsubscribeUrl: `${APP_URL}/ar/unsubscribe?t=pinned`,
   });
 }
 
@@ -147,29 +148,28 @@ describe("a multi-column row", () => {
 describe("global styles and per-block overrides", () => {
   const base: EmailBlockDocument = { schemaVersion: 1, blocks: [{ type: "heading", id: "h", text: "عنوان", level: 1 }, p("a", "نص")] };
 
-  it("heading sizes, padding and ground move the literals they name", () => {
-    const html = renderWith(sample, { ...base, styles: { headingSize: { h1: 28 }, padding: 32, ground: "surface" } }, "brand").html;
+  it("heading sizes move the literals they name; the card's padding and ground are the design's (`DEC-289`)", () => {
+    const html = renderWith(sample, { ...base, styles: { headingSize: { h1: 28 }, padding: 16, ground: "surface" } }, "brand").html;
     expect(html).toContain("font-size:28px");
-    expect(html).toContain("padding:32px;");
-    expect(html).not.toContain("background:#f5f5f5");
+    // Wave 30: the approved shell is fixed — 32 px a side, the page ground — whatever a document's styles say.
+    expect(html).toContain("padding:32px 32px 36px");
+    expect(html).toContain(`background:${MAIL.page}`);
   });
 
-  it("★ a colour is a TOKEN resolved from the brand — the hex that lands is the kit's", () => {
+  it("★ a colour is a TOKEN resolved from the design's palette — no kit reaches it (`DEC-289`)", () => {
     const html = renderWith(sample, { ...base, styles: { textColour: "fgMuted" } }, "brand").html;
-    // ★ `BRAND.light.fgMuted`, not `BRAND.fgMuted`: wave 24 made the sample kit
-    // the WHOLE kit, both schemes, because the three-key shape made four tokens
-    // fall to `render.ts`'s fallbacks and the 120 pinned files recorded those
-    // instead of a kit (`REQ-NTF-016`). The colour this asserts is unchanged —
-    // the accessor is.
-    expect(html).toContain(`color:${BRAND.light.fgMuted};padding:0 0 16px 0`);
+    expect(html).toContain(`color:${MAIL.muted};padding:0 0 16px 0`);
+    expect(html).not.toContain(BRAND.light.fgMuted);
   });
 
-  it("the mobile rules are emitted only when a mobile value exists", () => {
-    expect(renderWith(sample, { ...base, styles: { padding: 16 } }, "brand").html).not.toContain("@media");
+  it("a document's own mobile rules are emitted only when a mobile value exists — beside the design's", () => {
+    // The shell's phone rules (`build.py`'s `@media (max-width:620px)`) are always there.
+    const plain = renderWith(sample, { ...base, styles: { padding: 16 } }, "brand").html;
+    expect(plain).toContain("@media (max-width:620px)");
+    expect(plain).not.toContain("@media only screen and (max-width:620px)");
     const html = renderWith(sample, { ...base, styles: { mobile: { headingSize: { h1: 22 }, padding: 16 } } }, "brand").html;
     expect(html).toContain("@media only screen and (max-width:620px)");
     expect(html).toContain('class="k-h1"');
-    expect(html).toContain('class="k-card"');
   });
 
   it("a block's own alignment and padding apply to that block only", () => {

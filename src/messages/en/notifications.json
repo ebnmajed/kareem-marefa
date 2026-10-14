@@ -110,6 +110,13 @@
         "why": "A change to your account you do not know about is a change you cannot question, so it always reaches you."
       }
     },
+    "unsubscribe": {
+      "title": "Stop these messages",
+      "confirm": "Stop them",
+      "done": "Stopped",
+      "invalid": "This link is not valid",
+      "settings": "Settings"
+    },
     "message": {
       "MSG-proposal_submitted": "A new proposal is waiting for review",
       "MSG-copresenter_invited": "You were invited to co-present a session",
@@ -136,6 +143,7 @@
       "MSG-materials_added": "Session materials were added",
       "MSG-comment_reply": "A reply to your comment",
       "MSG-mentioned": "Someone mentioned you in a comment",
+      "MSG-session_comment": "A comment on your session",
       "MSG-photo_hidden": "Your photo was hidden",
       "MSG-content_removed": "Content of yours was removed",
       "MSG-report_filed": "A new report arrived",
@@ -144,6 +152,7 @@
       "MSG-streak_completed": "You completed a streak",
       "MSG-points_adjusted": "Your points were adjusted",
       "MSG-leaderboard_closed": "The month's board closed",
+      "MSG-leaderboard_weekly": "Your rank this week",
       "MSG-certificate_issued": "Your certificate was issued",
       "MSG-certificate_revoked": "About your certificate",
       "MSG-role_changed": "Your role changed",
@@ -301,7 +310,18 @@
             "qr": "QR code",
             "logo": "Logo",
             "certificate": "Certificate",
-            "social": "Social"
+            "social": "Social",
+            "eyebrow": "Label",
+            "hero": "Hero figure",
+            "when": "Date",
+            "presenter": "Presenter",
+            "seats": "Seats",
+            "ticket": "Ticket",
+            "stats": "Figures",
+            "quote": "Comment",
+            "leaderboard": "Ranking",
+            "rating": "Rating",
+            "links": "Links"
           },
           "add": {
             "heading": "Add a heading",
@@ -433,7 +453,18 @@
             "qr": "QR code",
             "logo": "Logo",
             "certificate": "Certificate",
-            "social": "Social"
+            "social": "Social",
+            "eyebrow": "Label",
+            "hero": "Hero figure",
+            "when": "Date",
+            "presenter": "Presenter",
+            "seats": "Seats",
+            "ticket": "Ticket",
+            "stats": "Figures",
+            "quote": "Comment",
+            "leaderboard": "Ranking",
+            "rating": "Rating",
+            "links": "Links"
           },
           "layouts": {
             "1": "One column",
@@ -501,6 +532,13 @@
             "variables": "Variables",
             "reset": "Restore the default styles",
             "noFields": "This block has no fields.",
+            "tone": "Colour",
+            "toneLime": "Lime",
+            "toneViolet": "Violet",
+            "toneOrange": "Orange",
+            "toneCoral": "Coral",
+            "chip": "In a pill",
+            "heroSide": "Side text",
             "padTop": "Space above",
             "padBottom": "Space below",
             "colour": "Colour",

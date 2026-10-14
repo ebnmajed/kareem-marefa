@@ -59,8 +59,9 @@ describe("notification_bindings — REQ-NTF-012's declaration", () => {
       await setup(tx);
       const rows = await tx.q<{ key: string; binding: string }>(`select key, binding from public.notification_bindings()`);
       const emailKeys = await tx.q<{ key: string }>(`select key from public.notification_matrix() where email`);
-      // 25, plus MSG-announcement_published (0213, DEC-267).
-      expect(emailKeys).toHaveLength(26);
+      // 25, plus MSG-announcement_published (0213, DEC-267); 30 since 0224 (DEC-289): rsvp_confirmed and
+      // check_in_confirmed gain email, session_comment and leaderboard_weekly are new.
+      expect(emailKeys).toHaveLength(30);
 
       const byKey = new Map<string, string[]>();
       for (const r of rows) byKey.set(r.key, [...(byKey.get(r.key) ?? []), r.binding]);

@@ -15,6 +15,7 @@ import { getSessionPoster } from "@/lib/dal/posters";
 import { getRatePageData, type RatingDTO } from "@/lib/dal/ratings";
 import { getSessionHeading, type SessionHeading } from "@/lib/dal/sessions";
 import { getSurveyForMember } from "@/lib/dal/surveys";
+import { preselectStars } from "./preselect";
 import { RateForm } from "./rate-form";
 
 // SCR-015 · /app/sessions/[id]/rate — rebuilt from `Rate.dc.html` (wave 19, DEC-213, DEC-214 §3,
@@ -36,6 +37,8 @@ import { RateForm } from "./rate-form";
 //   · the window has closed             → the rating, read-only, and no bar (REQ-RAT-003)
 //   · open                              → the form, pre-filled when there is a rating to edit
 //   · `?rated=1`                        → an in-page receipt above the form, never a toast (§5.92)
+//   · `?stars=N` (the after-session mail) → the session's stars pre-filled on a FIRST rating in an open window;
+//                                          never saved by the link — the member still submits (`preselect.ts`)
 //
 // ★ `16` §9.2a: nothing here shows the time a rating was made.
 
@@ -44,11 +47,11 @@ export default async function RatePage({
   searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
-  searchParams: Promise<{ rated?: string }>;
+  searchParams: Promise<{ rated?: string; stars?: string | string[] }>;
 }) {
   const { locale, id } = await params;
   setRequestLocale(locale);
-  const { rated } = await searchParams;
+  const { rated, stars } = await searchParams;
 
   const [heading, data, survey, poster, t, tSurvey] = await Promise.all([
     getSessionHeading(locale, id),
@@ -184,6 +187,7 @@ export default async function RatePage({
         sessionId={heading.id}
         checkInId={eligibility.checkInId ?? ""}
         existing={eligibility.existing}
+        preselect={preselectStars(stars, eligibility) ?? undefined}
         survey={survey}
         // The promise, honestly — the threshold read from the org's setting AND the admin exception
         // (REQ-RAT-004 … 006, D36, OQ-009): a promise that omits the exception is not one.

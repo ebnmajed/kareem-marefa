@@ -65,6 +65,7 @@ export function RateForm({
   sessionId,
   checkInId,
   existing,
+  preselect,
   survey,
   notice,
   windowNote,
@@ -73,6 +74,9 @@ export function RateForm({
   sessionId: string;
   checkInId: string;
   existing: RatingDTO | null;
+  /** ★ The after-session mail's tapped star (`?stars=N`, `preselect.ts`): the session's stars pre-filled on a first
+   *  rating. Ignored when there is a rating to edit. Nothing is saved until the member submits. */
+  preselect?: 1 | 2 | 3 | 4 | 5;
   /** `null` when the session has no survey, or the viewer may not answer it. */
   survey: MemberSurveyDTO | null;
   /** The anonymity panel, drawn between the comment and the survey (`Rate.dc.html`). */
@@ -101,7 +105,9 @@ export function RateForm({
         ...emptyRateFormState,
         values: { sessionStars: String(existing.sessionStars), presenterStars: String(existing.presenterStars), comment: existing.comment ?? "" },
       }
-    : emptyRateFormState;
+    : preselect
+      ? { ...emptyRateFormState, values: { ...emptyRateFormState.values, sessionStars: String(preselect) } }
+      : emptyRateFormState;
   const [state, formAction] = useActionState(action, initial);
 
   const starLabels = [1, 2, 3, 4, 5].map((n) => t("starCount", { count: n, value: formatNumber(n) })) as unknown as StarLabels;

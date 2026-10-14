@@ -23,7 +23,10 @@ afterAll(() => pool.end());
 const ANON_MAY_EXECUTE: Record<string, string> = {
   "session_public_card(p_session uuid)": "REQ-SES-013 — the public share card; returns published sessions only (0080)",
   "verify_certificate(p_code text)": "REQ-CRT-007 — public verification by random code (0065)",
-  "export_is_public_card(p_name text)": "a storage-policy helper for the public og image (0080); reads a path, returns a boolean",
+  "export_is_public_card(p_name text)": "a storage-policy helper for the public og image (0080) — and since 0224 the landscape PNG too; reads a path, returns a boolean",
+  // ★ 0224 (DEC-289): the two a mail client or a signed-out member reaches.
+  "apply_email_unsubscribe(p_token text)": "REQ-NTF-019 — the one-click unsubscribe; the HMAC token is the whole authority, checked against a key no role can read (0224)",
+  "session_wide_poster_path(p_session uuid)": "REQ-NTF-018 — the poster's 16:9 render for a mail client; card-eligible sessions only, the og door's predicate (0224)",
   "has_checked_in(p_session uuid)": "answers about the CALLER only (auth_member_id()); false for anon",
   "is_presenter_of(p_session uuid)": "answers about the CALLER only; false for anon",
   "is_proposal_owner_of(p_proposal uuid)": "answers about the CALLER only; false for anon",
