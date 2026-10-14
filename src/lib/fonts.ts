@@ -1,25 +1,54 @@
-import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic } from "next/font/google";
 import localFont from "next/font/local";
+
+// ★★ EVERY FAMILY IS SELF-HOSTED (DEC-292, the owner, 2026-10-14 — completing DEC-203). The two Plex faces were the
+// last fetched from Google Fonts at build time, and that fetch kept failing CI builds («Can't resolve
+// '@vercel/turbopack-next/internal/font/google/font'»). The app now reads the SAME bytes the worker already uses —
+// `packages/fonts`, pinned by SHA-256 (invariant 12) — through `next/font/local`, so no build reaches Google. The files
+// and the ranges are the ones `next/font/google` emitted, so a page renders identically; only the generated family
+// name changes, and the register form's fingerprint was re-recorded for it in the same commit (invariant 1).
 
 // Latin is the body face only on /en; on the Arabic-primary routes it is just
 // the small bilingual wordmark. Skip its critical preload so the ~heavy Arabic
 // face isn't competing with it on first paint — it still loads via display:swap
-// with adjustFontFallback (default) keeping any swap-CLS low. Measure /en LCP
-// before/after; revert to preload:true if the /en cold-load FOUT is noticeable.
-export const plexSans = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+// with adjustFontFallback (default) keeping any swap-CLS low.
+// One variable file for 400 – 600, as Google served it.
+export const plexSans = localFont({
+  src: "../../packages/fonts/056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818.woff2",
+  weight: "400 600",
   variable: "--font-plex",
   display: "swap",
   preload: false,
+  declarations: [{ prop: "unicode-range", value: "U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD" }],
 });
 
-export const plexArabic = IBM_Plex_Sans_Arabic({
-  subsets: ["arabic"],
-  weight: ["400", "500", "600"],
+// Plex Sans Arabic, one call per script (`next/font/local` applies one `unicode-range` to a call). ★ The Arabic call
+// carries NO metric fallback: its generated «… Fallback» would be Arial, which HAS digits, so it would answer every
+// number before the Latin file is asked (as the Baloo note below explains). The Latin call carries the fallback, and
+// the stack in `globals.css` is Arabic, then Latin, then Plex Sans. Only the Arabic file is preloaded, as before.
+const plexArabicArabic = localFont({
+  src: [
+    { path: "../../packages/fonts/4ed189e8653e9303ec1e1448a6025f838ecd19fe4a5f4f7889b8394b3c5378fb.woff2", weight: "400", style: "normal" },
+    { path: "../../packages/fonts/bf2b68e78ca6e9c6e560634ecc33c1f11947b9ffaff1b6d9b42730ce85f696da.woff2", weight: "500", style: "normal" },
+    { path: "../../packages/fonts/0ccee44455f545eb6b4083f77e5d15e7c9cd514007870167c8c69d1ba7631e26.woff2", weight: "600", style: "normal" },
+  ],
   variable: "--font-plex-arabic",
   display: "swap",
+  adjustFontFallback: false,
+  declarations: [{ prop: "unicode-range", value: "U+6??,U+750-77F,U+870-88E,U+890-891,U+897-8E1,U+8E3-8FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE70-FE74,U+FE76-FEFC,U+102E0-102FB,U+10E60-10E7E,U+10EC2-10EC4,U+10EFC-10EFF,U+1EE00-1EE03,U+1EE05-1EE1F,U+1EE21-1EE22,U+1EE24,U+1EE27,U+1EE29-1EE32,U+1EE34-1EE37,U+1EE39,U+1EE3B,U+1EE42,U+1EE47,U+1EE49,U+1EE4B,U+1EE4D-1EE4F,U+1EE51-1EE52,U+1EE54,U+1EE57,U+1EE59,U+1EE5B,U+1EE5D,U+1EE5F,U+1EE61-1EE62,U+1EE64,U+1EE67-1EE6A,U+1EE6C-1EE72,U+1EE74-1EE77,U+1EE79-1EE7C,U+1EE7E,U+1EE80-1EE89,U+1EE8B-1EE9B,U+1EEA1-1EEA3,U+1EEA5-1EEA9,U+1EEAB-1EEBB,U+1EEF0-1EEF1" }],
 });
+const plexArabicLatin = localFont({
+  src: [
+    { path: "../../packages/fonts/4a917a99a5b6acbe3b56887d1a8396fcd7d2112e0e4796f252c0859106679153.woff2", weight: "400", style: "normal" },
+    { path: "../../packages/fonts/2c348d103970c93c7b817a5bee77406a5861200390df6bd751d2d1bd7071e1af.woff2", weight: "500", style: "normal" },
+    { path: "../../packages/fonts/08b108227ae9cd53d2b8e9fc442e06a1f4884e5cf2d26c9216ec386227de74fd.woff2", weight: "600", style: "normal" },
+  ],
+  variable: "--font-plex-arabic-latin",
+  display: "swap",
+  preload: false,
+  declarations: [{ prop: "unicode-range", value: "U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD" }],
+});
+/** Both scripts' variables, for the locale layout's `<html>`. */
+export const plexArabic = { variable: `${plexArabicArabic.variable} ${plexArabicLatin.variable}` };
 
 // ★★ THE THREE APP-ONLY FAMILIES ARE SELF-HOSTED (DEC-203, the owner, 2026-09-30).
 // Reem Kufi, Amiri and Baloo Bhaijaan 2 were fetched from Google Fonts at every
@@ -29,11 +58,7 @@ export const plexArabic = IBM_Plex_Sans_Arabic({
 // SHA-256, because the worker needs them; now the app reads THOSE files through
 // `next/font/local`, so the three no longer depend on Google being reachable.
 //
-// ★ THE TWO PLEX FACES STAY ON GOOGLE, ON PURPOSE, UNTIL THE PUBLIC SITE'S WAVE.
-// The public routes render them, and the register form's fingerprint records the
-// generated `font-family`; a local face is named differently, so moving them
-// moves a frozen contract (REQ-NFR-019). So a build still needs Google for Plex:
-// this shrinks the exposure from five families to two, it does not remove it.
+// ★ The two Plex faces followed on 2026-10-14 (DEC-292, above): no family is fetched from Google any more.
 //
 // ★ ONE FILE PER SCRIPT, ONE `localFont()` PER FILE. Google serves a family as
 // several files, each with a `unicode-range`; `next/font/local` applies one set

@@ -19,7 +19,9 @@ const css = readFileSync("src/app/globals.css", "utf8");
 // `--ease-pop` and `--dur-play` beside the M9 tokens, the navigation-motion section, the reduced-motion cut of the
 // transition's pseudo-elements, and a `ui-lint-keyframes:` reason above each of the five keyframes that animate more
 // than transform, opacity and filter. Nothing that existed changed value; `main`'s was 91948137…ddc3.
-const GLOBALS_BEFORE_WAVE_15 = "8100261dc1a1ab1e2bbc240474d36ee2ee36ba36ff32d16d6f2ce77760479cff";
+// ★ DEC-292: moved ON PURPOSE — Plex is self-hosted, so `--font-arabic` gains `var(--font-plex-arabic-latin)` between
+// the Arabic face and Plex Sans (one `next/font/local` call per script). Nothing else changed; it was 8100261d…9cff.
+const GLOBALS_BEFORE_WAVE_15 = "6cf8e2639dae490862bad6c017e209f4e08cc8985d72d3478f40af4ec3b061db";
 
 const START = "/* ═══════════════════════════════════════════════════════════════════════════\n   «ساحة اللعب» — THE PLAYGROUND, AS A SCOPE.";
 const END = "/* --------------------------------- typography ---------------------------";

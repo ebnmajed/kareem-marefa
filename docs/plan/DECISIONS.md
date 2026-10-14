@@ -11165,4 +11165,28 @@ and is still liked after a reload (`event-comments.spec.ts`).
    is zeroed on close. Reproduced first on a production build (`story-rewatch.spec.ts` failed: «the story closed by
    itself on reopening»), green after; two unit cases fail on the old viewer.
 
+## DEC-292 — Every font is self-hosted: the build never fetches from Google
+
+**Date:** 2026-10-14 · **Status:** accepted · **By:** the owner · **Refs:** REQ-NFR-019, REQ-UIX-029, REQ-DSG-016 · **Completes:** `DEC-203` · **Migration:** none
+
+**The owner:** «this … failure has been on for a long time fix it once and for all we either download and load it from
+the app or we fix the google fonts thingy».
+
+**What was wrong.** `DEC-203` self-hosted Reem Kufi, Amiri and Baloo Bhaijaan 2 after Google Fonts fetches failed CI
+builds, and left the two Plex faces on `next/font/google` because the public routes render them. So every build still
+reached Google, and kept failing intermittently: «Can't resolve '@vercel/turbopack-next/internal/font/google/font'»
+(PR #115's build, 2026-10-14, one of two identical jobs).
+
+**Ruling.** Plex Sans and Plex Sans Arabic are read through `next/font/local` from the files `packages/fonts` already
+holds by SHA-256 for the worker (invariant 12) — the same bytes and the same `unicode-range`s Google served. Plex Sans
+is one variable file (400 – 600, Latin); Plex Sans Arabic is one call per script, the Arabic call with no metric
+fallback (an Arial fallback would answer the digits before the Latin file, as Baloo's note records), and
+`--font-arabic` gains `var(--font-plex-arabic-latin)` between them. **No `next/font/google` import remains.**
+
+**Proven.** `fonts:check` — the build emits exactly the manifest's 15 faces by hash. `visual` against `main`'s build:
+22 pairs within threshold, 20 at 0.000 %; `desktop_en` 0.002 % is anti-aliasing on «العربية»'s edge pixels (same glyphs,
+same weight), the other is the `(dev)` gallery. `qa` 57/57. The register form's behaviour and computed-style specs
+(`wave26-lead-register-behaviour`, `wave15-sessions-public-controls`) pass unchanged — the fingerprint normalises the
+generated family name. Unit 5,981.
+
 - **Documents changed:** `STATUS.md`
