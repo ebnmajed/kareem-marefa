@@ -78,7 +78,12 @@
       "denied": "No camera access",
       "tooLong": "Longer than 15 seconds",
       "tooLarge": "Larger than 60 MB",
-      "refused": "Only those checked in can add"
+      "refused": "Only those checked in can add",
+      "uploading": "Uploading {percent}",
+      "retry": "Try again",
+      "tooShort": "Too short",
+      "unsupported": "Unsupported format",
+      "offline": "No connection"
     },
     "admin": {
       "title": "{count, plural, other {Attendee stories · {value}}}",

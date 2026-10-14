@@ -42,6 +42,7 @@ export function StoryCapture({
   onSubmit,
   onRetake,
   onClose,
+  progress,
   message,
   labels,
 }: StoryCaptureProps) {
@@ -51,9 +52,12 @@ export function StoryCapture({
   const hold = useRef<{ timer: number; held: boolean } | null>(null);
 
   const recording = state === "recording";
-  const reviewing = state === "review";
+  // ★ "error" is an upload that failed with the take KEPT — it shows the take's two buttons, the second one retrying.
+  // A refusal before upload ("refused": too long, too large, a kind we cannot take) has no take and shoots again.
+  const failed = state === "error";
+  const reviewing = state === "review" || failed;
   const busy = state === "uploading" || state === "processing";
-  const canShoot = state === "idle" || recording;
+  const canShoot = state === "idle" || state === "refused" || recording;
 
   const shutterName = mode === "photo" ? labels.shutterPhoto : recording ? labels.recordStop : labels.recordStart;
 
@@ -143,6 +147,19 @@ export function StoryCapture({
               ) : null}
               {reviewing || busy ? (
                 <>
+                  {state === "uploading" ? (
+                    <div
+                      role="progressbar"
+                      aria-label={labels.submit}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={progress === undefined ? undefined : Math.round(progress * 100)}
+                      data-slot="progress"
+                      className="h-1.5 w-full overflow-hidden rounded-pill bg-chrome"
+                    >
+                      <span aria-hidden className="block h-full w-full rounded-pill bg-fg-heading ltr:origin-left rtl:origin-right" style={{ transform: `scaleX(${progress ?? 0.05})` }} />
+                    </div>
+                  ) : null}
                   <div className="flex items-center gap-2">
                     <button type="button" onClick={onRetake} disabled={busy} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-pill bg-chrome px-4 font-bold">
                       {labels.retake}
@@ -153,7 +170,7 @@ export function StoryCapture({
                       aria-disabled={busy || undefined}
                       className="inline-flex min-h-11 flex-1 items-center justify-center rounded-pill bg-fg-heading px-4 font-display font-extrabold text-canvas aria-disabled:opacity-60"
                     >
-                      {labels.submit}
+                      {failed ? (labels.retry ?? labels.submit) : labels.submit}
                     </button>
                   </div>
                 </>

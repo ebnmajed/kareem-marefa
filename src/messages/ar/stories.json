@@ -78,7 +78,12 @@
       "denied": "لا وصول إلى الكاميرا",
       "tooLong": "أطول من 15 ثانية",
       "tooLarge": "أكبر من 60 ميغابايت",
-      "refused": "الإضافة لمن سجّل حضوره"
+      "refused": "الإضافة لمن سجّل حضوره",
+      "uploading": "جارٍ الرفع {percent}",
+      "retry": "أعد المحاولة",
+      "tooShort": "قصير جدًا",
+      "unsupported": "صيغة غير مدعومة",
+      "offline": "لا اتصال"
     },
     "admin": {
       "title": "{count, plural, zero {قصص الحضور · {value}} one {قصص الحضور · {value}} two {قصص الحضور · {value}} few {قصص الحضور · {value}} many {قصص الحضور · {value}} other {قصص الحضور · {value}}}",

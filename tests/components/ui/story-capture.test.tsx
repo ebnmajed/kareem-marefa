@@ -120,4 +120,27 @@ describe("the rest", () => {
     await user.click(screen.getByRole("button", { name: "إغلاق" }));
     expect(props.onClose).toHaveBeenCalled();
   });
+
+  it("uploading: a progress bar with its figure; the take cannot be retaken mid-flight", () => {
+    show({ state: "uploading", progress: 0.42, message: "جارٍ الرفع 42%" });
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "42");
+    expect(screen.getByRole("status")).toHaveTextContent("جارٍ الرفع 42%");
+    expect(screen.getByRole("button", { name: "أعد" })).toBeDisabled();
+  });
+
+  it("★ error: the take is kept — «أعد» and «أعد المحاولة», which submits again; never the shutter over an old take", async () => {
+    const user = userEvent.setup();
+    const props = show({ state: "error", message: "لا اتصال", labels: { ...labels, retry: "أعد المحاولة" } });
+    expect(screen.getByRole("status")).toHaveTextContent("لا اتصال");
+    expect(screen.queryByRole("button", { name: "التقط صورة" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "أعد المحاولة" }));
+    expect(props.onSubmit).toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "أعد" }));
+    expect(props.onRetake).toHaveBeenCalled();
+  });
+
+  it("refused (a gallery video over 15 s): the shutter shoots again", () => {
+    show({ state: "refused", message: "أطول من 15 ثانية" });
+    expect(screen.getByRole("button", { name: "التقط صورة" })).toBeEnabled();
+  });
 });
