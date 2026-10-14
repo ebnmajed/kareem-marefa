@@ -193,7 +193,21 @@ test("★ a like is written, and it is still there after a reload", async ({ con
   const post = page.locator("#main article", { hasText: OPEN }).first();
   const like = post.getByRole("button", { name: /^إعجاب/ });
   await expect(like).toHaveAttribute("aria-pressed", "false");
+  await like.evaluate((el) => el.setAttribute("data-probe", ""));
   await like.click();
+  // ★ DEC-291: the press and the count change once and never step back — sampled at every frame for two seconds
+  // (the useOptimistic this replaced could fall back to the props before the server answered).
+  const samples = await page.evaluate(async () => {
+    const el = document.querySelector("[data-probe]")!;
+    const seen: string[] = [];
+    const end = performance.now() + 2000;
+    while (performance.now() < end) {
+      seen.push(`${el.getAttribute("aria-pressed")}:${el.textContent?.replace(/\D/g, "") || "0"}`);
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+    return [...new Set(seen)];
+  });
+  expect(samples).toEqual(["true:1"]);
   await expect(like).toHaveAttribute("aria-pressed", "true");
   await expect(like).toHaveAccessibleName("إعجاب 1");
   await expect.poll(async () => (await db.query(`select count(*)::int as n from public.reactions where session_id = $1 and kind = 'like'`, [openId])).rows[0].n).toBe(1);

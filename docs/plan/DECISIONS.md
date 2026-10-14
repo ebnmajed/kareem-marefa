@@ -11063,3 +11063,24 @@ the re-render of the page a Server Action triggers when it refreshes the session
 and is still liked after a reload (`event-comments.spec.ts`).
 
 - **Documents changed:** `STATUS.md`
+
+## DEC-291 — The feed's like on the reaction queue; a watched story can be watched again
+
+**Date:** 2026-10-14 · **Status:** accepted · **By:** the owner · **Refs:** REQ-EVT-003, REQ-EVT-004, REQ-STO-005, REQ-STO-007, REQ-STO-010, DEC-290 · **Migration:** none
+
+**The owner:** «Feed likes yes fix it. And there is a bug where if a user watched a story they can't watch it again».
+
+1. **The home feed's like moves onto `DEC-290`'s mechanism.** `feed/like-button.tsx` used `useOptimistic` with a
+   nested transition after an `await` — the comment like's own flaw, so a press could fall back to the props before
+   the answer. It is now the button's own state, the DESIRED state queued through `POST /api/reactions` with a new
+   `session` target (`setReaction()` already took one; `reactions`' policies are the boundary, no migration), the
+   reaction whisper on a tap that likes, and on a failed write the server's state put back with «تعذّر تسجيل إعجابك».
+   `feed/actions.ts` (`toggleSessionLike`) is deleted with its only caller.
+2. **A story can be watched again.** Cause, measured: the viewer's clock (`ui/story-viewer`) left a frame that ran out
+   at its full elapsed time, and a reopening on the same frame kept the same clock key (`frame.id:restart`) — so the
+   first tick read «done» and the viewer closed the moment it opened. A one-frame story could never be rewatched; a
+   longer one lost its first frame. A reopening now bumps the key and drops a leftover pause or hold; the elapsed time
+   is zeroed on close. Reproduced first on a production build (`story-rewatch.spec.ts` failed: «the story closed by
+   itself on reopening»), green after; two unit cases fail on the old viewer.
+
+- **Documents changed:** `STATUS.md`
