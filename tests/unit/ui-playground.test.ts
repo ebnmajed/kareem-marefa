@@ -121,7 +121,8 @@ describe("every file in src/components/ui has a playground design", () => {
     // wave 23 (DEC-235, DEC-237): 63 + `editor-rail`, `floating-toolbar` (PR B, the lead's); `canvas-stage`, `layer-list`
     // follow in B (→ 67) and `block-canvas`, `block-library` in C (→ 69).
     // wave 26 (DEC-245, DEC-251 §4): 69 + `story-viewer`, `story-capture` (PR D, `content`'s) — the last two.
-    expect(files.length).toBeGreaterThanOrEqual(71);
+    // DEC-288: 71 − `skeleton` — the owner removed skeleton loading; the mark breathes instead.
+    expect(files.length).toBeGreaterThanOrEqual(70);
     for (const name of ["page-header.tsx", "prose.tsx", "link.tsx", "icon-button.tsx", "section-header.tsx", "submit-button.tsx", "reorderable-list.tsx", "icons.tsx"]) {
       expect(files, `the eight wave 15 missed: ${name}`).toContain(name);
     }

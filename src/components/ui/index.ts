@@ -26,7 +26,7 @@
 // `.claude/agents/*.md`. A teammate who needs a primitive changed opens a
 // request in their note — they do not edit it.
 //
-//   lead      index · button · icon-button · link · skeleton · route-progress
+//   lead      index · button · icon-button · link · route-progress
 //             toast · page-header · section-header · prose
 //             route-error · icons · dialog · submit-button
 //             reorderable-list (wave 10, DEC-160)
@@ -724,32 +724,10 @@ export interface ToastHandle {
   show: (options: ToastOptions) => void;
 }
 
-// ── Loading (3) ───────────────────────────────────────────────────────────
-
-/**
- * lead · `skeleton.tsx` — ★ a skeleton MUST NOT call `getTranslations`: it
- * renders before `setRequestLocale`. No text, `aria-hidden`,
- * direction-agnostic (`16` §7.1).
- */
-export type SkeletonVariant = "text" | "title" | "card" | "media" | "row";
-
-export interface SkeletonProps extends Styleable {
-  variant?: SkeletonVariant;
-  /** Repeat count — six card skeletons for browse. */
-  count?: number;
-  width?: string;
-}
-
-/**
- * lead · `route-progress.tsx` — the bar in the shell. It subscribes to the
- * store `ui/link` writes and shows only when a navigation has been pending for
- * more than the threshold; below that a bar is a flash of noise, and with
- * `loading.tsx` present most navigations are below it (`16` §7.1.1).
- */
-export interface RouteProgressProps {
-  /** Milliseconds before the bar appears. 150 by default. */
-  delayMs?: number;
-}
+// ── Loading ───────────────────────────────────────────────────────────────
+//
+// ★ DEC-288: `skeleton.tsx` is deleted and `route-progress.tsx` draws no bar — it is the pending store, the link's
+// dot and `usePendingLongerThan()`, which the breathing mark reads. It takes no props.
 
 // ── Beyond §4.2's thirty-one ──────────────────────────────────────────────
 

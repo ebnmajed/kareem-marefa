@@ -10974,3 +10974,40 @@ moves: email, posters and certificates still carry no face, and the console's cu
 3. **Opt-out is unchanged** (`REQ-LDR-008`): an opted-out member's row is absent, so is their picture.
 
 - **Documents changed:** `STATUS.md` (ledger L-287)
+
+## DEC-288 — No skeleton loading: a page arrives whole, under its move, and the mark breathes while it waits
+
+**Date:** 2026-10-14 · **Status:** accepted · **By:** the owner · **Refs:** REQ-UIX-005, REQ-UIX-006, REQ-UIX-119, REQ-UIX-121, REQ-UIX-122, REQ-UIX-127 · **Amends:** `REQ-UIX-005`, `REQ-UIX-006`, `DEC-285` §2 and §5 · **Migration:** none
+
+**The owner:** «the animation we lately added is overlapping with the skeleton remove the skeleton loading entirely»;
+«there are already animated transitions and the logo already has animated loading so use that»; «the transition
+animations aren't running at all and i think it is because of the skeleton loading … i need it fixed once and for all».
+
+**What was wrong, from the code and its own spec.** `DEC-285` §5 recorded it: on a slow network Next commits a route's
+`loading.tsx` at once, OUTSIDE any view transition, so the link's move (the jump, the push, the switch) is spent on
+nothing and the page only crossfades over its skeleton. `wave29-lead-moves`' TRN-07 asserted exactly that. On a phone
+over a real network almost every tap is «slow» by that measure, so the member almost never saw a move — and when the
+page beat the skeleton, a skeleton still flashed between two moves. The skeleton was the cause, as the owner thought.
+
+**Ruling.**
+1. **Every `loading.tsx` is deleted** (16), with `ui/skeleton` (the primitive floor 71 → 70), the three screen skeleton
+   files, the event skeleton's poster (`pending-poster.tsx`), and every in-page Suspense boundary whose fallback was a
+   skeleton or a placeholder — the event page's sections, sub-nav and recap, the hub's standing card and band, the
+   session hub's header and strip, the feed's week HUD. **A page arrives whole**, inside the navigation's transition,
+   and plays the one move its link named (`DEC-285` §1). Boundaries whose fallback was already `null` stay.
+2. **The wait is the mark breathing** — its existing `loading` move (`REQ-UIX-119`). The pressed link shows its dot at
+   once; past 400 ms the app bar's mark breathes (`home-mark.tsx`), and where the phone hides that bar (`ownsTopRow`,
+   the viewer) the same mark breathes at the top of the screen (`shell/route-wait.tsx`). **The progress bar is
+   removed**; `ui/route-progress` keeps the store, the dot and `usePendingLongerThan()`. The console and the platform
+   stay still (`REQ-UIX-053`): there the dot alone says it is waiting.
+3. **The gate is inverted, not deleted.** `npm run no-skeletons` (was `loading-coverage`) fails CI on any
+   `loading.tsx` under `src/app`. `REQ-UIX-005`'s «a skeleton shaped like the page» and its coverage gate are
+   withdrawn; its prefetch clause stands — `InstantNav`'s full prefetch on intent (`DEC-284`) is the only prefetch a
+   dynamic route gets now, because a `<Link>` prefetches a dynamic page only to its loading boundary.
+4. **Kept:** `error.tsx` and `not-found.tsx` coverage; the poster's flight lands on the hero (`poster-landing.tsx`),
+   with the handoff trimmed to the session and the rectangle.
+
+**A side effect to measure, not assume:** STATUS F3 (`DEC-198` §5) — without JavaScript a route behind `loading.tsx`
+never swapped its skeleton out. With no `loading.tsx`, the two `test.fixme` cases that wait for F3 may now pass.
+
+- **Documents changed:** `STATUS.md`

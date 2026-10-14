@@ -7,7 +7,7 @@ import { isStillPath } from "./nav-motion";
 // ★ Why not React's shared element alone: Next 16 keeps the route it leaves alive and hidden rather than removing it,
 // so the card's poster never «exits» and React's `share` pair cannot form from the card to the event (measured on a
 // production build, `wave29-lead-moves`). The flight is therefore a FLIP on the real element: the card's rectangle is
-// remembered on press, and the poster that lands — the skeleton's, or the card's on the way back — is moved from that
+// remembered on press, and the poster that lands — the hero's, or the card's on the way back — is moved from that
 // rectangle into its own place by `transform` alone (REQ-UIX-020). It plays inside the page's own transition, whose new
 // side is live, so the sink and the flight are one move.
 //

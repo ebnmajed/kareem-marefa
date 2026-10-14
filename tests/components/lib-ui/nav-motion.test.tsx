@@ -44,11 +44,11 @@ describe("the poster handoff (REQ-UIX-122, REQ-UIX-127)", () => {
 
   it("hands the tapped card's decoded poster to that session's page, and to no other", () => {
     handPoster(card(SESSION, true));
-    expect(handedPoster(SESSION.toUpperCase())).toEqual({ sessionId: SESSION, src: new URL("/p.webp", location.href).href, ratio: 0.8, from: null });
+    expect(handedPoster(SESSION.toUpperCase())).toEqual({ sessionId: SESSION, from: null });
     expect(handedPoster("22222222-2222-4222-8222-222222222222")).toBeNull();
   });
 
-  it("is taken once: a later visit by any other path draws the skeleton's box", () => {
+  it("is taken once: a later visit by any other path moves nothing", () => {
     handPoster(card(SESSION, true));
     expect(takeHandedPoster(SESSION)).not.toBeNull();
     expect(takeHandedPoster(SESSION)).toBeNull();
@@ -120,7 +120,7 @@ describe("one move per tap — the first transition takes it (DEC-285)", () => {
     expect([...calls[1].types]).toEqual(["jump"]);
     expect(pendingKind()).toBeNull();
 
-    // And a later transition — the skeleton's page arriving — has no type: it crossfades.
+    // And a later transition — a save's refresh — has no type: it crossfades.
     startWithMove(original, { update: () => noteNavigation() });
     (calls[2].arg as { update?: () => unknown }).update?.();
     expect([...calls[2].types]).toEqual([]);

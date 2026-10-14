@@ -70,10 +70,10 @@ jobs:
       - name: ui-lint
         run: npm run ui-lint
 
-      # REQ-UIX-005: every segment with a page has a loading.tsx at or above
-      # it. "At or above" is the whole point — a dozen files, not forty-nine.
-      - name: loading-coverage
-        run: npm run loading-coverage
+      # DEC-288: no route draws a skeleton — the owner removed them; the mark
+      # breathes while a page loads. A loading.tsx that comes back fails here.
+      - name: no-skeletons
+        run: npm run no-skeletons
 
       # REQ-UIX-016: the same walk for error.tsx, a not-found.tsx per dynamic
       # segment, and global-error.tsx carrying dir="rtl" — the one file in the

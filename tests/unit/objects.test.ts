@@ -104,9 +104,13 @@ describe("the mark", () => {
       .sort();
     expect(moving).toEqual([
       "src/app/[locale]/(auth)/sign-in/page.tsx",
+      // DEC-288: the gallery's wait — the mark breathing while its link is pending.
+      "src/app/[locale]/(dev)/ui/demos/route-progress.tsx",
       "src/app/[locale]/(dev)/ui/playground.tsx",
       "src/components/intro-sting.tsx",
       "src/components/shell/home-mark.tsx",
+      // DEC-288: the same breath where the app bar's mark is not on screen — never in the console.
+      "src/components/shell/route-wait.tsx",
     ]);
   });
 });

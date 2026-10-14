@@ -22,7 +22,7 @@ const BEFORE_WAVE_15 = new Set([
   "date-time.tsx", "dialog.tsx", "empty-state.tsx", "field.tsx", "file-drop.tsx", "form-summary.tsx",
   "icon-button.tsx", "icons.tsx", "index.ts", "input.tsx", "link.tsx", "menu.tsx", "page-header.tsx",
   "panel.tsx", "progress.tsx", "prose.tsx", "radio-group.tsx", "reorderable-list.tsx", "route-error.tsx",
-  "route-progress.tsx", "section-header.tsx", "select.tsx", "sheet.tsx", "skeleton.tsx", "stat.tsx",
+  "route-progress.tsx", "section-header.tsx", "select.tsx", "sheet.tsx", "stat.tsx",
   "submit-button.tsx", "switch.tsx", "tabs.tsx", "tag-chip.tsx", "textarea.tsx", "toast.tsx",
 ]);
 

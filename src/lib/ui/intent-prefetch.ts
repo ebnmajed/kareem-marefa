@@ -1,6 +1,7 @@
 // Intent prefetch — the next screen is fetched before the tap lands (DEC-284).
 //
-// Next's default prefetch for a dynamic page stops at its `loading.tsx` skeleton, and every visit asks the server
+// Next's default prefetch for a dynamic page stops at its loading boundary — and since DEC-288 there is none, so it
+// fetches nothing — and every visit asks the server
 // again (`staleTimes.dynamic` 0). So a tap waited a full server round trip before the next screen — and before any
 // move could play. McMaster-Carr's practice, applied: the moment a pointer shows intent — a mouse resting on a link, a
 // finger or a click pressing down — the FULL page is prefetched; and when the browser is idle, the tabs a member is

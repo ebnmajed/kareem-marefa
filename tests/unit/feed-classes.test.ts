@@ -14,7 +14,6 @@ const FILES = [
   "src/components/ui/feed-item.tsx",
   "src/components/ui/attendee-stack.tsx",
   "src/app/[locale]/app/page.tsx",
-  "src/app/[locale]/app/loading.tsx",
 ];
 
 /** An interpolation followed straight by a colon: a variant built at runtime. */

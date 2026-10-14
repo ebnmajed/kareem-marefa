@@ -1,5 +1,4 @@
 import { getTranslations } from "next-intl/server";
-import { Skeleton } from "@/components/ui/skeleton";
 import { getSessionSettingsNav, type SessionSettingsKey } from "@/lib/dal/sessions";
 import { SessionSettingsStrip, type SessionSettingsStripItem } from "./session-settings-strip";
 
@@ -44,11 +43,3 @@ export async function SessionSettingsNav({ locale, sessionId }: { locale: string
   return <SessionSettingsStrip label={t("label")} items={items} />;
 }
 
-/** The strip's place while its one query runs — no text, so no layout shift and nothing to translate. */
-export function SessionSettingsNavSkeleton() {
-  return (
-    <div aria-hidden="true" className="mb-6 flex h-[calc(2.75rem+1px)] items-center border-b border-edge">
-      <Skeleton width="16rem" className="max-w-full" />
-    </div>
-  );
-}

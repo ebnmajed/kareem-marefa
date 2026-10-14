@@ -1,32 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useLinkStatus } from "next/link";
-import type { RouteProgressProps } from "@/components/ui";
 
-// Layer 1 of the loading model — `16` §7.1.1, REQ-UIX-006.
+// The pending store — layer 1 of the loading model, `16` §7.1.1, REQ-UIX-006, as DEC-288 leaves it.
 //
-// ★ ONE BAR IN THE SHELL CANNOT BE DRIVEN BY `useLinkStatus()` DIRECTLY. The
-// hook reports the status of its OWN enclosing `<Link>` and «must be used
-// within a descendant component of a Link» (`use-link-status.md`), so a bar
-// that lives outside every link has nothing to call it on. What is built
-// instead, in two halves that share this module:
+// ★ THERE IS NO BAR ANY MORE, AND NO SKELETON (DEC-288). The owner saw the skeleton and the navigation's move
+// overlap, and asked for the waits the product already draws: while a navigation is pending, the link pressed shows
+// its dot, and past 400 ms THE MARK BREATHES (`shell/home-mark.tsx`, `shell/route-wait.tsx`, the logo's `loading`
+// move). The page then arrives whole, with the one move its link named (DEC-285).
 //
-//   · `LinkPendingReporter` sits INSIDE every `ui/link`. It reads its own
-//     link's status, draws the small inline affordance the docs describe, and
-//     counts itself into a module-level store while it is pending.
-//   · `RouteProgress` sits once in the shell, subscribes to that store, and
-//     shows a bar only once a navigation has been pending for MORE THAN
-//     `delayMs` (150). Below that a bar is a flash of noise — and with a
-//     `loading.tsx` at every boundary, most navigations never reach it.
+// ★ `useLinkStatus()` reports the status of its OWN enclosing `<Link>` and «must be used within a descendant
+// component of a Link» (`use-link-status.md`), so the mark, which lives outside every link, cannot call it. Two
+// halves share this module:
 //
-// Layer 2, the route skeletons, is the primary mechanism; this bar exists for
-// the slow-network case where prefetch has not finished.
-//
-// ★ No `globals.css` keyframe: the bar grows through the Web Animations API,
-// transform only (REQ-UIX-020), and under `prefers-reduced-motion` it is a
-// still bar — present, so the member still sees that something is happening,
-// but not moving.
+//   · `LinkPendingReporter` sits INSIDE every `ui/link`. It reads its own link's status, draws the small inline
+//     dot the docs describe, and counts itself into a module-level store while it is pending.
+//   · `usePendingLongerThan(ms)` subscribes to that store: true once a navigation has been pending for MORE than
+//     `ms`. Below that a signal is a flash of noise.
 
 let pendingLinks = 0;
 const listeners = new Set<() => void>();
@@ -74,8 +65,7 @@ export function LinkPendingReporter({ quiet = false }: { quiet?: boolean }) {
 
 /**
  * True once a navigation has been pending for MORE THAN `delayMs` — and false again the moment it lands.
- * Add-only (wave 26, REQ-UIX-119): the shell's mark breathes on it, past 400 ms. It reads the same store the
- * bar reads, so the two can never disagree about whether the app is waiting.
+ * The shell's mark breathes on it, past 400 ms (wave 26, REQ-UIX-119; DEC-288 made it the one wait signal).
  */
 export function usePendingLongerThan(delayMs: number): boolean {
   const active = useSyncExternalStore(subscribe, pendingLinkCount, () => 0) > 0;
@@ -89,45 +79,4 @@ export function usePendingLongerThan(delayMs: number): boolean {
     };
   }, [active, delayMs]);
   return active && elapsed;
-}
-
-export function RouteProgress({ delayMs = 150 }: RouteProgressProps) {
-  const count = useSyncExternalStore(subscribe, pendingLinkCount, () => 0);
-  const active = count > 0;
-  // Set only from the timer and from cleanup, never synchronously in the effect
-  // body: visibility is DERIVED — pending AND past the threshold.
-  const [elapsed, setElapsed] = useState(false);
-  const visible = active && elapsed;
-  const bar = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!active) return;
-    const timer = setTimeout(() => setElapsed(true), delayMs);
-    return () => {
-      clearTimeout(timer);
-      setElapsed(false);
-    };
-  }, [active, delayMs]);
-
-  useEffect(() => {
-    const el = bar.current;
-    if (!visible || !el) return;
-    // `transform-origin` has no logical form, so the bar grows from the
-    // inline START it reads off its own computed direction — right in Arabic.
-    el.style.transformOrigin = getComputedStyle(el).direction === "rtl" ? "100% 50%" : "0% 50%";
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches || typeof el.animate !== "function") return;
-    const animation = el.animate([{ transform: "scaleX(0.08)" }, { transform: "scaleX(0.92)" }], {
-      duration: 6000,
-      easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
-      fill: "forwards",
-    });
-    return () => animation.cancel();
-  }, [visible]);
-
-  if (!visible) return null;
-  return (
-    <div aria-hidden data-route-progress="" className="pointer-events-none fixed start-0 end-0 top-0 z-50 h-0.5">
-      <div ref={bar} className="h-full bg-navy-950 pg:bg-accent" style={{ transform: "scaleX(0.45)" }} />
-    </div>
-  );
 }

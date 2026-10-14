@@ -32,7 +32,7 @@ vi.mock("next/navigation", async (importOriginal) => ({ ...(await importOriginal
 let current: HubStandingData;
 vi.mock("@/lib/dal/points", () => ({ getHubStanding: async () => current }));
 
-const { HubStanding, HubStandingSkeleton } = await import("@/components/hub/standing");
+const { HubStanding } = await import("@/components/hub/standing");
 
 function standing(over: Partial<HubStandingData> = {}): HubStandingData {
   return {
@@ -287,13 +287,5 @@ describe("★★ moments 3 and 5 — the displayed copy alone", () => {
     expect(delta.getAttribute("dir")).toBe("ltr");
     expect(delta.textContent).toBe("+50");
     expect(made).toHaveLength(0);
-  });
-});
-
-describe("the skeleton", () => {
-  it.each(["card", "band"] as const)("%s: aria-hidden, no text", (form) => {
-    const { container } = render(<HubStandingSkeleton form={form} />);
-    expect(container.firstElementChild).toHaveAttribute("aria-hidden", "true");
-    expect(container.textContent).toBe("");
   });
 });

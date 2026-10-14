@@ -59,9 +59,9 @@ export const REGISTRY: Record<string, Entry> = {
   // No surface of its own: a row is the caller's, and its controls are the icon button.
   "reorderable-list.tsx": composes("reorderable-list", ["ui/icon-button"]),
   "route-error.tsx": variant("route-error"),
-  "route-progress.tsx": variant("route-progress"),
+  // DEC-288: no bar — its one drawn part is the link's dot, the link's own colour on either ground.
+  "route-progress.tsx": tokens("route-progress", ["bg-current"], "route-progress-scope.test.tsx"),
   "section-header.tsx": variant("section-header"),
-  "skeleton.tsx": variant("skeleton"),
   // `ui/button` with `type="submit"` and the form's pending state.
   "submit-button.tsx": composes("submit-button", ["ui/button"]),
   "toast.tsx": variant("toast"),
