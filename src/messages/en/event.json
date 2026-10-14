@@ -9,6 +9,8 @@
       "submit": "Post",
       "sending": "Sending…",
       "reply": "Reply",
+      "replyTo": "Reply to {name}",
+      "showReplies": "{count, plural, one {View 1 reply} other {View {value} replies}}",
       "cancel": "Cancel",
       "edit": "Edit",
       "save": "Save edit",

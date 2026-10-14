@@ -9,6 +9,8 @@
       "submit": "نشر",
       "sending": "جارٍ الإرسال…",
       "reply": "رد",
+      "replyTo": "رد على {name}",
+      "showReplies": "{count, plural, zero {لا ردود} one {عرض ردّ واحد} two {عرض ردّين} few {عرض {value} ردود} many {عرض {value} ردًا} other {عرض {value} رد}}",
       "cancel": "إلغاء",
       "edit": "تعديل",
       "save": "حفظ التعديل",
