@@ -30,6 +30,7 @@
       "attendedLive": "{count, plural, =0 {Nobody has checked in yet} one {1 here now} other {{value} here now}}",
       "reactions": "Reactions to the session",
       "like": "Like",
+      "likeFailed": "Could not record your like",
       "comments": "{count, plural, =0 {No comments, start the discussion} one {1 comment} other {{value} comments}}",
       "posterName": "Poster of {title}",
       "points": "+{value}",
