@@ -11190,3 +11190,39 @@ same weight), the other is the `(dev)` gallery. `qa` 57/57. The register form's 
 generated family name. Unit 5,981.
 
 - **Documents changed:** `STATUS.md`
+
+## DEC-293 — One check-in answer per surface: where, when and to whom the button appears
+
+**Date:** 2026-10-14 · **Status:** accepted · **By:** the owner · **Refs:** REQ-CHK-010, REQ-CHK-011, REQ-CHK-014, REQ-CHK-016, REQ-UIX-015, REQ-UIX-061 · **Amends:** `DEC-195` §2.5's call sites · **Migration:** none
+
+**The owner:** «i want a proper fix for the checkin button appearing it is confusing where and when it appears and to
+whome».
+
+**What was wrong.** Three predicates answered «may I offer check-in» for two surfaces, and they disagreed:
+
+1. **The event page's primary** came from `eventCheckInLink()`, which was never handed the session's days. On a
+   workshop it judged the whole span: **between two days it offered a check-in the screen then refused** («not
+   started»), and a member checked in on day 1 **lost day 2's button** (any check-in read as today's).
+2. **The action card** recomputed the answer *with* the days — so the card and the primary/bar could differ.
+3. **The feed post** asked only while the phase was open or live, so **in the two-hour grace after the end** the event
+   page offered check-in and the feed did not.
+4. **`TimelineSession.canCheckIn`** was a fourth copy that nothing read.
+
+**Ruling — where and when.** The page computes `checkInOffer()` **once, with its days** (`eventCheckIn()`), and the
+primary, the card and the phone's bar read that one answer. The feed asks the same function in every phase, so both
+surfaces offer check-in exactly while the resolved day takes attendance — from its start to its ceiling — the room's
+switch is open, and the viewer has not checked in to that day. The dead timeline field is deleted.
+
+**Ruling — to whom** (the owner, asked 2026-10-14):
+
+| Viewer | Check-in |
+|---|---|
+| Member with a confirmed seat | the primary, while the day takes attendance |
+| Member with no seat, or waitlisted | the primary, only when the session allows walk-ins (`REQ-CHK-010`) |
+| Presenter of the session | never (`REQ-CHK-011`) — the host view is their button |
+| ★ Staff holding no seat of their own | **«شاشة التقديم» is the primary; the walk-in check-in is a secondary on the card**, never the primary and never the feed post's action |
+| Staff who reserved a seat | an attendee — the primary, as any member |
+
+`check_in()` remains the authority (`REQ-NFR-001`); nothing here widens what the database accepts.
+
+- **Documents changed:** `STATUS.md`

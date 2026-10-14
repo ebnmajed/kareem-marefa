@@ -18,8 +18,7 @@ import { ButtonLink, buttonClass } from "@/components/ui/button";
 import { Link } from "@/components/ui/link";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { SessionCta } from "@/components/ui/session-cta";
-import { checkInOfferFor } from "@/lib/dal/checkin";
-import type { AffordanceCell } from "@/components/checkin/session-matrix";
+import type { AffordanceCell, CheckInOffer } from "@/components/checkin/session-matrix";
 import type { RsvpPanelData } from "@/lib/dal/rsvp";
 import type { EventAttendeeFace, EventFigures, EventSession, SessionDay } from "@/lib/dal/sessions";
 import type { SessionPhase } from "@/lib/session-status";
@@ -54,6 +53,9 @@ export interface ActionCardProps {
   can: AffordanceCell;
   rsvp: RsvpPanelData | null;
   primary: PrimaryAction | null;
+  /** The page's one check-in answer (`eventCheckIn()`, with the days) — never recomputed here, so the card, the bar
+   *  and the primary agree. */
+  checkIn: CheckInOffer;
   slot: SlotProps;
   /** The rule's amount for this viewer — null draws none (never a literal, §4.45). */
   points: number | null;
@@ -70,12 +72,7 @@ export interface ActionCardProps {
 
 export async function ActionCard(props: ActionCardProps) {
   const { session, phase, can, rsvp, slot, locale, figures } = props;
-  const checkIn = checkInOfferFor(
-    { ...session, days: props.days },
-    { isPresenter: session.viewerIsPresenter, isStaff: session.viewerIsStaff, rsvpStatus: session.rsvpStatus, checkedIn: session.checkedIn, checkedInDayIds: session.checkedInDayIds },
-    session.allowWalkIns,
-    session.checkInOpen,
-  );
+  const { checkIn } = props;
   const primary = primaryAfterCheckIn(props.primary, checkIn);
   const [t, tRsvp, momentLabels] = await Promise.all([getTranslations("sessions.event"), getTranslations("rsvp"), reserveMomentLabels(slot)]);
 
@@ -150,6 +147,13 @@ export async function ActionCard(props: ActionCardProps) {
                 workshop the phase is `open` and a member checked in on day one is still told what is pending. */}
             {!ended ? <AwardState sessionId={slot.sessionId} locale={slot.locale} variant="inline" /> : null}
             {!calendarInBooked ? control("card") : null}
+            {/* ★ Check-in offered but not the primary — staff who hold no seat of their own: the host view is their
+                button, and the walk-in door stays one tap away as a secondary (the owner, 2026-10-14). */}
+            {checkIn === "offer" && primary !== "checkIn" ? (
+              <ButtonLink href={`/app/sessions/${session.id}/check-in`} variant="secondary" size="md" className="w-full">
+                {t("checkIn")}
+              </ButtonLink>
+            ) : null}
             {can.calendar && primary !== "calendar" ? <AddToCalendar {...slot} placement="inline" variant="secondary" /> : null}
           </div>
 

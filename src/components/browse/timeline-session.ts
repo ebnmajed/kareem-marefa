@@ -1,4 +1,3 @@
-import { checkInWindowAllowed } from "@/components/checkin/session-matrix";
 import type { SessionLanguage, SessionLevel, SessionState } from "@/lib/dal/sessions";
 import { eventTypeOf, type EventType } from "@/components/sessions/event-type";
 import { closingSoon, seatState, sessionPhase, type DayWindow, type SeatState, type SessionPhase } from "@/lib/session-status";
@@ -54,8 +53,6 @@ export interface TimelineSession {
   bookmarked: boolean;
   /** A signed poster URL when one has rendered; the card draws the title placeholder otherwise. */
   posterUrl: string | null;
-  /** «تسجيل الحضور» on the pinned card — `checkInWindowAllowed()`, the predicate behind the event page's link (contract 2). */
-  canCheckIn: boolean;
 }
 
 /**
@@ -88,7 +85,7 @@ export type PresenterEntry = { memberId: string; displayName: string | null; com
 export type TagEntry = { label: string; normalised: string };
 
 /** A card before its seats, poster and attendance are known — what the timeline's filters match against. */
-export interface TimelineCandidate extends Omit<TimelineSession, "confirmedCount" | "waitlistCount" | "posterUrl" | "canCheckIn" | "attended" | "seat" | "closingSoon"> {
+export interface TimelineCandidate extends Omit<TimelineSession, "confirmedCount" | "waitlistCount" | "posterUrl" | "attended" | "seat" | "closingSoon"> {
   venueId: string | null;
   presenterCompanyIds: string[];
   rsvpDeadlineAt: string | null;
@@ -220,17 +217,5 @@ export function finishTimelineSession(c: TimelineCandidate, extras: CardExtras, 
     waitlistCount: extras.waitlistCount,
     attended: extras.attended,
     posterUrl: extras.posterUrl,
-    // Contract 2, the same predicate the event page's link uses: the three
-    // states, the window to `ends_at + 2 h`, the room's switch. Only a confirmed
-    // seat is pinned, so the viewer's raw facts are that seat.
-    canCheckIn:
-      c.mine === "confirmed" &&
-      checkInWindowAllowed(
-        { state: c.state, startsAt: c.startsAt, endsAt: c.endsAt, durationMinutes },
-        { isStaff: false, isPresenter: false, rsvpStatus: "confirmed", checkedIn: extras.attended },
-        allowWalkIns,
-        checkInOpen,
-        now,
-      ),
   };
 }

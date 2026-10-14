@@ -13,13 +13,16 @@
 //     see the switch at all.
 import { describe, expect, it, vi } from "vitest";
 import type { EventSession } from "@/lib/dal/sessions";
-import { sessionPhase, viewerRelation } from "@/lib/session-status";
+import { sessionPhase, viewerRelation, type DayWindow } from "@/lib/session-status";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/server", () => ({ createServerClient: async () => ({}) }));
 vi.mock("@/lib/dal/session", () => ({ sessionClient: async () => ({}) }));
 
-const { eventCheckInLink } = await import("@/components/sessions/event-check-in");
+const { eventCheckIn } = await import("@/components/sessions/event-check-in");
+
+/** The page's answer read as the link: offered or not. */
+const eventCheckInLink = (session: EventSession, now: Date, days: readonly DayWindow[] = []) => eventCheckIn(session, days, now) === "offer";
 
 const NOW = new Date("2026-09-16T17:30:00Z");
 
@@ -48,6 +51,7 @@ function event(over: Partial<EventSession> & Pick<EventSession, "state" | "start
     checkInOpen: true,
     rsvpStatus: "confirmed",
     checkedIn: false,
+    checkedInDayIds: [],
     ...over,
   } as Omit<EventSession, "viewerRelation">;
   const phase = sessionPhase(base, NOW);
@@ -78,5 +82,29 @@ describe("the event page's check-in link", () => {
 
   it("never offers it to a presenter of the session (REQ-CHK-011)", () => {
     expect(eventCheckInLink(event({ state: "in_progress", startsAt: "2026-09-16T17:00:00Z", endsAt: "2026-09-16T18:00:00Z", viewerIsPresenter: true }), NOW)).toBe(false);
+  });
+
+  // ★ A workshop — the page now hands its days in. Before, the page's primary was computed without them.
+  const DAYS: DayWindow[] = [
+    { id: "d1", position: 1, startsAt: "2026-09-15T16:00:00Z", endsAt: "2026-09-15T18:00:00Z", checkInOpen: true },
+    { id: "d2", position: 2, startsAt: "2026-09-16T17:00:00Z", endsAt: "2026-09-16T19:00:00Z", checkInOpen: true },
+  ];
+  const workshop = (over: Partial<EventSession> = {}) => event({ state: "in_progress", startsAt: DAYS[0].startsAt, endsAt: DAYS[1].endsAt, ...over });
+
+  it("★ a workshop between its days offers nothing — no day is taking attendance", () => {
+    const between = new Date("2026-09-16T09:00:00Z");
+    expect(eventCheckInLink(workshop(), between, DAYS)).toBe(false);
+  });
+
+  it("★ checked in on day 1, day 2's check-in is still offered", () => {
+    const s = workshop({ checkedIn: true, checkedInDayIds: ["d1"] });
+    expect(eventCheckIn(s, DAYS, NOW)).toBe("offer");
+    expect(eventCheckIn({ ...s, checkedInDayIds: ["d1", "d2"] }, DAYS, NOW)).toBe("recorded");
+  });
+
+  it("staff without a seat are offered the walk-in door — the page draws it as a secondary", () => {
+    const s = event({ state: "in_progress", startsAt: "2026-09-16T17:00:00Z", endsAt: "2026-09-16T18:00:00Z", viewerIsStaff: true, rsvpStatus: null, allowWalkIns: true });
+    expect(s.viewerRelation).toBe("staff");
+    expect(eventCheckIn(s, [], NOW)).toBe("offer");
   });
 });
