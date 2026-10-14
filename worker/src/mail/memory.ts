@@ -41,6 +41,7 @@ export class MemoryTransport implements MailTransport {
         text: message.text,
         html: message.html,
         messageId: providerMessageId,
+        listUnsubscribe: message.listUnsubscribe ?? null,
       }),
       sentAt: new Date(),
     });

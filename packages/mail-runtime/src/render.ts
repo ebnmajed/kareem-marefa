@@ -1,4 +1,4 @@
-// Rendering an email. 08 §3.1, A30, REQ-INT-006.
+// Rendering an email. 08 §3.1, A30, REQ-INT-006, ★ REQ-NTF-018 / DEC-289 (the approved dark design).
 //
 // Five constraints that are not negotiable, each with a client that breaks
 // without it:
@@ -7,9 +7,10 @@
 //     support modern CSS reliably;
 //   · `dir="rtl"` on <html> AND on every table cell — Outlook ignores
 //     inherited direction more often than it honours it;
-//   · a declared fallback font stack, not a web font — web fonts do not load
-//     in most clients, so the mail is designed to look right in the fallback
-//     rather than to depend on the brand face;
+//   · ★ the product's face LOADED, with a stack that shapes Arabic where it is
+//     stripped (`DEC-289` amends this line's old «never a web font»): Apple Mail,
+//     iOS and Outlook.com render Baloo Bhaijaan 2, Gmail falls back to Segoe UI
+//     and Tahoma;
 //   · Western digits, always — REQ-INT-006, DEC-124, like every other surface;
 //   · a plain-text alternative for every message — some corporate clients
 //     strip HTML entirely.
@@ -19,12 +20,13 @@
 // 1.7 on body text.
 
 import { DEFAULT_TEMPLATES, SIGNATURE, type EmailTemplate } from "./templates.js";
-import { DESIGN_STACK, escapeHtml, formatNumber, formatValue, lookup } from "./primitives.js";
+import { escapeHtml, formatNumber, formatValue, lookup } from "./primitives.js";
 import { isBlockDocument, type DroppedBlock, type EmailBlockDocument } from "./blocks.js";
-import { documentFromText, platformDesign } from "./designs.js";
-import { linkFor } from "./links.js";
-import { compileBlocks, type CompilePalette } from "./compile.js";
-import type { EmailStyles } from "./blocks.js";
+import { documentFromText, platformDesign, preheaderFor } from "./designs.js";
+import { LOGO_PATH, MAIL, MAIL_FONT_LINK, t } from "./theme.js";
+import { formatFacts } from "./facts.js";
+import { designLinks, linkFor } from "./links.js";
+import { compileBlocks, isolate, type CompilePalette } from "./compile.js";
 
 export interface RenderInput {
   key: string;
@@ -59,6 +61,11 @@ export interface RenderInput {
   /** Wave 23 — the editor's canvas only (`CompileContext.annotate`). Never set
    *  by the worker, so nothing sent carries it. */
   annotate?: boolean;
+  /** ★ Wave 30 (`REQ-NTF-019`): the signed one-click link that switches this
+   *  message's category off — present only for a message a member may switch
+   *  off (`08` §1.7's set never carries one). Null: the footer has the settings
+   *  link alone. */
+  unsubscribeUrl?: string | null;
 }
 
 /** What `main`'s worker sends, and what `render.ts` has taken since M3. */
@@ -389,7 +396,25 @@ function legacyBrand(brand: RenderInput["brand"]): LegacyBrand | null | undefine
  * is replaced by the default, and `tests/unit/mail-blocks.test.ts` asserts a
  * planted non-hex never reaches the HTML.
  */
-function compilePalette(brand: RenderInput["brand"]): CompilePalette {
+/**
+ * ★ WAVE 30 — THE PALETTE IS THE DESIGN'S, AND NO KIT REACHES IT (`DEC-289`, `REQ-NTF-018`).
+ *
+ * Every mail is the approved dark design. The brand kit still arrives (the worker and the preview pass it, and
+ * an old worker on a new package must not throw), and it is read by nothing. The tokens a block can name map onto
+ * `build.py`'s: `surface` is the raised ground an inset sits on, `edge` the hairline.
+ */
+export const MAIL_PALETTE: CompilePalette = {
+  fgBody: MAIL.text,
+  fgMuted: MAIL.muted,
+  fgHeading: MAIL.text,
+  surface: MAIL.raised,
+  edge: MAIL.line,
+  accent: MAIL.lime,
+  onAccent: MAIL.limeInk,
+};
+
+/** The light palette a kit described — kept for the record of `DEC-242` and no longer read by a mail. */
+export function legacyCompilePalette(brand: RenderInput["brand"]): Omit<CompilePalette, "onAccent"> {
   const light: BrandPalette = brand && "light" in brand ? (brand.light ?? {}) : {};
   const legacy = legacyBrand(brand);
   const fgHeading = hex(light.fgHeading, PLATFORM_LIGHT.fgHeading);
@@ -416,60 +441,116 @@ function compilePalette(brand: RenderInput["brand"]): CompilePalette {
   };
 }
 
-/** The brand kit's light canvas, for a document whose ground asks for it. */
-function canvasOf(brand: RenderInput["brand"]): string {
-  const light: BrandPalette = brand && "light" in brand ? (brand.light ?? {}) : {};
-  return hex(light.canvas, PLATFORM_LIGHT.canvas);
+
+/** The shell's own facts, beside the compiled rows. */
+interface ShellInput {
+  subject: string;
+  preheader: string;
+  /** The page a click on the mark opens — the app, or nothing without an origin. */
+  appUrl: string | null;
+  /** The host company — from the session's venue (`0180`) — at the header's inline end, or nothing. */
+  company: string;
+  settingsUrl: string | null;
+  unsubscribeUrl: string | null;
+  org: string;
+  /** The document's own mobile rules (`mobileCss()`), when it asked for any. */
+  head: string;
 }
 
+/** `build.py`'s `stripe()` — the four accents along the card's top edge. */
+function stripe(): string {
+  // ★ No `overflow:hidden` on the card (it would clip tashkeel on a text line — `10` §2): the stripe's two outer
+  // cells carry the card's top corners themselves. In an RTL row the first cell is the right one.
+  const corner = (i: number) => (i === 0 ? "border-top-right-radius:28px;" : i === 3 ? "border-top-left-radius:28px;" : "");
+  const cells = [MAIL.lime, MAIL.violet, MAIL.orange, MAIL.coral]
+    .map((c, i) => `<td width="25%" height="4" style="height:4px;line-height:4px;font-size:0;background:${c};${corner(i)}">&nbsp;</td>`)
+    .join("");
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>${cells}</tr></table>`;
+}
+
+/** The preheader's padding: the zero-width joiners `build.py` uses, so a client shows the preheader and not the
+ *  first words of the body after it. */
+const PREHEADER_PAD = "&#847;&zwnj;&nbsp;".repeat(40);
+
 /**
- * The document every mail fills: the block compiler's rows, then the
- * signature. Since the string path left (`DEC-081`) there is one frame, and it
- * carries what D3 found the string path lacked — F1's declared `light` scheme
- * (Apple Mail and Outlook.com stop auto-inverting: an inverter that darkens a
- * background while leaving an explicit text colour alone produces dark text on
- * a dark card) and F4's declared Arabic faces for iOS and Android.
+ * ★ THE ONE FRAME — `build.py`'s `HEAD` and `shell()`, verbatim in structure (`DEC-289`, `REQ-NTF-018`).
+ *
+ * Dark-native: `color-scheme: dark` is declared so a client does not invert the palette (the reason `DEC-289`
+ * chose dark at all — the Gmail app cannot switch an adaptive mail cleanly). The page, the brand row (the hosted
+ * PNG mark, «كريم معرفة», the host company), the card with its stripe, the compiled rows inside it, and the
+ * composed footer below it: the settings link always, and «إيقاف هذه الرسائل» where the message may be switched
+ * off (`REQ-NTF-005`, `REQ-NTF-019`). No document can remove the footer, because no document draws it.
  */
-function shell(
-  rows: string,
-  org: string,
-  brand: LegacyBrand | null | undefined,
-  // ★ Wave 23. Both absent — every document written before — and every line
-  // below is the literal it has always been.
-  styles: EmailStyles | null = null,
-  extra: { head: string; palette: CompilePalette; canvas: string } | null = null,
-): string {
-  const fgBody = brand?.fgBody ?? PLATFORM_LIGHT.fgBody;
-  const fgMuted = brand?.fgMuted ?? PLATFORM_LIGHT.fgMuted;
-  const surface = brand?.surface ?? PLATFORM_LIGHT.surface;
-  const ground = styles?.ground === "canvas" && extra ? extra.canvas : styles?.ground === "surface" && extra ? extra.palette.surface : "#f5f5f5";
-  const padding = styles?.padding ?? 24;
-  const cardClass = styles?.mobile?.padding ? ` class="k-card"` : "";
-  const cell = `dir="rtl" align="right" style="font-family:${DESIGN_STACK};font-size:17px;line-height:1.7;color:${fgBody};padding:0 0 16px 0;text-align:right;"`;
-  // The documented opt-out for Apple Mail and Outlook.com. Gmail on Android
-  // inverts regardless, which is what the `bgcolor` attributes in `compile.ts`
-  // are for.
-  const head = `<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><meta name="color-scheme" content="light" /><meta name="supported-color-schemes" content="light" /><style>:root{color-scheme:light;supported-color-schemes:light;}</style>${extra?.head ?? ""}</head>`;
+function shell(rows: string, input: ShellInput): string {
+  const head = [
+    `<head>`,
+    `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">`,
+    `<meta http-equiv="X-UA-Compatible" content="IE=edge">`,
+    `<meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark">`,
+    `<meta name="x-apple-disable-message-reformatting"><meta name="format-detection" content="telephone=no,date=no,address=no">`,
+    `<title>${escapeHtml(input.subject)}</title>`,
+    `<!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->`,
+    `<link href="${MAIL_FONT_LINK}" rel="stylesheet">`,
+    `<style>`,
+    `:root{color-scheme:dark;supported-color-schemes:dark}`,
+    `body{margin:0!important;padding:0!important;width:100%!important;background:${MAIL.page}}`,
+    `table,td{mso-table-lspace:0;mso-table-rspace:0} img{-ms-interpolation-mode:bicubic;border:0;outline:none}`,
+    `a{text-decoration:none}`,
+    `@media (max-width:620px){`,
+    `  .shell{width:100%!important} .px{padding-left:20px!important;padding-right:20px!important}`,
+    `  .h1{font-size:26px!important} .hero{font-size:64px!important}`,
+    `  .btn-wrap,.btn-wrap td{width:100%!important} .btn{display:block!important;text-align:center!important}`,
+    `}`,
+    `</style>`,
+    input.head,
+    `</head>`,
+  ].join("\n");
+
+  const mark = input.appUrl ? `<img src="${escapeHtml(`${input.appUrl}${LOGO_PATH}`)}" width="24" height="33" alt="" style="display:block">` : "";
+  const brand =
+    `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>` +
+    (mark ? `<td valign="middle">${mark}</td>` : "") +
+    `<td valign="middle" style="padding-right:${mark ? 10 : 0}px;${t(19, 800, MAIL.text, 1)}">كريم معرفة</td></tr></table>`;
+  const link = (label: string, href: string) => `<a href="${escapeHtml(href)}" style="${t(15, 600, MAIL.muted, 1)}text-decoration:none;">${label}</a>`;
+  const footerLinks = [
+    input.settingsUrl ? link("الإعدادات", input.settingsUrl) : "",
+    input.unsubscribeUrl ? link("إيقاف هذه الرسائل", input.unsubscribeUrl) : "",
+  ].filter(Boolean);
 
   return [
     `<!doctype html>`,
-    `<html dir="rtl" lang="ar">`,
+    `<html lang="ar" dir="rtl" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">`,
     head,
-    `<body dir="rtl" style="margin:0;padding:0;background:${ground};">`,
-    `  <table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${ground};padding:24px 0;">`,
-    `    <tr><td dir="rtl" align="center">`,
-    `      <table${cardClass} role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:${surface};border-radius:12px;padding:${padding}px;">`,
+    `<body dir="rtl" style="margin:0;padding:0;background:${MAIL.page}" bgcolor="${MAIL.page}">`,
+    // Hidden by display, never by `overflow:hidden` (`10` §2's rule is enforced on every byte of a mail).
+    `<div style="display:none;max-height:0;max-width:0;opacity:0;font-size:1px;line-height:1px;mso-hide:all">${escapeHtml(input.preheader)}${PREHEADER_PAD}</div>`,
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${MAIL.page}" style="background:${MAIL.page}" dir="rtl"><tr><td align="center" style="padding:28px 12px 40px">`,
+    `<table role="presentation" class="shell" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px" dir="rtl">`,
+    `<tr><td style="padding:0 8px 18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>`,
+    `  <td valign="middle">${input.appUrl ? `<a href="${escapeHtml(input.appUrl)}" style="text-decoration:none">${brand}</a>` : brand}</td>`,
+    `  <td valign="middle" align="left" style="${t(13, 600, MAIL.faint, 1)}">${escapeHtml(input.company)}</td>`,
+    `</tr></table></td></tr>`,
+    `<tr><td bgcolor="${MAIL.card}" style="background:${MAIL.card};border-radius:28px">`,
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">`,
+    `<tr><td style="border-radius:28px 28px 0 0">${stripe()}</td></tr>`,
+    `<tr><td class="px" dir="rtl" align="right" style="padding:32px 32px 36px;text-align:right">`,
+    `<table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0">`,
     rows,
-    `        <tr><td ${cell.replace("padding:0 0 16px 0", "padding:16px 0 0 0")} >`,
-    `          <span style="font-size:13px;color:${fgMuted};">${escapeHtml(org)} · ${escapeHtml(SIGNATURE)}</span>`,
-    `        </td></tr>`,
-    `      </table>`,
-    `    </td></tr>`,
-    `  </table>`,
-    `</body>`,
-    `</html>`,
+    `</table>`,
+    `</td></tr>`,
+    `</table></td></tr>`,
+    `<tr><td align="center" style="padding:26px 16px 0">`,
+    `  <div style="${t(13, 600, MAIL.faint, 1.8)}">${footerLinks.join("&nbsp;&nbsp;·&nbsp;&nbsp;")}</div>`,
+    `  <div style="${t(12, 500, MAIL.faint, 1.8)}">${escapeHtml(input.org)} · ${escapeHtml(SIGNATURE)}</div>`,
+    `</td></tr>`,
+    `</table></td></tr></table>`,
+    `</body></html>`,
     ``,
-  ].join("\n");
+  ]
+    .join("\n")
+    // D3a item 2: every table states its direction — Outlook's Word engine does not inherit it.
+    .replace(/<table role="presentation"(?![^>]*dir=)/g, '<table role="presentation" dir="rtl"')
+    .replace(/<td(?=[\s>])(?![^>]*\bdir=)/g, '<td dir="rtl"');
 }
 
 /**
@@ -509,13 +590,20 @@ export function renderEmail(input: RenderInput): RenderedEmail {
   // carries: every default template greets by name, and a greeting that
   // renders «مرحبًا ،» is the failure mode this prevents.
   const changes = changesFromPayload(input.payload.changes, input.org);
+  // ★ Wave 30: the design's date words — «الخميس», «1», «أكتوبر», «6:00 م» — derived HERE from the payload's own
+  // `startsAt` when the sender did not word them, so a reminder shows its time in the preview, in a test and from an
+  // old caller alike. The worker's facts (and anything a sender passed) win; nothing here overwrites a value.
+  const derived = formatFacts({}, input.payload, input.org.timeZone);
   const payload: Record<string, unknown> = {
+    ...Object.fromEntries(Object.entries(derived).filter(([k]) => input.payload[k] === undefined || input.payload[k] === null || input.payload[k] === "")),
     // Named difference 4: an ISO instant becomes a date a person can read.
     // Applied first, so `changes` and `day` below — both already strings — are
     // untouched by it.
     ...formatInstants(input.payload, input.org),
     ...(changes === null ? {} : { changes }),
     // Empty at one day, so the paragraph disappears and the mail is today's.
+    // (The date strip's calendar day is `date_day`, wave 30 — a different binding, so an admin's `{{day}}` keeps
+    // meaning «اليوم الثاني من 3».)
     day: dayBlock(input.payload),
     member: { ...(typeof input.payload.member === "object" && input.payload.member ? input.payload.member : {}), name: input.member.name ?? input.member.email, email: input.member.email },
     org: input.org.name,
@@ -528,32 +616,46 @@ export function renderEmail(input: RenderInput): RenderedEmail {
   // one, and a map must not overrule a sender that knows better.
   const url = input.payload.url ?? linkFor(input.key, input.payload, input.appUrl);
   if (url) payload.url = url;
+  // ★ Wave 30: the design's other destinations, from the same ids (`designLinks()`); a sender's own value wins.
+  for (const [name, href] of Object.entries(designLinks(input.payload, input.appUrl))) {
+    if (payload[name] === undefined || payload[name] === null || payload[name] === "") payload[name] = href;
+  }
 
   const subject = interpolate(subjectSource, payload).replace(/\s+/g, " ").trim();
+  const origin = input.appUrl ? input.appUrl.replace(/\/+$/, "") : null;
+  // ★ wave 20 (DEC-218 §2.5, D14): preferences live on `/app/me/settings` (SCR-029), no longer on the inbox.
+  const settingsUrl = origin ? `${origin}/ar/app/me/settings` : null;
 
   // ★ ONE PATH (DEC-081). Every key resolved to a document above, so every
-  // mail is compiled here.
-  const palette = compilePalette(input.brand);
+  // mail is compiled here — on the design's palette, whatever kit arrived (`DEC-289`).
   const compiled = compileBlocks(document, {
     payload,
-    palette,
+    palette: MAIL_PALETTE,
     annotate: input.annotate === true,
     logoUrl: input.logoUrl ?? null,
-    appOrigin: input.appUrl ?? null,
-    // ★ wave 20 (DEC-218 §2.5, D14): preferences live on `/app/me/settings` (SCR-029), no longer on the inbox.
-    preferencesUrl: input.appUrl ? `${input.appUrl.replace(/\/+$/, "")}/ar/app/me/settings` : null,
+    appOrigin: origin,
+    preferencesUrl: settingsUrl,
     org: input.org.name,
   });
+  const preheader = interpolate(preheaderFor(input.key), payload).replace(/\s+/g, " ").trim();
+  const unsubscribeUrl = input.unsubscribeUrl ?? null;
+  const footer = [
+    settingsUrl ? `الإعدادات: ${isolate(settingsUrl)}` : "",
+    unsubscribeUrl ? `إيقاف هذه الرسائل: ${isolate(unsubscribeUrl)}` : "",
+  ].filter(Boolean);
   return {
     subject,
-    text: `${compiled.text.join("\n\n")}\n\n—\n${input.org.name} · ${SIGNATURE}\n`,
-    html: shell(
-      compiled.rows.join("\n"),
-      input.org.name,
-      legacyBrand(input.brand),
-      compiled.styles,
-      compiled.styles ? { head: compiled.head, palette, canvas: canvasOf(input.brand) } : null,
-    ),
+    text: `${[...compiled.text, ...(footer.length ? [footer.join("\n")] : [])].join("\n\n")}\n\n—\n${input.org.name} · ${SIGNATURE}\n`,
+    html: shell(compiled.rows.join("\n"), {
+      subject,
+      preheader: preheader !== "" ? preheader : subject,
+      appUrl: origin,
+      company: formatValue(lookup(payload, "company")),
+      settingsUrl,
+      unsubscribeUrl,
+      org: input.org.name,
+      head: compiled.head,
+    }),
     dropped: compiled.dropped,
   };
 }

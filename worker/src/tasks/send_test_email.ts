@@ -1,5 +1,5 @@
 import type { Task } from "graphile-worker";
-import { renderEmail, sampleFor, SAMPLE_MEMBER, TemplateMissingError } from "@kareem/mail-runtime";
+import { formatFacts, renderEmail, sampleFor, SAMPLE_MEMBER, TemplateMissingError, type RawFacts } from "@kareem/mail-runtime";
 import { createTransport, fromAddress, type MailTransport } from "../mail/index.js";
 
 // JOB-send_test_email — REQ-NTF-011, `16` §11.4, DEC-161.
@@ -58,11 +58,7 @@ export const send_test_email: Task = async (rawPayload, helpers) => {
     return;
   }
 
-  const { rows: kitRows } = await helpers.query<{ kit: { light?: Record<string, string>; dark?: Record<string, string> } | null }>(
-    `select public.brand_kit($1::uuid) as kit`,
-    [p.org_id],
-  );
-  const kit = kitRows[0]?.kit;
+  // ★ Wave 30 (`DEC-289`): no brand kit — every mail is the approved dark design, the test send included.
 
   const appUrl = process.env.APP_URL?.replace(/\/+$/, "") || null;
   let logoUrl: string | null = null;
@@ -97,9 +93,12 @@ export const send_test_email: Task = async (rawPayload, helpers) => {
     [p.org_id],
   );
   const cardSession = cardRows[0]?.id ?? null;
+  // ★ Wave 30: the sample's `poster_wide` names a render its fake session does not have; never a 16:9 URL that 404s.
+  const { poster_wide: _sampleWide, ...samplePayload } = sample.payload as Record<string, unknown> & { poster_wide?: unknown };
+  void _sampleWide;
   let payload: Record<string, unknown> = cardSession && appUrl
-    ? { ...sample.payload, session_id: cardSession, session_card_image_url: `${appUrl}/api/s/${cardSession}/og` }
-    : sample.payload;
+    ? { ...samplePayload, session_id: cardSession, session_card_image_url: `${appUrl}/api/s/${cardSession}/og` }
+    : samplePayload;
 
   // ★ WAVE 23 — THE REAL SESSION'S WORDS, NOT ONLY ITS CARD (`REQ-UIX-112`, «معاينة واختبار»). The builder's preview
   // names the session `preview_card_session()` picked and shows its title, time and venue through
@@ -115,6 +114,15 @@ export const send_test_email: Task = async (rawPayload, helpers) => {
     if (card?.title) {
       payload = { ...payload, title: card.title, startsAt: card.starts_at ?? payload.startsAt, venue: card.venue_name ?? payload.venue };
     }
+    // ★ Wave 30 (`DEC-289`): and that session's own facts, read as a real send reads them — never the sample's
+    // presenter or seats on a real session. The preview does the same through `email_preview_facts()`.
+    const SESSION_FACTS = ["type", "date_day", "date_month", "weekday", "time", "company", "presenter", "presenter_initials", "seats_left", "seats_taken_pct", "poster_url", "directions_url", "going_count", "points_on_attend", "likes", "comments"];
+    const own = Object.fromEntries(Object.entries(payload).filter(([k]) => !SESSION_FACTS.includes(k)));
+    const { rows: factRows } = await helpers.query<{ facts: RawFacts | null }>(
+      `select public.email_facts($1::uuid, $2::uuid, $3::text, $4::jsonb) as facts`,
+      [p.org_id, p.member_id, p.key, JSON.stringify({ session_id: cardSession })],
+    );
+    payload = { ...own, ...formatFacts(factRows[0]?.facts ?? {}, own, ctx.org.time_zone) };
   }
 
   let rendered;
@@ -125,7 +133,6 @@ export const send_test_email: Task = async (rawPayload, helpers) => {
       payload,
       member: { name: ctx.member.display_name, email: ctx.member.email },
       org: { name: ctx.org.name, timeZone: ctx.org.time_zone },
-      brand: kit?.light ? { light: kit.light, dark: kit.dark } : null,
       logoUrl,
       appUrl,
     });

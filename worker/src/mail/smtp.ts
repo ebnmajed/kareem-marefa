@@ -99,6 +99,7 @@ export class SmtpSinkTransport implements MailTransport {
       text: message.text,
       html: message.html,
       messageId: providerMessageId,
+      listUnsubscribe: message.listUnsubscribe ?? null,
     });
 
     const socket = net.createConnection({ host: this.host, port: this.port });

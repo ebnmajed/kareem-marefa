@@ -64,7 +64,8 @@ export function isAuthScreenPath(pathname: string): boolean {
  * itself (`notes/designer.md` §2.10); this predicate is the honest fix.
  */
 export function isPublicPlatformPath(pathname: string): boolean {
-  return /^\/[a-z]{2}\/(verify|legal|s)(\/|$)/.test(pathname);
+  // ★ wave 30 (REQ-NTF-019): `/unsubscribe` — a member stops a message from the message, signed in or not.
+  return /^\/[a-z]{2}\/(verify|legal|s|unsubscribe)(\/|$)/.test(pathname);
 }
 
 /**

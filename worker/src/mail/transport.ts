@@ -33,6 +33,9 @@ export interface MailMessage {
    *  (a timeout, a dropped socket) does not deliver it a second time on the retry. Resend
    *  honours it as `Idempotency-Key`; the sink and the memory transport ignore it. */
   idempotencyKey?: string;
+  /** ★ Wave 30 (`REQ-NTF-019`, RFC 8058): the one-click unsubscribe — `<https://…>` as `List-Unsubscribe` and
+   *  `List-Unsubscribe=One-Click` as `List-Unsubscribe-Post`. Absent for a message nobody may switch off. */
+  listUnsubscribe?: { url: string } | null;
 }
 
 /** A send the provider refused for a reason a retry cannot change — a malformed address, a

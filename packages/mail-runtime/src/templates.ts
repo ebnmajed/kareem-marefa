@@ -89,8 +89,9 @@ export const DEFAULT_TEMPLATES: Readonly<Record<string, EmailTemplate>> = {
     subject: "بعد أسبوع: {{title}}",
     body: `${greeting}\n\nتذكير: جلسة «{{title}}» بعد أسبوع.\n\n{{day}}\n\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\n{{tasks}}\n\n{{url}}`,
   },
+  // ★ Wave 30 (`DEC-289`): the approved design's subject, with the time.
   "MSG-reminder_1d": {
-    subject: "غدًا: {{title}}",
+    subject: "غدًا {{time}}: {{title}}",
     body: `${greeting}\n\nجلسة «{{title}}» غدًا.\n\n{{day}}\n\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\n{{tasks}}\n\n{{url}}`,
   },
   "MSG-reminder_2h": {
@@ -111,6 +112,26 @@ export const DEFAULT_TEMPLATES: Readonly<Record<string, EmailTemplate>> = {
   "MSG-materials_added": {
     subject: "أُضيفت مواد جلسة {{title}}",
     body: `${greeting}\n\nأُضيفت مواد جديدة إلى جلسة «{{title}}» التي حضرتها.\n\n{{url}}`,
+  },
+  // ★ Wave 30 (`REQ-EVT-017`, `DEC-289`): every comment on a session a member presents.
+  "MSG-session_comment": {
+    subject: "{{actor}} علّق على جلستك",
+    body: `{{actor}} علّق على جلسة «{{title}}»:\n\n«{{comment}}»\n\n{{url}}`,
+  },
+  // ★ Wave 30: a reservation is mailed now, as the design's ticket.
+  "MSG-rsvp_confirmed": {
+    subject: "مقعدك محجوز: {{title}}",
+    body: `مقعدك محجوز في «{{title}}».\n\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\n{{url}}`,
+  },
+  // ★ Wave 30 (`DEC-289` §3): sent at check-in, with no points figure — points arrive at completion (REQ-PTS-015).
+  "MSG-check_in_confirmed": {
+    subject: "شكرًا لحضورك: {{title}}",
+    body: `شكرًا لحضورك «{{title}}».\n\n{{url}}`,
+  },
+  // ★ Wave 30 (`REQ-LDR-009`): the week's close.
+  "MSG-leaderboard_weekly": {
+    subject: "أنت #{{rank}} هذا الأسبوع",
+    body: `ترتيبك هذا الأسبوع: #{{rank}} · {{points}} نقطة.\n\n{{url}}`,
   },
   "MSG-comment_reply": {
     subject: "رد على تعليقك",

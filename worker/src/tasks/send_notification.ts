@@ -1,6 +1,6 @@
 import type { Task } from "graphile-worker";
 import { createTransport, fromAddress, PermanentMailError, type MailTransport } from "../mail/index.js";
-import { logoUrlFor, renderEmail, TemplateMissingError } from "@kareem/mail-runtime";
+import { formatFacts, logoUrlFor, renderEmail, TemplateMissingError, type RawFacts } from "@kareem/mail-runtime";
 
 // JOB-send_notification — 11 §2.6, 08 §5, REQ-NTF-002, REQ-NTF-003, REQ-NTF-008.
 // Key: `notify:{message_id}`, enqueued by `public.notify()` inside the
@@ -94,21 +94,17 @@ export const send_notification: Task = async (rawPayload, helpers) => {
     return;
   }
 
-  // 06 §8.3's email-template leg (wave 4, DEC-052): the org's brand kit,
-  // merged over the platform defaults in SQL, so the mail carries the same
-  // colours as the UI and the posters. One read, one shape.
-  // ★ The WHOLE kit is passed now, not three of its keys. `brand_kit()` has
-  // returned both schemes, nine tokens each, since `0068`/`0093`, and a DESIGN
-  // needs more than the shell does — a heading colour and a rule colour at
-  // least. `renderEmail()` narrows it back to the same three for the string
-  // path with the same guard this line used to apply, so the mail an untouched
-  // org receives is byte for byte the one it received before (contract 5).
-  const { rows: kitRows } = await helpers.query<{ kit: { light?: Record<string, string>; dark?: Record<string, string> } | null }>(
-    `select public.brand_kit($1::uuid) as kit`,
-    [p.org_id],
+  // ★ Wave 30 (`DEC-289`, `REQ-NTF-018`): every mail is the approved dark design, so the org's brand kit is no
+  // longer read here — it styled the mail from wave 4 to wave 29 and restyles posters and certificates still.
+  //
+  // What the design draws — the date strip, the presenter, the seats, the ticket, the comment, the certificate —
+  // is read by `email_facts()` (`0224`) and worded in the org's zone by `formatFacts()`. The payload a sender
+  // passed wins over a fact, so a reminder keeps ITS day's start and room.
+  const { rows: factRows } = await helpers.query<{ facts: RawFacts | null }>(
+    `select public.email_facts($1::uuid, $2::uuid, $3::text, $4::jsonb) as facts`,
+    [p.org_id, p.member_id, p.key, JSON.stringify(p.payload ?? {})],
   );
-  const kit = kitRows[0]?.kit;
-  const brand = kit?.light ? { light: kit.light, dark: kit.dark } : null;
+  const facts = formatFacts(factRows[0]?.facts ?? {}, p.payload ?? {}, ctx.org.time_zone);
 
   // `0126` / contract 9: the ONE object a mail client may fetch with no
   // session — an ACTIVE org's logo, and only while it is PNG or JPEG. No row
@@ -136,17 +132,34 @@ export const send_notification: Task = async (rawPayload, helpers) => {
   // it renders one row fewer, never a broken image.
   const cardImageUrl = appUrl && payloadSessionId && ctx.session_card_image ? `${appUrl}/api/s/${payloadSessionId}/og` : null;
 
+  // ★ Wave 30 (`REQ-NTF-019`): a message a member MAY switch off carries a signed one-click link to switch its
+  // category off — in the footer and as `List-Unsubscribe`. `08` §1.7's set carries none: only the settings link.
+  let unsubscribe: { page: string; oneClick: string } | null = null;
+  if (appUrl && ctx.optional) {
+    const { rows: tokenRows } = await helpers.query<{ token: string }>(
+      `select public.email_unsubscribe_token($1::uuid, $2::uuid, $3::text) as token`,
+      [p.org_id, p.member_id, ctx.category],
+    );
+    const token = tokenRows[0]?.token;
+    if (token) {
+      const t = encodeURIComponent(token);
+      unsubscribe = { page: `${appUrl}/ar/unsubscribe?t=${t}`, oneClick: `${appUrl}/api/email/unsubscribe?t=${t}` };
+    }
+  }
+
   let rendered;
   try {
     rendered = renderEmail({
       key: p.key,
       override: ctx.template,
-      payload: cardImageUrl ? { ...(p.payload ?? {}), session_card_image_url: cardImageUrl } : (p.payload ?? {}),
+      // The facts LAYER OVER the payload: `formatFacts()` already defers to a sender's own start and room, and it
+      // adds what a payload cannot carry in words (the board rows' initials).
+      payload: { ...(p.payload ?? {}), ...facts, ...(cardImageUrl ? { session_card_image_url: cardImageUrl } : {}) },
       member: { name: ctx.member.display_name, email: ctx.member.email },
       org: { name: ctx.org.name, timeZone: ctx.org.time_zone },
-      brand,
       logoUrl,
       appUrl,
+      unsubscribeUrl: unsubscribe?.page ?? null,
     });
   } catch (error) {
     // A missing template is a matrix bug, not a transient fault: retrying it
@@ -184,6 +197,7 @@ export const send_notification: Task = async (rawPayload, helpers) => {
       // The job's own key (`notify:{message_id}`), the same on every retry: a send Resend
       // accepted whose answer was lost is not delivered twice.
       idempotencyKey: `notify:${p.message_id}`,
+      listUnsubscribe: unsubscribe ? { url: unsubscribe.oneClick } : null,
     });
     await helpers.query(`select public.update_email_delivery($1::uuid, 'sent'::public.delivery_status, $2::text, null)`, [deliveryId, sent.providerMessageId]);
     helpers.logger.info(`send_notification: ${p.key} sent to member ${p.member_id} (${sent.providerMessageId})`);

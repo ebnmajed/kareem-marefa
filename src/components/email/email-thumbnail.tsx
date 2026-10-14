@@ -23,11 +23,22 @@ export function EmailThumbnail({ blocks }: { blocks: readonly EmailBlock[] }) {
           case "detail_list":
           case "social":
           case "certificate":
+          case "eyebrow":
+          case "presenter":
+          case "seats":
+          case "links":
+          case "rating":
             return <span key={block.id} className="h-1.5 w-4/5 shrink-0 rounded-pill bg-fg-muted opacity-50" />;
           case "button":
             return <span key={block.id} className="h-3.5 w-1/3 shrink-0 self-center rounded-pill bg-fg-heading" />;
           case "session_card":
           case "poster":
+          case "ticket":
+          case "quote":
+          case "leaderboard":
+          case "when":
+          case "stats":
+          case "hero":
             return <span key={block.id} className="h-12 shrink-0 rounded-field bg-edge" />;
           case "image":
           case "logo":
