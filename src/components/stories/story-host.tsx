@@ -12,9 +12,10 @@ import { Button } from "@/components/ui/button";
 import { formatNumber } from "@/components/sessions/numerals";
 import { FrameBody, frameAge, frameDurationMs } from "@/components/stories/frames";
 import { CaptureFlow } from "@/components/stories/capture-flow";
-import { recordStoryViewsAction, removeMeFromFrameAction, reportStoryFrameAction, setStoryReactionAction } from "@/components/stories/actions";
+import { recordStoryViewsAction, removeMeFromFrameAction, reportStoryFrameAction } from "@/components/stories/actions";
 import type { PreparedStories } from "@/components/stories/prepared";
 import type { StoryReactionKind } from "@/lib/dal/reactions";
+import { queueReaction } from "@/lib/reactions/queue";
 import type { StoryFrame } from "@/lib/dal/stories";
 
 // The viewer's host — what `ui/story-viewer` needs from the app, and nothing it may not have (REQ-STO-005, 007, 010,
@@ -61,7 +62,9 @@ export function useStoryHost(prepared: PreparedStories) {
   const opener = useRef<HTMLElement | null>(null);
   const [reactions, setReactions] = useState(prepared.reactions);
   // The newest tap per frame: an older answer arriving after a newer tap is ignored (DEC-278).
-  const reactionSeq = useRef(new Map<string, number>());
+  // DEC-290: what the server held before a frame's first unsent tap, and the member's choice as of their last tap.
+  const reactionBaseline = useRef(new Map<string, ReactionEntry>());
+  const reactionMine = useRef(new Map<string, StoryReactionKind | null>());
   const [seen, setSeen] = useState(() => new Set(sessions.flatMap((s) => s.frames.filter((f) => f.seen).map((f) => f.id))));
   const [capture, setCapture] = useState<string | null>(null);
   const [report, setReport] = useState<{ frameId: string; error: string | null } | null>(null);
@@ -124,23 +127,35 @@ export function useStoryHost(prepared: PreparedStories) {
 
   // ★ OPTIMISTIC (DEC-278): the tap shows at once — the press and the count — and the server follows. A reaction is the
   // member's own and uncontended (one per member per frame, REQ-STO-010), so drawing it before the answer misstates
-  // nothing; a refusal puts the frame back as it was. Only the newest tap's answer is applied.
+  // nothing; a refusal puts the frame back as the server held it.
+  // ★ DEC-290: the write goes through the reaction queue to `POST /api/reactions`, not a Server Action — Server Actions
+  // run one at a time per client, so a reaction waited behind the views' flush and behind the tap before it. Quick
+  // taps on one frame coalesce into one write of the last choice; only that write's answer is applied.
   const react = useCallback(
-    async (frameId: string, kind: string) => {
-      const before = reactions[frameId] ?? { totals: { heart: 0, fire: 0, clap: 0, idea: 0 }, mine: null };
-      const next = before.mine === kind ? null : (kind as StoryReactionKind);
-      const seq = (reactionSeq.current.get(frameId) ?? 0) + 1;
-      reactionSeq.current.set(frameId, seq);
-      setReactions((prev) => ({ ...prev, [frameId]: withMine(prev[frameId] ?? before, next) }));
-      const result = await setStoryReactionAction(locale, frameId, next);
-      if (reactionSeq.current.get(frameId) !== seq) return;
+    (frameId: string, kind: string) => {
+      // The member's choice as of their LAST tap — read synchronously, so two taps between renders compose.
+      const current = reactionMine.current.has(frameId) ? (reactionMine.current.get(frameId) ?? null) : (reactions[frameId]?.mine ?? null);
+      const next = current === kind ? null : (kind as StoryReactionKind);
+      reactionMine.current.set(frameId, next);
       setReactions((prev) => {
-        const entry = prev[frameId] ?? before;
-        if ("error" in result) return { ...prev, [frameId]: before };
-        return result.mine === entry.mine ? prev : { ...prev, [frameId]: withMine(entry, result.mine) };
+        const before = prev[frameId] ?? { totals: { heart: 0, fire: 0, clap: 0, idea: 0 }, mine: null };
+        if (!reactionBaseline.current.has(frameId)) reactionBaseline.current.set(frameId, before);
+        return { ...prev, [frameId]: withMine(before, next) };
+      });
+      queueReaction({ target: "story", id: frameId, kind: next }, (result) => {
+        const held = reactionBaseline.current.get(frameId);
+        reactionBaseline.current.delete(frameId);
+        reactionMine.current.delete(frameId);
+      if (result.ok) {
+        const mine = (result.data.mine ?? null) as StoryReactionKind | null;
+        setReactions((prev) => {
+          const entry = prev[frameId];
+          return !entry || entry.mine === mine ? prev : { ...prev, [frameId]: withMine(entry, mine) };
+        });
+        } else if (held) setReactions((prev) => ({ ...prev, [frameId]: held }));
       });
     },
-    [locale, reactions],
+    [reactions],
   );
 
   const ownerOf = (frame: StoryFrame): string | null =>

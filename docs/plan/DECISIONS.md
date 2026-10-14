@@ -11011,3 +11011,55 @@ page beat the skeleton, a skeleton still flashed between two moves. The skeleton
 never swapped its skeleton out. With no `loading.tsx`, the two `test.fixme` cases that wait for F3 may now pass.
 
 - **Documents changed:** `STATUS.md`
+
+## DEC-290 — A reaction answers at once and is written beside everything else; replies the Instagram way
+
+**Date:** 2026-10-14 · **Status:** accepted · **By:** the owner · **Refs:** REQ-EVT-002, REQ-EVT-004, REQ-EVT-006, REQ-STO-005, REQ-STO-010 · **Amends:** the wave-18 kept-behaviour line «REQ-EVT-002 — «رد» only on a top-level comment» (`content.md` § PR B), `ui/reaction-bar`'s «nothing pops» for the comment like · **Migration:** none
+
+**The owner:** «when i like a comment the screen glitches and the count increases then decreases»; «in the story adding a
+reaction is very slow»; «why not make the reply similar to how instagram handles it … if someone else want to reply it
+doesn't work»; «decouple the interaction with the writing to the database so we give feedback to the user asap … and
+have an optimistic prediction for that».
+
+**What was wrong, from the code.**
+1. **The like stepped back.** `comment-item.tsx` drew the like with `useOptimistic` and called `router.refresh()` AFTER
+   an `await` inside its transition. An update after an `await` is not part of that transition, so React dropped the
+   optimistic +1 the moment the action returned — before the refresh's fresh count arrived: up, down, up.
+2. **Every reaction was a Server Action**, and Server Actions run one at a time per client: a tap's write queued behind
+   the story's batched views and behind the tap before it. The press was already drawn at once (DEC-278), so locally
+   it measured fast; on a phone the write, and anything that followed it, waited.
+3. **Only a top-level comment offered «رد»**, so a member could not answer the person who replied.
+
+**Ruling.**
+1. **The screen answers, the write follows.** The comment list owns the like (`comment-list.tsx`) and the story host its
+   reactions: a tap changes the state at once, and the DESIRED state goes to `lib/reactions/queue.ts`. Quick taps on one
+   target coalesce (300 ms) into one write of the last state; a state changed while a write is in flight is sent after
+   it; only the last state's answer reaches the caller; a failed write puts back what the server held, with the quiet
+   toast. A page that closes with a write waiting sends it with `keepalive` on `pagehide`. **No localStorage queue**: a
+   reload shows the server's truth. A live total for a comment whose write is still on its way is not applied over the
+   member's tap; a refresh keeps a pending like as tapped.
+2. **`POST /api/reactions`, a Route Handler** — beside the Server Actions, never behind them. Zod first; the `Origin`
+   must be ours (as `api/photos/albums`); a member session or 401; the DAL as the caller, RLS the boundary, no
+   `service_role`. It takes the desired state — `setReaction()` (new, idempotent) for a comment like,
+   `setStoryReaction()` for a frame — never a toggle. `toggleReactionAction` and `setStoryReactionAction` are removed.
+   The feed's session like (`feed/actions.ts`) still uses `toggleReaction()` and is not changed here.
+3. **A tap that likes plays the reaction whisper once** — the `.reaction-ignite` and `.reaction-ring` that `globals.css`
+   already held for this (REQ-EVT-004 earns nothing, so it is an acknowledgement, not a moment). Keyed on the tap, so a
+   re-render, a live total or a refresh never replays it; under reduced motion the ignite is its end state and the
+   ring is not drawn.
+4. **Replies, the Instagram way, still one level** (REQ-EVT-002 — `comments_guard` refuses a third). «رد» on every
+   comment and reply; a reply's is named «رد على <name>». Replying to a reply opens the thread's composer — at the
+   thread's end — with «@name » written and that member mentioned (REQ-EVT-006, so `mentioned` notifies them; the first
+   comment's author hears through `comment_reply`), and posts under the first comment. A mention whose «@name» was
+   deleted before posting is not sent. A thread of more than two replies shows two and «عرض N ردود» for the rest; the
+   member's own new reply opens the thread.
+
+**Measured** (production build, local Supabase, phone, 4× CPU and 150 ms latency): a story reaction is pressed in
+60 – 100 ms before and after; the write now leaves after the 300 ms window instead of at once (answered ≈ 530 ms vs
+≈ 220 ms — not visible, the press is drawn first); two quick taps on one frame were two serialised Server Actions
+and coalesce into one write (`tests/unit/reaction-queue.test.ts`). ★ The owner's «very slow» was NOT reproduced locally
+— the press was fast before too; what removing the Server Action certainly removes is the queue behind the views and
+the re-render of the page a Server Action triggers when it refreshes the session cookie. A liked comment, sampled every frame for two seconds, shows one state — pressed, the new count —
+and is still liked after a reload (`event-comments.spec.ts`).
+
+- **Documents changed:** `STATUS.md`

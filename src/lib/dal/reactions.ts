@@ -45,6 +45,28 @@ export async function toggleReaction(locale: string, target: ReactionTarget, kin
   return "added";
 }
 
+/**
+ * Sets the viewer's reaction to a DESIRED state — present (`on`) or absent — and returns the state it left (DEC-290).
+ * Idempotent, unlike `toggleReaction()`: the client coalesces quick taps into their last state and sends that, so a
+ * write that arrives twice, or after another tab's, never flips the member's choice back. RLS is still the boundary
+ * (0010's self-insert and self-delete policies).
+ */
+export async function setReaction(locale: string, target: ReactionTarget, kind: string, on: boolean): Promise<boolean> {
+  const parsedKind = reactionKind.parse(kind);
+  const { column, value } = targetColumn(target);
+  if (!z.uuid().safeParse(value).success) throw new Error("invalid_target");
+  const { session, supabase } = await sessionClient(locale);
+  if (!on) {
+    const { error } = await supabase.from("reactions").delete().eq(column, value).eq("member_id", session.memberId).eq("kind", parsedKind);
+    if (error) throw new Error(`reactions: ${error.message}`);
+    return false;
+  }
+  const { error } = await supabase.from("reactions").insert({ org_id: session.orgId, member_id: session.memberId, kind: parsedKind, [column]: value });
+  // Already there is the state asked for (the unique index on (member, target, kind)).
+  if (error && error.code !== "23505") throw new Error(`reactions: ${error.message}`);
+  return true;
+}
+
 export interface ReactionSummary {
   totals: Record<string, number>;
   /** Kinds the viewer has already used on this target, for the toggle's initial state. */

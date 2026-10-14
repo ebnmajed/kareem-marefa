@@ -1,9 +1,9 @@
 "use client";
 
-import { useId, useOptimistic, useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { deleteMyCommentAction, editCommentAction, removeCommentAction, reportCommentAction, toggleReactionAction } from "@/components/event/actions";
+import { deleteMyCommentAction, editCommentAction, removeCommentAction, reportCommentAction } from "@/components/event/actions";
 import { timeAgo } from "@/components/feed/relative";
 import { orgDay } from "@/components/browse/session-post";
 import { EditOnly } from "@/components/sessions/edit-mode";
@@ -25,9 +25,12 @@ import type { ReactionSummary } from "@/lib/dal/reactions";
 // own and staff's actions.
 //
 // Kept, requirement by requirement (`docs/plan/notes/content.md` § PR B):
-//   · REQ-EVT-002 — «رد» only on a top-level comment: there is no third level;
-//   · REQ-EVT-004, REQ-UIX-034 — the like earns nothing; the pressed state is its acknowledgement, optimistic,
-//     reverting on its own when the write fails; its name is the catalogue's «إعجاب» and its count;
+//   · REQ-EVT-002 — «رد» on every comment and reply (DEC-290); the list posts a reply to a reply under the thread's
+//     first comment, so there is still no third level;
+//   · REQ-EVT-004, REQ-UIX-034 — the like earns nothing; the pressed state is its acknowledgement; ★ DEC-290: it is
+//     the LIST's state, changed at once and never refreshed for, put back by the list if the write fails; a tap that
+//     likes plays the reaction whisper once (`.reaction-ignite` + `.reaction-ring`, still under reduced motion);
+//     its name is the catalogue's «إعجاب» and its count;
 //   · REQ-EVT-005 — edit own inside the org's window, marked «(معدَّل)»; delete own at any time, confirmed; a
 //     deleted comment with replies stands as «حُذف هذا التعليق» (the list drops one without);
 //   · REQ-EVT-008 — report with a reason, once; «تم إرسال بلاغك…» after;
@@ -43,6 +46,7 @@ export function CommentItem({
   locale,
   comment,
   reactions,
+  onLike,
   reported,
   onReply,
   isReplyOpen,
@@ -54,6 +58,8 @@ export function CommentItem({
   locale: string;
   comment: CommentDTO;
   reactions: ReactionSummary;
+  /** The list's like (DEC-290): it changes the state at once and queues the write. */
+  onLike?: (next: boolean) => void;
   reported: boolean;
   onReply?: () => void;
   isReplyOpen?: boolean;
@@ -75,7 +81,9 @@ export function CommentItem({
 
   const likes = reactions.totals.like ?? 0;
   const liked = reactions.mine.includes("like");
-  const [like, flip] = useOptimistic({ liked, count: likes }, (_s, next: boolean) => ({ liked: next, count: Math.max(0, likes + (next ? 1 : -1)) }));
+  // Bumped by a tap that LIKES — the key that plays the whisper once. A re-render, a live total or a refresh never
+  // changes it, so nothing replays.
+  const [burst, setBurst] = useState(0);
 
   const reply = Boolean(comment.parentId);
 
@@ -99,21 +107,9 @@ export function CommentItem({
   }
 
   function toggleLike() {
-    const next = !like.liked;
-    startTransition(async () => {
-      flip(next);
-      try {
-        const result = await toggleReactionAction(locale, comment.id, "like");
-        if (result.error) {
-          toast.show({ tone: "error", title: t("toasts.reactionFailed") });
-          return;
-        }
-      } catch {
-        toast.show({ tone: "error", title: t("toasts.reactionFailed") });
-        return;
-      }
-      router.refresh();
-    });
+    const next = !liked;
+    if (next) setBurst((n) => n + 1);
+    onLike?.(next);
   }
 
   function saveEdit() {
@@ -195,13 +191,31 @@ export function CommentItem({
         <div className="flex flex-wrap items-center gap-1">
           <ReactionBar
             label={t("reactions.label")}
-            readOnly={frozen}
-            pending={pending}
+            readOnly={frozen || !onLike}
             onToggle={toggleLike}
-            items={[{ kind: "like", label: t("reactions.like"), count: like.count, pressed: like.liked, icon: <HeartIcon filled={like.liked} className="text-base" /> }]}
+            items={[
+              {
+                kind: "like",
+                label: t("reactions.like"),
+                count: likes,
+                pressed: liked,
+                icon: (
+                  <span key={burst} className={`relative inline-flex ${burst > 0 && liked ? "reaction-ignite" : ""}`}>
+                    <HeartIcon filled={liked} className="text-base" />
+                    {burst > 0 && liked ? <span aria-hidden className="reaction-ring pointer-events-none absolute inset-0 rounded-full border-2 border-current" /> : null}
+                  </span>
+                ),
+              },
+            ]}
           />
-          {onReply && !reply && !frozen ? (
-            <button type="button" onClick={onReply} aria-expanded={isReplyOpen} className={ACTION}>
+          {onReply && !frozen ? (
+            <button
+              type="button"
+              onClick={onReply}
+              aria-expanded={isReplyOpen}
+              aria-label={reply && comment.author.displayName ? t("replyTo", { name: comment.author.displayName }) : undefined}
+              className={ACTION}
+            >
               {isReplyOpen ? t("cancel") : t("reply")}
             </button>
           ) : null}

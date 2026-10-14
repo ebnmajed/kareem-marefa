@@ -113,33 +113,65 @@ test("a member with no RSVP can comment on a published session (REQ-EVT-003)", a
   expect(rsvpRows).toHaveLength(0); // still no RSVP — commenting did not create one
 });
 
+test("★ DEC-290: a like answers at once, its count never steps back, and it is saved (REQ-EVT-004)", async ({ context, page }) => {
+  await signIn(context);
+  await page.goto(`/ar/app/sessions/${publishedSessionId}`);
+  await waitForStreamsToSettle(page);
+
+  const like = page.locator('button[data-kind="like"][aria-pressed="false"]').first();
+  const before = Number((await like.textContent())?.replace(/\D/g, "") || 0);
+  const id = await like.evaluate((el) => {
+    el.setAttribute("data-probe", "");
+    return true;
+  });
+  expect(id).toBe(true);
+  const probe = page.locator("[data-probe]");
+  await probe.click();
+  // The owner saw +1, then −1, then +1 (useOptimistic undone by a refresh outside its transition). Sampled for
+  // two seconds, the count is the new one at every frame, and the button stays pressed.
+  const samples = await page.evaluate(async () => {
+    const el = document.querySelector("[data-probe]")!;
+    const seen: string[] = [];
+    const end = performance.now() + 2000;
+    while (performance.now() < end) {
+      seen.push(`${el.getAttribute("aria-pressed")}:${el.textContent?.replace(/\D/g, "") || "0"}`);
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+    return [...new Set(seen)];
+  });
+  expect(samples).toEqual([`true:${before + 1}`]);
+
+  await page.reload();
+  await waitForStreamsToSettle(page);
+  await expect(page.locator('button[data-kind="like"][aria-pressed="true"]').first()).toBeVisible();
+});
+
 test("a reply to a reply attaches to the parent thread, not a third level (REQ-EVT-002)", async ({ context, page }) => {
   await signIn(context);
   await page.goto(`/ar/app/sessions/${publishedSessionId}`);
   await waitForStreamsToSettle(page);
 
   // Reply to the comment from the previous test.
-  await page.getByRole("button", { name: "رد" }).first().click();
+  // `exact`: since DEC-290 a reply's own button is «رد على <name>», which a substring match would also take.
+  await page.getByRole("button", { name: "رد", exact: true }).first().click();
   await page.getByPlaceholder("اكتب ردًا…").fill("إجابة أولى");
-  await page.getByRole("button", { name: "رد" }).last().click();
+  await page.getByRole("button", { name: "رد", exact: true }).last().click();
   await expect(page.getByText("إجابة أولى")).toBeVisible();
 
-  // The reply itself offers no Reply action — the UI has nowhere to attach a
-  // third level, which is what "attaches to the parent thread" means in
-  // practice: there is no deeper thread to attach to. (The database refuses
-  // the attempt outright regardless — tests/rls/m2-schema.test.ts already
-  // proves that at the RLS layer; this is the UI-side half of the same
-  // requirement.)
-  //
-  // ★ The lead's live-build run found `.first()` here resolves to the
-  // OUTER (parent) <li> — the reply's own <li> nests INSIDE it
-  // (comment-list.tsx), so a plain `hasText` match returns BOTH, and the
-  // outer one (which DOES have its own "رد" button, for the top-level
-  // comment) comes first in document order. `.last()` is the reply's own,
-  // innermost row — the same nesting trap the delete locator above already
-  // had to account for.
+  // ★ DEC-290 (the Instagram shape): the reply offers «رد» too, and its answer
+  // ATTACHES TO THE PARENT THREAD — a sibling of the first reply in the same
+  // list, never a third level. (The database refuses a third level outright —
+  // tests/rls/m2-schema.test.ts; this is the UI-side half.)
+  // `.last()`: the reply's own <li> nests inside the thread's, so a `hasText`
+  // match returns both and the reply's is the innermost.
   const replyRow = page.locator("li", { hasText: "إجابة أولى" }).last();
-  await expect(replyRow.getByRole("button", { name: "رد" })).toHaveCount(0);
+  await replyRow.getByRole("button", { name: /^رد على/ }).click();
+  await page.getByPlaceholder("اكتب ردًا…").fill("إجابة ثانية");
+  await page.getByRole("button", { name: "رد", exact: true }).last().click();
+  await expect(page.getByText("إجابة ثانية")).toBeVisible();
+  const thread = page.locator("li", { hasText: "إجابة أولى" }).first().locator("> ul");
+  await expect(thread.locator("> li")).toHaveCount(2);
+  await expect(thread.locator("> li ul")).toHaveCount(0);
 });
 
 test("deleting a comment with replies leaves a tombstone; a reply-less comment vanishes entirely (REQ-EVT-005)", async ({ context, page }) => {

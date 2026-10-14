@@ -24,6 +24,9 @@ import type { CommentAuthor, MentionCandidate } from "@/lib/dal/comments";
 //     (REQ-UIX-010); a network failure never throws the page to its error boundary;
 //   · a post that succeeds clears the field ONLY if nothing was typed since it was sent;
 //   · «نشر» stays visible (DEC-209): the field is multi-line, so Enter is a new line, not a send.
+// ★ DEC-290 (REQ-EVT-002, REQ-EVT-006): a reply to a REPLY opens this under the thread's first comment with «@name »
+//   already written and that member mentioned — the Instagram shape: one level in the database, a conversation on
+//   screen. A mention whose «@name» was deleted before posting is not sent.
 // ★ The photo button the artboard draws is not built (DEC-206 §4.70).
 
 const MAX_LENGTH = 4000;
@@ -39,6 +42,7 @@ export function CommentComposer({
   onPosted,
   onCancel,
   autoFocus,
+  mention,
 }: {
   locale: string;
   sessionId: string;
@@ -48,14 +52,16 @@ export function CommentComposer({
   onPosted?: () => void;
   onCancel?: () => void;
   autoFocus?: boolean;
+  /** Replying to a reply: the member answered, written as «@name » and mentioned (DEC-290). */
+  mention?: { id: string; name: string } | null;
 }) {
   const t = useTranslations("event.comments");
   const router = useRouter();
   const toast = useToast();
   const counterId = useId();
   const hintId = useId();
-  const [body, setBody] = useState("");
-  const [mentioned, setMentioned] = useState<Map<string, string>>(new Map());
+  const [body, setBody] = useState(() => (mention ? `@${mention.name} ` : ""));
+  const [mentioned, setMentioned] = useState<Map<string, string>>(() => (mention ? new Map([[mention.id, mention.name]]) : new Map()));
   const [candidates, setCandidates] = useState<MentionCandidate[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -107,7 +113,11 @@ export function CommentComposer({
     startTransition(async () => {
       let result: { error: string | null };
       try {
-        result = await postCommentAction(locale, sessionId, parentId, Array.from(mentioned.keys()), sent);
+        // Only the members whose «@name» is still in the text are mentioned.
+        const kept = Array.from(mentioned)
+          .filter(([, name]) => sent.includes(`@${name}`))
+          .map(([id]) => id);
+        result = await postCommentAction(locale, sessionId, parentId, kept, sent);
       } catch {
         setError("network");
         return;
