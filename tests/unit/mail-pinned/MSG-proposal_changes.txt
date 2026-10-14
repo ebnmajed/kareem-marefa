@@ -1,14 +1,13 @@
 نحتاج بعض التعديلات
 
-مرحبًا ⁨سارة العتيبي⁩،
-
 مقترحك «⁨الذكاء الاصطناعي في العمل⁩» قريب من القبول، ونحتاج بعض التعديلات:
 
 ⁨نحتاج تفصيل المحاور الثلاثة⁩
 
 اعرض المقترح: ⁨https://app.kareem.example/ar/app/propose/22222222-2222-4222-8222-222222222222⁩
 
-تفضيلات الإشعارات: ⁨https://app.kareem.example/ar/app/me/settings⁩
+الإعدادات: ⁨https://app.kareem.example/ar/app/me/settings⁩
+إيقاف هذه الرسائل: ⁨https://app.kareem.example/ar/unsubscribe?t=pinned⁩
 
 —
 كريم معرفة · كريم معرفة · شارك المعرفة.. واصنع الأثر

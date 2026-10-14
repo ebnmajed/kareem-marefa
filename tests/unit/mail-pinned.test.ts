@@ -93,12 +93,12 @@ describe("the two parts that are pinned once", () => {
     }
   });
 
-  // The other half of the same point: the brand IS read, so the two HTML files
-  // of a case are never the same file. A brand that stopped being applied would
-  // otherwise pass every assertion above.
-  it("the two HTML parts of every case differ", () => {
+  // ★ Wave 30 (`DEC-289`, `REQ-NTF-018`) — the point turned around. Every mail is the approved dark design and NO
+  // kit restyles it, so the two HTML files of a case are now the SAME file: an org's brand kit or logo leaking back
+  // into a mail would fail here. (Until wave 29 this asserted they differ — a brand that stopped being read.)
+  it("the two HTML parts of every case are identical — no kit restyles a mail", () => {
     for (const sample of CASES) {
-      expect(read(`${sample.id}.brand.html`), sample.id).not.toBe(read(`${sample.id}.plain.html`));
+      expect(read(`${sample.id}.brand.html`), sample.id).toBe(read(`${sample.id}.plain.html`));
     }
   });
 });

@@ -1,7 +1,5 @@
 بخصوص شهادتك
 
-مرحبًا ⁨سارة العتيبي⁩،
-
 سُحبت الشهادة رقم ⁨KM-000001⁩.
 
 السبب: ⁨أُلغي الحضور بعد المراجعة⁩
@@ -10,7 +8,8 @@
 
 رقم الشهادة: ⁨KM-000001⁩
 
-تفضيلات الإشعارات: ⁨https://app.kareem.example/ar/app/me/settings⁩
+الإعدادات: ⁨https://app.kareem.example/ar/app/me/settings⁩
+إيقاف هذه الرسائل: ⁨https://app.kareem.example/ar/unsubscribe?t=pinned⁩
 
 —
 كريم معرفة · كريم معرفة · شارك المعرفة.. واصنع الأثر

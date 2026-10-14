@@ -72,13 +72,38 @@ const PAYLOAD = {
 const sendAnswers = (context: unknown = CONTEXT) =>
   [
     [/notification_send_context/, () => ({ rows: [{ notification_send_context: context }] })],
-    // 06 §8.3's email leg (wave 4, DEC-053): the sender reads the org's brand
-    // kit before rendering. An org with no row gets the platform defaults.
-    [/brand_kit/, () => ({ rows: [{ kit: { light: { fgBody: "#33415c", fgMuted: "#5b6780", surface: "#ffffff" } } }] })],
+    // ★ Wave 30 (`DEC-289`): the brand kit is no longer read — the sender asks `email_facts()` for what the design
+    // draws, and words it in the org's zone.
+    [/email_facts/, () => ({ rows: [{ facts: { member_name: "سارة العتيبي", presenter: "خالد المطيري", capacity: 30, going_count: 18 } }] })],
+    [/email_unsubscribe_token/, () => ({ rows: [{ token: "m1.my_sessions.abc" }] })],
     [/record_email_delivery/, () => ({ rows: [{ record_email_delivery: "d-1" }] })],
   ] as Array<[RegExp, () => Reply]>;
 
 describe("JOB-send_notification", () => {
+  // ★ Wave 30 (`REQ-NTF-019`, RFC 8058): an OPTIONAL message carries its signed per-type link — in the footer and as
+  // `List-Unsubscribe` with `List-Unsubscribe-Post` — and the token is the database's, asked for by category.
+  it("an optional message carries the one-click unsubscribe, in the footer and in the headers", async () => {
+    const before = process.env.APP_URL;
+    process.env.APP_URL = "https://kareem.pp.sa";
+    const transport = new MemoryTransport();
+    setMailTransport(transport);
+    const { helpers, calls } = fakeHelpers(sendAnswers({ ...CONTEXT, key: "MSG-rsvp_confirmed", optional: true, category: "my_sessions" }));
+    await send_notification({ ...PAYLOAD, key: "MSG-rsvp_confirmed", optional: true, payload: { ...PAYLOAD.payload, session_id: "11111111-1111-4111-8111-111111111111", rsvp_id: "44444444-4444-4444-8444-444444444444" } }, helpers);
+    const mail = transport.sent[0]!;
+    const token = calls.find((c) => /email_unsubscribe_token/.test(c.sql))!;
+    expect(token.params).toEqual(["org-1", "m1", "my_sessions"]);
+    expect(mail.listUnsubscribe).toEqual({ url: "https://kareem.pp.sa/api/email/unsubscribe?t=m1.my_sessions.abc" });
+    expect(mail.mime).toContain("List-Unsubscribe: <https://kareem.pp.sa/api/email/unsubscribe?t=m1.my_sessions.abc>");
+    expect(mail.mime).toContain("List-Unsubscribe-Post: List-Unsubscribe=One-Click");
+    expect(mail.text).toContain("إيقاف هذه الرسائل: ");
+    expect(mail.html).toContain('href="https://kareem.pp.sa/ar/unsubscribe?t=m1.my_sessions.abc"');
+    // The design's facts arrived: the ticket's reference and the seats.
+    expect(mail.text).toContain("KM-444444");
+    setMailTransport(null);
+    if (before === undefined) delete process.env.APP_URL;
+    else process.env.APP_URL = before;
+  });
+
   it("renders the Arabic template and records the delivery as sent (REQ-NTF-008)", async () => {
     const transport = new MemoryTransport();
     setMailTransport(transport);
@@ -90,7 +115,9 @@ describe("JOB-send_notification", () => {
     const mail = transport.sent[0];
     expect(mail.to).toBe("sara@kareem.example");
     expect(mail.subject).toBe("حصلت على مقعد في جلسة المعرفة");
-    expect(mail.text).toContain("سارة العتيبي");
+    // Wave 30: no greeting paragraph (`DEC-289` §2) — the mail opens on what happened, then the session.
+    expect(mail.text).toContain("حصلت على مقعد");
+    expect(mail.text).toContain("جلسة المعرفة");
     // 08 §3.4: the org's name in the From display name, its admin as Reply-To.
     expect(mail.fromName).toBe("كريم معرفة");
     expect(mail.replyTo).toBe("admin@kareem.example");
@@ -98,7 +125,9 @@ describe("JOB-send_notification", () => {
     // The delivery row is written BEFORE the send and moved after, so a
     // worker that dies mid-send leaves a `queued` row an admin can see.
     const order = calls.map((c) => c.sql.match(/public\.(\w+)/)?.[1]);
-    expect(order).toEqual(["notification_send_context", "brand_kit", "record_email_delivery", "update_email_delivery"]);
+    expect(order).toEqual(["notification_send_context", "email_facts", "record_email_delivery", "update_email_delivery"]);
+    // A message nobody may switch off (`rsvp_promoted` is not optional) carries no unsubscribe header.
+    expect(mail.listUnsubscribe ?? null).toBeNull();
     expect(calls[3].sql).toContain("'sent'");
     expect(calls[3].params).toEqual(["d-1", transport.sent[0].providerMessageId]);
     setMailTransport(null);
@@ -155,8 +184,9 @@ describe("JOB-send_notification", () => {
   it("fails loudly and once on a message with no template — a matrix bug, not a transient fault", async () => {
     const transport = new MemoryTransport();
     setMailTransport(transport);
-    const { helpers, logs } = fakeHelpers(sendAnswers({ ...CONTEXT, key: "MSG-rsvp_confirmed" }));
-    await expect(send_notification({ ...PAYLOAD, key: "MSG-rsvp_confirmed" }, helpers)).resolves.toBeUndefined();
+    // An in-app-only key (`MSG-rsvp_confirmed` is mailed since 0224).
+    const { helpers, logs } = fakeHelpers(sendAnswers({ ...CONTEXT, key: "MSG-rsvp_waitlisted" }));
+    await expect(send_notification({ ...PAYLOAD, key: "MSG-rsvp_waitlisted" }, helpers)).resolves.toBeUndefined();
     expect(logs.some((l) => /^error: .*no email template/.test(l))).toBe(true);
     expect(transport.sent).toHaveLength(0);
     setMailTransport(null);

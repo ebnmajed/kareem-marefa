@@ -6,7 +6,7 @@
 // without it, and none of them can be checked by looking at the mail in one's
 // own inbox.
 import { describe, expect, it } from "vitest";
-import { compileBlocks, isolate, PLATFORM_LIGHT, readBlocks, renderEmail, type CompileContext, type EmailBlock } from "@kareem/mail-runtime";
+import { compileBlocks, isolate, MAIL, readBlocks, renderEmail, type CompileContext, type EmailBlock } from "@kareem/mail-runtime";
 
 const FSI = String.fromCharCode(0x2068);
 const PDI = String.fromCharCode(0x2069);
@@ -93,13 +93,34 @@ describe("★ bidi isolation — in the compiler, the one path since DEC-081", (
 });
 
 describe("the footer is composed, not typed — REQ-NTF-005 cannot be forgotten", () => {
-  it("every document ends with the preference link, even one with no blocks at all", () => {
-    const empty = compileBlocks(doc(), ctx());
-    expect(html(empty)).toContain("تفضيلات الإشعارات");
-    expect(empty.text.at(-1)).toContain("تفضيلات الإشعارات");
+  // ★ Wave 30 (`DEC-289`): the SHELL draws the design's footer below the card — the settings link always, and the
+  // per-type «إيقاف هذه الرسائل» where the worker passes one (`REQ-NTF-019`). No document draws it, so none can drop it.
+  const render = (blocks: EmailBlock[], unsubscribeUrl: string | null = null) =>
+    renderEmail({
+      key: "MSG-reminder_1d",
+      override: { subject: "غدًا", body: null, blocks: doc(...blocks) },
+      payload: {},
+      member: { name: "سارة", email: "s@k.example" },
+      org: { name: "كريم معرفة", timeZone: "Asia/Riyadh" },
+      appUrl: "https://kareem.pp.sa",
+      unsubscribeUrl,
+    });
 
-    const some = compileBlocks(doc({ type: "heading", id: "h1", text: "عنوان", level: 1 }), ctx());
-    expect(html(some)).toContain("تفضيلات الإشعارات");
+  it("every mail ends with the settings link, even one with no blocks at all", () => {
+    const empty = render([]);
+    expect(empty.html).toContain('href="https://kareem.pp.sa/ar/app/me/settings"');
+    expect(empty.html).toContain("الإعدادات");
+    expect(empty.text).toContain("الإعدادات: ");
+    expect(empty.html).not.toContain("إيقاف هذه الرسائل");
+    // The compiler itself writes no footer any more — the shell does.
+    expect(html(compileBlocks(doc(), ctx()))).toBe("");
+  });
+
+  it("★ a message that may be switched off carries its per-type unsubscribe link, in both parts", () => {
+    const out = render([{ type: "heading", id: "h1", text: "عنوان", level: 1 }], "https://kareem.pp.sa/ar/unsubscribe?t=abc");
+    expect(out.html).toContain('href="https://kareem.pp.sa/ar/unsubscribe?t=abc"');
+    expect(out.html).toContain("إيقاف هذه الرسائل");
+    expect(out.text).toContain("إيقاف هذه الرسائل: ");
   });
 
   it("there is no `footer` block type to add or delete", () => {
@@ -142,19 +163,22 @@ describe("the constraints every client imposes (D3a)", () => {
     ctx(),
   );
 
-  it("every text-bearing cell states dir=rtl AND align=right", () => {
+  it("every text-bearing cell states dir=rtl AND align=right — the button's own pill is centred in its cell", () => {
     const cells = html(out).match(/<td[^>]*>/g) ?? [];
     expect(cells.length).toBeGreaterThan(3);
     for (const cell of cells) {
       expect(cell).toContain('dir="rtl"');
-      expect(cell).toContain('align="right"');
+      // Wave 30 (`DEC-289`): `build.py`'s button centres its label inside the lime cell.
+      if (!cell.includes(`bgcolor="${PALETTE.accent}"`)) expect(cell).toContain('align="right"');
     }
   });
 
-  it("inline CSS only, one declared font stack, and no web font", () => {
+  it("inline CSS only, one declared font stack, no @font-face — and the only classes are the design's phone rules", () => {
     expect(html(out)).not.toMatch(/<style[\s>]/);
-    expect(html(out)).not.toContain("class=");
+    // Wave 30: `btn-wrap` / `btn` are `build.py`'s full-width button below 620 px — layout only, never colour.
+    for (const cls of html(out).match(/class="[^"]*"/g) ?? []) expect(['class="btn-wrap"', 'class="btn"']).toContain(cls);
     expect(html(out)).toContain("Tahoma");
+    expect(html(out)).toContain("'Baloo Bhaijaan 2'");
     expect(html(out)).not.toContain("@font-face");
   });
 
@@ -246,11 +270,12 @@ describe("D3's findings — on the block path, and not on the string path", () =
   const designed = (...blocks: EmailBlock[]) =>
     renderEmail({ ...base, override: { subject: "غدًا: {{title}}", body: "نص", blocks: doc(...blocks) }, appUrl: "https://kareem.pp.sa" });
 
-  it("F1 — a DESIGNED mail declares its scheme; a string mail declares nothing new", () => {
+  it("F1 — every mail declares its ONE scheme, and since wave 30 it is dark (`DEC-289`)", () => {
     const out = designed({ type: "heading", id: "h1", text: "عنوان", level: 1 });
-    expect(out.html).toContain('<meta name="color-scheme" content="light" />');
-    expect(out.html).toContain('<meta name="supported-color-schemes" content="light" />');
-    expect(out.html).toContain("color-scheme:light;supported-color-schemes:light;");
+    expect(out.html).toContain('<meta name="color-scheme" content="dark">');
+    expect(out.html).toContain('<meta name="supported-color-schemes" content="dark">');
+    expect(out.html).toContain(":root{color-scheme:dark;supported-color-schemes:dark}");
+    expect(out.html).not.toContain("content=\"light\"");
   });
 
   it("F2 — the logo cell carries an explicit bgcolor ATTRIBUTE, so a transparent PNG has something to stand on", () => {
@@ -263,17 +288,16 @@ describe("D3's findings — on the block path, and not on the string path", () =
       logoUrl: "https://kareem.pp.sa/api/brand/org-1/logo",
       brand: { light: { fgBody: "#2b3a55", fgMuted: "#6f7d93", surface: "#fffdf7", fgHeading: "#0b1220", edge: "#e6eaf0" } },
     });
-    // The ATTRIBUTE, and it carries the card's own surface: the colour the logo
-    // sits on today, so light mode is unchanged and an inverter has something
-    // explicit to respect.
-    expect(out.html).toMatch(/<td[^>]*bgcolor="#fffdf7"[^>]*>\s*<img/);
-    // Not a CSS background, which is the first thing Gmail's inverter overrides.
-    expect(out.html).not.toContain("background:#fffdf7;\"><img");
+    // The ATTRIBUTE, and since wave 30 it is the design's raised ground (`DEC-289`) — the kit passed above is read by
+    // nothing — so a transparent logo stands on the card's own inset colour.
+    expect(out.html).toMatch(new RegExp(`<td[^>]*bgcolor="${MAIL.raised}"[^>]*>\\s*<img`));
+    expect(out.html).not.toContain("#fffdf7");
   });
 
   it("F3 — a design that asks for the card's image and has no URL renders NO img", () => {
     const withoutUrl = designed({ type: "session_card", id: "c1", withImage: true });
-    expect(withoutUrl.html).not.toContain("<img");
+    // The shell's own mark is an <img> (wave 30); the CARD draws none.
+    expect(withoutUrl.html).not.toMatch(/<img[^>]*\/api\/s\//);
     // …and the card itself still renders, so the mail loses a row and not a block.
     expect(withoutUrl.html).toContain("جلسة");
 
@@ -286,14 +310,15 @@ describe("D3's findings — on the block path, and not on the string path", () =
     expect(withUrl.html).toContain('src="https://kareem.pp.sa/api/s/abc/og"');
   });
 
-  it("F4 — a design DECLARES an Arabic face for iOS and Android; the string path keeps M3's stack", () => {
+  it("F4 — a design DECLARES its faces: Baloo Bhaijaan 2 loaded, then Segoe UI and Tahoma, which shape Arabic (`DEC-289`)", () => {
     const out = designed({ type: "paragraph", id: "p1", text: "نص" });
-    expect(out.html).toContain("'Geeza Pro'");
-    expect(out.html).toContain("'Noto Naskh Arabic'");
+    expect(out.html).toContain("'Baloo Bhaijaan 2','Segoe UI',Tahoma,Arial,sans-serif");
+    expect(out.html).toContain('<link href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2');
   });
 
   it("F5 — the session card's own lines carry dir, because they are the bound values", () => {
-    const out = designed({ type: "session_card", id: "c1" });
+    // The card's own rows — the shell's preheader and footer divs are not bound values.
+    const out = { html: html(compileBlocks(doc({ type: "session_card", id: "c1" }), ctx({ payload: base.payload }))) };
     const divs = out.html.match(/<div[^>]*>/g) ?? [];
     expect(divs.length).toBeGreaterThan(1);
     for (const div of divs) expect(div).toContain('dir="rtl"');
@@ -411,13 +436,7 @@ describe("★ the palette invariant — every value reaching an unescaped style=
     expect(out.html).not.toContain("alert(1)");
     // It fell back to the default rather than to nothing.
     //
-    // ★ Read from `PLATFORM_LIGHT`, never written as a literal (wave 24,
-    // `REQ-NTF-016`). This case is about the SANITISER — that a planted value is
-    // replaced by the default rather than dropped — and the default's colour is
-    // not its subject. Written as a literal it broke the moment `0192` moved the
-    // palette, which is the same way `main` went red on
-    // `tests/unit/designer-render.test.ts`: a test that pins a colour it does
-    // not care about becomes a second place the palette has to be edited.
-    expect(out.html).toContain(PLATFORM_LIGHT.fgBody);
+    // ★ Wave 30 (`DEC-289`): no kit reaches the palette at all now — the design's own text colour is what lands.
+    expect(out.html).toContain(MAIL.text);
   });
 });

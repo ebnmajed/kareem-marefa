@@ -1,12 +1,11 @@
 مقترح جديد بانتظار المراجعة
 
-مرحبًا ⁨سارة العتيبي⁩،
-
 قدّم ⁨خالد المطيري⁩ مقترحًا جديدًا: «⁨الذكاء الاصطناعي في العمل⁩».
 
 راجع المقترح: ⁨https://app.kareem.example/ar/app/propose/22222222-2222-4222-8222-222222222222⁩
 
-تفضيلات الإشعارات: ⁨https://app.kareem.example/ar/app/me/settings⁩
+الإعدادات: ⁨https://app.kareem.example/ar/app/me/settings⁩
+إيقاف هذه الرسائل: ⁨https://app.kareem.example/ar/unsubscribe?t=pinned⁩
 
 —
 كريم معرفة · كريم معرفة · شارك المعرفة.. واصنع الأثر
