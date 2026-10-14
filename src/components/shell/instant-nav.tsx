@@ -7,12 +7,12 @@ import { installIntentPrefetch, warmWhenIdle } from "@/lib/ui/intent-prefetch";
 
 // The next screen, fetched before the tap lands (DEC-284, `src/lib/ui/intent-prefetch.ts`). Renders nothing.
 //
-// ★ `router.prefetch` fetches the FULL page (Next 16: the `static` freshness window, `next.config.ts`), not the
-// skeleton a dynamic `<Link>` stops at. Intent anywhere in the shell prefetches the link pressed or hovered; when the
+// ★ `router.prefetch` fetches the FULL page (Next 16: the `static` freshness window, `next.config.ts`), which a
+// dynamic `<Link>` does not prefetch at all now that no route has a `loading.tsx` (DEC-288). Intent anywhere in the shell prefetches the link pressed or hovered; when the
 // browser is idle, the member's tabs — not the one they are on — are warmed.
 // ★ `kind: "full"`: Next 16's router accepts it at runtime (`app-router-instance.js` maps it to the FULL fetch strategy)
 // though its published type lists only `onInvalidate`. Without it a dynamic page is prefetched only to its
-// `loading.tsx` skeleton, and the tap still waits for the server — measured (`perf-instant-nav.spec.ts`). If a later
+// loading boundary — of which there are none since DEC-288 — and the tap still waits for the server — measured (`perf-instant-nav.spec.ts`). If a later
 // Next drops the kind, the router falls back to its default: the partial prefetch, never an error.
 type FullPrefetch = (href: string, options: { kind: "full" }) => void;
 

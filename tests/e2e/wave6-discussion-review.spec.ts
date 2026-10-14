@@ -171,9 +171,10 @@ test("the discussion at 390 px RTL, in the states a member meets", async ({ cont
   await capture(page, "1-first-visit");
 
   // A reply, and a comment of their own that mixes scripts and numbers (bidi).
-  await discussion(page).getByRole("button", { name: "رد" }).first().click();
+  // `exact`: since DEC-290 a reply's own button is «رد على <name>», which a substring match would also take.
+  await discussion(page).getByRole("button", { name: "رد", exact: true }).first().click();
   await page.getByPlaceholder("اكتب ردًا…").fill("نعم، سأرفعها في قسم المواد بعد الجلسة مباشرة.");
-  await discussion(page).getByRole("button", { name: "رد" }).last().click();
+  await discussion(page).getByRole("button", { name: "رد", exact: true }).last().click();
   await expect(discussion(page).getByText("سأرفعها في قسم المواد")).toBeVisible();
 
   await composer(page).fill("أنصح بقراءة فصل Transformers من كتاب Deep Learning قبل الجلسة — الصفحات 12 إلى 40، ومدته 45 دقيقة تقريبًا.");

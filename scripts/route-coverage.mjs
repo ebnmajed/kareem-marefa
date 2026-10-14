@@ -1,17 +1,21 @@
 #!/usr/bin/env node
-// loading-coverage and error-coverage — REQ-UIX-005, REQ-UIX-016, DEC-087, DEC-091.
+// no-skeletons and error-coverage — REQ-UIX-005, REQ-UIX-016, DEC-087, DEC-091, DEC-288.
 //
-//   node scripts/route-coverage.mjs --kind=loading   # npm run loading-coverage
+//   node scripts/route-coverage.mjs --kind=loading   # npm run no-skeletons
 //   node scripts/route-coverage.mjs --kind=error     # npm run error-coverage
 //   node scripts/route-coverage.mjs --prune          # rewrite the allowlist DOWN to disk
 //   node scripts/route-coverage.mjs --strict         # ignore the allowlist (this is M13)
 //
-// ★ "AT OR ABOVE" IS LOAD-BEARING. A loading.tsx covers its own segment AND every child
+// ★★ DEC-288 INVERTED THE LOADING HALF. The owner removed skeleton loading: it overlapped the navigation's move.
+// `--kind=loading` now fails on ANY loading.tsx under src/app — a page arrives whole, the mark breathes while it
+// waits, and a skeleton that comes back is a regression this gate names. The paragraph below is the error half's.
+//
+// ★ "AT OR ABOVE" IS LOAD-BEARING. A boundary file covers its own segment AND every child
 // segment, so the 49 pages under src/app/[locale]/app/** need roughly a DOZEN files at
 // meaningful boundaries — not 49. A gate written as "one per route" produces 49 files, 37 of
 // which are noise, and the team deletes the gate rather than the files (`16` §17).
 //
-// error-coverage additionally asserts three things loading-coverage has no analogue for:
+// error-coverage additionally asserts three things:
 //   · every DYNAMIC segment ([id], [code], [...rest]) that has a page has a not-found.tsx at or
 //     above it — notFound() is already called in six places with no boundary to catch it;
 //   · global-error.tsx exists;
@@ -68,7 +72,6 @@ const rel = (d) => relative(ROOT, d).split('\\').join('/')
 
 const missing = { loading: [], error: [], 'not-found': [] }
 for (const d of dirs) {
-  if (!coveredAtOrAbove(d, 'loading.tsx')) missing.loading.push(rel(d))
   if (!coveredAtOrAbove(d, 'error.tsx')) missing.error.push(rel(d))
   // A not-found boundary is only required where a dynamic segment can fail to resolve — and the
   // segments are measured from SCOPE, not from the repo root: `[locale]` sits above it and is
@@ -121,7 +124,19 @@ const check = (kind, label) => {
   for (const d of permitted) if (!missing[kind].includes(d)) shrunk.push(`${kind}: ${d}`)
 }
 
-if (KINDS.includes('loading')) check('loading', 'loading.tsx')
+if (KINDS.includes('loading')) {
+  // DEC-288: the opposite of coverage — no route draws a skeleton.
+  const found = []
+  const walk = (dir) => {
+    for (const name of readdirSync(dir)) {
+      const p = join(dir, name)
+      if (statSync(p).isDirectory()) walk(p)
+      else if (name === 'loading.tsx' || name === 'loading.ts' || name === 'loading.jsx') found.push(rel(p))
+    }
+  }
+  walk(join(ROOT, 'src/app'))
+  for (const f of found) failures.push(`${f} exists — skeleton loading was removed (DEC-288); the mark breathes while a page loads`)
+}
 if (KINDS.includes('error')) {
   check('error', 'error.tsx')
   check('not-found', 'not-found.tsx')

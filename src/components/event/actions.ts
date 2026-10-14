@@ -2,7 +2,6 @@
 
 import { unstable_rethrow } from "next/navigation";
 import { createComment, createCommentInput, deleteOwnComment, moderateComment, removeCommentAsStaff, searchMentionCandidates, updateComment, updateCommentInput, type RemoveCommentOutcome } from "@/lib/dal/comments";
-import { toggleReaction } from "@/lib/dal/reactions";
 import { reportComment, reportCommentInput } from "@/lib/dal/reports";
 
 // Server Actions for the Comments slot. Every write goes through
@@ -99,16 +98,6 @@ export async function removeCommentAction(locale: string, commentId: string, rea
   } catch (e) {
     unstable_rethrow(e);
     return { outcome: "unknown" };
-  }
-}
-
-export async function toggleReactionAction(locale: string, commentId: string, kind: string): Promise<ActionResult> {
-  try {
-    await toggleReaction(locale, { commentId }, kind);
-    return { error: null };
-  } catch (e) {
-    unstable_rethrow(e);
-    return { error: toErrorKey(e) };
   }
 }
 

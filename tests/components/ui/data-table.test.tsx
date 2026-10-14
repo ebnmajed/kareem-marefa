@@ -195,8 +195,11 @@ describe("DataTable — the phone card list (16 §6.7's actual requirement)", ()
     expect(screen.getAllByText("جلسة تصوير المشاهد الليلية").length).toBeGreaterThan(0);
   });
 
-  it("pending shows row skeletons, not the empty state or stale rows", () => {
-    render(<Wrap><Basic pending rows={[]} /></Wrap>);
+  // DEC-288: no skeleton rows — the region is busy and draws nothing in the data's place.
+  it("pending shows no placeholder, not the empty state or stale rows", () => {
+    const { container } = render(<Wrap><Basic pending rows={[]} /></Wrap>);
+    expect(container.querySelector("[aria-busy]")).not.toBeNull();
+    expect(container.querySelector(".animate-pulse")).toBeNull();
     expect(screen.queryByText("لا مقترحات")).not.toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });

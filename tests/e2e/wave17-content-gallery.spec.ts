@@ -166,13 +166,11 @@ test("a press alone moves a row, and only in the list that was pressed", async (
   await demo.screenshot({ path: join(SHOTS, "wave17-content-reorderable-list-moved-dark-390.png"), animations: "disabled" });
 });
 
-// ── The pending dot and the route bar: drawn only while a navigation is pending. ──
-// No prop holds either still, so the link's own navigation is stalled at the network: the dot
-// stands beside the link and the bar at the top of the viewport until the request is released.
-// ★ The bar is `fixed` to the viewport and outside every demo's box, so it is captured as the
-// viewport's top band, not as an element.
+// ── The pending dot and the breathing mark: drawn only while a navigation is pending (DEC-288). ──
+// No prop holds either still, so the link's own navigation is stalled at the network: the dot stands beside the
+// link and the mark breathes until the request is released. There is no bar any more (DEC-288).
 for (const width of WIDTHS) {
-  test(`a stalled navigation draws the link's dot and the route bar at ${width.name}`, async ({ page }) => {
+  test(`a stalled navigation draws the link's dot and the breathing mark at ${width.name}`, async ({ page }) => {
     let release: () => void = () => undefined;
     const held = new Promise<void>((resolve) => {
       release = resolve;
@@ -200,32 +198,16 @@ for (const width of WIDTHS) {
     await demo.getByRole("link").click();
 
     const dot = demo.locator("[data-link-pending]");
-    const bar = page.locator("[data-route-progress]");
-    await expect(bar).toHaveCount(1);
+    const mark = demo.locator('[data-logo][data-motion="loading"]');
     await expect(dot).toBeVisible();
-    await expect(bar).toBeVisible();
-
-    // The bar spans the viewport's top edge and is the scope's accent, not the old navy.
-    const geometry = await bar.evaluate((el) => {
-      const r = el.getBoundingClientRect();
-      const fill = el.firstElementChild!;
-      const probe = document.createElement("span");
-      probe.className = "bg-accent";
-      el.parentElement!.appendChild(probe);
-      const accent = getComputedStyle(probe).backgroundColor;
-      probe.remove();
-      return { top: r.top, width: r.width, viewport: window.innerWidth, fill: getComputedStyle(fill).backgroundColor, accent, inScope: el.closest(".theme-play") !== null };
-    });
-    expect(geometry.top).toBe(0);
-    expect(geometry.width).toBe(geometry.viewport);
-    expect(geometry.inScope, "the bar is mounted inside the scope").toBe(true);
-    expect(geometry.fill).toBe(geometry.accent);
+    await expect(mark).toHaveCount(1);
+    // DEC-288: no bar, ever.
+    await expect(page.locator("[data-route-progress]")).toHaveCount(0);
 
     await demo.screenshot({ path: join(SHOTS, `wave17-content-link-pending-dark-${width.name}.png`) });
-    await page.screenshot({ path: join(SHOTS, `wave17-content-route-progress-visible-dark-${width.name}.png`), clip: { x: 0, y: 0, width: width.size.width, height: 64 } });
 
     release();
-    await expect(bar).toHaveCount(0);
+    await expect(mark).toHaveCount(0);
     await expect(dot).toHaveCount(0);
   });
 }

@@ -4,7 +4,6 @@ import type { Locale } from "@/i18n/routing";
 import { ButtonLink } from "@/components/ui/button";
 import { SessionStatusBadge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
-import { Skeleton, SkeletonPageHeader } from "@/components/ui/skeleton";
 import { RenameAction } from "@/components/sessions/session-rename";
 import { DeleteSessionButton } from "@/components/admin/sessions/delete-sessions";
 import { getSessionHubHeader, RENAMEABLE_STATES } from "@/lib/dal/sessions";
@@ -19,8 +18,8 @@ import { CancelAction, PublishAction } from "./lifecycle";
 // the tab's own primary, «صفحة الجلسة», the lifecycle action. A tab's page renders none of it.
 //
 // ★ IT DECIDES NOTHING. `null` from the DAL — not staff, not this org, any error — renders nothing, and each page is
-// still its own boundary (a layout's `notFound()` streams a 200). Rendered by the layout inside its own Suspense, so
-// its one query never holds up the tab.
+// still its own boundary (a layout's `notFound()` streams a 200). Rendered by the layout with no skeleton in its
+// place (DEC-288): the hub arrives whole.
 
 const PUBLISHABLE = new Set(["draft", "submitted", "in_review", "changes_requested", "approved"]);
 const CANCELLABLE = new Set(["published", "in_progress"]);
@@ -84,12 +83,3 @@ export async function HubHeader({ locale, sessionId, tabActions }: { locale: str
   );
 }
 
-/** The header's place while its one query runs — no text, so nothing to translate and no shift. */
-export function HubHeaderSkeleton() {
-  return (
-    <div aria-hidden="true" className="mb-4 flex flex-col gap-2">
-      <SkeletonPageHeader />
-      <Skeleton width="10rem" />
-    </div>
-  );
-}

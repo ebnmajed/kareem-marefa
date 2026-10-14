@@ -193,11 +193,12 @@ test("★ TRN-02: the feed's poster jumps into the event's hero, and back is ins
   expect((await played(page)).slice(before).filter((p) => p.nav !== null)).toEqual([]);
 });
 
-test("★ TRN-07: on a slow network there is at most one move, and the page fades in over its skeleton — never a second move", async ({ context, page }) => {
+test("★ TRN-07 (DEC-288): on a slow network the jump still plays, exactly once — there is no skeleton to commit first", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
   await signIn(context, memberEmail);
   await record(page);
-  // The event page's server answer — prefetch and navigation alike — arrives 1.5 s late, so its skeleton commits first.
+  // The event page's server answer — prefetch and navigation alike — arrives 1.5 s late. Before DEC-288 its skeleton
+  // committed at once, outside any transition, and the move was spent on nothing: the owner saw no transition at all.
   await page.route(`**/ar/app/sessions/${sessionId}*`, async (route) => {
     if (route.request().headers()["rsc"] === "1") await new Promise((r) => setTimeout(r, 1500));
     await route.continue();
@@ -207,19 +208,21 @@ test("★ TRN-07: on a slow network there is at most one move, and the page fade
   const card = page.locator(`#main a[data-nav-kind="jump"][href$="/app/sessions/${sessionId}"]`).first();
   await expect.poll(() => card.locator("img").evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
   await card.click();
-  await page.waitForURL(new RegExp(`/app/sessions/${sessionId}$`));
+  // While it waits, the old page stays and the mark breathes — the one wait signal (DEC-288); no skeleton is drawn.
+  await expect(page.locator('[data-logo][data-motion="loading"]').first()).toBeAttached({ timeout: 1_400 });
+  await capture(page, "slow-waiting");
+  await page.waitForURL(new RegExp(`/app/sessions/${sessionId}$`), { timeout: 10_000 });
   await expect(page.locator("#main h1").first()).toBeVisible({ timeout: 10_000 });
   await page.waitForTimeout(800);
 
-  const onEvent = (await played(page)).filter((p) => (p.url ?? "").endsWith(sessionId));
-  const moves = onEvent.filter((p) => p.longest > 0 && p.nav !== null);
-  const reveals = onEvent.filter((p) => p.nav === null && p.longest > 0);
-  // At most one move: Next shows the skeleton at once, outside any transition, on a slow network — so the jump plays
-  // only when the page arrives with the tap (a fast or prefetched one, TRN-02). Either way, never a second move, and
-  // the page's arrival over its skeleton is a crossfade no longer than `--dur-fast`.
-  expect(moves.length, JSON.stringify(onEvent)).toBeLessThanOrEqual(1);
-  expect(reveals.length, JSON.stringify(onEvent)).toBeGreaterThan(0);
-  for (const r of reveals) expect(r.longest).toBeLessThanOrEqual(120);
+  const all = await played(page);
+  const moves = all.filter((p) => p.longest > 0 && p.nav === "jump");
+  // Exactly one move, and it is the jump the card named; the page arrives inside it, whole.
+  expect(moves.length, JSON.stringify(all)).toBe(1);
+  expect(all.filter((p) => p.nav !== null && p.nav !== "jump"), JSON.stringify(all)).toEqual([]);
+  // Nothing typed-less moves longer than the short crossfade.
+  for (const r of all.filter((p) => p.nav === null)) expect(r.longest).toBeLessThanOrEqual(120);
+  await expect(page.locator('[data-logo][data-motion="loading"]')).toHaveCount(0);
 });
 
 test("TRN-04 / TRN-05: a child screen pushes; a tab switches from its side", async ({ context, page }) => {

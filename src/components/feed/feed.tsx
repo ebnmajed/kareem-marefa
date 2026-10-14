@@ -14,7 +14,6 @@ import { AvatarImportPrompt } from "@/components/privacy/avatar-import-prompt";
 import { CompanyRaceCard } from "@/components/scoring/company-race-card";
 import { MemberWeekHud } from "@/components/scoring/member-week-hud";
 import { SectionHeader } from "@/components/ui/section-header";
-import { Skeleton } from "@/components/ui/skeleton";
 import { getFeed } from "@/lib/dal/feed";
 
 // The home's column — SCR-010, `Home.dc.html` (390) and `HomeDesktop.dc.html` (1280), REQ-UIX-055,
@@ -54,9 +53,7 @@ export function Feed({ locale }: { locale: string }) {
       </Suspense>
 
       {/* scoring's gate plays a moment only on the copy that is displayed: the HUD is hidden from `lg`. */}
-      <Suspense fallback={<Skeleton variant="card" className="lg:hidden" />}>
-        <MemberWeekHud locale={locale} className="lg:hidden" />
-      </Suspense>
+      <MemberWeekHud locale={locale} className="lg:hidden" />
 
       <FeedBody locale={locale} />
     </div>

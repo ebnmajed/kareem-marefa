@@ -12,7 +12,6 @@ import { ArrowIcon, StarIcon } from "@/components/ui/icons";
 import { LevelCard } from "@/components/ui/level-card";
 import { Link } from "@/components/ui/link";
 import { ProgressBar } from "@/components/ui/progress-bar";
-import { Skeleton } from "@/components/ui/skeleton";
 import { getHubStanding, type HubStanding as HubStandingData } from "@/lib/dal/points";
 
 // The hub's standing — contract 3 (wave 20, REQ-UIX-070, DEC-216 §5.10, DEC-218 §3.5, §3.7). scoring's file.
@@ -315,35 +314,3 @@ export async function HubStanding({ locale, form, className = "", picture }: { l
   );
 }
 
-/** For `<Suspense>`: the form's geometry, `aria-hidden`, no text, no data, no catalogue. */
-export function HubStandingSkeleton({ form, className = "" }: { form: "card" | "band"; className?: string }) {
-  if (form === "band") {
-    return (
-      <div aria-hidden="true" className={`flex items-center gap-5 rounded-panel border border-edge bg-surface px-5 py-4 ${className}`}>
-        <Skeleton variant="media" className="size-21 shrink-0 rounded-full" />
-        <div className="flex-1">
-          <Skeleton variant="title" width="40%" />
-          <Skeleton variant="text" width="60%" className="mt-2" />
-        </div>
-        <Skeleton variant="card" className="h-16 w-80" />
-      </div>
-    );
-  }
-  return (
-    <div aria-hidden="true" className={`flex flex-col gap-3.5 rounded-panel border border-edge bg-surface p-4 ${className}`}>
-      <div className="flex items-center gap-3">
-        <Skeleton variant="media" className="size-16 shrink-0 rounded-full" />
-        <div className="flex-1">
-          <Skeleton variant="title" width="50%" />
-          <Skeleton variant="text" width="70%" className="mt-2" />
-        </div>
-      </div>
-      <Skeleton variant="text" count={2} />
-      <div className="grid grid-cols-3 gap-2">
-        <Skeleton variant="card" className="h-16" />
-        <Skeleton variant="card" className="h-16" />
-        <Skeleton variant="card" className="h-16" />
-      </div>
-    </div>
-  );
-}

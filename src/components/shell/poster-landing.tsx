@@ -6,9 +6,9 @@ import { flyFrom } from "@/lib/ui/poster-flight";
 
 // Where the jump lands on the event page itself — wave 29 (DEC-280 §5, REQ-UIX-122).
 //
-// The jump lands on whichever arrives first: the skeleton's poster (`pending-poster.tsx`) when the page is slow, or
-// this — the hero — when the page commits at once (measured: a fast server never shows the skeleton). The handoff is
-// taken once, so the poster flies once, whichever caught it. A visit by any other path finds nothing and moves nothing.
+// The jump lands on the hero. There is no skeleton to land on first (DEC-288): the page arrives whole, so the poster
+// flies from the card into the hero in the one transition that shows the page. The handoff is taken once, so the
+// poster flies once. A visit by any other path finds nothing and moves nothing.
 export function PosterLanding({ sessionId, children }: { sessionId: string; children: ReactNode }) {
   const box = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {

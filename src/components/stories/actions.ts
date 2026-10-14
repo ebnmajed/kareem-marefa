@@ -3,7 +3,6 @@
 import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requestPhotoTakedown } from "@/lib/dal/photos";
-import { setStoryReaction, type StoryReactionKind } from "@/lib/dal/reactions";
 import {
   recordStoryViews,
   removeStoryFrame,
@@ -13,6 +12,8 @@ import {
 } from "@/lib/dal/story-frames";
 import type { RemoveAttendeeFrameState } from "@/components/stories/state";
 
+// ★ DEC-290: a reaction is not written here any more — it goes through `POST /api/reactions` beside these, so it
+// never waits behind the views' flush.
 // Session stories — the viewer's and the strip's small writes (REQ-STO-005, REQ-STO-010, REQ-STO-014, REQ-STO-015,
 // REQ-STO-017). Uploads are Route Handlers (`src/app/api/stories/**`), never these. Server Actions dispatch one at a
 // time per client, so the viewer's views are BATCHED by its caller, never fired in parallel.
@@ -23,15 +24,6 @@ export async function recordStoryViewsAction(locale: string, frameIds: string[])
   } catch (e) {
     unstable_rethrow(e);
     // A view that fails to write is a ring that reads unseen once more — never an error in front of the member.
-  }
-}
-
-export async function setStoryReactionAction(locale: string, frameId: string, kind: StoryReactionKind | null): Promise<{ mine: StoryReactionKind | null } | { error: string }> {
-  try {
-    return { mine: await setStoryReaction(locale, frameId, kind) };
-  } catch (e) {
-    unstable_rethrow(e);
-    return { error: e instanceof Error ? e.message : "unknown_error" };
   }
 }
 

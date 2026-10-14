@@ -1,4 +1,4 @@
-import { cache, Suspense, type CSSProperties, type ReactNode } from "react";
+import { cache, type CSSProperties, type ReactNode } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -30,7 +30,6 @@ import { AlertCircleIcon, InfoIcon } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
 import { Panel } from "@/components/ui/panel";
 import { Prose } from "@/components/ui/prose";
-import { Skeleton } from "@/components/ui/skeleton";
 import { TagChip } from "@/components/ui/tag-chip";
 import { Avatar } from "@/components/ui/avatar";
 import { isSessionBookmarked } from "@/lib/dal/bookmarks";
@@ -220,51 +219,41 @@ export default async function EventPage({
       </EventSection>
     ),
     tasks: (
-      <Suspense key="tasks" fallback={<SectionSkeleton />}>
-        <EventSection
-          id="tasks"
-          title={titles.tasks}
-          gate={gates.tasks}
-          summary={summaries.tasks}
-          note={(s) => (s ? t("tasksNote", { done: formatNumber(s.count - (s.outstanding ?? 0)), count: formatNumber(s.count) }) : null)}
-        >
-          <Tasks {...slot} />
-        </EventSection>
-      </Suspense>
+      <EventSection key="tasks"
+        id="tasks"
+        title={titles.tasks}
+        gate={gates.tasks}
+        summary={summaries.tasks}
+        note={(s) => (s ? t("tasksNote", { done: formatNumber(s.count - (s.outstanding ?? 0)), count: formatNumber(s.count) }) : null)}
+      >
+        <Tasks {...slot} />
+      </EventSection>
     ),
     materials: (
-      <Suspense key="materials" fallback={<SectionSkeleton />}>
-        <EventSection id="materials" title={titles.materials} gate={gates.materials} summary={summaries.materials}>
-          <Materials {...slot} />
-        </EventSection>
-      </Suspense>
+      <EventSection key="materials" id="materials" title={titles.materials} gate={gates.materials} summary={summaries.materials}>
+        <Materials {...slot} />
+      </EventSection>
     ),
     photos: (
-      <Suspense key="photos" fallback={<SectionSkeleton />}>
-        <EventSection id="photos" title={titles.photos} gate={gates.photos} summary={summaries.photos} note={phase === "live" ? t("photosNoteLive") : undefined}>
-          <Photos {...slot} phase={phase} />
-        </EventSection>
-      </Suspense>
+      <EventSection key="photos" id="photos" title={titles.photos} gate={gates.photos} summary={summaries.photos} note={phase === "live" ? t("photosNoteLive") : undefined}>
+        <Photos {...slot} phase={phase} />
+      </EventSection>
     ),
     discussion: (
-      <Suspense key="discussion" fallback={<SectionSkeleton />}>
-        <EventSection
-          id="discussion"
-          title={titles.discussion}
-          gate={gates.discussion}
-          summary={summaries.discussion}
-          note={(s) => (s ? t("commentsNote", { count: s.count, value: formatNumber(s.count) }) : null)}
-        >
-          <Comments {...slot} />
-        </EventSection>
-      </Suspense>
+      <EventSection key="discussion"
+        id="discussion"
+        title={titles.discussion}
+        gate={gates.discussion}
+        summary={summaries.discussion}
+        note={(s) => (s ? t("commentsNote", { count: s.count, value: formatNumber(s.count) }) : null)}
+      >
+        <Comments {...slot} />
+      </EventSection>
     ),
     rating: (
-      <Suspense key="rating" fallback={<SectionSkeleton />}>
-        <EventSection id="rating" title={titles.rating} gate={gates.rating} summary={summaries.rating}>
-          <Ratings {...slot} />
-        </EventSection>
-      </Suspense>
+      <EventSection key="rating" id="rating" title={titles.rating} gate={gates.rating} summary={summaries.rating}>
+        <Ratings {...slot} />
+      </EventSection>
     ),
   };
 
@@ -324,17 +313,13 @@ export default async function EventPage({
 
         {phase === "ended" ? (
           <div className="nav-drop mt-3" style={{ "--i": 1 } as CSSProperties}>
-            <Suspense fallback={null}>
-              <EventRecap attended={figures.attendedCount} registered={rsvp?.confirmedCount ?? null} photos={summaries.photos} />
-            </Suspense>
+            <EventRecap attended={figures.attendedCount} registered={rsvp?.confirmedCount ?? null} photos={summaries.photos} />
           </div>
         ) : null}
 
         <div className="nav-drop mt-5" style={{ "--i": 1 } as CSSProperties}>
-          {/* The sub-nav lists exactly the sections that render; a row-high placeholder holds its place. */}
-          <Suspense fallback={<div aria-hidden="true" className="h-14 border-b border-edge" />}>
-            <SubnavFor order={order} gates={gates} summaries={summaries} label={t("sectionsNav")} labels={navLabels} />
-          </Suspense>
+          {/* The sub-nav lists exactly the sections that render. DEC-288: the page arrives whole — no placeholder. */}
+          <SubnavFor order={order} gates={gates} summaries={summaries} label={t("sectionsNav")} labels={navLabels} />
         </div>
 
         <div className="nav-drop mt-6 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-8" style={{ "--i": 2 } as CSSProperties}>
@@ -478,11 +463,3 @@ async function PresenterBios({ session }: { session: EventSession }) {
   );
 }
 
-function SectionSkeleton() {
-  return (
-    <div aria-hidden="true">
-      <Skeleton variant="title" width="10rem" />
-      <Skeleton variant="text" count={3} className="mt-4" />
-    </div>
-  );
-}
