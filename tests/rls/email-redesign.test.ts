@@ -7,8 +7,15 @@
 // (RPC-org_week.sunday is in scoring-week-live.test.ts, beside the week's other boundary cases.)
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
-import { errorCode, pool, withTx, type Tx } from "./db";
-import { seed } from "./fixture";
+import { applyProposed, errorCode, pool, withTx, type Tx } from "./db";
+import { seed as seedFixture } from "./fixture";
+
+// ★ `applyProposed()` is a no-op once `0224` is in the chain (`db.ts`): a reviewer can run this against a local database
+// still at `0223` by placing the migration under `supabase/proposed/lead/`, inside the test's own rolled-back transaction.
+const seed = async (tx: Tx) => {
+  await applyProposed(tx, "lead/0224_email_redesign.sql");
+  return seedFixture(tx);
+};
 
 afterAll(() => pool.end());
 

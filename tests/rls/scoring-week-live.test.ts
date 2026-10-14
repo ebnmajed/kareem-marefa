@@ -26,6 +26,8 @@ async function award(tx: Tx, orgId: string, memberId: string, amount: number, at
 
 async function ready(tx: Tx) {
   await applyProposed(tx, FILE);
+  // ★ 0224 moved the week to Sunday (DEC-289); a no-op once promoted, as FILE's is.
+  await applyProposed(tx, "lead/0224_email_redesign.sql");
   const f = await seed(tx);
   await tx.asOwner();
   return f;
