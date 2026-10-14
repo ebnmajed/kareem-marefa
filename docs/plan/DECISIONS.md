@@ -11012,6 +11012,88 @@ never swapped its skeleton out. With no `loading.tsx`, the two `test.fixme` case
 
 - **Documents changed:** `STATUS.md`
 
+## DEC-289 — Every mail wears the approved dark design; a message can be stopped from the message; presenters hear of comments; the week closes on Sunday morning · `0224`
+
+- **Date:** 2026-10-14 · **Status:** accepted · **By:** the owner (the design, the rules, the answers below), the lead (the mechanism) · **Refs:** REQ-NTF-018, REQ-NTF-019, REQ-EVT-017, REQ-LDR-009 · **Amends:** `REQ-NTF-014`, `REQ-NTF-016`, `DEC-082`, `DEC-242` §2 (for mail), `08` §3.1, `DEC-217` §3.4 · **Depends on:** `DEC-288` is on `fix/no-skeletons` (#114, unmerged) — the number is taken there; this entry is independent of it · **Migration:** `0224`
+
+**The owner's ask:** redesign every notification email to the approved design in `docs/design/emails/` («production
+HTML templates … treat the templates as the visual spec; port them into our stack»), dark only, with a per-type
+unsubscribe; «do not build a second email system next to the existing one». The owner's answers (2026-10-14):
+booking confirmed — **yes, mail it**; comments — **every comment** to the presenter, and a reply to your comment as
+before; the week — **Sunday 8:00 to Saturday 11:59 pm**, and the in-app board follows it; after-session — **keep the
+celebration, show no points figure**, the certificate only when one exists; the QR — **the event page, not a
+check-in code**; unsubscribe — **ok**; branding — **the fixed design** wins over an org's kit.
+
+**Ruling.**
+1. **Dark only, one fixed design** (`REQ-NTF-018`). Most members read in the Gmail app, which cannot switch an
+   adaptive mail cleanly between schemes, and the brand is built for dark. `color-scheme: dark` is declared; the
+   exact tokens of `build.py` (`tests/unit/mail-theme.test.ts` parses the file); 600 px, tables, inline styles,
+   `dir="rtl"`, `lang="ar"`, the VML button for Outlook. **An org's brand kit no longer restyles mail** — this
+   amends `REQ-NTF-014`'s «changing the org logo restyles every message» and `DEC-082`'s light-and-dark-from-the-kit;
+   posters and certificates still read the kit. The header is the hosted PNG mark and «كريم معرفة», with the HOST
+   company (the session venue's, `0180`) at its end.
+2. **The face is loaded** — Baloo Bhaijaan 2 by the Google Fonts `<link>`, `'Segoe UI', Tahoma, Arial` behind it —
+   amending `08` §3.1's «never a web font». Never `@font-face`. ★ **Every message keeps its greeting**, the seven
+   designed ones included — **the owner's ruling on PR #115**, which overrides the brief's «no added greeting
+   paragraphs». No explanatory copy. One lime button at most; secondary actions are quiet text links. Western
+   numerals; «+20», «↑ 2», a ticket reference and a serial are left-to-right.
+3. **Not a second system.** The seven designed messages are block documents in `designs.ts` built from **eleven new
+   blocks** (`eyebrow`, `hero`, `when`, `presenter`, `seats`, `ticket`, `stats`, `quote`, `leaderboard`, `rating`,
+   `links`) the studio offers, edits and checks; every other message keeps its family layout on the same shell.
+   **Every figure is read**: `email_facts()` (service-only) resolves the session's start, venue, host company, first
+   presenter, seats from confirmed reservations, the `check_in` rule's amount, the comment and its counts, an issued
+   certificate; `formatFacts()` words them in the org's zone. A fact that does not exist draws no row.
+4. **The seven** — `MSG-session_published` (new-session; the poster's 16:9 `landscape` render through
+   `/api/s/{id}/wide`, the `og` door widened by that one preset), `MSG-rsvp_confirmed` (**now mailed**; the ticket's QR
+   is the session's **event page**, through the existing QR route — no personal code exists or is invented), the two
+   reminders (one design, the countdown its difference), `MSG-session_comment` (**new**, `REQ-EVT-017`; `MSG-comment_reply`
+   wears the same design), `MSG-leaderboard_weekly` (**new**, `REQ-LDR-009`), `MSG-check_in_confirmed` (**now mailed and
+   fired**, by `check_ins_notify()` on a member's first check-in; **no points figure** — points arrive at completion,
+   `REQ-PTS-015`; the certificate card only when one is issued, linking its `/verify/{code}`).
+5. **The week is Sunday 00:00 → the next Sunday 00:00 in the org's zone** for the board, the inbox's «هذا الأسبوع» and
+   the mail — so «ends Saturday 11:59 pm» holds exactly and nothing falls between two weeks. It **closes at Sunday
+   08:00**: `send_weekly_leaderboard_digests()`, hourly, inserts a guard row per org per week before it notifies.
+   ★ **The lead's default for who receives it:** every active member with net points that week who has not opted out
+   (`REQ-LDR-008`) — the board's own set.
+6. **The unsubscribe** (`REQ-NTF-019`): an optional message carries a per-type link in the footer and
+   `List-Unsubscribe` + `List-Unsubscribe-Post: One-Click`. The token (`member.category.hmac`) is signed with a per-org
+   key in `email_unsubscribe_secrets` — **no policy and no grant** — and checked by `apply_email_unsubscribe()`, the one
+   function `anon` may call, so no secret reaches Vercel and no `service_role` is used. The footer link opens
+   `/ar/unsubscribe`, which **asks first** (a link scanner must not switch mail off); only POSTs act.
+7. **The preview** — `/ar/ui/emails` behind the gallery's edge gate (now also open on a development server) shows the
+   seven at 600 and 390 from the sample set. **Sending to the local sink is the worker's** (`npm --prefix worker run
+   mail:previews -- you@example.com`): the app may not hold a transport (`@kareem/mail-runtime`'s rule), so the brief's
+   «a form to send a test» is a command instead. The admin's «معاينة بجلسة» and the test send read a real session's
+   facts (`email_preview_facts()`, staff of that org), never the sample's.
+8. **The pinned set moves once**: 25 → 30 keys with an email channel, 124 → 148 files; `<id>.brand.html` and
+   `<id>.plain.html` are now the same file, which is the proof no kit leaks back in.
+
+**The owner's answers on PR #115 (2026-10-14), before merge — each the owner's ruling:**
+1. **Who receives the weekly close:** §5's default stands — active members with net points that week who have not
+   opted out of leaderboards.
+2. **Greetings:** kept in every message that had one, and added to the seven designed ones (§2 above) — this
+   overrides the brief's «no added greeting paragraphs». The pinned mail moves once more, in one reviewed commit.
+3. **`MSG-check_in_confirmed`'s inbox row:** kept — a check-in writes the in-app item the matrix always named.
+4. **The two departures from `build.py`** — the stripe inset along the card's top edge (no `overflow:hidden`, which
+   clips tashkeel) and the weekly rank drawn in lime — **approved as they are.**
+5. **The rating links pre-select:** the after-session mail's 1 – 5 open `/rate?stars=N`; the page validates N (1 – 5,
+   Zod) and pre-fills the SESSION's stars on a first rating in an open window, and nothing else — **a GET link never
+   writes a rating**, never overwrites one already made and never reopens a closed window (`REQ-RAT-001`,
+   `REQ-RAT-003`, `REQ-UIX-066`; `rate/preselect.ts`, `tests/components/survey/rate-preselect.test.tsx`).
+
+6. **The From address is `notifications@kareem.pp.sa`** — the owner's ruling; it **amends `DEC-063`'s default**
+   (`no-reply@kareem.pp.sa`). `DEFAULT_FROM_ADDRESS`, `.env.example` and `08` §3.4 move with it. ★ **The production
+   switch is DEFERRED by the owner:** Resend's verified domain is the parent `pp.sa` (`resend._domainkey.pp.sa` exists;
+   nothing under `kareem.pp.sa`), and the subdomain needs its own verification, which the owner will do later — then
+   widen the API key and switch the Railway variable. Until then production keeps
+   `MAIL_FROM_ADDRESS=kareem-notifications@peninsulapictures.dev`, which overrides the code's default, so merging
+   changes nothing that is sent.
+
+**Not done, and the owner's:** client screenshots in Gmail web, the Gmail app (iOS and Android), Apple Mail and
+Outlook — the PR carries Chromium captures only.
+
+- **Documents changed:** `01` (four REQs), `03` (§5.6h, the 0224 rows), `04`, `08` (§1 matrix, §3.1, §3.2), `09`, `11`, `14` (M35), `15` (four stories), `STATUS.md`
+
 ## DEC-290 — A reaction answers at once and is written beside everything else; replies the Instagram way
 
 **Date:** 2026-10-14 · **Status:** accepted · **By:** the owner · **Refs:** REQ-EVT-002, REQ-EVT-004, REQ-EVT-006, REQ-STO-005, REQ-STO-010 · **Amends:** the wave-18 kept-behaviour line «REQ-EVT-002 — «رد» only on a top-level comment» (`content.md` § PR B), `ui/reaction-bar`'s «nothing pops» for the comment like · **Migration:** none

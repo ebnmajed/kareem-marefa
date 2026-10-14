@@ -29,7 +29,10 @@
  * The string path kept M3's shorter stack (without the two mobile faces) until
  * it left in M13 (`DEC-081`); every mail now declares this one.
  */
-export const DESIGN_STACK = `'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, 'Geeza Pro', 'Noto Naskh Arabic', Arial, sans-serif`;
+// ★ Wave 30 (`DEC-289`): the approved design's face, `build.py`'s `FONT` verbatim — Baloo Bhaijaan 2, loaded by the
+// shell's `<link>` where a client allows it, then Segoe UI and Tahoma, which shape Arabic, where it is stripped. The
+// iOS/Android faces this stack used to name are what those platforms fall back to anyway (D3 F4); one stack, as before.
+export const DESIGN_STACK = `'Baloo Bhaijaan 2','Segoe UI',Tahoma,Arial,sans-serif`;
 
 // `latn` named explicitly: `ar`'s CLDR default is `arab`, the digits the owner
 // forbade everywhere (DEC-124).

@@ -49,7 +49,9 @@ const GALLERY = /^\/(ar|en)\/ui(\/|$)/;
 export default async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  if (GALLERY.test(pathname) && process.env.KAREEM_GALLERY !== "1") {
+  // ★ Wave 30 (`DEC-289`): a development server serves it too — the email preview (`/ar/ui/emails`) is a dev tool.
+  // A production build still 404s it unless the harness sets KAREEM_GALLERY=1.
+  if (GALLERY.test(pathname) && process.env.KAREEM_GALLERY !== "1" && process.env.NODE_ENV !== "development") {
     const url = request.nextUrl.clone();
     url.pathname = `/${pathname.slice(1, 3)}/platform-unconfigured`;
     url.search = "";

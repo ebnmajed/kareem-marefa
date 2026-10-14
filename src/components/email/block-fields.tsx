@@ -2,7 +2,7 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { PALETTE_TOKENS, type BlockStyle, type EmailBlock, type PaletteToken } from "@kareem/mail-runtime";
+import { PALETTE_TOKENS, TONES, type BlockStyle, type EmailBlock, type PaletteToken, type Tone } from "@kareem/mail-runtime";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -115,6 +115,9 @@ export function BlockFields({ block, tokens, chips, urlBindings, onChange }: Blo
     ],
     (value) => setStyle({ ...style, align: value === "start" ? undefined : (value as BlockStyle["align"]) }),
   );
+  const toneLabel: Record<Tone, string> = { lime: t("toneLime"), violet: t("toneViolet"), orange: t("toneOrange"), coral: t("toneCoral") };
+  const toneSelect = (value: Tone, set: (tone: Tone) => void) =>
+    select(t("tone"), value, TONES.map((tone) => ({ value: tone, label: toneLabel[tone] })), (next) => set(next as Tone));
   const urlSelect = (value: string, set: (binding: string) => void) =>
     select(t("link"), value, [{ value: "", label: "—" }, ...urlBindings.map((binding) => ({ value: binding, label: tokens.get(binding) ?? binding }))], set);
 
@@ -196,9 +199,43 @@ export function BlockFields({ block, tokens, chips, urlBindings, onChange }: Blo
       content = select(t("width"), String(block.width), ["96", "120", "160", "200", "240"].map((value) => ({ value, label: value })), (value) => patch({ width: Number(value) }));
       break;
     case "certificate":
+    case "quote":
+    case "rating":
       content = text("label", t("label"), block.label, (stored) => ({ label: stored }));
       break;
+    // Wave 30 (`REQ-NTF-018`) — the design's pieces.
+    case "eyebrow":
+      content = (
+        <>
+          {text("text", t("text"), block.text, (stored) => ({ text: stored }))}
+          {toneSelect(block.tone, (tone) => patch({ tone }))}
+          <Switch label={t("chip")} checked={block.chip === true} onCheckedChange={(checked) => patch({ chip: checked })} />
+        </>
+      );
+      break;
+    case "hero":
+      content = (
+        <>
+          {text("text", t("text"), block.text, (stored) => ({ text: stored }))}
+          {text("label", t("heroSide"), block.label, (stored) => ({ label: stored }))}
+          {toneSelect(block.tone, (tone) => patch({ tone }))}
+        </>
+      );
+      break;
+    case "ticket":
+      content = (
+        <>
+          {text("label", t("label"), block.label, (stored) => ({ label: stored }))}
+          {select(t("tone"), block.tone, [
+            { value: "lime", label: t("toneLime") },
+            { value: "violet", label: t("toneViolet") },
+          ], (value) => patch({ tone: value as "lime" | "violet" }))}
+        </>
+      );
+      break;
     case "detail_list":
+    case "stats":
+    case "links":
     case "social": {
       const items = block.items;
       const labelOf = block.type === "social" ? [t("itemLabel"), t("itemValue")] : [t("detailLabel"), t("detailValue")];
@@ -313,5 +350,5 @@ export function BlockFields({ block, tokens, chips, urlBindings, onChange }: Blo
 }
 
 function hasText(block: EmailBlock): boolean {
-  return ["heading", "paragraph", "button", "image", "poster", "qr", "certificate", "detail_list", "social"].includes(block.type);
+  return ["heading", "paragraph", "button", "image", "poster", "qr", "certificate", "detail_list", "social", "eyebrow", "hero", "ticket", "stats", "quote", "rating", "links"].includes(block.type);
 }

@@ -79,6 +79,8 @@ export interface MimeInput {
   html: string;
   date?: Date;
   messageId?: string;
+  /** ★ Wave 30 (`REQ-NTF-019`, RFC 2369 + RFC 8058). */
+  listUnsubscribe?: { url: string } | null;
 }
 
 /**
@@ -98,6 +100,8 @@ export function buildMime(input: MimeInput): string {
     `Subject: ${encodeHeaderValue(input.subject)}`,
     `Date: ${date}`,
     ...(input.messageId ? [`Message-ID: <${input.messageId}@kareem.pp.sa>`] : []),
+    // An ASCII URL by construction (a uuid, a category and hex), so no encoded word is needed.
+    ...(input.listUnsubscribe ? [`List-Unsubscribe: <${input.listUnsubscribe.url}>`, "List-Unsubscribe-Post: List-Unsubscribe=One-Click"] : []),
     "MIME-Version: 1.0",
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
   ];

@@ -374,7 +374,7 @@ export async function getMemberStanding(locale: string, memberId: string): Promi
 // ★ Only a RISE is an occurrence. A fall, a tie, a new month, a new company or
 // no mark at all is the static state, and the mark moves on quietly.
 
-/** `weekly` is wave 20's, add-only (DEC-216 §2.2): the live week, its period the week's Saturday. */
+/** `weekly` is wave 20's, add-only (DEC-216 §2.2): the live week, its period the week's Sunday (DEC-289). */
 export type BoardKind = "all_time" | "monthly" | "company" | "weekly";
 
 export interface BoardMark {
@@ -779,7 +779,7 @@ export async function getMemberMonthRank(locale: string, memberId: string): Prom
 // ── This week, live — contract 4 (wave 20, add-only) ─────────────────────────────────────────────────────────────
 //
 // `REQ-UIX-078`, `DEC-216` §2.2, `DEC-217` §3.3 – §3.4, `DEC-218`. The week is summed from `points_ledger` at read
-// time by `weekly_leaderboard()` — no enum value, no snapshot, no job — over `org_week()`: Saturday to Friday in the
+// time by `weekly_leaderboard()` — no enum value, no snapshot — over `org_week()`: Sunday to Saturday (DEC-289) in the
 // org's own time zone. Opt-out and the active rule are the DATABASE's (the function follows 0044); this reads what
 // the caller may see. ★ An absence is an absence: no points this week is `rank: null`, never a zero rank.
 //
@@ -791,11 +791,11 @@ export async function getMemberMonthRank(locale: string, memberId: string): Prom
 export const WEEKLY_MARK_WRITABLE = true;
 
 export interface WeekWindow {
-  /** `YYYY-MM-DD` — the Saturday the week starts on. */
+  /** `YYYY-MM-DD` — the Sunday the week starts on (DEC-289). */
   start: string;
-  /** `YYYY-MM-DD` — the Friday it ends on, inclusive. */
+  /** `YYYY-MM-DD` — the Saturday it ends on, inclusive. */
   end: string;
-  /** Whole days left after today until `end`; 0 on the Friday itself. */
+  /** Whole days left after today until `end`; 0 on the Saturday itself. */
   daysLeft: number;
   /** `org_settings.time_zone`. */
   timeZone: string;

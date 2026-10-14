@@ -59,6 +59,11 @@ export const ROUTE_FOR: Readonly<Record<string, Route>> = {
   // of a link, and the mail ends on the reason. A route here would be a
   // binding no template reads — the mirror of the defect this file fixes.
   "MSG-rsvp_promoted": session,
+  // ★ Wave 30 (`DEC-289`): the four messages the approved design adds or mails for the first time.
+  "MSG-rsvp_confirmed": session,
+  "MSG-session_comment": session,
+  "MSG-check_in_confirmed": session,
+  "MSG-leaderboard_weekly": own("/app/leaderboards"),
   "MSG-reminder_7d": session,
   "MSG-reminder_1d": session,
   "MSG-reminder_2h": session,
@@ -107,6 +112,32 @@ export const ROUTE_FOR: Readonly<Record<string, Route>> = {
 export function logoUrlFor(origin: string | null | undefined, orgId: string, hasPublicLogo: boolean): string | null {
   if (!origin || !orgId || !hasPublicLogo) return null;
   return `${origin.replace(/\/+$/, "")}/api/brand/${orgId}/logo`;
+}
+
+/**
+ * ★ WAVE 30 (`REQ-NTF-018`, `DEC-289`) — THE DESIGN'S OTHER LINKS, BUILT HERE AND NOWHERE ELSE.
+ *
+ * The approved design carries more than one destination: the calendar file, the rating page, cancelling (the
+ * event page, where the control is), the poster's wide render and the certificate's public page. As with `url`,
+ * the ids are in the payload (or the facts the worker resolved) and the SHAPE of each link is written once — so a
+ * sender never builds a URL and a mail never links somewhere relative. A link whose id is missing is absent, and a
+ * block bound to it draws nothing.
+ */
+export function designLinks(payload: Record<string, unknown>, appUrl: string | null | undefined, locale = "ar"): Record<string, string> {
+  if (!appUrl) return {};
+  const origin = appUrl.replace(/\/+$/, "");
+  const out: Record<string, string> = {};
+  const session = typeof payload.session_id === "string" && /^[0-9a-f-]{36}$/i.test(payload.session_id) ? payload.session_id : null;
+  if (session) {
+    out.cancel_url = `${origin}/${locale}/app/sessions/${session}`;
+    out.calendar_url = `${origin}/api/sessions/${session}/ics`;
+    out.rate_url = `${origin}/${locale}/app/sessions/${session}/rate`;
+    // `0224`'s `session_wide_poster_path()` answered «yes» to the worker; the route reads the same predicate.
+    if (payload.poster_wide === true) out.poster_url = `${origin}/api/s/${session}/wide`;
+  }
+  const code = payload.verification_code;
+  if (typeof code === "string" && /^[A-Za-z0-9-]{4,64}$/.test(code)) out.certificate_url = `${origin}/${locale}/verify/${code}`;
+  return out;
 }
 
 /**

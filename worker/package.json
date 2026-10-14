@@ -11,7 +11,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "probe": "node dist/index.js --probe-only"
+    "probe": "node dist/index.js --probe-only",
+    "mail:previews": "node dist/dev/send-previews.js"
   },
   "dependencies": {
     "@kareem/designer-runtime": "0.1.0",

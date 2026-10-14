@@ -696,6 +696,16 @@ moderation material (`REQ-ADM-020`).
 | `survey_answers` | — | — | — | — | **No policy at all.** One value of one response. No member, no timestamp. |
 | `avatar_uploads` | — | — | — | — | **No policy at all.** One row per member: the current avatar upload's id and outcome (`DEC-281`, `0222`). No bytes, no URL, no name. Written and read by `platform`'s definer functions alone. |
 | `photo_albums` | §5.6g | — | — | — | One album per session (`0156`, `REQ-ADM-021`). Staff of the org read it; the three audit definers and `content`'s service_role functions are its only writers. |
+| `leaderboard_weekly_digests` | §5.6h | — | — | — | ★ `0224` (`REQ-LDR-009`, `DEC-289`): one row per org per closed week — the guard that mails the week's close once. Staff read; `send_weekly_leaderboard_digests()` is its only writer. |
+| `email_unsubscribe_secrets` | — | — | — | — | **No policy at all.** ★ `0224` (`REQ-NTF-019`, `DEC-289`): one HMAC key per org for the one-click unsubscribe token. Read only by `email_unsubscribe_token()` (the worker's) and `apply_email_unsubscribe()` (anyone with a token) — so the token is checked where the key lives and no key reaches Vercel. |
+
+#### §5.6h — the week's digest guard (`0224`, `DEC-289`)
+```sql
+create policy "leaderboard_weekly_digests_read_staff" on leaderboard_weekly_digests for select to authenticated
+  using (org_id = auth_org_id() and is_staff());
+```
+No client role writes it. `send_weekly_leaderboard_digests()` inserts the week's row BEFORE it notifies, so a second
+run, a retry or a second worker sends nothing twice.
 
 #### §5.6g — the photo album (`0156`, `DEC-180`, `DEC-182`)
 ```sql
@@ -2267,6 +2277,16 @@ generated suite is the highest-value test in the product.
 | `TRG-members_avatar.source_follows_version` | A recorded copy is `google`; a cleared copy has no source; the key is untouched by either. |
 | `TRG-comments_broadcast.avatar_key` | The live comment payload carries `authorAvatarKey` beside the version, and still no URL. |
 
+| ★ **wave 30, migration `0224`** — the approved email design (`DEC-289`; `REQ-NTF-018`, `REQ-NTF-019`, `REQ-EVT-017`, `REQ-LDR-009`) — `tests/rls/email-redesign.test.ts` |
+| `RPC-org_week.sunday` | The week starts Sunday 00:00 in the org's zone and ends before the next; a Saturday 23:59 is in it (`tests/rls/scoring-week-live.test.ts`). |
+| `TRG-comments_notify.presenters` | A comment tells each accepted presenter of its session but its author, once, as `MSG-session_comment`; a presenter's own comment tells nobody; a reply to a presenter is the reply alone. |
+| `TRG-check_ins_notify.first` | A member's first check-in on a session sends `MSG-check_in_confirmed`, with no points in its payload; a later day's does not. |
+| `RPC-send_weekly_leaderboard_digests.once` | A second run in the same week sends nothing; the guard row counts the first run's recipients. |
+| `POL-leaderboard_weekly_digests_read_staff` | Staff of the org ✓ · a member ✗ · another org's staff ✗ · an insert by any client role → 42501. |
+| `TBL-email_unsubscribe_secrets.closed` | No client role — `authenticated` or `anon` — selects, inserts, updates or deletes → 42501. |
+| `RPC-apply_email_unsubscribe.token` | A valid token, sent by `anon`, switches that category's email off, idempotently; a forged token, another member's id or a category with no optional message → `22023`, one answer. `email_unsubscribe_token()` is `service_role` only. |
+| `RPC-email_facts.service_only` · `RPC-email_preview_facts.staff` | `email_facts()` executes for `service_role` alone; `email_preview_facts()` for staff of the session's org — a member or another org's staff → 42501. |
+| `POL-storage.exports.public_card.landscape` | `anon` is named the `landscape` PNG of a published session's poster beside `og`; a draft's never. |
 | ★ **wave 29, migration `0222`** — lead — the upload's schema (`DEC-281`, `REQ-PRF-017` … `REQ-PRF-019`) |
 | `POL-avatar_staging_insert.own_prefix` | A member writes under `{own org}/members/{self}/` in `avatar-staging` ✓. |
 | `POL-avatar_staging_insert.other_member_refused` · `.other_org_refused` | Another member's prefix, or another org's, ✗. |
