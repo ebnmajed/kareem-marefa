@@ -86,8 +86,8 @@
 
   --font-sans: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
   --font-arabic:
-    var(--font-plex-arabic), var(--font-plex), ui-sans-serif, system-ui,
-    sans-serif;
+    var(--font-plex-arabic), var(--font-plex-arabic-latin), var(--font-plex),
+    ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Semantic colors (defaults = light context; .theme-dark reassigns).
