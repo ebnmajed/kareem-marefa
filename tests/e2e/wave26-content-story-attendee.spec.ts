@@ -222,7 +222,8 @@ test("★★ a video recorded and stopped by TAPS alone — page.click() on the 
   await page.click('[data-story-capture] button[aria-label="أوقف التسجيل"]');
 
   await expect(capture).toHaveAttribute("data-state", "review");
-  await expect(capture.locator("video[controls]")).toBeVisible();
+  await expect(capture.locator("[data-review-video]")).toBeVisible();
+  await expect(capture.getByRole("button", { name: "تابِع" })).toBeVisible();
   await page.click('[data-story-capture] button:has-text("انشر")');
   await expect(capture.getByRole("status")).toHaveText("جارٍ التجهيز", { timeout: 30_000 });
   // The recorded clip's own frame exists — processing until the worker decides (visible at once if one is running).
