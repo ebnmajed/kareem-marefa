@@ -84,7 +84,7 @@ describe("the eleven blocks — each draws what its facts say, and nothing when 
     expect(one({ type: "hero", id: "h", text: "#4", label: "↑ 2", tone: "lime" }).rows.join("")).toMatch(/dir="ltr"[^>]*>#4</);
     expect(one({ type: "hero", id: "h", text: "#4", label: "↑ 2", tone: "lime" }).rows.join("")).toMatch(/<div dir="ltr"[^>]*>↑ 2</);
     const stats = one({ type: "stats", id: "s", items: [{ label: "نقطة عند الحضور", value: "{{points}}" }, { label: "سيحضرون", value: "{{going}}" }] }, { points: "+20", going: 38 });
-    expect(stats.rows.join("")).toMatch(/<div dir="ltr"[^>]*>⁨\+20⁩</);
+    expect(stats.rows.join("")).toMatch(new RegExp(`<div dir="ltr"[^>]*>${FSI}\\+20${PDI}<`));
     // An empty figure is no cell.
     expect(one({ type: "stats", id: "s", items: [{ label: "x", value: "{{none}}" }] }).rows).toEqual([]);
   });

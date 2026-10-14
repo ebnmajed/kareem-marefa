@@ -58,7 +58,7 @@ export default async function EmailPreviewPage({ params }: { params: Promise<{ l
       </header>
       {mails.map((mail) => (
         <section key={mail.name} data-email-preview={mail.name} aria-labelledby={`h-${mail.name}`} className="flex flex-col gap-3">
-          <h2 id={`h-${mail.name}`} className="text-title text-fg-heading">
+          <h2 id={`h-${mail.name}`} className="text-body font-bold text-fg-heading">
             <bdi>{mail.subject}</bdi>
           </h2>
           <div className="flex flex-wrap items-start gap-6">
