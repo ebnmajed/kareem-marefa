@@ -97,13 +97,17 @@ export function StoryCapture({
   return (
     <RadixDialog.Root open={open} onOpenChange={(o) => (o ? null : onClose())}>
       <RadixDialog.Portal container={landing}>
-        <RadixDialog.Content aria-describedby={undefined} data-story-capture="" data-state={state} className="fixed inset-0 z-50 flex justify-center bg-canvas text-fg-heading outline-none">
+        <RadixDialog.Content aria-describedby={undefined} data-story-capture="" data-state={state} className="fixed inset-0 z-50 flex h-dvh justify-center bg-canvas text-fg-heading outline-none">
           <div className="relative flex h-full w-full max-w-[24.375rem] flex-col overflow-hidden bg-void pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            <div className="absolute inset-0">{preview}</div>
+            {/* ★ The take sits UNDER the controls, always: its own layer at z-0, and every row of controls a composited
+                layer above it (`transform-gpu`) — iOS draws a playing <video> in a layer of its own, and a control that is
+                not one can lose to it (the owner saw «no controls», 2026-10-14). The height is the VISIBLE viewport
+                (`h-dvh`), so Safari's toolbar never hides the shutter. */}
+            <div className="absolute inset-0 z-0">{preview}</div>
 
             {/* `StoryAdd.dc.html`: the title pill CENTRED, close at a side — a three-column row whose outer columns are the
                 close's width, so the pill stays centred whatever its length. */}
-            <div className="relative z-10 grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 px-3">
+            <div className="relative z-10 grid transform-gpu grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 px-3">
               <span aria-hidden />
               <RadixDialog.Title className="justify-self-center truncate rounded-pill bg-chrome px-3 py-1.5 text-label font-bold leading-[1.7]">{labels.dialog}</RadixDialog.Title>
               <RadixDialog.Close aria-label={labels.close} className={`${ROUND} size-11`}>
@@ -111,7 +115,8 @@ export function StoryCapture({
               </RadixDialog.Close>
             </div>
 
-            <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-2 px-4">
+            {/* The middle carries words only, so a tap there reaches the take — the review's own play control. */}
+            <div className="pointer-events-none relative z-10 flex flex-1 transform-gpu flex-col items-center justify-center gap-2 px-4">
               {mode === "video" && (recording || state === "idle") ? (
                 <span data-slot="elapsed" className="rounded-pill bg-chrome px-2.5 py-1 text-caption font-bold tabular-nums">
                   <bdi dir="ltr">{elapsed}</bdi>
@@ -124,7 +129,7 @@ export function StoryCapture({
               ) : null}
             </div>
 
-            <div className="relative z-10 flex flex-col gap-3 px-4">
+            <div className="relative z-10 flex transform-gpu flex-col gap-3 px-4">
               {/* The one caption line, above the controls in every state but a refused camera — `StoryAdd.dc.html` draws
                   it while recording (0:07 / 0:15), so it can be written before, during or after the take. */}
               {state !== "denied" ? (

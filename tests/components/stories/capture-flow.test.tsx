@@ -269,6 +269,19 @@ describe("CaptureFlow — robust uploads", () => {
     expect(puts).toBe(0);
   });
 
+  it("★ the review plays the take with ONE tapped control — never the browser's controls, which sit under «أعد» and «انشر»", async () => {
+    routes(videoInit);
+    const user = await recordVideo(iosRecorder);
+    expect(document.querySelector("[data-story-capture] video[controls]")).toBeNull();
+    const video = document.querySelector<HTMLVideoElement>("[data-review-video]")!;
+    expect(video).toHaveAttribute("playsinline");
+    const play = vi.spyOn(video, "play").mockImplementation(async () => void video.dispatchEvent(new Event("play")));
+    Object.defineProperty(video, "paused", { configurable: true, get: () => !play.mock.calls.length });
+    await user.click(screen.getByRole("button", { name: "تابِع" }));
+    expect(play).toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "أوقف مؤقتًا" })).toBeInTheDocument();
+  });
+
   it("a recording that wrote no bytes is never uploaded", async () => {
     const calls = routes(videoInit);
     await recordVideo(recorderLike((t) => t === "video/mp4", { type: "video/mp4", bytes: null }));

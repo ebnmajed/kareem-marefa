@@ -23,6 +23,7 @@ import {
 } from "@/components/stories/media";
 import { UploadError, isAlreadyUploaded, postJson, putBlob, withRetry } from "@/components/stories/upload";
 import { useToast } from "@/components/ui/toast";
+import { PauseIcon, PlayIcon } from "@/components/ui/icons";
 
 // «أضف» — the camera, the recorder and the two uploads behind `ui/story-capture` (REQ-STO-011, REQ-STO-012,
 // REQ-STO-016). A photograph goes through the album's OWN door (`/api/upload/photo`, then `/api/stories/photo/complete`
@@ -80,6 +81,12 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
     live.current = el;
     if (!el || !stream.current || el.srcObject === stream.current) return;
     try {
+      // iOS plays a <video> inline only when these are ATTRIBUTES at play() — never fullscreen in the native player,
+      // which has no shutter and no way back (the owner's «there weren't any [controls]»).
+      el.muted = true;
+      el.setAttribute("muted", "");
+      el.setAttribute("playsinline", "");
+      el.setAttribute("webkit-playsinline", "");
       el.srcObject = stream.current;
       void el.play?.()?.catch(() => undefined);
     } catch {
@@ -432,11 +439,10 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
         // eslint-disable-next-line @next/next/no-img-element -- a local object URL under review
         <img src={draftUrl} alt="" className="h-full w-full object-contain" />
       ) : (
-        // `#t=0.001` asks Safari to paint the first frame; the poster is the still read from the take.
-        <video src={`${draftUrl}#t=0.001`} poster={posterUrl ?? undefined} playsInline controls preload="metadata" className="h-full w-full object-contain" />
+        <ReviewVideo src={draftUrl} poster={posterUrl} playLabel={t("viewer.resume")} pauseLabel={t("viewer.pause")} />
       )
     ) : (
-      <video ref={attach} autoPlay muted playsInline data-camera-error={cameraError ?? undefined} className="h-full w-full object-cover" />
+      <video ref={attach} autoPlay muted playsInline disablePictureInPicture data-camera-error={cameraError ?? undefined} className="h-full w-full object-cover" />
     );
 
   const denied = cameraError !== null && !draft && state === "idle";
@@ -489,5 +495,45 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
           }),
       }}
     />
+  );
+}
+
+/** The take, played back under review. ★ NOT the browser's own controls: they draw at the video's bottom edge, exactly
+ *  where the caption, «أعد» and «انشر» sit, so on a phone the take had no visible way to play (the owner's report).
+ *  One centred button — a tap, never a gesture (DEC-093) — plays it with its sound and pauses it; the still read from
+ *  the take is the poster, so it is never a black box. */
+function ReviewVideo({ src, poster, playLabel, pauseLabel }: { src: string; poster: string | null; playLabel: string; pauseLabel: string }) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+  function toggle() {
+    const el = ref.current;
+    if (!el) return;
+    if (el.paused) void el.play()?.catch(() => setPlaying(false));
+    else el.pause();
+  }
+  return (
+    <div className="relative h-full w-full">
+      <video
+        ref={ref}
+        src={src}
+        poster={poster ?? undefined}
+        playsInline
+        disablePictureInPicture
+        preload="metadata"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setPlaying(false)}
+        data-review-video=""
+        className="h-full w-full object-contain"
+      />
+      <button
+        type="button"
+        onClick={toggle}
+        aria-label={playing ? pauseLabel : playLabel}
+        className="absolute start-1/2 top-1/2 inline-flex size-16 -translate-y-1/2 items-center justify-center rounded-pill bg-chrome text-2xl text-fg-heading ltr:-translate-x-1/2 rtl:translate-x-1/2"
+      >
+        {playing ? <PauseIcon aria-hidden /> : <PlayIcon aria-hidden />}
+      </button>
+    </div>
   );
 }
