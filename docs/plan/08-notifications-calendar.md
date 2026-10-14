@@ -265,9 +265,14 @@ OQ-016. **One platform-verified sending domain** for all orgs, with the org name
 display name** and the org's admin contact as **reply-to**:
 
 ```
-From:     كريم معرفة <no-reply@…>
+From:     كريم معرفة <notifications@kareem.pp.sa>
 Reply-To: {{org.email_reply_to}}
 ```
+
+★ **The address is `notifications@kareem.pp.sa`** — the owner's ruling on PR #115 (`DEC-289`, amending `DEC-063`'s
+default). ★ **Production is deferred:** Resend has verified the parent `pp.sa` and nothing under `kareem.pp.sa`, which
+needs its own verification; until the owner does it, Railway keeps
+`MAIL_FROM_ADDRESS=kareem-notifications@peninsulapictures.dev`, which overrides the code's default.
 
 Per-org sending domains (SPF/DKIM per tenant) are real operational work per org and there is one
 org at launch (DEC-004). It needs no schema change later — the sending identity is already a column

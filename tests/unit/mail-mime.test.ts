@@ -51,9 +51,9 @@ describe("encodeHeaderValue", () => {
 
 describe("formatAddress", () => {
   it("encodes an Arabic display name and leaves the address bare", () => {
-    const formatted = formatAddress("كريم معرفة", "no-reply@kareem.pp.sa");
-    expect(formatted).toMatch(/^=\?UTF-8\?B\?[^?]*\?= <no-reply@kareem\.pp\.sa>$/);
-    expect(decodeHeaderValue(formatted)).toBe("كريم معرفة <no-reply@kareem.pp.sa>");
+    const formatted = formatAddress("كريم معرفة", "notifications@kareem.pp.sa");
+    expect(formatted).toMatch(/^=\?UTF-8\?B\?[^?]*\?= <notifications@kareem\.pp\.sa>$/);
+    expect(decodeHeaderValue(formatted)).toBe("كريم معرفة <notifications@kareem.pp.sa>");
   });
 
   it("quotes an ASCII display name and drops the characters that would break the quoting", () => {
@@ -68,7 +68,7 @@ describe("formatAddress", () => {
 describe("buildMime", () => {
   const message = buildMime({
     to: "sara@kareem.example",
-    from: "كريم معرفة <no-reply@kareem.pp.sa>",
+    from: "كريم معرفة <notifications@kareem.pp.sa>",
     replyTo: "admin@kareem.example",
     subject: LONG_ARABIC,
     text: "مرحبًا سارة،\n\nتغيّر الموعد.",

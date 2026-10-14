@@ -74,8 +74,10 @@ export interface TransportEnv {
   RESEND_API_KEY?: string;
 }
 
-/** 08 §3.4: one platform-verified sending domain for all orgs. */
-export const DEFAULT_FROM_ADDRESS = "no-reply@kareem.pp.sa";
+/** 08 §3.4: one platform-verified sending domain for all orgs. ★ `notifications@` since the owner's ruling on
+ *  PR #115 (`DEC-289`, amending `DEC-063`'s default). Production still overrides it with `MAIL_FROM_ADDRESS` until
+ *  `kareem.pp.sa` is verified in Resend — the owner's step, deferred. */
+export const DEFAULT_FROM_ADDRESS = "notifications@kareem.pp.sa";
 
 export function fromAddress(env: TransportEnv = process.env): string {
   return env.MAIL_FROM_ADDRESS?.trim() || DEFAULT_FROM_ADDRESS;

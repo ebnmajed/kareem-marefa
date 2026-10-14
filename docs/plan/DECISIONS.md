@@ -11044,6 +11044,14 @@ check-in code**; unsubscribe — **ok**; branding — **the fixed design** wins 
    writes a rating**, never overwrites one already made and never reopens a closed window (`REQ-RAT-001`,
    `REQ-RAT-003`, `REQ-UIX-066`; `rate/preselect.ts`, `tests/components/survey/rate-preselect.test.tsx`).
 
+6. **The From address is `notifications@kareem.pp.sa`** — the owner's ruling; it **amends `DEC-063`'s default**
+   (`no-reply@kareem.pp.sa`). `DEFAULT_FROM_ADDRESS`, `.env.example` and `08` §3.4 move with it. ★ **The production
+   switch is DEFERRED by the owner:** Resend's verified domain is the parent `pp.sa` (`resend._domainkey.pp.sa` exists;
+   nothing under `kareem.pp.sa`), and the subdomain needs its own verification, which the owner will do later — then
+   widen the API key and switch the Railway variable. Until then production keeps
+   `MAIL_FROM_ADDRESS=kareem-notifications@peninsulapictures.dev`, which overrides the code's default, so merging
+   changes nothing that is sent.
+
 **Not done, and the owner's:** client screenshots in Gmail web, the Gmail app (iOS and Android), Apple Mail and
 Outlook — the PR carries Chromium captures only.
 
