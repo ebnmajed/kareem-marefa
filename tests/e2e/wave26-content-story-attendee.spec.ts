@@ -189,7 +189,8 @@ test("«أضف» is the checked-in attendee's alone; a gallery photograph goes t
   await capture.getByLabel("تعليق").fill(CAPTION);
   await page.screenshot({ path: join(SHOTS, "wave26-content-capture-review-390.png") });
   await page.click('[data-story-capture] button:has-text("انشر")');
-  await expect(capture.getByRole("status")).toHaveText("جارٍ التجهيز");
+  await expect(capture).toBeHidden();
+  await expect(page.getByText("جارٍ التجهيز", { exact: true })).toBeVisible();
 
   if (WORKER) {
     await expect
