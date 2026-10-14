@@ -145,9 +145,23 @@ test("★ a photograph from the shutter: published, the capture closes and says 
   await expect(page.locator('#main [role="alert"]')).toHaveCount(0);
   expect(errors).toEqual([]);
   await page.screenshot({ path: join(SHOTS, "story-media-photo-published-390.png") });
-  const { rows } = await db.query(`select caption, mime_type from public.photos where session_id = $1 and uploader_id = $2`, [sessionId, attendee]);
-  expect(rows).toHaveLength(1);
-  expect(rows[0].caption).toBe("من القاعة");
+  if (WORKER) {
+    // The worker strips the photograph, and only then is there a `photos` row (REQ-EVT-011, DEC-139).
+    await expect
+      .poll(async () => (await db.query(`select caption from public.photos where session_id = $1 and uploader_id = $2`, [sessionId, attendee])).rows[0]?.caption, {
+        timeout: 60_000,
+      })
+      .toBe("من القاعة");
+  } else {
+    // Before the worker, what exists is the album's `process_photo` job, carrying the caption (`initiate_story_photo()`).
+    const { rows } = await db.query<{ caption: string | null }>(
+      `select j.payload->>'caption' as caption from graphile_worker._private_jobs j join graphile_worker._private_tasks t on t.id = j.task_id
+        where t.identifier = 'process_photo' and j.payload->>'session_id' = $1 and j.payload->>'uploader_id' = $2`,
+      [sessionId, attendee],
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].caption).toBe("من القاعة");
+  }
 });
 
 test("★★ a video recorded by taps: progress, then processing over the take's own still — and visible when the worker is running", async ({ context, page }) => {
