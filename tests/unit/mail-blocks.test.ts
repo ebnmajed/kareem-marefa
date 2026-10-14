@@ -238,7 +238,9 @@ describe("renderEmail's one branch", () => {
     // The footer's link is built from `appUrl`. ★ wave 20 (ledger, D14): it opens the settings, not the inbox.
     expect(out.html).toContain("/ar/app/me/settings");
     // And the shell's sign-off is the one the string path writes.
-    expect(out.text).toContain("كريم معرفة · كريم معرفة · شارك المعرفة.. واصنع الأثر");
+    // Wave 30 (`DEC-289`): the product's name once, when the org IS the product.
+    expect(out.text).toContain("—\nكريم معرفة · شارك المعرفة.. واصنع الأثر");
+    expect(out.text).not.toContain("كريم معرفة · كريم معرفة");
   });
 
   it("with no appUrl there is no preference link — never a relative or a localhost one", () => {

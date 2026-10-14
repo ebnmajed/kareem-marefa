@@ -459,13 +459,18 @@ interface ShellInput {
 
 /** `build.py`'s `stripe()` — the four accents along the card's top edge. */
 function stripe(): string {
-  // ★ No `overflow:hidden` on the card (it would clip tashkeel on a text line — `10` §2): the stripe's two outer
-  // cells carry the card's top corners themselves. In an RTL row the first cell is the right one.
-  const corner = (i: number) => (i === 0 ? "border-top-right-radius:28px;" : i === 3 ? "border-top-left-radius:28px;" : "");
+  // ★ No `overflow:hidden` on the card (it would clip tashkeel on a text line — `10` §2), so nothing can clip a
+  // full-width stripe to the card's 28 px corners. It is inset instead (the shell's row pads it 22 px a side), inside
+  // the straight run of the top edge, with its own ends rounded — measured at 390 and 600 in Chromium.
   const cells = [MAIL.lime, MAIL.violet, MAIL.orange, MAIL.coral]
-    .map((c, i) => `<td width="25%" height="4" style="height:4px;line-height:4px;font-size:0;background:${c};${corner(i)}">&nbsp;</td>`)
+    .map((c, i) => `<td width="25%" height="4" style="height:4px;line-height:4px;font-size:0;background:${c};${i === 0 ? "border-radius:0 0 4px 0;" : i === 3 ? "border-radius:0 0 0 4px;" : ""}">&nbsp;</td>`)
     .join("");
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>${cells}</tr></table>`;
+}
+
+/** «المؤسسة · كريم معرفة · شارك المعرفة..» — and the product's name once, when the org IS the product. */
+function signature(org: string): string {
+  return SIGNATURE.startsWith(org.trim()) ? SIGNATURE : `${org} · ${SIGNATURE}`;
 }
 
 /** The preheader's padding: the zero-width joiners `build.py` uses, so a client shows the preheader and not the
@@ -532,7 +537,7 @@ function shell(rows: string, input: ShellInput): string {
     `</tr></table></td></tr>`,
     `<tr><td bgcolor="${MAIL.card}" style="background:${MAIL.card};border-radius:28px">`,
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">`,
-    `<tr><td style="border-radius:28px 28px 0 0">${stripe()}</td></tr>`,
+    `<tr><td style="padding:0 22px">${stripe()}</td></tr>`,
     `<tr><td class="px" dir="rtl" align="right" style="padding:32px 32px 36px;text-align:right">`,
     `<table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0">`,
     rows,
@@ -541,7 +546,7 @@ function shell(rows: string, input: ShellInput): string {
     `</table></td></tr>`,
     `<tr><td align="center" style="padding:26px 16px 0">`,
     `  <div style="${t(13, 600, MAIL.faint, 1.8)}">${footerLinks.join("&nbsp;&nbsp;·&nbsp;&nbsp;")}</div>`,
-    `  <div style="${t(12, 500, MAIL.faint, 1.8)}">${escapeHtml(input.org)} · ${escapeHtml(SIGNATURE)}</div>`,
+    `  <div style="${t(12, 500, MAIL.faint, 1.8)}">${escapeHtml(signature(input.org))}</div>`,
     `</td></tr>`,
     `</table></td></tr></table>`,
     `</body></html>`,
@@ -645,7 +650,7 @@ export function renderEmail(input: RenderInput): RenderedEmail {
   ].filter(Boolean);
   return {
     subject,
-    text: `${[...compiled.text, ...(footer.length ? [footer.join("\n")] : [])].join("\n\n")}\n\n—\n${input.org.name} · ${SIGNATURE}\n`,
+    text: `${[...compiled.text, ...(footer.length ? [footer.join("\n")] : [])].join("\n\n")}\n\n—\n${signature(input.org.name)}\n`,
     html: shell(compiled.rows.join("\n"), {
       subject,
       preheader: preheader !== "" ? preheader : subject,
