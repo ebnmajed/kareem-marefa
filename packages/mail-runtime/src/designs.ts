@@ -238,6 +238,12 @@ const COPY: Readonly<Record<string, Copy>> = {
  * colour used as a fill, which is the kind of substitution that reads as a
  * token meaning two things. Named, not worked around.
  */
+/** The greeting, once — the families, the `recognition` family's centred pair and the seven designs all read it, so
+ *  no copy can drift. ★ The owner's ruling on PR #115 (`DEC-289` §2, as amended): every message keeps its greeting,
+ *  the seven designed ones included — overriding the brief's «no added greeting paragraphs». */
+const GREETING = "مرحبًا {{member.name}}،";
+const greeting = (): EmailBlock => ({ type: "paragraph", id: "greeting", text: GREETING });
+
 const HOUSE: EmailStyles = {
   ground: "canvas",
   padding: 32,
@@ -246,9 +252,9 @@ const HOUSE: EmailStyles = {
 };
 
 function layout(family: DesignFamily, copy: Copy): EmailBlock[] {
-  // ★ Wave 30 (`DEC-289` §2): the heading, and no greeting paragraph — the approved design opens on what happened,
-  // and the owner's rule is «no added greeting paragraphs». An org that wants one adds a paragraph in the studio.
-  const heading: EmailBlock[] = [{ type: "heading", id: "h", text: copy.heading, level: 1 }];
+  // ★ The heading, then the member by name — every string template greeted since M3, and the owner kept it on
+  // PR #115 (`DEC-289` §2). It is a block an org may edit or remove (`DEC-081`).
+  const heading: EmailBlock[] = [{ type: "heading", id: "h", text: copy.heading, level: 1 }, greeting()];
   const body: EmailBlock = { type: "paragraph", id: "body", text: copy.body };
   // ★ Typed as the button MEMBER, not as `EmailBlock`: a family that adds a
   // block style to it (the `recognition` one centres it) would otherwise spread
@@ -304,6 +310,7 @@ function layout(family: DesignFamily, copy: Copy): EmailBlock[] {
       const centred = { align: "center" } as const;
       return [
         { type: "heading", id: "h", text: copy.heading, level: 1, style: centred },
+        greeting(),
         { type: "paragraph", id: "body", text: copy.body, style: centred },
         ...(cta ? [{ ...cta, blockStyle: centred }] : []),
       ];
@@ -337,10 +344,7 @@ export function invitationDesign(): EmailBlockDocument {
     body: "أضافك مشرف {{org}} إلى المنصة. سجّل الدخول بحساب Google على البريد الذي وصلتك عليه هذه الرسالة.",
     action: { label: "سجّل الدخول", urlBinding: "url" },
   };
-  // ★ The one designed mail that greets: a person an admin just added is being welcomed by name (`REQ-NTF-017`), and
-  // `DEC-289`'s «no greeting paragraph» is about the notifications.
-  const [heading, ...rest] = layout("announcement", copy);
-  return { schemaVersion: SCHEMA_VERSION, blocks: [heading!, { type: "paragraph", id: "greeting", text: "مرحبًا {{member.name}}،" }, ...rest], styles: HOUSE };
+  return { schemaVersion: SCHEMA_VERSION, blocks: layout("announcement", copy), styles: HOUSE };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -349,7 +353,7 @@ export function invitationDesign(): EmailBlockDocument {
 // Each is the block document its `build.py` function draws, component for component and in the same order, so an
 // untouched org sends the approved mail and an admin who duplicates one edits THAT mail in the studio. Every other
 // key keeps its family layout above, on the same dark shell. A word or a figure, never a sentence of explanation;
-// no greeting paragraph; one lime button; secondary actions are quiet links (`DEC-289` §2).
+// the member's greeting first (the owner's ruling on PR #115); one lime button; secondary actions are quiet links.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 const ticketLinks = (): EmailBlock => ({
@@ -465,7 +469,8 @@ export function preheaderFor(key: string): string {
 
 export function platformDesign(key: string): EmailBlockDocument | null {
   const bespoke = BESPOKE[key];
-  if (bespoke) return { schemaVersion: SCHEMA_VERSION, blocks: bespoke(), styles: HOUSE };
+  // ★ The seven open with the greeting too — the owner's ruling on PR #115 (`DEC-289` §2).
+  if (bespoke) return { schemaVersion: SCHEMA_VERSION, blocks: [greeting(), ...bespoke()], styles: HOUSE };
   const family = DESIGN_FOR[key];
   const copy = COPY[key];
   if (!family || !copy) return null;

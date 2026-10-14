@@ -115,7 +115,8 @@ describe("JOB-send_notification", () => {
     const mail = transport.sent[0];
     expect(mail.to).toBe("sara@kareem.example");
     expect(mail.subject).toBe("حصلت على مقعد في جلسة المعرفة");
-    // Wave 30: no greeting paragraph (`DEC-289` §2) — the mail opens on what happened, then the session.
+    // The member is greeted by name — the owner kept the greeting on PR #115 (`DEC-289` §2).
+    expect(mail.text).toContain("سارة العتيبي");
     expect(mail.text).toContain("حصلت على مقعد");
     expect(mail.text).toContain("جلسة المعرفة");
     // 08 §3.4: the org's name in the From display name, its admin as Reply-To.

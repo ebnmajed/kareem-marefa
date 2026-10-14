@@ -94,9 +94,9 @@ describe("a design renders, and says what its message says", () => {
 });
 
 describe("★ the string path retired — every key renders a design (DEC-081, M13)", () => {
-  it("a key with no row renders its design — and since wave 30 no design greets (`DEC-289` §2)", () => {
-    // DEC-161 R3 held adoption explicit «until M13». In M13 a key with no row renders its platform design. The owner's
-    // approved design opens on what happened, never a greeting paragraph; an org may add one in the studio.
+  it("a key with no row renders its design, and the design greets the member (`DEC-289` §2)", () => {
+    // DEC-161 R3 held adoption explicit «until M13». In M13 a key with no row renders its platform design, which greets
+    // by name as the string templates always did — the owner kept the greeting on PR #115, the seven included.
     const withoutOverride = renderEmail({
       key: "MSG-reminder_1d",
       payload: sampleFor("MSG-reminder_1d")!.payload,
@@ -104,7 +104,7 @@ describe("★ the string path retired — every key renders a design (DEC-081, M
       org: SAMPLE_ORG,
     });
     expect(withoutOverride.text).toContain("غدًا");
-    expect(withoutOverride.text).not.toContain("مرحبًا");
+    expect(withoutOverride.text).toContain("مرحبًا");
     expect(withoutOverride.dropped).toEqual([]);
   });
 

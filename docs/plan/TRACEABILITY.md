@@ -332,7 +332,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-NTF-014` | `ENT-notification_templates` | — | `SCR-058` | — | `MSG-check_in_confirmed` `MSG-comment_reply` +4 | `STORY-NTF-006` | M12 |
 | `REQ-NTF-015` | — | — | `SCR-055` `SCR-057` `SCR-058` | — | — | `STORY-NTF-007` | M25 |
 | `REQ-NTF-016` | — | — | `SCR-058` `SCR-059` | `JOB-send_member_invitation` | `MSG-check_in_confirmed` `MSG-comment_reply` +4 | `STORY-NTF-008` | M26 |
-| `REQ-NTF-017` | `ENT-member_invitations` `ENT-members` | — | `SCR-049` | `JOB-send_member_invitation` `JOB-send_test_email` | `MSG-check_in_confirmed` `MSG-comment_reply` +4 | `STORY-NTF-009` | M27 |
+| `REQ-NTF-017` | `ENT-member_invitations` `ENT-members` | — | `SCR-049` | `JOB-send_member_invitation` `JOB-send_test_email` | — | `STORY-NTF-009` | M27 |
 | `REQ-NTF-018` | — | — | — | `JOB-send_notification` | `MSG-check_in_confirmed` `MSG-comment_reply` +4 | `STORY-NTF-010` | M35 |
 | `REQ-NTF-019` | — | — | — | `JOB-send_notification` | `MSG-check_in_confirmed` `MSG-comment_reply` +4 | `STORY-NTF-011` | M35 |
 
@@ -400,9 +400,9 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
-| `REQ-RAT-001` | `ENT-ratings` | — | `SCR-013` `SCR-015` `SCR-017` +1 | — | — | `STORY-RAT-001` | M2 |
+| `REQ-RAT-001` | `ENT-ratings` | — | `SCR-013` `SCR-015` `SCR-017` +1 | — | `MSG-check_in_confirmed` `MSG-comment_reply` +4 | `STORY-RAT-001` | M2 |
 | `REQ-RAT-002` | `ENT-ratings` | — | `SCR-013` `SCR-015` `SCR-017` +1 | — | — | `STORY-RAT-001` | M2 |
-| `REQ-RAT-003` | `ENT-ratings` | — | `SCR-015` `SCR-064` | — | — | `STORY-RAT-001` | M2 |
+| `REQ-RAT-003` | `ENT-ratings` | — | `SCR-015` `SCR-064` | — | `MSG-check_in_confirmed` `MSG-comment_reply` +4 | `STORY-RAT-001` | M2 |
 | `REQ-RAT-004` | `ENT-ratings` | — | `SCR-002` `SCR-004` `SCR-007` +15 | — | — | `STORY-RAT-002` | M2 |
 | `REQ-RAT-005` | `ENT-ratings` | `POL-ratings.select.admin` | `SCR-002` `SCR-004` `SCR-007` +9 | — | — | `STORY-RAT-002` | M2 |
 | `REQ-RAT-006` | `ENT-ratings` | `POL-ratings.select.admin` | `SCR-011` `SCR-012` `SCR-013` +8 | — | — | `STORY-RAT-002` | M2 |
@@ -599,7 +599,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-063` | — | — | — | — | — | `STORY-UIX-046` | M20 |
 | `REQ-UIX-064` | — | — | `SCR-013` `SCR-015` `SCR-018` +1 | — | — | `STORY-UIX-052` | M21 |
 | `REQ-UIX-065` | — | — | `SCR-013` | — | — | `STORY-UIX-053` | M21 |
-| `REQ-UIX-066` | — | — | `SCR-015` | — | — | `STORY-UIX-054` | M21 |
+| `REQ-UIX-066` | — | — | `SCR-015` | — | `MSG-check_in_confirmed` `MSG-comment_reply` +4 | `STORY-UIX-054` | M21 |
 | `REQ-UIX-067` | — | — | `SCR-017` `SCR-018` | — | — | `STORY-UIX-055` `STORY-UIX-056` | M21 |
 | `REQ-UIX-068` | — | — | `SCR-019` `SCR-020` | — | — | `STORY-UIX-057` | M21 |
 | `REQ-UIX-069` | — | — | `SCR-019` `SCR-020` `SCR-021` +2 | — | — | `STORY-UIX-058` | M21 |

@@ -2484,8 +2484,9 @@ read it). Seven messages wear their own design — new session, booking confirme
 your session, the week's close, and after-session (sent at check-in) — built from blocks the studio edits; every
 other message wears its family's layout on the same shell.
 **Acceptance:**
-- Every mail carries a preheader, a generated plain-text alternative and the composed footer; one lime button at most,
-  secondary actions as quiet text links; no greeting paragraph and no explanatory copy.
+- Every mail carries a preheader, a generated plain-text alternative and the composed footer; the member's greeting
+  first (the owner's ruling on PR #115, `DEC-289` §2); one lime button at most, secondary actions as quiet text links;
+  no explanatory copy.
 - Western numerals everywhere (`DEC-124`); «+20», «↑ 2», a ticket reference and a certificate serial are left-to-right.
 - The VML button fallback is kept for Outlook; no SVG anywhere (invariant 11); no `overflow:hidden` on text.
 - Every figure is read, never a literal: the seats from confirmed reservations, the amount from the org's `check_in`

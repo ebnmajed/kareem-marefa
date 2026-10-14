@@ -139,7 +139,8 @@ describe("the seven designed messages", () => {
     expect(lime.length).toBeLessThanOrEqual(1);
     expect(out.html).toMatch(/<div style="display:none;[^"]*">[^<]+/);
     expect(out.html).not.toMatch(/[٠-٩]/);
-    expect(out.html).not.toContain("مرحبًا");
+    // ★ The owner's ruling on PR #115 (`DEC-289` §2): the seven greet the member first, as every message does.
+    expect(out.text.startsWith("مرحبًا")).toBe(true);
   });
 
   it("the header: the hosted mark, «كريم معرفة», and the HOST company at the inline end", () => {
@@ -166,8 +167,9 @@ describe("the seven designed messages", () => {
   });
 
   it("the reminders differ by their countdown alone", () => {
-    expect(render("MSG-reminder_7d").text.startsWith("7 أيام")).toBe(true);
-    expect(render("MSG-reminder_1d").text.startsWith("غدًا")).toBe(true);
+    // After the greeting, the hero.
+    expect(render("MSG-reminder_7d").text.split("\n\n")[1]!.startsWith("7 أيام")).toBe(true);
+    expect(render("MSG-reminder_1d").text.split("\n\n")[1]!.startsWith("غدًا")).toBe(true);
   });
 
   it("every designed message has its own preheader, and the rest fall back to the subject", () => {

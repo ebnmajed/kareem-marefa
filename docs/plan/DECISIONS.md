@@ -10996,10 +10996,10 @@ check-in code**; unsubscribe — **ok**; branding — **the fixed design** wins 
    posters and certificates still read the kit. The header is the hosted PNG mark and «كريم معرفة», with the HOST
    company (the session venue's, `0180`) at its end.
 2. **The face is loaded** — Baloo Bhaijaan 2 by the Google Fonts `<link>`, `'Segoe UI', Tahoma, Arial` behind it —
-   amending `08` §3.1's «never a web font». Never `@font-face`. **No greeting paragraph and no explanatory copy**, on
-   every message (the invitation, `REQ-NTF-017`, alone keeps its greeting: it welcomes a new person by name). One
-   lime button at most; secondary actions are quiet text links. Western numerals; «+20», «↑ 2», a ticket reference and
-   a serial are left-to-right.
+   amending `08` §3.1's «never a web font». Never `@font-face`. ★ **Every message keeps its greeting**, the seven
+   designed ones included — **the owner's ruling on PR #115**, which overrides the brief's «no added greeting
+   paragraphs». No explanatory copy. One lime button at most; secondary actions are quiet text links. Western
+   numerals; «+20», «↑ 2», a ticket reference and a serial are left-to-right.
 3. **Not a second system.** The seven designed messages are block documents in `designs.ts` built from **eleven new
    blocks** (`eyebrow`, `hero`, `when`, `presenter`, `seats`, `ticket`, `stats`, `quote`, `leaderboard`, `rating`,
    `links`) the studio offers, edits and checks; every other message keeps its family layout on the same shell.
@@ -11030,6 +11030,19 @@ check-in code**; unsubscribe — **ok**; branding — **the fixed design** wins 
    facts (`email_preview_facts()`, staff of that org), never the sample's.
 8. **The pinned set moves once**: 25 → 30 keys with an email channel, 124 → 148 files; `<id>.brand.html` and
    `<id>.plain.html` are now the same file, which is the proof no kit leaks back in.
+
+**The owner's answers on PR #115 (2026-10-14), before merge — each the owner's ruling:**
+1. **Who receives the weekly close:** §5's default stands — active members with net points that week who have not
+   opted out of leaderboards.
+2. **Greetings:** kept in every message that had one, and added to the seven designed ones (§2 above) — this
+   overrides the brief's «no added greeting paragraphs». The pinned mail moves once more, in one reviewed commit.
+3. **`MSG-check_in_confirmed`'s inbox row:** kept — a check-in writes the in-app item the matrix always named.
+4. **The two departures from `build.py`** — the stripe inset along the card's top edge (no `overflow:hidden`, which
+   clips tashkeel) and the weekly rank drawn in lime — **approved as they are.**
+5. **The rating links pre-select:** the after-session mail's 1 – 5 open `/rate?stars=N`; the page validates N (1 – 5,
+   Zod) and pre-fills the SESSION's stars on a first rating in an open window, and nothing else — **a GET link never
+   writes a rating**, never overwrites one already made and never reopens a closed window (`REQ-RAT-001`,
+   `REQ-RAT-003`, `REQ-UIX-066`; `rate/preselect.ts`, `tests/components/survey/rate-preselect.test.tsx`).
 
 **Not done, and the owner's:** client screenshots in Gmail web, the Gmail app (iOS and Android), Apple Mail and
 Outlook — the PR carries Chromium captures only.
