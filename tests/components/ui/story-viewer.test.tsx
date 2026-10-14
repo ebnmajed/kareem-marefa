@@ -164,6 +164,35 @@ describe("the run", () => {
     expect(shown()).toBe("a-2");
   });
 
+  // DEC-291 — the owner: «if a user watched a story they can't watch it again». A frame that ran out kept its elapsed
+  // time and its clock key, so a reopening on that frame read «done» at the first tick and closed at once.
+  it("a story that ran to its end opens again on a fresh clock — it does not close by itself", () => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance"] });
+    const onClose = vi.fn();
+    const one = [story("solo", 1)];
+    const { rerender } = render(<Harness stories={one} onClose={onClose} />);
+    act(() => vi.advanceTimersByTime(5200));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    rerender(<Harness stories={one} onClose={onClose} open={false} />);
+    rerender(<Harness stories={one} onClose={onClose} open />);
+    act(() => vi.advanceTimersByTime(1000));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(shown()).toBe("solo-1");
+    // And it plays to its end again.
+    act(() => vi.advanceTimersByTime(4500));
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it("a reopening drops a pause left from before", () => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance"] });
+    const { rerender } = render(<Harness />);
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: " " });
+    expect(screen.getByRole("button", { name: "تابِع" })).toBeInTheDocument();
+    rerender(<Harness open={false} />);
+    rerender(<Harness open />);
+    expect(screen.getByRole("button", { name: "أوقف مؤقتًا" })).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("a clock held from outside (a sheet over the viewer) does not advance", () => {
     vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance"] });
     render(<Harness paused />);
