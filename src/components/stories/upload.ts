@@ -62,6 +62,13 @@ export async function postJson<T>(url: string, body: unknown, headers: Record<st
   return json;
 }
 
+/** Storage's answer to a PUT whose object already exists: `400 { statusCode: "409", error: "Duplicate" }`. The upload
+ *  paths are fresh per take and the buckets insert-only (0199 §A — never `x-upsert`), so it means an earlier PUT of this
+ *  very take landed and only its answer was lost (story-media.md §1, a). */
+export function isAlreadyUploaded(e: unknown): boolean {
+  return e instanceof UploadError && (e.status === 409 || ((e.status === 400 || e.status === 409) && /duplicate|already exists/i.test(e.code ?? "")));
+}
+
 /** PUT a Blob to a signed URL with progress. XHR, because `fetch` reports no upload progress. */
 export function putBlob(
   url: string,
@@ -75,7 +82,6 @@ export function putBlob(
     const cleanup = () => opts.signal?.removeEventListener("abort", abort);
     xhr.open("PUT", url);
     xhr.setRequestHeader("content-type", contentType);
-    xhr.setRequestHeader("x-upsert", "true");
     // Time to move the bytes on a slow room Wi-Fi: a minute plus a second for every 200 kB.
     xhr.timeout = opts.timeoutMs ?? 60_000 + Math.ceil(blob.size / 200_000) * 1000;
     xhr.upload.onprogress = (e) => {
@@ -89,8 +95,8 @@ export function putBlob(
       } else {
         let code: string | null = null;
         try {
-          const body = JSON.parse(xhr.responseText) as { error?: string; message?: string };
-          code = body.error ?? body.message ?? null;
+          const body = JSON.parse(xhr.responseText) as { error?: string; message?: string; statusCode?: string };
+          code = [body.error, body.message].filter(Boolean).join(": ") || null;
         } catch {
           // Not JSON — the status says enough.
         }

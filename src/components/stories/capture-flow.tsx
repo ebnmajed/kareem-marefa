@@ -21,7 +21,7 @@ import {
   type PhotoKind,
   type VideoExt,
 } from "@/components/stories/media";
-import { UploadError, postJson, putBlob, withRetry } from "@/components/stories/upload";
+import { UploadError, isAlreadyUploaded, postJson, putBlob, withRetry } from "@/components/stories/upload";
 import { useToast } from "@/components/ui/toast";
 
 // «أضف» — the camera, the recorder and the two uploads behind `ui/story-capture` (REQ-STO-011, REQ-STO-012,
@@ -50,6 +50,9 @@ const PICK_LIMIT_SECONDS = STORY_VIDEO_LIMIT_SECONDS + 1;
 /** The author's poll while a video is transcoded — every 2 s, for at most 90 s (the contract's step 4). */
 const POLL_MS = 2000;
 const POLL_FOR_MS = 90_000;
+const SIGNED_URL_FOR_MS = 110 * 60_000;
+/** The age of a signed URL is read in an event handler, never in render. */
+const clock = () => performance.now();
 
 type VideoStatus = { state: "processing" } | { state: "visible" } | { state: "failed"; reason?: "too_long" | "too_large" | "unsupported" | "failed" };
 
@@ -59,7 +62,7 @@ type Draft =
 
 /** What has already succeeded for the draft in hand — so a retry starts at the first step that did not. */
 type Ticket = {
-  init?: { id: string; path: string; signedUrl: string; contentType: string };
+  init?: { id: string; path: string; signedUrl: string; contentType: string; at: number };
   put?: boolean;
 };
 
@@ -316,6 +319,8 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
     inflight.current = controller;
     const signal = controller.signal;
     const headers = { "x-locale": locale };
+    // A signed upload URL lives 2 hours: a retry after that starts again at the first step.
+    if (ticket.current.init && !ticket.current.put && clock() - ticket.current.init.at > SIGNED_URL_FOR_MS) ticket.current = {};
     const done = ticket.current;
     setState("uploading");
     setMessage(undefined);
@@ -329,18 +334,18 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
             ? { url: "/api/upload/photo", json: { sessionId, kind: draft.type, declaredByteSize: draft.blob.size } }
             : { url: "/api/stories/video", json: { sessionId, ext: await resolveExt(draft), declaredByteSize: draft.blob.size } };
         const init = await withRetry(() => postJson<Init>(body.url, body.json, headers, signal), { signal });
-        done.init = { id: "photoId" in init ? init.photoId : init.frameId, ...init.upload };
+        done.init = { id: "photoId" in init ? init.photoId : init.frameId, ...init.upload, at: clock() };
         if (mounted.current) setProgress(0.05);
       }
       const init = done.init;
       if (!done.put) {
         await withRetry(
-          async (attempt) => {
+          async () => {
             try {
               await putBlob(init.signedUrl, draft.blob, init.contentType, { onProgress: onBytes, signal });
             } catch (e) {
-              // A retry after a PUT whose answer was lost: the object is there already, which is what we wanted.
-              if (attempt > 0 && e instanceof UploadError && (e.status === 409 || /exist|duplicate/i.test(e.code ?? ""))) return;
+              // An earlier PUT of this take landed and only its answer was lost: what we wanted is there.
+              if (isAlreadyUploaded(e)) return;
               throw e;
             }
           },

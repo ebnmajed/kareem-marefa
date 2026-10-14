@@ -1,7 +1,7 @@
 // The capture's transport (REQ-STO-016): a retry with backoff for what is transient and none for an answer; a JSON
 // route that redirected to a page is a failure, not a success; the PUT reports progress and its status.
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { UploadError, postJson, putBlob, withRetry } from "@/components/stories/upload";
+import { UploadError, isAlreadyUploaded, postJson, putBlob, withRetry } from "@/components/stories/upload";
 
 const noSleep = async () => {};
 
@@ -110,6 +110,8 @@ describe("putBlob", () => {
     const seen: number[] = [];
     await putBlob("https://storage/x", new Blob(["abcd"]), "video/mp4", { onProgress: (f) => seen.push(f) });
     expect(FakeXhr.last?.headers["content-type"]).toBe("video/mp4");
+    // The buckets are insert-only (0199 §A): never an upsert.
+    expect(FakeXhr.last?.headers["x-upsert"]).toBeUndefined();
     expect(seen).toEqual([0.5, 1]);
   });
 
@@ -119,5 +121,18 @@ describe("putBlob", () => {
     await expect(putBlob("https://storage/x", new Blob(["a"]), "video/mp4")).rejects.toMatchObject({ status: 500, code: "boom" });
     FakeXhr.next = { status: 0, network: true };
     await expect(putBlob("https://storage/x", new Blob(["a"]), "video/mp4")).rejects.toMatchObject({ status: 0 });
+  });
+});
+
+describe("isAlreadyUploaded — Storage's 400 Duplicate on a retried PUT means the take landed", () => {
+  it("reads Storage's own body", async () => {
+    vi.stubGlobal("XMLHttpRequest", FakeXhr);
+    FakeXhr.next = { status: 400, body: '{"statusCode":"409","error":"Duplicate","message":"The resource already exists"}' };
+    const e = await putBlob("https://storage/x", new Blob(["a"]), "video/mp4").catch((x: unknown) => x);
+    expect(isAlreadyUploaded(e)).toBe(true);
+  });
+  it("any other 400 is a refusal", () => {
+    expect(isAlreadyUploaded(new UploadError(400, "mime type not supported"))).toBe(false);
+    expect(isAlreadyUploaded(new UploadError(0))).toBe(false);
   });
 });
