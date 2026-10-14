@@ -50,7 +50,7 @@ describe("GameRail — the rank card", () => {
     expect(c.textContent).toContain("من 212");
     expect(screen.getByRole("link", { name: "سارة القحطاني" })).toHaveAttribute("href", expect.stringContaining("/app/members/00000000-0000-4000-8000-000000000001"));
     expect(c.querySelector("bdi[dir=ltr]")).not.toBeNull();
-    expect(screen.getByText("تفصلك 30 نقطة عن المرتبة التي فوقك")).toHaveClass("sr-only");
+    expect(screen.getByText("تفصلك 30 نقطة عن المرتبة الأعلى منك")).toHaveClass("sr-only");
   });
 
   it("rank 1: «أنت في الصدارة», no neighbour and no «+0»", async () => {

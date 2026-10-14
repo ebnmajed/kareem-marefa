@@ -147,10 +147,10 @@ test("★★ this week, live: the default window, the podium, «ترتيبك», 
   await expect(week.locator("[data-slot=podium] > li")).toHaveCount(3);
   const card = week.locator("[data-slot=rank-card]");
   await expect(card).toContainText("#5");
-  await expect(card).toContainText("فوقك");
+  await expect(card).toContainText("في المرتبة الأعلى منك");
   await expect(card.locator("[data-slot=rise]")).toBeVisible();
   await expect(week.locator("[data-slot=board-rows] > li", { hasText: "يمان" })).toContainText("أنت");
-  await expect(week.locator("img")).toHaveCount(0);
+  // DEC-287: a board row draws the member's picture now (was: no <img> on the board).
   await expect.poll(weekMark, { timeout: 20_000 }).toBe(5);
   await capture(page, "027", "week");
 

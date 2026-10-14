@@ -78,7 +78,7 @@
     },
     "rankCard": {
       "label": "ترتيبك",
-      "above": "فوقك: <b><bdi>{name}</bdi></b> · <n>+<bdi>{gap}</bdi></n>",
+      "above": "في المرتبة الأعلى منك: <b><bdi>{name}</bdi></b> · <n>+<bdi>{gap}</bdi></n>",
       "first": "أنت في الصدارة",
       "absent": "لا ترتيب بعد",
       "hidden": "لا يراك الآخرون",
