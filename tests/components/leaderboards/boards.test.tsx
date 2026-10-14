@@ -54,7 +54,7 @@ describe("MemberBoard", () => {
     const c = await board(rows, { rank: 4, points: 960, above: { displayName: "عضو 3", gap: 10 } });
     const card = c.querySelector("[data-slot=rank-card]")!;
     expect(card.textContent).toContain("#4");
-    expect(card.textContent).toContain("فوقك: عضو 3");
+    expect(card.textContent).toContain("في المرتبة الأعلى منك: عضو 3");
     expect(card.textContent).toContain("+10");
     expect(card.textContent).toContain("هذا الأسبوع");
   });
