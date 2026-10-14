@@ -142,7 +142,7 @@ export function CommentList({
     setComments(initialComments);
     // A like still on its way stays as tapped: the fresh paint may predate it (DEC-290).
     const kept = { ...initialReactions };
-    for (const id of baseline.current.keys()) if (reactions[id]) kept[id] = reactions[id];
+    for (const id of Object.keys(reactions)) if (isPending("comment", id)) kept[id] = reactions[id];
     setReactions(kept);
     setReported(new Set(initialReported));
   }
