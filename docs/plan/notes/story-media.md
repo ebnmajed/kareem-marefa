@@ -159,7 +159,7 @@ libdav1d). No new job.
   with WebM's `Infinity` worked around (seek past the end) and a timeout; `videoPoster()` cuts a still from the take;
   `preparePhoto()` redraws a photograph upright (`imageOrientation: "from-image"`) at ≤ 2048 px as JPEG 0.88 — no
   metadata leaves the phone — falling back to the original after 8 s or when the phone cannot decode it.
-- **`src/components/stories/upload.ts`** (new): `putBlob()` by XHR (progress, timeout scaled to size, abort, `x-upsert`),
+- **`src/components/stories/upload.ts`** (new): `putBlob()` by XHR (progress, timeout scaled to size, abort, never `x-upsert` — a `400 Duplicate` on a retried PUT means it landed),
   `postJson()` (a redirect or non-JSON 200 is a failure), `withRetry()` — 3 attempts, 1 s / 2 s backoff with jitter,
   **only** for status 0, 408, 429, 5xx; a 4xx is an answer.
 - **`capture-flow.tsx`**: the recorder records with a 1 s timeslice; the 15 s stop is a `setTimeout` armed at `start()`
@@ -248,3 +248,103 @@ black start). Locally it skips (no ffmpeg on the laptop), as before.
      (`src/proxy.ts:156`). Harmless while report-only; it would blank every photo the day it is enforced.
   4. `GET /ar/app/admin/sessions/aa6981a7-…/attendance` threw `sessions: JWT issued at future` (13:56:14 UTC) — a
      clock-skew refusal of a freshly refreshed token, rendered as the error page.
+
+## 7 · «JWT issued at future» — measured, and the proposed fix (lead-only files, not edited)
+
+### 7.1 · Was it the owner's photo error page? — No, by the timestamps
+
+Every «issued at future» Vercel logged on 2026-10-14 (query `issued at future`, the whole day; `PGRST303` itself is
+never in the message):
+
+| UTC | Route | Status | Where it surfaced |
+|---|---|---|---|
+| 06:14:38 | `GET /ar/app` | 200 | `feed_announcements` — caught, the home rendered without it |
+| 07:05:28 | `GET /ar/app` | 200 | `members (achievements)` — caught, likewise |
+| 08:20:39 | `GET …/admin/sessions/aa6981a7-…/attendance` | 200 | `session_days.select` → **error page** (streamed) |
+| 09:25:52 | `GET /ar/app` | 200 | `member_seen_marks` → **error page** (streamed) |
+| 11:57:50 | `GET …/attendance` | **500** | `me()` → **error page** |
+| 13:56:14 | `GET …/attendance` | 200 | `sessions` → **error page** (streamed) |
+
+The owner's photo was 13:47:32 (`/api/upload/photo` 201) – 13:47:34 (`/complete` 202), then
+`GET /ar/app/sessions/aa6981a7-…` 200 at 13:47:35; **no error of any kind** was logged by a function between 13:30
+and 14:00 except the 13:56 row — nine minutes later, on another route. The photo's error page did not come from the
+server, so it is the client's (`story-client`'s C1, §4.1). ★ But the defect is real and independent: **six times in
+one day** a member got the error page (or a home missing a section) for nothing they did, four of them on pages that
+are the owner's daily tools.
+
+### 7.2 · Where it comes from
+
+`src/lib/supabase/server.ts` builds the client with `@supabase/ssr`'s defaults — no `global.fetch` — and every DAL
+module throws on a PostgREST error (`if (error) throw new Error(\`<table>: ${error.message}\`)`), so a `401`
+`{ "code": "PGRST303", "message": "JWT issued at future" }` becomes the route's error boundary. The token is
+legitimate: `proxy.ts` refreshes an expired access token on the way in (`refreshSession()`, `jwt_expiry` 900 s), Auth
+mints it with `iat` = Auth's clock, and the very same request then presents it to PostgREST, which compares `iat` to
+**its** clock. When PostgREST's clock trails Auth's by more than its leeway, the brand-new token is «from the future»
+for a moment. That matches the pattern: each occurrence is the first request after a refresh (a member returning to
+the app after ≥ 15 minutes), never a sequence. `getClaims()` (the DAL's session check) verifies locally and does not
+look at `iat`, which is why the session itself passes and the first table read fails.
+
+### 7.3 · The fix — one wrapper in the server client, nothing in 60 DAL modules
+
+PostgREST refuses a PGRST303 at the authentication stage, **before any SQL runs**, so repeating the identical request
+is safe even for an RPC that writes. Wait, try again, at most twice (1 s, then 2 s — 3 s worst case, on a path that
+otherwise shows the error page). Only `401` with body code `PGRST303` is retried; every other response, every other
+401 (an expired or bad token, `PGRST301`/`PGRST302`) passes straight through. Storage and Auth calls go through the
+same fetch and are untouched unless they answer exactly that.
+
+New file `src/lib/supabase/skew-retry.ts` (lead-only path):
+
+```ts
+// PostgREST refuses a token whose `iat` is ahead of ITS clock (PGRST303, «JWT issued at future», 401) — at the
+// authentication stage, before any SQL runs, so repeating the identical request is safe even for an RPC that writes.
+// A token Auth has just minted (proxy.ts refreshes on the way in) can reach a PostgREST whose clock trails Auth's; a
+// second later the same token is accepted. So: wait, then try again, at most twice. notes/story-media.md §7.
+const SKEW_CODE = "PGRST303";
+const WAITS_MS = [1000, 2000];
+
+export function withClockSkewRetry(base: typeof fetch = fetch, sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))): typeof fetch {
+  return async (input, init) => {
+    let res = await base(input, init);
+    for (const wait of WAITS_MS) {
+      if (res.status !== 401 || !(await isSkew(res))) return res;
+      await sleep(wait);
+      res = await base(input, init);
+    }
+    return res;
+  };
+}
+
+async function isSkew(res: Response): Promise<boolean> {
+  try {
+    const body = (await res.clone().json()) as { code?: unknown } | null;
+    return body?.code === SKEW_CODE;
+  } catch {
+    return false;
+  }
+}
+```
+
+`src/lib/supabase/server.ts`:
+
+```diff
+ import { createServerClient as createSsrClient } from "@supabase/ssr";
+ import { supabaseEnv } from "@/lib/supabase/env";
++import { withClockSkewRetry } from "@/lib/supabase/skew-retry";
+@@
+   return createSsrClient(url, key, {
++    // A token minted a moment ago can be «issued at future» to PostgREST's clock (PGRST303): retried, not shown as an
++    // error page. skew-retry.ts.
++    global: { fetch: withClockSkewRetry() },
+     cookies: {
+```
+
+(`@supabase/ssr` spreads `options.global` into the client, and supabase-js sets `Authorization` before calling the
+given fetch, so the wrapper sees the final request; PostgREST's bodies are strings, so `init` is reusable.)
+
+**Test** (`tests/unit/supabase-skew-retry.test.ts`, the lead's): a 401 PGRST303 then 200 → 200 after one 1 s wait; three
+PGRST303 → the third 401 returned after waits [1000, 2000], body still readable; a 401 `PGRST301` → returned at once,
+one call; a 401 with a non-JSON body → returned at once. I ran exactly these four against the code above with node
+(`--experimental-strip-types`) — all pass.
+
+**Also worth the lead's call** (not required by the fix): the wrapper turns the symptom into a ≤ 3 s delay; if it keeps
+firing, the skew is on Supabase's side (Auth vs PostgREST hosts) and is a support ticket with these six timestamps.
