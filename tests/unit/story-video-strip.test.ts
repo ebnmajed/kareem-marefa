@@ -8,9 +8,13 @@ import {
   FFPROBE_TIMEOUT_MS,
   auditArgs,
   auditRendition,
+  durationFromProbe,
   ffmpegArgs,
   ffprobeArgs,
   judgeProbe,
+  packetEndArgs,
+  parsePacketEnd,
+  posterArgs,
   runTool,
   sniffVideoContainer,
   type ProbeResult,
@@ -81,7 +85,7 @@ describe.skipIf(!runnable && !required)("a phone's video, transcoded by the work
     expect(demuxer).toBe("mov");
     const probe = JSON.parse(await runTool("ffprobe", ffprobeArgs(demuxer!, src), FFPROBE_TIMEOUT_MS)) as ProbeResult;
     expect(judgeProbe(probe, readFileSync(src).byteLength)).toEqual({ ok: false, reason: "too_long" });
-  });
+  }, 60_000); // making a 20-second 1080 × 1920 fixture takes longer than vitest's 5 s default
 
   it("transcodes 12 seconds into one MP4 with no tag, no chapter, no data track and no location in its bytes", async () => {
     const src = phoneVideo("twelve.mov", 12);
@@ -89,10 +93,10 @@ describe.skipIf(!runnable && !required)("a phone's video, transcoded by the work
     const demuxer = sniffVideoContainer(head)!;
     const probe = JSON.parse(await runTool("ffprobe", ffprobeArgs(demuxer, src), FFPROBE_TIMEOUT_MS)) as ProbeResult;
     const verdict = judgeProbe(probe, readFileSync(src).byteLength);
-    expect(verdict.ok).toBe(true);
+    if (!verdict.ok) throw new Error(`refused: ${verdict.reason}`);
 
     const out = join(dir, "video.mp4");
-    await runTool("ffmpeg", ffmpegArgs(demuxer, src, out, true), FFMPEG_TIMEOUT_MS);
+    await runTool("ffmpeg", ffmpegArgs(demuxer, src, out, verdict), FFMPEG_TIMEOUT_MS);
     const audit = JSON.parse(await runTool("ffprobe", auditArgs("mp4", out), FFPROBE_TIMEOUT_MS));
     expect(auditRendition(audit)).toBeNull();
 
@@ -101,5 +105,49 @@ describe.skipIf(!runnable && !required)("a phone's video, transcoded by the work
     // The short side is at most 720 px, the rotation applied to the pixels rather than written as a tag.
     const video = (audit.streams as { codec_type: string; width: number; height: number }[]).find((s) => s.codec_type === "video")!;
     expect(Math.min(video.width, video.height)).toBeLessThanOrEqual(720);
+  }, 180_000);
+
+  // ★ notes/story-media.md §2.1 — the two defects production met, against the binaries.
+  function make(name: string, args: string[]): string {
+    const out = join(dir, name);
+    execFileSync("ffmpeg", ["-hide_banner", "-v", "error", "-y", ...args, out]);
+    return out;
+  }
+  async function measure(src: string) {
+    const demuxer = sniffVideoContainer(new Uint8Array(readFileSync(src).subarray(0, 128)))!;
+    const probe = JSON.parse(await runTool("ffprobe", ffprobeArgs(demuxer, src), FFPROBE_TIMEOUT_MS)) as ProbeResult;
+    const measured = durationFromProbe(probe) === null ? parsePacketEnd(await runTool("ffprobe", packetEndArgs(demuxer, src), FFPROBE_TIMEOUT_MS, 8 << 20)) : null;
+    return { demuxer, probe, measured, verdict: judgeProbe(probe, readFileSync(src).byteLength, measured) };
+  }
+
+  it("measures a WebM that carries no duration (as MediaRecorder writes it) from its packets — 3 s passes, 20 s is refused", async () => {
+    const short = await measure(make("live-3.webm", ["-f", "lavfi", "-i", "testsrc=size=640x360:rate=30:duration=3", "-c:v", "libvpx", "-deadline", "realtime", "-live", "1", "-f", "webm"]));
+    expect(durationFromProbe(short.probe)).toBeNull();
+    expect(short.measured).toBeCloseTo(3, 1);
+    expect(short.verdict.ok).toBe(true);
+    const long = await measure(make("live-20.webm", ["-f", "lavfi", "-i", "testsrc=size=640x360:rate=30:duration=20", "-c:v", "libvpx", "-deadline", "realtime", "-live", "1", "-f", "webm"]));
+    expect(long.verdict).toEqual({ ok: false, reason: "too_long" });
+  }, 180_000);
+
+  it("accepts a recording that stopped at 15.8 s and trims the rendition to 15.0 s", async () => {
+    const src = make("over.mp4", ["-f", "lavfi", "-i", "testsrc=size=640x360:rate=30:duration=15.8", "-f", "lavfi", "-i", "sine=duration=15.8", "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac"]);
+    const { demuxer, verdict } = await measure(src);
+    if (!verdict.ok) throw new Error(`refused: ${verdict.reason}`);
+    const out = join(dir, "trimmed.mp4");
+    await runTool("ffmpeg", ffmpegArgs(demuxer, src, out, verdict), FFMPEG_TIMEOUT_MS);
+    const audit = JSON.parse(await runTool("ffprobe", auditArgs("mp4", out), FFPROBE_TIMEOUT_MS));
+    expect(durationFromProbe(audit)).toBeLessThanOrEqual(15.05);
+  }, 180_000);
+
+  it("cuts a poster that is not the black first second", async () => {
+    const src = make("dark-start.mp4", [
+      "-f", "lavfi", "-i", "color=black:size=720x1280:rate=30:duration=1.5",
+      "-f", "lavfi", "-i", "testsrc2=size=720x1280:rate=30:duration=2.5",
+      "-filter_complex", "[0][1]concat=n=2:v=1[v]", "-map", "[v]", "-c:v", "libx264", "-preset", "ultrafast",
+    ]);
+    const png = join(dir, "poster.png");
+    await runTool("ffmpeg", posterArgs(src, png, 4), FFMPEG_TIMEOUT_MS);
+    const yavg = Number(await runTool("ffprobe", ["-v", "error", "-f", "lavfi", "-i", `movie=${png},signalstats`, "-show_entries", "frame_tags=lavfi.signalstats.YAVG", "-of", "csv=p=0"], FFPROBE_TIMEOUT_MS));
+    expect(yavg).toBeGreaterThan(40);
   }, 180_000);
 });

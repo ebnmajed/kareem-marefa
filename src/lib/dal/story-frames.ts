@@ -176,6 +176,41 @@ export async function completeStoryVideo(locale: string, input: z.input<typeof c
   return { status: "processing", frameId: parsed.frameId };
 }
 
+export type StoryVideoFailureReason = "too_long" | "too_large" | "unsupported" | "failed";
+
+export type StoryVideoStatus =
+  | { state: "processing" }
+  | { state: "visible"; durationMs: number | null; posterUrl: string | null }
+  | { state: "failed"; reason: StoryVideoFailureReason };
+
+/** REQ-STO-016 — the AUTHOR's poll after `/complete` (notes/story-media.md §1.2 step 4): processing, then visible or
+ *  failed with the worker's reason. Read under the caller's own RLS (`story_frames_read_own` covers a processing or
+ *  failed frame), and answered only for the caller's own frame — null for anything else, which the route says is 404. */
+export async function getMyStoryVideoStatus(locale: string, frameId: string): Promise<StoryVideoStatus | null> {
+  const id = z.uuid().parse(frameId);
+  const { session, supabase } = await sessionClient(locale);
+  const { data, error } = await supabase
+    .from("story_frames")
+    .select("state, failure_reason, duration_ms, poster_path, author_id, removed_at")
+    .eq("id", id)
+    .eq("kind", "video")
+    .maybeSingle();
+  if (error) throw new Error(`story_frames (status): ${error.message}`);
+  if (!data || data.author_id !== session.memberId || data.removed_at) return null;
+  if (data.state === "processing") return { state: "processing" };
+  if (data.state === "failed") return { state: "failed", reason: toFailureReason(data.failure_reason as string | null) };
+  let posterUrl: string | null = null;
+  if (data.poster_path) {
+    const { data: signed } = await supabase.storage.from("story-media").createSignedUrl(data.poster_path as string, VIDEO_TTL_S);
+    posterUrl = signed?.signedUrl ?? null;
+  }
+  return { state: "visible", durationMs: (data.duration_ms as number | null) ?? null, posterUrl };
+}
+
+function toFailureReason(v: string | null): StoryVideoFailureReason {
+  return v === "too_long" || v === "too_large" || v === "unsupported" ? v : "failed";
+}
+
 function mapCaptureError(error: { code?: string; message: string } | null): string {
   if (error?.code === "42501" || /row-level security|not_authorized|Unauthorized/i.test(error?.message ?? "")) return "not_authorized";
   if (error?.code === "23514" || error?.message.startsWith("file_too_large")) return "file_too_large";
@@ -229,6 +264,8 @@ export interface AttendeeStoryFrame {
   id: string;
   kind: "photo" | "video";
   state: "processing" | "visible" | "failed";
+  /** Why a failed video failed — the worker's reason; null unless `state` is `failed`. */
+  failureReason?: StoryVideoFailureReason | null;
   triggeredAt: string;
   hidden: boolean;
   authorName: string | null;
@@ -248,7 +285,7 @@ export async function listAttendeeStoryFrames(locale: string, sessionId: string)
   const { data, error } = await supabase
     .from("story_frames")
     .select(
-      "id, kind, state, triggered_at, hidden_at, author_id, photo_id, poster_path, duration_ms, author:members!story_frames_author_id_fkey(display_name, company:companies(team_color)), photo:photos(org_id, session_id, storage_path, story_derivative_ready, removed_at, hidden_at, uploader:members!photos_uploader_id_fkey(display_name, company:companies(team_color)))",
+      "id, kind, state, failure_reason, triggered_at, hidden_at, author_id, photo_id, poster_path, duration_ms, author:members!story_frames_author_id_fkey(display_name, company:companies(team_color)), photo:photos(org_id, session_id, storage_path, story_derivative_ready, removed_at, hidden_at, uploader:members!photos_uploader_id_fkey(display_name, company:companies(team_color)))",
     )
     .eq("session_id", sid)
     .in("kind", ["photo", "video"])
@@ -262,6 +299,7 @@ export async function listAttendeeStoryFrames(locale: string, sessionId: string)
     id: string;
     kind: "photo" | "video";
     state: AttendeeStoryFrame["state"];
+    failure_reason: string | null;
     triggered_at: string;
     hidden_at: string | null;
     photo_id: string | null;
@@ -292,6 +330,7 @@ export async function listAttendeeStoryFrames(locale: string, sessionId: string)
       id: r.id,
       kind: r.kind,
       state: r.state,
+      failureReason: r.state === "failed" ? toFailureReason(r.failure_reason) : null,
       triggeredAt: r.triggered_at,
       hidden: !!r.hidden_at || !!r.photo?.hidden_at,
       authorName: person?.display_name ?? null,

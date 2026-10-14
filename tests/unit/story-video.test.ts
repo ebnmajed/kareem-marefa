@@ -4,7 +4,11 @@ import {
   auditRendition,
   ffmpegArgs,
   ffprobeArgs,
+  durationFromProbe,
   judgeProbe,
+  packetEndArgs,
+  parsePacketEnd,
+  pickStreams,
   posterArgs,
   sniffVideoContainer,
 } from "../../worker/src/content/video";
@@ -39,7 +43,7 @@ describe("sniffVideoContainer — on content, never on the extension", () => {
 
 describe("ffprobe and ffmpeg never choose their own parser or protocol", () => {
   it("forces the demuxer and whitelists only the file protocol, for every invocation", () => {
-    for (const args of [ffprobeArgs("mov", "/tmp/in"), ffmpegArgs("matroska", "/tmp/in", "/tmp/out.mp4", true), posterArgs("/tmp/out.mp4", "/tmp/p.png", 4)]) {
+    for (const args of [ffprobeArgs("mov", "/tmp/in"), ffmpegArgs("matroska", "/tmp/in", "/tmp/out.mp4", { videoIndex: 0, audioIndex: 1 }), posterArgs("/tmp/out.mp4", "/tmp/p.png", 4), packetEndArgs("matroska", "/tmp/in")]) {
       expect(args[args.indexOf("-protocol_whitelist") + 1]).toBe("file");
       expect(args.indexOf("-f")).toBeGreaterThan(-1);
       expect(args.indexOf("-f")).toBeLessThan(args.indexOf("-i"));
@@ -48,12 +52,12 @@ describe("ffprobe and ffmpeg never choose their own parser or protocol", () => {
 });
 
 describe("ffmpegArgs — one H.264/AAC MP4 with nothing of the phone left", () => {
-  const args = ffmpegArgs("mov", "/tmp/in", "/tmp/out.mp4", true);
+  const args = ffmpegArgs("mov", "/tmp/in", "/tmp/out.mp4", { videoIndex: 0, audioIndex: 1 });
   const pair = (flag: string) => args[args.indexOf(flag) + 1];
   it("maps exactly one video and one audio stream and drops data and subtitles", () => {
     expect(args.filter((a) => a === "-map")).toHaveLength(2);
-    expect(args).toContain("0:v:0");
-    expect(args).toContain("0:a:0");
+    expect(args).toContain("0:0");
+    expect(args).toContain("0:1");
     expect(args).toContain("-dn");
     expect(args).toContain("-sn");
   });
@@ -72,11 +76,12 @@ describe("ffmpegArgs — one H.264/AAC MP4 with nothing of the phone left", () =
     expect(pair("-fpsmax")).toBe("30");
     expect(pair("-movflags")).toBe("+faststart");
     expect(pair("-vf")).toContain("min(720,iw)");
-    expect(pair("-t")).toBe("15.1");
+    expect(pair("-t")).toBe("15"); // trimmed to exactly 15.0 s, whatever the source's tolerated overshoot
   });
   it("without audio maps no audio and encodes none", () => {
-    const silent = ffmpegArgs("mov", "/tmp/in", "/tmp/out.mp4", false);
-    expect(silent).not.toContain("0:a:0");
+    const silent = ffmpegArgs("mov", "/tmp/in", "/tmp/out.mp4", { videoIndex: 2, audioIndex: null });
+    expect(silent.filter((a) => a === "-map")).toHaveLength(1);
+    expect(silent).toContain("0:2");
     expect(silent).toContain("-an");
   });
 });
@@ -84,12 +89,24 @@ describe("ffmpegArgs — one H.264/AAC MP4 with nothing of the phone left", () =
 describe("judgeProbe — the server decides, from the bytes", () => {
   const ok = { format: { duration: "12.0" }, streams: [{ index: 0, codec_type: "video", codec_name: "hevc", width: 1080, height: 1920 }, { index: 1, codec_type: "audio", codec_name: "aac" }] };
   it("passes 12 seconds", () => {
-    expect(judgeProbe(ok, 20_000_000)).toEqual({ ok: true, durationSeconds: 12, hasAudio: true });
+    expect(judgeProbe(ok, 20_000_000)).toEqual({ ok: true, durationSeconds: 12, hasAudio: true, videoIndex: 0, audioIndex: 1 });
   });
-  it("refuses 20 seconds, and 15.2 — over the one-frame tolerance", () => {
+  it("passes Safari's «15 s» recording (15.233 s measured — the owner's failure) and anything to 16.0 s; refuses past it", () => {
+    expect(judgeProbe({ ...ok, format: { duration: "15.233334" } }, 1_000).ok).toBe(true);
+    expect(judgeProbe({ ...ok, format: { duration: "16.0" } }, 1_000).ok).toBe(true);
+    expect(judgeProbe({ ...ok, format: { duration: "16.05" } }, 1_000)).toEqual({ ok: false, reason: "too_long" });
     expect(judgeProbe({ ...ok, format: { duration: "20.0" } }, 1_000)).toEqual({ ok: false, reason: "too_long" });
-    expect(judgeProbe({ ...ok, format: { duration: "15.2" } }, 1_000)).toEqual({ ok: false, reason: "too_long" });
-    expect(judgeProbe({ ...ok, format: { duration: "15.05" } }, 1_000).ok).toBe(true);
+  });
+  it("measures a MediaRecorder WebM (duration N/A) by its packets, and refuses it only when that is missing too", () => {
+    const webm = { format: { duration: "N/A" }, streams: [{ index: 0, codec_type: "audio", codec_name: "opus", duration: "N/A" }, { index: 1, codec_type: "video", codec_name: "vp8", width: 640, height: 480, duration: "N/A" }] };
+    expect(durationFromProbe(webm)).toBeNull();
+    expect(judgeProbe(webm, 1_000, 15.001)).toEqual({ ok: true, durationSeconds: 15.001, hasAudio: true, videoIndex: 1, audioIndex: 0 });
+    expect(judgeProbe(webm, 1_000, 20)).toEqual({ ok: false, reason: "too_long" });
+    expect(judgeProbe(webm, 1_000, null)).toEqual({ ok: false, reason: "unsupported" });
+  });
+  it("falls back to the longest stream when the container writes no duration", () => {
+    expect(durationFromProbe({ streams: [{ duration: "14.9" }, { duration: "15.2" }] })).toBe(15.2);
+    expect(durationFromProbe({ format: { duration: "0" }, streams: [] })).toBeNull();
   });
   it("refuses over 60 MB by the object's own length", () => {
     expect(judgeProbe(ok, STORY_VIDEO_MAX_BYTES + 1)).toEqual({ ok: false, reason: "too_large" });
@@ -98,6 +115,41 @@ describe("judgeProbe — the server decides, from the bytes", () => {
     expect(judgeProbe({ format: { duration: "3" }, streams: [{ index: 0, codec_type: "audio", codec_name: "aac" }] }, 1).ok).toBe(false);
     expect(judgeProbe({ ...ok, streams: [{ index: 0, codec_type: "video", codec_name: "prores" }] }, 1)).toEqual({ ok: false, reason: "unsupported" });
     expect(judgeProbe({ streams: ok.streams }, 1)).toEqual({ ok: false, reason: "unsupported" });
+  });
+});
+
+describe("pickStreams — one video, the first audio track ffmpeg can decode", () => {
+  it("drops an undecodable audio track (an iPhone 16's APAC) instead of refusing the video", () => {
+    const iphone = { streams: [{ index: 0, codec_type: "video", codec_name: "hevc" }, { index: 1, codec_type: "audio", codec_name: "none" }, { index: 2, codec_type: "audio", codec_name: "aac" }, { index: 3, codec_type: "data", codec_name: "none" }] };
+    expect(pickStreams(iphone)).toEqual({ video: iphone.streams[0], audioIndex: 2 });
+    expect(pickStreams({ streams: [{ index: 0, codec_type: "video", codec_name: "h264" }, { index: 1, codec_type: "audio", codec_name: "apac" }] })?.audioIndex).toBeNull();
+    expect(judgeProbe({ format: { duration: "5" }, streams: [{ index: 0, codec_type: "video", codec_name: "h264" }, { index: 1, codec_type: "audio" }] }, 1).ok).toBe(true);
+  });
+  it("skips a video stream it may not decode for one it may", () => {
+    expect(pickStreams({ streams: [{ index: 0, codec_type: "video", codec_name: "mjpeg" }, { index: 1, codec_type: "video", codec_name: "h264" }] })?.video.index).toBe(1);
+    expect(pickStreams({ streams: [{ index: 0, codec_type: "video", codec_name: "prores" }] })).toBeNull();
+  });
+});
+
+describe("parsePacketEnd — the end of the last packet", () => {
+  it("reads max(pts + duration), skipping N/A", () => {
+    expect(parsePacketEnd("0.000000,0.033000\n14.940000,0.060000\n14.951000,0.050000\nN/A,N/A\n")).toBeCloseTo(15.001, 3);
+    expect(parsePacketEnd("3.000000,N/A\n")).toBe(3);
+    expect(parsePacketEnd("")).toBeNull();
+    expect(parsePacketEnd("N/A,0.04\n")).toBeNull();
+  });
+  it("is bounded to the first 60 s of the file", () => {
+    const args = packetEndArgs("matroska", "/tmp/in");
+    expect(args[args.indexOf("-read_intervals") + 1]).toBe("%+60");
+  });
+});
+
+describe("posterArgs — not the dark first frame", () => {
+  it("seeks to min(1 s, d/4) and lets the thumbnail filter choose", () => {
+    const at = (a: string[]) => a[a.indexOf("-ss") + 1];
+    expect(at(posterArgs("/r.mp4", "/p.png", 15))).toBe("1.000");
+    expect(at(posterArgs("/r.mp4", "/p.png", 2))).toBe("0.500");
+    expect(posterArgs("/r.mp4", "/p.png", 15)).toContain("thumbnail=30");
   });
 });
 

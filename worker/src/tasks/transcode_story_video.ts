@@ -10,13 +10,17 @@ import {
   FFMPEG_TIMEOUT_MS,
   FFPROBE_TIMEOUT_MS,
   POSTER_TIMEOUT_MS,
+  STORY_VIDEO_MAX_SECONDS,
   ToolTimeout,
   auditArgs,
   auditRendition,
   cwebpPosterArgs,
   ffmpegArgs,
   ffprobeArgs,
+  durationFromProbe,
   judgeProbe,
+  packetEndArgs,
+  parsePacketEnd,
   posterArgs,
   runTool,
   sniffVideoContainer,
@@ -120,17 +124,29 @@ export const transcode_story_video: Task = async (payload, helpers) => {
       await writeFile(source, raw);
 
       const probe = JSON.parse(await runTool("ffprobe", ffprobeArgs(demuxer, source), FFPROBE_TIMEOUT_MS)) as ProbeResult;
-      const verdict = judgeProbe(probe, raw.byteLength);
-      if (!verdict.ok) throw new Refused(verdict.reason, `ffprobe: ${verdict.reason}`);
+      // A MediaRecorder WebM writes no duration (`N/A`): measured from its packets instead (notes/story-media.md §2.1).
+      let measured: number | null = null;
+      let measuredBy = "container";
+      if (durationFromProbe(probe) === null) {
+        measured = parsePacketEnd(await runTool("ffprobe", packetEndArgs(demuxer, source), FFPROBE_TIMEOUT_MS, 8 * 1024 * 1024));
+        measuredBy = "packets";
+      }
+      const verdict = judgeProbe(probe, raw.byteLength, measured);
+      if (!verdict.ok) {
+        const seconds = durationFromProbe(probe) ?? measured;
+        const codecs = (probe.streams ?? []).map((s) => `${s.codec_type ?? "?"}:${s.codec_name ?? "?"}`).join(",");
+        throw new Refused(verdict.reason, `ffprobe: ${verdict.reason} (${demuxer}, ${raw.byteLength} bytes, ${seconds ?? "no"} s by ${measuredBy}, ${codecs})`);
+      }
 
-      await runTool("ffmpeg", ffmpegArgs(demuxer, source, rendition, verdict.hasAudio), FFMPEG_TIMEOUT_MS);
+      await runTool("ffmpeg", ffmpegArgs(demuxer, source, rendition, verdict), FFMPEG_TIMEOUT_MS);
 
       // ★ The proof, on every run: the rendition is read back and refused if anything survived.
       const out = JSON.parse(await runTool("ffprobe", auditArgs("mp4", rendition), FFPROBE_TIMEOUT_MS)) as RenditionProbe;
       const wrong = auditRendition(out);
       if (wrong) throw new Refused("failed", `rendition audit: ${wrong}`);
       const video = out.streams?.find((s) => s.codec_type === "video");
-      const durationSeconds = Number(out.format?.duration ?? verdict.durationSeconds);
+      // The rendition's own length — trimmed to 15.0 s, and measured from a file ffmpeg wrote whole.
+      const durationSeconds = durationFromProbe(out) ?? Math.min(verdict.durationSeconds, STORY_VIDEO_MAX_SECONDS);
 
       await runTool("ffmpeg", posterArgs(rendition, posterPng, durationSeconds), POSTER_TIMEOUT_MS);
       await runTool("cwebp", cwebpPosterArgs(posterPng, posterWebp), POSTER_TIMEOUT_MS);
