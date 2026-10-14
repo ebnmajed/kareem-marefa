@@ -179,7 +179,7 @@ for (const ground of GROUNDS) {
   });
 
   test(`the lead's static demos on the ${ground.name} ground`, async ({ page }) => {
-    for (const primitive of ["page-header", "skeleton", "route-error"]) {
+    for (const primitive of ["page-header", "route-error"]) {
       const box = page.locator(`${ground.scope} [data-demo="${primitive}"]`);
       await expect(box).toHaveCount(1);
       await box.scrollIntoViewIfNeeded();

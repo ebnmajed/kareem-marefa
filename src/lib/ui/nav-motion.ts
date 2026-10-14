@@ -11,8 +11,8 @@ import { boxOf, type Box } from "./poster-flight";
 // commits in a LATER one when its data arrives — measured, the types arrived empty. Taking the kind at the transition's
 // start is what reaches the commit that actually shows the page.
 //
-// Everything else — the real page replacing its skeleton, a section streaming in, a save refreshing the page — carries
-// no type and crossfades briefly. Back is instant: Next restores a page without a view transition (measured), and the
+// Everything else — a save refreshing the page, a section streaming in — carries no type and crossfades briefly. There
+// is no skeleton for a page to replace (DEC-288): it arrives whole, under its link's move. Back is instant: Next restores a page without a view transition (measured), and the
 // state machine that faked one was the source of overlapping moves (DEC-285).
 //
 // This module keeps only what the types cannot carry: whether a path is the console's, which side a tab is on, and the
@@ -38,13 +38,10 @@ export function switchKind(index: number, currentIndex: number): LinkNavKind | u
 
 // ── The poster handoff (REQ-UIX-122, REQ-UIX-127) ────────────────────────────────────────────────────────────
 // A jump flies the tapped card's poster into the event page (`poster-flight.ts`). On press, the card's poster — its
-// session, read from the link, the decoded image, and where it stood — is remembered here; the event's skeleton or its
-// hero, whichever lands first, takes it once and flies it from there.
+// session, read from the link, and where its decoded image stood — is remembered here; the event's hero takes it once
+// and flies it from there (DEC-288: there is no skeleton to land on first).
 export interface HandedPoster {
   sessionId: string;
-  src: string;
-  /** The image's own ratio, so the skeleton reserves the box the hero will. */
-  ratio: number;
   /** Where the card's poster stood when it was pressed. */
   from: Box | null;
 }
@@ -57,7 +54,7 @@ export function handPoster(link: Element): void {
   const img = link.querySelector("img");
   handed =
     id && img && img.currentSrc && img.naturalWidth > 0
-      ? { sessionId: id.toLowerCase(), src: img.currentSrc, ratio: img.naturalWidth / img.naturalHeight, from: boxOf(img) }
+      ? { sessionId: id.toLowerCase(), from: boxOf(img) }
       : null;
 }
 
@@ -66,7 +63,7 @@ export function handedPoster(sessionId: string): HandedPoster | null {
   return handed && handed.sessionId === sessionId.toLowerCase() ? handed : null;
 }
 
-/** Takes the poster handed for this session — once: a later visit by any other path draws the skeleton's box. */
+/** Takes the poster handed for this session — once: a later visit by any other path moves nothing. */
 export function takeHandedPoster(sessionId: string): HandedPoster | null {
   const poster = handedPoster(sessionId);
   if (poster) handed = null;

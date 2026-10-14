@@ -14,7 +14,7 @@ import { ShellHeader } from "@/components/shell/shell-header";
 import { SearchEntry } from "@/components/shell/search-entry";
 import { ShellFooter, ShellMain } from "@/components/shell/shell-frame";
 import { TabBar } from "@/components/shell/tab-bar";
-import { RouteProgress } from "@/components/ui/route-progress";
+import { RouteWait } from "@/components/shell/route-wait";
 import { RouteMotion } from "@/components/shell/route-motion";
 import { InstantNav } from "@/components/shell/instant-nav";
 import { PlayScope } from "@/components/ui/scope";
@@ -94,9 +94,9 @@ export default async function AppLayout({
       <ToastProvider closeLabel={t("toastClose")} label={t("toastLabel")}>
         <div className="min-h-dvh bg-canvas text-fg-body">
 
-          {/* Layer 1 of the loading model (`16` §7.1.1): a bar only past 150 ms,
-              fed by every `ui/link`. */}
-          <RouteProgress />
+          {/* The wait (DEC-288): no skeleton, no bar — past 400 ms the mark breathes; here where the
+              shell's own mark is not on screen, in the bar's mark otherwise (`home-mark.tsx`). */}
+          <RouteWait />
           {/* SC 2.4.11 — keeps a focused control out from under the sticky header
               and the fixed bars, on every route. */}
           <FocusClearance />

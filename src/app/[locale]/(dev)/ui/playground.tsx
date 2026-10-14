@@ -48,7 +48,6 @@ import { SectionHeaderDemo } from "./demos/section-header";
 import { SelectDemo } from "./demos/select";
 import { SessionCtaDemo } from "./demos/session-cta";
 import { SheetDemo } from "./demos/sheet";
-import { SkeletonDemo } from "./demos/skeleton";
 import { StatDemo } from "./demos/stat";
 import { StickerDemo } from "./demos/sticker";
 import { StoryRingDemo } from "./demos/story-ring";
@@ -123,7 +122,6 @@ const DEMOS: { file: string; title: string; node: (ground: DemoGround) => ReactN
   { file: "route-progress", title: "شريط التنقّل", node: (ground) => <RouteProgressDemo ground={ground} /> },
   { file: "dialog", title: "الحوار", node: () => <DialogDemo /> },
   { file: "toast", title: "الإشعار العابر", node: () => <ToastDemo /> },
-  { file: "skeleton", title: "الهياكل", node: () => <SkeletonDemo /> },
   { file: "route-error", title: "خطأ المسار", node: () => <RouteErrorDemo /> },
   { file: "reorderable-list", title: "قائمة تُرتَّب بالنقر", node: () => <ReorderableListDemo /> },
   { file: "tag-chip", title: "الوسم", node: () => <TagChipDemo /> },

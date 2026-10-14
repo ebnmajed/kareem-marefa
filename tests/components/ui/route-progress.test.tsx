@@ -2,15 +2,15 @@
 //
 // `useLinkStatus()` only has a value inside a real `next/link` under the app
 // router, so the hook is mocked: what is under test is the store between the
-// two halves and the 150 ms threshold, which is the part that decides whether
-// a member sees a flash of noise or a truthful bar.
+// two halves and the threshold, which is the part that decides whether
+// a member sees a flash of noise or a truthful wait (DEC-288: the mark breathes).
 import { act, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const linkStatus = { pending: false };
 vi.mock("next/link", () => ({ useLinkStatus: () => linkStatus }));
 
-import { LinkPendingReporter, RouteProgress, pendingLinkCount } from "@/components/ui/route-progress";
+import { LinkPendingReporter, pendingLinkCount, usePendingLongerThan } from "@/components/ui/route-progress";
 
 describe("LinkPendingReporter", () => {
   afterEach(() => {
@@ -32,7 +32,7 @@ describe("LinkPendingReporter", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("`quiet` suppresses the dot but still reports, so the bar is not lied to", () => {
+  it("`quiet` suppresses the dot but still reports, so the mark is not lied to", () => {
     linkStatus.pending = true;
     const { container, unmount } = render(<LinkPendingReporter quiet />);
     expect(container.querySelector("[data-link-pending]")).toBeNull();
@@ -41,7 +41,7 @@ describe("LinkPendingReporter", () => {
   });
 });
 
-describe("RouteProgress", () => {
+describe("usePendingLongerThan — what the breathing mark reads (DEC-288)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -50,53 +50,43 @@ describe("RouteProgress", () => {
     linkStatus.pending = false;
   });
 
-  it("stays hidden below the 150 ms threshold — a bar that flashes is noise", () => {
+  function Probe({ ms }: { ms: number }) {
+    return usePendingLongerThan(ms) ? <span data-waiting="" /> : null;
+  }
+
+  it("stays false below the threshold — a wait that short is not a wait", () => {
     linkStatus.pending = true;
     const { container } = render(
       <>
         <LinkPendingReporter quiet />
-        <RouteProgress />
+        <Probe ms={400} />
       </>,
     );
     act(() => {
-      vi.advanceTimersByTime(120);
+      vi.advanceTimersByTime(350);
     });
-    expect(container.querySelector("[data-route-progress]")).toBeNull();
+    expect(container.querySelector("[data-waiting]")).toBeNull();
   });
 
-  it("appears once a navigation has been pending past the threshold, hidden from assistive technology", () => {
-    linkStatus.pending = true;
-    const { container } = render(
-      <>
-        <LinkPendingReporter quiet />
-        <RouteProgress />
-      </>,
-    );
-    act(() => {
-      vi.advanceTimersByTime(160);
-    });
-    expect(container.querySelector("[data-route-progress]")).toHaveAttribute("aria-hidden");
-  });
-
-  it("goes away when nothing is pending any more", () => {
+  it("turns true past the threshold, and false the moment nothing is pending", () => {
     linkStatus.pending = true;
     const view = render(
       <>
         <LinkPendingReporter quiet />
-        <RouteProgress />
+        <Probe ms={400} />
       </>,
     );
     act(() => {
-      vi.advanceTimersByTime(200);
+      vi.advanceTimersByTime(450);
     });
-    expect(view.container.querySelector("[data-route-progress]")).not.toBeNull();
+    expect(view.container.querySelector("[data-waiting]")).not.toBeNull();
     linkStatus.pending = false;
     view.rerender(
       <>
         <LinkPendingReporter quiet />
-        <RouteProgress />
+        <Probe ms={400} />
       </>,
     );
-    expect(view.container.querySelector("[data-route-progress]")).toBeNull();
+    expect(view.container.querySelector("[data-waiting]")).toBeNull();
   });
 });

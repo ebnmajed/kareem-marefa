@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import type { DataTableColumn, DataTableProps } from "@/components/ui";
 
@@ -284,11 +283,8 @@ export function DataTable<Row>({
         </div>
       ) : null}
 
-      {pending ? (
-        <div className="space-y-2">
-          <Skeleton variant="row" count={5} />
-        </div>
-      ) : (
+      {/* ★ DEC-288: no placeholder rows while pending — the region says it is busy, and nothing stands in for data. */}
+      {pending ? null : (
         <>
           {/* Desktop / wide: a real table. A too-wide table may still scroll
               horizontally in its OWN container here — the banned pattern is

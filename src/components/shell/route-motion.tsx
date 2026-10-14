@@ -11,7 +11,7 @@ import { forgetPendingKind, installNavMotion, isStillPath, noteNavigation } from
 // ★ An UPDATE boundary, not one keyed by the path: a key would remount every layout below the shell on every
 // navigation and lose its state. React snapshots this boundary before and after any transition that changes what is
 // inside it; the class `route` is what the CSS addresses, and the transition's TYPE — set by the link that was tapped
-// (DEC-285) — decides the move. A transition with no type (a skeleton's page arriving, a refresh) crossfades.
+// (DEC-285) — decides the move. A transition with no type (a stream, a refresh) crossfades.
 //
 // ★ The console and the platform get no boundary at all (`update="none"`), and the tree's shape never changes
 // between the two, so crossing into the console remounts nothing (REQ-UIX-053, REQ-UIX-129).

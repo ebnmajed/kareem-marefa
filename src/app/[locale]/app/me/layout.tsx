@@ -1,6 +1,6 @@
-import { Suspense, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { setRequestLocale } from "next-intl/server";
-import { HubStanding, HubStandingSkeleton } from "@/components/hub/standing";
+import { HubStanding } from "@/components/hub/standing";
 import { HubStrip } from "@/components/shell/hub-strip";
 import { pictureWrap } from "@/components/avatar-picker/picture-wrap";
 
@@ -18,9 +18,7 @@ export default async function MeLayout({ children, params }: { children: ReactNo
   setRequestLocale(locale);
   return (
     <>
-      <Suspense fallback={<HubStandingSkeleton form="band" className="mb-4 hidden lg:block" />}>
-        <BandStanding locale={locale} />
-      </Suspense>
+      <BandStanding locale={locale} />
       <div className="mb-6 hidden lg:block">
         <HubStrip desktop />
       </div>
@@ -31,8 +29,8 @@ export default async function MeLayout({ children, params }: { children: ReactNo
 
 /**
  * ★ Wave 29 (DEC-281 §6, `content`'s R2): on desktop the band's picture is the way into «صورتك» from every hub page —
- * without the camera badge, which is ملفي's edit mode alone. Inside the band's own Suspense, so the layout awaits
- * nothing of its own.
+ * without the camera badge, which is ملفي's edit mode alone. ★ DEC-288: no skeleton stands in for it — the hub
+ * arrives whole, and a layout is not re-rendered when a sibling hub page is opened.
  */
 async function BandStanding({ locale }: { locale: string }) {
   return <HubStanding locale={locale} form="band" className="mb-4 hidden lg:block" picture={await pictureWrap(locale)} />;
