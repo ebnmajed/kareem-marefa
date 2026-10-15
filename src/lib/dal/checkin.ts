@@ -69,7 +69,7 @@ export interface HostViewData {
    * code (DEC-254 §6), and also a failed read (D6). Either way no countdown and no period is drawn.
    */
   rotationSeconds: number | null;
-  /** `affordancesFor(phase, "staff").hostConsole` — true only for `open` (pre-flight) and `live`. The page gates the walk-in and manual-marking sections on this, not on "is staff" alone. */
+  /** `affordancesFor(phase, "staff").hostConsole`, or a code on the wall (DEC-294) — `open` (pre-flight), `live`, and the grace window to the ceiling. The page gates the walk-in and manual-marking sections on this, not on "is staff" alone. */
   consoleActive: boolean;
   /**
    * The day this console is running (DEC-119). Taken from the CODE the RPC
@@ -168,7 +168,9 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
   // two eligible viewers) — `getHostView()` already only reaches this point
   // for one of the two (the RPC's own not_authorized check above), so either
   // key reads the same answer.
-  const consoleActive = affordancesFor(phase, "staff").hostConsole;
+  // ★ DEC-294: a code exists only while the day takes attendance (`ensure_check_in_code()` refuses outside it), so a
+  // code keeps the console — the switch and marking by hand — past the scheduled end, up to the ceiling.
+  const consoleActive = affordancesFor(phase, "staff").hostConsole || c !== null;
 
   return {
     sessionId,

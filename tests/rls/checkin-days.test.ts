@@ -279,11 +279,11 @@ describe("RPC-check_in — the day's check-in", () => {
       await tx.asOwner();
       const s = await makeDaySession(tx, f.a, "in_progress", [
         [-30, -28],
-        [-6, -4],
+        [-12, -10],
         [20, 22],
       ]);
       await tx.as(f.a.members[0].claims);
-      // Day 2 ended 4 h ago and its ceiling (−2 h) has passed; day 3 is ahead.
+      // Day 2 ended 10 h ago and its ceiling (end + 8 h, DEC-294) has passed; day 3 is ahead.
       expect((await checkIn(tx, s.id, "WRONG1", s.days[1])).status).toBe("session_ended");
 
       // Now a session whose day 2 is live, with its switch closed.
@@ -608,7 +608,7 @@ describe("RPC-set_check_in_open — the day's switch, and sessions.check_in_open
       await tx.q(`update public.sessions set check_in_open = false where id = $1`, [s.id]);
       expect(await switchesOf(tx, s.id)).toEqual([false]);
 
-      const past = await makeDaySession(tx, f.a, "completed", [[-5, -3]]);
+      const past = await makeDaySession(tx, f.a, "completed", [[-11, -9]]); // past end + 8 h (DEC-294)
       await tx.as(f.a.admin.claims);
       expect(await errorMessage(() => tx.q(`select * from public.set_check_in_open($1, true, null)`, [past.id]))).toMatch(/ceiling_passed/);
     });

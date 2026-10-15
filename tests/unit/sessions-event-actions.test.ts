@@ -108,6 +108,14 @@ describe("primaryActionFor", () => {
     expect(primaryActionFor(cell({ phase: "ended", relation: "presenter" }))).toBeNull();
   });
 
+  it("★ staff without a seat: the host view first, never check-in as the primary (the owner, 2026-10-14)", () => {
+    expect(primaryActionFor(cell({ phase: "live", relation: "staff", canCheckIn: true }))).toBe("hostView");
+    // The grace window: no host view remains, and check-in is still only the card's secondary.
+    expect(primaryActionFor(cell({ phase: "ended", relation: "staff", canCheckIn: true }))).toBeNull();
+    // Staff who reserved are attendees.
+    expect(primaryActionFor(cell({ phase: "live", relation: "confirmed", canCheckIn: true }))).toBe("checkIn");
+  });
+
   it("once it is over: rate, only when allowed and in the window", () => {
     expect(primaryActionFor(cell({ phase: "ended", relation: "attended", canRate: true }))).toBe("rate");
     expect(primaryActionFor(cell({ phase: "ended", relation: "attended", canRate: false }))).toBeNull();

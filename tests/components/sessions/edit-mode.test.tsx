@@ -195,7 +195,7 @@ describe("the event page's edit mode", () => {
     } as unknown as EventSession;
     const card = (session: EventSession = staffSession) =>
       ActionCard({
-        session, phase: "open", days: [], can: { hostConsole: true, calendar: false } as unknown as AffordanceCell, rsvp: null, primary: null,
+        session, phase: "open", days: [], can: { hostConsole: true, calendar: false } as unknown as AffordanceCell, rsvp: null, primary: null, checkIn: "none",
         slot: { sessionId, memberId: "m1", locale: "ar" }, points: null, figures: { attendedCount: null, rotationSeconds: null }, faces: [],
         ratingClosesAt: null, certificateHref: null, bookmark: () => null, share: () => null, isAdmin: true, locale: "ar",
       });

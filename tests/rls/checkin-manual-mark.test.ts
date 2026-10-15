@@ -58,10 +58,10 @@ describe("RPC-mark_checked_in_manually.window", () => {
     });
   });
 
-  it("a moderator is REFUSED past the code family's 2h ceiling — REQ-CHK-008's original, narrower scope", async () => {
+  it("a moderator is REFUSED past the code family's 8h ceiling (DEC-294) — REQ-CHK-008's original, narrower scope", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
-      const sessionId = await makeSession(tx, f.a, { state: "completed", startsInMinutes: -300, endsInMinutes: -130 }); // ended 2h10m ago
+      const sessionId = await makeSession(tx, f.a, { state: "completed", startsInMinutes: -660, endsInMinutes: -490 }); // ended 8h10m ago
       await tx.as(f.a.mod.claims);
       expect(await errorMessage(() => tx.q(`select * from public.mark_checked_in_manually($1, $2, $3)`, [sessionId, f.a.members[0].memberId, "سبب"]))).toMatch(/not_open/);
     });

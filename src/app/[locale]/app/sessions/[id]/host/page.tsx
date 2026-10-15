@@ -81,8 +81,10 @@ export default async function HostPage({
   const manualErrorKey = manualError && KNOWN_MANUAL_ERRORS.has(manualError) ? manualError : manualError ? "unknown" : null;
   const switchErrorKey = switchError && KNOWN_SWITCH_ERRORS.has(switchError) ? switchError : switchError ? "unknown" : null;
 
-  // Awake, listening and counting down only while the day can take attendance and a code is out.
-  const live = view.code !== null && view.phase === "live";
+  // Awake, listening and counting down while a code is out — which is exactly while the day takes attendance: the RPC
+  // mints none outside it. ★ DEC-294: not `phase === "live"`, which ends at `ends_at` and froze the code on the wall
+  // for the whole grace window, so a rotating code went stale and every member's attempt failed.
+  const live = view.code !== null;
   // The next instant the answer changes by itself: the rotation, else the day's start (the pre-flight), else — with
   // rotation off (REQ-CHK-019) — the instant the day's one code stops, so the wall turns to «انتهى» at the ceiling.
   const dayStart = view.day?.startsAt ?? view.startsAt;

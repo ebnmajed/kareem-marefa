@@ -59,7 +59,6 @@ export function session(over: Partial<TimelineSession> = {}): TimelineSession {
     attended: false,
     bookmarked: false,
     posterUrl: null,
-    canCheckIn: false,
     ...over,
   };
 }

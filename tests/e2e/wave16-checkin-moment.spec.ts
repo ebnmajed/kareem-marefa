@@ -163,7 +163,7 @@ test("★ the moment plays from the check-in's own result, rests, and returns �
 
   // DEC-197 §1: 1.4 s after the lines are in, the event page — which offers no check-in link now (K3).
   await expect(page).toHaveURL(eventUrl(), { timeout: 15_000 });
-  await expect(page.locator("#main").getByRole("link", { name: "تسجيل الحضور" })).toHaveCount(0);
+  await expect(page.locator("#main").getByRole("link", { name: "Check-in" })).toHaveCount(0);
 
   // 2 — ★ back: the check-in screen's static state, and no layer.
   await page.evaluate(() => ((window as unknown as { __layers: number }).__layers = 0));
