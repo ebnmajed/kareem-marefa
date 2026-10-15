@@ -9,7 +9,7 @@ import { promisify } from "node:util";
 //
 // ★ THREE RULES THIS FILE EXISTS TO HOLD.
 //   1. The server decides from the bytes that landed, never from the client's word: the size (50 MB) is the object's
-//      own length, and the length kept is the first 15 seconds of whatever was uploaded (DEC-293 §3 — a longer video
+//      own length, and the length kept is the first 15 seconds of whatever was uploaded (DEC-295 §3 — a longer video
 //      is trimmed, not refused).
 //   2. Nothing a phone wrote into the container survives. A phone's video carries its GPS position in its container
 //      exactly as a photograph carries it in EXIF (REQ-EVT-011): `-map_metadata -1` drops the global tags, the
@@ -22,9 +22,9 @@ import { promisify } from "node:util";
 
 const execFileP = promisify(execFile);
 
-/** REQ-STO-016, DEC-293 §3 — named once. A story video is at most 15.0 s: the rendition keeps the FIRST 15.0 s of any
+/** REQ-STO-016, DEC-295 §3 — named once. A story video is at most 15.0 s: the rendition keeps the FIRST 15.0 s of any
  *  accepted source and nothing after — a 40-second clip from the phone's camera app is stored as its first 15 seconds,
- *  never refused for its length. (`too_long` survives only as a reason on rows failed before DEC-293.) */
+ *  never refused for its length. (`too_long` survives only as a reason on rows failed before DEC-295.) */
 export const STORY_VIDEO_MAX_SECONDS = 15;
 /** 50 MB — the bucket's own `file_size_limit` refuses a larger PUT at the edge; this refuses one that ever lands. The
  *  one figure lives in the path builder's package, shared with the app (notes/story-media.md §8). */
@@ -115,7 +115,7 @@ function seconds(v: string | undefined): number | null {
 }
 
 /** The container's own duration, else the longest stream's — null when neither is written (a MediaRecorder WebM writes
- *  `N/A`: its header goes out before the recording ends). Informational since DEC-293: nothing is refused for its
+ *  `N/A`: its header goes out before the recording ends). Informational since DEC-295: nothing is refused for its
  *  length, and the stored duration is read from the rendition, which ffmpeg writes whole. */
 export function durationFromProbe(probe: { format?: { duration?: string }; streams?: { duration?: string }[] }): number | null {
   const format = seconds(probe.format?.duration);
@@ -129,7 +129,7 @@ export type ProbeVerdict =
   | { ok: false; reason: "too_large" | "unsupported" };
 
 /** The server's decision on what was uploaded — from ffprobe's reading and the object's own byte length, never from
- *  anything the client declared. ★ Length is not a reason to refuse (DEC-293 §3): `ffmpegArgs()` keeps the first 15 s. */
+ *  anything the client declared. ★ Length is not a reason to refuse (DEC-295 §3): `ffmpegArgs()` keeps the first 15 s. */
 export function judgeProbe(probe: ProbeResult, byteSize: number): ProbeVerdict {
   if (!Number.isFinite(byteSize) || byteSize <= 0 || byteSize > STORY_VIDEO_MAX_BYTES) return { ok: false, reason: "too_large" };
   const picked = pickStreams(probe);
@@ -142,7 +142,7 @@ export function judgeProbe(probe: ProbeResult, byteSize: number): ProbeVerdict {
 /** The one rendition, from the two streams `pickStreams()` chose (by absolute index). Autorotation is ffmpeg's
  *  default, so the display matrix is applied to the pixels and none is written; the scale keeps the aspect, the short
  *  side at most 720 px, both sides even. ★ `-t 15` is an INPUT option: the demuxer stops reading at 15.0 s, so a long
- *  4K source is never decoded past what is kept (DEC-293 §3). */
+ *  4K source is never decoded past what is kept (DEC-295 §3). */
 export function ffmpegArgs(demuxer: StoryVideoDemuxer, input: string, output: string, streams: { videoIndex: number; audioIndex: number | null }): string[] {
   const s = STORY_VIDEO_SHORT_SIDE;
   const hasAudio = streams.audioIndex !== null;

@@ -4784,7 +4784,7 @@ holding pauses; swiping down closes.
 
 #### REQ-STO-011 — A checked-in attendee adds a frame from the room
 **Serves:** STO-11 · owner 2026-10-04 (`DEC-NEXT-41`)
-A photograph or a video from the phone's own camera or the gallery, with one caption line (`DEC-293`).
+A photograph or a video from the phone's own camera or the gallery, with one caption line (`DEC-295`).
 **Acceptance:**
 - «أضف» is present only for a member checked in to the session, from its start until 24 hours after its end, and the
   server refuses everyone else whatever the screen shows.

@@ -31,7 +31,7 @@ import {
 // `story_video:{frame_id}`, queue `story_video` — one transcode at a time on the worker — three attempts.
 //
 // ★ The source is streamed to disk and sniffed, `ffprobe` reads its streams and the object's own length decides the
-// 50 MB ceiling, then `ffmpeg` writes ONE H.264/AAC MP4 of the FIRST 15.0 s (DEC-293 §3 — a longer video is trimmed,
+// 50 MB ceiling, then `ffmpeg` writes ONE H.264/AAC MP4 of the FIRST 15.0 s (DEC-295 §3 — a longer video is trimmed,
 // never refused) with every container tag and every non-A/V track dropped, the rendition is PROBED AGAIN and refused if anything a
 // phone wrote survived, a poster frame is cut from the rendition, both are uploaded, `record_story_video()` makes the
 // frame visible (its 24 hours start then), and the source is deleted. Any refusal — `ffprobe`'s, the sniff's, the
@@ -67,7 +67,7 @@ const SOURCE_DOWNLOAD_TIMEOUT_MS = 300_000;
 class Gone extends Error {}
 
 class Refused extends Error {
-  // ★ No `too_long` since DEC-293 §3: a longer video keeps its first 15 s. The reason survives on older failed rows.
+  // ★ No `too_long` since DEC-295 §3: a longer video keeps its first 15 s. The reason survives on older failed rows.
   constructor(readonly reason: "too_large" | "unsupported" | "failed", detail: string) {
     super(detail);
   }
@@ -109,7 +109,7 @@ export const transcode_story_video: Task = async (payload, helpers) => {
       const posterPng = join(dir, "poster.png");
       const posterWebp = join(dir, "poster.webp");
 
-      // Streamed to disk, never held in memory: a source may be 50 MB (DEC-293 §3).
+      // Streamed to disk, never held in memory: a source may be 50 MB (DEC-295 §3).
       let byteLength: number;
       try {
         byteLength = await downloadObjectToFile(BUCKET, sourcePath, source, SOURCE_DOWNLOAD_TIMEOUT_MS);

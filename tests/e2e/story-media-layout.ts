@@ -47,7 +47,7 @@ export function suite(engine: "chromium" | "webkit") {
       await page.setViewportSize(size);
       const capture = await openDemo(page, "اختر");
       await onScreen(page, "close", capture.getByRole("button", { name: "إغلاق" }));
-      // Each choice is the label of its file input (DEC-293): the label is what a tap lands on.
+      // Each choice is the label of its file input (DEC-295): the label is what a tap lands on.
       await onScreen(page, "photo", capture.locator("label", { hasText: "صورة" }));
       await onScreen(page, "video", capture.locator("label", { hasText: "فيديو" }));
       await onScreen(page, "gallery", capture.locator("label", { hasText: "من الاستوديو" }));

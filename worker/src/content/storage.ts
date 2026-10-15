@@ -79,7 +79,7 @@ export async function downloadObject(bucket: string, path: string): Promise<Uint
   return new Uint8Array(await res.arrayBuffer());
 }
 
-/** The object streamed to a file on disk, never held in memory — a story video may be 50 MB (DEC-293 §3), and the
+/** The object streamed to a file on disk, never held in memory — a story video may be 50 MB (DEC-295 §3), and the
  *  worker transcodes from a file anyway. Returns the byte count written. `timeoutMs` covers the whole transfer. */
 export async function downloadObjectToFile(bucket: string, path: string, dest: string, timeoutMs = STORAGE_TRANSFER_TIMEOUT_MS): Promise<number> {
   const { url, key } = requireEnv();

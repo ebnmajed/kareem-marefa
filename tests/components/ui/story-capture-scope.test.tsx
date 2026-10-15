@@ -1,4 +1,4 @@
-// `<StoryCapture>` inside the playground's scope — REQ-STO-011, DEC-293. Semantic names only, no motion, axe on every state.
+// `<StoryCapture>` inside the playground's scope — REQ-STO-011, DEC-295. Semantic names only, no motion, axe on every state.
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import axe from "axe-core";

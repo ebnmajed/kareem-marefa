@@ -203,7 +203,7 @@ test("«أضف» is the checked-in attendee's alone; a gallery photograph goes t
   }
 });
 
-test("★★ a video from the phone's own camera (DEC-293): the file input, then our review, caption and publish — no hold, no recorder", async ({ page }) => {
+test("★★ a video from the phone's own camera (DEC-295): the file input, then our review, caption and publish — no hold, no recorder", async ({ page }) => {
   await page.setViewportSize(PHONE);
   await signIn(page.context(), email.attendee);
   await openStory(page);

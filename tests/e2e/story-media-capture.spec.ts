@@ -1,4 +1,4 @@
-// ★ The story capture after DEC-293 — the phone's own camera app and gallery through three file inputs, then our
+// ★ The story capture after DEC-295 — the phone's own camera app and gallery through three file inputs, then our
 // screen (the owner's report of 2026-10-14; docs/plan/notes/story-media.md; REQ-STO-011, REQ-STO-016, DEC-093). Against
 // real local Supabase; every file arrives through `setInputFiles` on the input a member's tap opens — the camera app
 // itself is the platform's, not ours to drive:

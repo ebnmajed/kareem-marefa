@@ -1,7 +1,7 @@
--- 0225 — story media's size ceiling, 60 MB → 50 MB (DEC-293 §3; REQ-STO-011, REQ-STO-016). Promoted from
+-- 0226 — story media's size ceiling, 60 MB → 50 MB (DEC-295 §3; REQ-STO-011, REQ-STO-016). Promoted from
 -- supabase/proposed/content/01_story_media_size.sql.
 --
--- Since DEC-293 a story video comes from the phone's own camera app and is TRIMMED to its first 15.0 s by the worker
+-- Since DEC-295 a story video comes from the phone's own camera app and is TRIMMED to its first 15.0 s by the worker
 -- rather than refused, so the upload is whatever the camera wrote. ★ The project is on Supabase's Free plan, whose
 -- global upload limit is fixed at 50 MB and caps every bucket — 0198's 60 MB was never reachable. The owner ruled the
 -- figure to the plan's: 50 MB (2026-10-15). About 50 s of iPhone 1080p30 HEVC (the default), ≈ 18 s of 4K30.

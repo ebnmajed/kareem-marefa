@@ -1,4 +1,4 @@
-// `<StoryCapture>` — REQ-STO-011, DEC-093, DEC-293. No live camera: three file inputs open the phone's own camera app
+// `<StoryCapture>` — REQ-STO-011, DEC-093, DEC-295. No live camera: three file inputs open the phone's own camera app
 // (photo, video) and the gallery; each is one big labelled button, a tap. The screen after the take: the review, the
 // caption, «إعادة» and «انشر», the upload's progress, a failure that keeps the take; the notice at the point of upload.
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -39,7 +39,7 @@ function show(extra: Partial<StoryCaptureProps> = {}) {
   return props;
 }
 
-describe("DEC-293 — the phone's own camera, through three file inputs", () => {
+describe("DEC-295 — the phone's own camera, through three file inputs", () => {
   it("«صورة» opens the camera for a photograph: image/*, capture=environment", () => {
     show();
     const input = screen.getByLabelText("صورة") as HTMLInputElement;

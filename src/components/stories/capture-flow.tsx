@@ -21,8 +21,8 @@ import { UploadError, isAlreadyUploaded, postJson, putBlob, withRetry } from "@/
 import { useToast } from "@/components/ui/toast";
 import { PauseIcon, PlayIcon } from "@/components/ui/icons";
 
-// «أضف» — the take and the two uploads behind `ui/story-capture` (REQ-STO-011, REQ-STO-012, REQ-STO-016, DEC-293).
-// ★★ NO LIVE CAMERA (DEC-293): the phone's own camera app and gallery hand over a File through the primitive's three
+// «أضف» — the take and the two uploads behind `ui/story-capture` (REQ-STO-011, REQ-STO-012, REQ-STO-016, DEC-295).
+// ★★ NO LIVE CAMERA (DEC-295): the phone's own camera app and gallery hand over a File through the primitive's three
 // inputs; this file begins there. A photograph goes through the album's OWN door (`/api/upload/photo`, then
 // `/api/stories/photo/complete` for the caption and the capture gate); a video PUTs to `story-media` and completes at
 // `/api/stories/video/complete`. The bytes never pass through Vercel. The length is the worker's: it keeps the first

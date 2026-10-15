@@ -1,4 +1,4 @@
-// The capture's media helpers (REQ-STO-011, REQ-STO-016, DEC-248 §6, DEC-293): the container read from the bytes and
+// The capture's media helpers (REQ-STO-011, REQ-STO-016, DEC-248 §6, DEC-295): the container read from the bytes and
 // the picker's labels, a photograph's size.
 import { describe, expect, it } from "vitest";
 import { fitWithin, readHead, sniffVideoExt, videoExtFromName, videoExtFromType } from "@/components/stories/media";

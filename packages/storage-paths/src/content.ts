@@ -111,8 +111,8 @@ export function photoStoryPath(orgId: string, sessionId: string, photoId: string
   ].join("/");
 }
 
-/** The `story-media` bucket's ceiling for one video source — 50 MB (DEC-293 §3: the Free plan's global upload limit is 50 MB, which caps every bucket). ONE figure
- *  for the four places that hold it: the bucket's `file_size_limit` and `begin_story_video()` (0225, SQL — kept equal by
+/** The `story-media` bucket's ceiling for one video source — 50 MB (DEC-295 §3: the Free plan's global upload limit is 50 MB, which caps every bucket). ONE figure
+ *  for the four places that hold it: the bucket's `file_size_limit` and `begin_story_video()` (0226, SQL — kept equal by
  *  tests/rls/story-frames-content.test.ts), the DAL's courtesy check, the worker's refusal, and the capture's own check
  *  on the phone (through `src/lib/storage/limits.ts`, the one client-safe door to it). */
 export const STORY_VIDEO_MAX_BYTES = 52_428_800;

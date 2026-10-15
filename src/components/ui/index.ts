@@ -1909,7 +1909,7 @@ export interface StoryViewerProps {
   };
 }
 
-/** `content` · `story-capture.tsx` — REQ-STO-011, DEC-093, DEC-293. Presentational. No live camera: the phone's own
+/** `content` · `story-capture.tsx` — REQ-STO-011, DEC-093, DEC-295. Presentational. No live camera: the phone's own
  *  camera app and gallery through three file inputs; this screen begins after the take. */
 export type StoryCaptureSource = "photo" | "video" | "gallery";
 export type StoryCaptureState = "choose" | "review" | "uploading" | "processing" | "refused" | "error";

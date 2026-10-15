@@ -125,7 +125,7 @@ export async function completeStoryPhoto(locale: string, input: z.input<typeof c
 
 // ─── the capture: a video into `story-media` ─────────────────────────────────────────────────────────────────────
 
-/** 50 MB (DEC-293 §3, 0225) — the bucket's own `file_size_limit` is the edge, and `begin_story_video()` checks the
+/** 50 MB (DEC-295 §3, 0226) — the bucket's own `file_size_limit` is the edge, and `begin_story_video()` checks the
  *  declared size against the same figure; this is a courtesy refusal before the PUT. One figure: the path builder's. */
 export { STORY_VIDEO_MAX_BYTES };
 
@@ -177,7 +177,7 @@ export async function completeStoryVideo(locale: string, input: z.input<typeof c
   return { status: "processing", frameId: parsed.frameId };
 }
 
-/** `too_long` is no longer written (DEC-293 §3: a longer video keeps its first 15 s); it is still READ, on frames failed
+/** `too_long` is no longer written (DEC-295 §3: a longer video keeps its first 15 s); it is still READ, on frames failed
  *  before that. */
 export type StoryVideoFailureReason = "too_long" | "too_large" | "unsupported" | "failed";
 

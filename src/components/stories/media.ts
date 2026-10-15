@@ -1,11 +1,11 @@
-// The capture's media helpers — what a phone's camera app and gallery hand us (DEC-293), made into something the server
+// The capture's media helpers — what a phone's camera app and gallery hand us (DEC-295), made into something the server
 // can take (REQ-STO-011, REQ-STO-016, DEC-248 §6). Plain functions, no React, so each is tested on its own. The server
 // stays the authority on every limit (ffprobe reads the length and the size); these are the fast, honest answer on the phone.
 
 import { STORY_VIDEO_MAX_BYTES } from "@/lib/storage/limits";
 
 /** The video ceiling, in bytes — ONE definition for the client, the DAL and the worker (`@kareem/storage-paths`, through
- *  the client-safe `@/lib/storage/limits`; DEC-293: 50 MB). Refused here at once and in a word; the words read it too.
+ *  the client-safe `@/lib/storage/limits`; DEC-295: 50 MB). Refused here at once and in a word; the words read it too.
  *  There is no duration check on the phone: the worker keeps the first 15 s of a longer video. */
 export { STORY_VIDEO_MAX_BYTES };
 /** The ceiling in the words' unit — megabytes, as the refusal says it. */

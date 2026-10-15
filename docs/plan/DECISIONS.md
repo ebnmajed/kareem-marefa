@@ -11191,9 +11191,9 @@ generated family name. Unit 5,981.
 
 - **Documents changed:** `STATUS.md`
 
-## DEC-293 — A story is captured with the phone's own camera; a longer video keeps its first 15 seconds
+## DEC-295 — A story is captured with the phone's own camera; a longer video keeps its first 15 seconds
 
-**Date:** 2026-10-15 · **Status:** accepted · **By:** the owner · **Refs:** REQ-STO-011, REQ-STO-012, REQ-EVT-013 · **Amends:** `DEC-245` (the capture screen, STO-11), `DEC-248` §6 (contract 6's refusal over 15 s and its 60 MB) · **Migration:** `0225` if the bucket's size limit moves (below)
+**Date:** 2026-10-15 · **Status:** accepted · **By:** the owner · **Refs:** REQ-STO-011, REQ-STO-012, REQ-EVT-013 · **Amends:** `DEC-245` (the capture screen, STO-11), `DEC-248` §6 (contract 6's refusal over 15 s and its 60 MB) · **Migration:** `0226` if the bucket's size limit moves (below)
 
 **The owner**, after recording a story on an iPhone failed («the video errored out completely», and the capture screen
 showed «no controls»): «Use the phone's own camera app for recording, through a standard file picker that opens the

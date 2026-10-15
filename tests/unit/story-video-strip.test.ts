@@ -116,7 +116,7 @@ describe.skipIf(!runnable && !required)("a phone's video, transcoded by the work
     return { verdict, audit, out };
   }
 
-  // ★ DEC-293 §3 — a longer video keeps its first 15 seconds; it is never refused for its length.
+  // ★ DEC-295 §3 — a longer video keeps its first 15 seconds; it is never refused for its length.
   it("keeps the FIRST 15.0 s of a 40-second video — red for 20 s, then blue: the rendition ends red", async () => {
     const src = make("forty.mov", [
       "-f", "lavfi", "-i", "color=red:size=640x360:rate=30:duration=20",

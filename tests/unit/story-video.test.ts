@@ -77,7 +77,7 @@ describe("ffmpegArgs — one H.264/AAC MP4 with nothing of the phone left", () =
     expect(pair("-movflags")).toBe("+faststart");
     expect(pair("-vf")).toContain("min(720,iw)");
   });
-  it("keeps the FIRST 15.0 s of any source — `-t 15` as an INPUT option, so a long source is never read past it (DEC-293)", () => {
+  it("keeps the FIRST 15.0 s of any source — `-t 15` as an INPUT option, so a long source is never read past it (DEC-295)", () => {
     expect(pair("-t")).toBe("15");
     expect(args.indexOf("-t")).toBeLessThan(args.indexOf("-i"));
     expect(args.indexOf("-t")).toBeGreaterThan(args.indexOf("-f"));
@@ -96,7 +96,7 @@ describe("judgeProbe — the server decides, from the bytes", () => {
   it("passes 12 seconds", () => {
     expect(judgeProbe(ok, 20_000_000)).toEqual({ ok: true, durationSeconds: 12, hasAudio: true, videoIndex: 0, audioIndex: 1 });
   });
-  it("never refuses for length: 20 s, 40 s, 10 minutes are all accepted — the rendition keeps the first 15 s (DEC-293 §3)", () => {
+  it("never refuses for length: 20 s, 40 s, 10 minutes are all accepted — the rendition keeps the first 15 s (DEC-295 §3)", () => {
     for (const d of ["15.233334", "16.05", "20.0", "40.0", "600"]) {
       expect(judgeProbe({ ...ok, format: { duration: d } }, 1_000)).toEqual({ ok: true, durationSeconds: Number(d), hasAudio: true, videoIndex: 0, audioIndex: 1 });
     }
@@ -111,7 +111,7 @@ describe("judgeProbe — the server decides, from the bytes", () => {
     expect(durationFromProbe({ format: { duration: "0" }, streams: [] })).toBeNull();
   });
   it("refuses over 50 MB by the object's own length, and passes a 40 MB camera clip", () => {
-    expect(STORY_VIDEO_MAX_BYTES).toBe(52_428_800); // the bucket's file_size_limit (0225) and begin_story_video()'s
+    expect(STORY_VIDEO_MAX_BYTES).toBe(52_428_800); // the bucket's file_size_limit (0226) and begin_story_video()'s
     // ONE figure: the worker's and the phone's are the path builder's own constant, not copies.
     expect(PACKAGE_MAX).toBe(STORY_VIDEO_MAX_BYTES);
     expect(CLIENT_MAX).toBe(STORY_VIDEO_MAX_BYTES);

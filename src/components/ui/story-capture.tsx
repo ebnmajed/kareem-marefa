@@ -6,9 +6,9 @@ import type { StoryCaptureProps, StoryCaptureSource } from "@/components/ui";
 import { CameraIcon, CloseIcon, ImageIcon, PlayIcon } from "@/components/ui/icons";
 import { usePlayPortal } from "@/components/ui/scope-portal";
 
-// content's file — REQ-STO-011, REQ-EVT-013, DEC-093, DEC-293. The full-screen «أضف». PRESENTATIONAL: it reads nothing.
+// content's file — REQ-STO-011, REQ-EVT-013, DEC-093, DEC-295. The full-screen «أضف». PRESENTATIONAL: it reads nothing.
 //
-// ★★ NO LIVE CAMERA (DEC-293, the owner's ruling). The first screen is three file inputs, each one big labelled button:
+// ★★ NO LIVE CAMERA (DEC-295, the owner's ruling). The first screen is three file inputs, each one big labelled button:
 // «صورة» opens the phone's own camera for a photograph (`image/*`, `capture="environment"`), «فيديو» the camera for a
 // video (`video/*`, `capture="environment"`), «من الاستوديو» the gallery (no `capture`). On a desktop each opens the file
 // picker. The phone's camera app brings its own controls, both cameras, rotation and stabilisation — and a file input

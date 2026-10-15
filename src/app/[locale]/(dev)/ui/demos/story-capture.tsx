@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { StoryCaptureState } from "@/components/ui";
 import { StoryCapture } from "@/components/ui/story-capture";
 
-// The gallery's `story-capture` demo — contract 2 (DEC-251), REQ-STO-011, DEC-293. Every state from props, each opened
+// The gallery's `story-capture` demo — contract 2 (DEC-251), REQ-STO-011, DEC-295. Every state from props, each opened
 // by a button: the three choices, a refusal (a file over the ceiling), the review with a caption, uploading at 42 %, a
 // failed upload with «أعد المحاولة», processing. The take is a solid ground: no camera and no file in the gallery.
 

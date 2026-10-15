@@ -1,4 +1,4 @@
-// «أضف» behind `ui/story-capture` (REQ-STO-011, REQ-STO-016, DEC-293): the phone's own camera app and gallery hand over
+// «أضف» behind `ui/story-capture` (REQ-STO-011, REQ-STO-016, DEC-295): the phone's own camera app and gallery hand over
 // a File; this flow reviews it, uploads it robustly — progress, a retry that resumes, refusals in a word — and never
 // refreshes the page under the dialog. The transport's backoff sleeps are skipped: a retry is proven by its count.
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -109,7 +109,7 @@ afterEach(() => {
   statusAnswer = () => new Response(JSON.stringify({ error: "not_found" }), { status: 404 });
 });
 
-describe("CaptureFlow — the phone's own camera, then our screen (DEC-293)", () => {
+describe("CaptureFlow — the phone's own camera, then our screen (DEC-295)", () => {
   it("opens on the three choices, and asks for no camera of its own", () => {
     const getUserMedia = vi.fn();
     Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia } });
@@ -176,7 +176,7 @@ describe("CaptureFlow — the phone's own camera, then our screen (DEC-293)", ()
     expect(calls).toHaveLength(0);
   });
 
-  it("★ the bucket's own ceiling (413 on the PUT, before 0225 moves it) reads as too large, never «تعذّر»", async () => {
+  it("★ the bucket's own ceiling (413 on the PUT, before 0226 moves it) reads as too large, never «تعذّر»", async () => {
     putPlan = [{ status: 413 }];
     routes(videoInit);
     const user = userEvent.setup();
