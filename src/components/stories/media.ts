@@ -2,9 +2,13 @@
 // can take (REQ-STO-011, REQ-STO-016, DEC-248 §6). Plain functions, no React, so each is tested on its own. The server
 // stays the authority on every limit (ffprobe reads the length and the size); these are the fast, honest answer on the phone.
 
-/** The video ceiling, in bytes — the server's figure (story-media.md §1.2), refused here at once and in a word. There
- *  is no duration check on the phone any more: the worker keeps the first 15 s of a longer video (DEC-293). */
-export const STORY_VIDEO_MAX_BYTES = 60 * 1024 * 1024;
+/** The video ceiling, in bytes — the server's figure (story-media.md §1, DEC-293: 200 MB, what a phone's camera app
+ *  writes for the length a member films), refused here at once and in a word. The client's ONE copy: the refusal and
+ *  its words («أكبر من 200 ميغابايت») both read it. There is no duration check on the phone: the worker keeps the
+ *  first 15 s of a longer video. */
+export const STORY_VIDEO_MAX_BYTES = 200 * 1024 * 1024;
+/** The ceiling in the words' unit — megabytes, as the refusal says it. */
+export const STORY_VIDEO_MAX_MB = STORY_VIDEO_MAX_BYTES / (1024 * 1024);
 /** A photograph's long edge after preparation: a story is a phone's screen, never a sensor's 12 MP. */
 export const STORY_PHOTO_MAX_EDGE = 2048;
 

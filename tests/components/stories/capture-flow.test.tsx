@@ -171,9 +171,21 @@ describe("CaptureFlow — the phone's own camera, then our screen (DEC-293)", ()
     Object.defineProperty(big, "size", { value: STORY_VIDEO_MAX_BYTES + 1 });
     await pick("فيديو", big);
     expect(captureState()).toBe("refused");
-    expect(screen.getByRole("status")).toHaveTextContent("أكبر من");
+    expect(screen.getByRole("status")).toHaveTextContent("أكبر من 200 ميغابايت");
     expect(screen.getByLabelText("فيديو")).toBeInTheDocument();
     expect(calls).toHaveLength(0);
+  });
+
+  it("★ the bucket's own ceiling (413 on the PUT, before 0225 moves it) reads as too large, never «تعذّر»", async () => {
+    putPlan = [{ status: 413 }];
+    routes(videoInit);
+    const user = userEvent.setup();
+    show();
+    await pick("فيديو", cameraVideo());
+    await user.click(screen.getByRole("button", { name: "انشر" }));
+    await waitFor(() => expect(captureState()).toBe("error"));
+    expect(screen.getByRole("status")).toHaveTextContent("أكبر من 200 ميغابايت");
+    expect(puts).toBe(1);
   });
 
   it("a file that is neither a picture nor a video is «صيغة غير مدعومة»", async () => {

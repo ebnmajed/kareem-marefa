@@ -7,6 +7,7 @@ import { StoryCapture } from "@/components/ui/story-capture";
 import { formatNumber } from "@/components/sessions/numerals";
 import {
   STORY_VIDEO_MAX_BYTES,
+  STORY_VIDEO_MAX_MB,
   preparePhoto,
   readHead,
   sniffVideoExt,
@@ -106,7 +107,12 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
 
   function refuse(key: "tooLong" | "tooLarge" | "unsupported") {
     setState("refused");
-    setMessage(t(`capture.${key}`));
+    setMessage(tooLargeOr(key));
+  }
+
+  /** The word for a refusal; «أكبر من 200 ميغابايت» carries the ceiling read from the one constant. */
+  function tooLargeOr(key: "tooLong" | "tooLarge" | "unsupported"): string {
+    return key === "tooLarge" ? t("capture.tooLarge", { size: formatNumber(STORY_VIDEO_MAX_MB) }) : t(`capture.${key}`);
   }
 
   /** A file from the camera app or the gallery. Its kind is read from the file, never from which button opened the
@@ -143,7 +149,8 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
   function reason(e: unknown): string {
     if (e instanceof UploadError) {
       if (e.status === 403 || e.code === "not_authorized") return t("capture.refused");
-      if (e.status === 413 || e.code === "file_too_large" || e.code === "Payload too large") return t("capture.tooLarge");
+      // Storage's own ceiling answers the PUT with 413, or 400 with «Payload too large» — read as too_large either way.
+      if (e.status === 413 || e.code === "file_too_large" || /payload too large|too large|exceeded the maximum/i.test(e.code ?? "")) return tooLargeOr("tooLarge");
       // No answer at all — offline, a timeout, a dropped connection — after the retries ran out.
       if (e.status === 0) return t("capture.offline");
     }

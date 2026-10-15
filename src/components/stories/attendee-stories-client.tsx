@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { CameraIcon, ImageIcon } from "@/components/ui/icons";
 import { formatNumber } from "@/components/sessions/numerals";
+import { STORY_VIDEO_MAX_MB } from "@/components/stories/media";
 import { REMOVE_ATTENDEE_FRAME_INITIAL, type RemoveAttendeeFrameState } from "@/components/stories/state";
 import type { AttendeeStoryFrame } from "@/lib/dal/story-frames";
 
@@ -38,7 +39,7 @@ export function AttendeeStoriesClient({
   const tc = useTranslations("stories.capture");
   // A failed video says why (story-media.md §1.2) — the same words the author read in the capture.
   const failedWord = (f: AttendeeStoryFrame) =>
-    f.failureReason === "too_long" ? tc("tooLong") : f.failureReason === "too_large" ? tc("tooLarge") : f.failureReason === "unsupported" ? tc("unsupported") : tf("failed");
+    f.failureReason === "too_long" ? tc("tooLong") : f.failureReason === "too_large" ? tc("tooLarge", { size: formatNumber(STORY_VIDEO_MAX_MB) }) : f.failureReason === "unsupported" ? tc("unsupported") : tf("failed");
   const toast = useToast();
   const [target, setTarget] = useState<AttendeeStoryFrame | null>(null);
   // ★ Every answer is SAID, never swallowed: «سُجّل القرار» when the database removed it (or had already), the
