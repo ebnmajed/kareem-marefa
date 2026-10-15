@@ -2,11 +2,12 @@
 // can take (REQ-STO-011, REQ-STO-016, DEC-248 §6). Plain functions, no React, so each is tested on its own. The server
 // stays the authority on every limit (ffprobe reads the length and the size); these are the fast, honest answer on the phone.
 
-/** The video ceiling, in bytes — the server's figure (story-media.md §1, DEC-293: 200 MB, what a phone's camera app
- *  writes for the length a member films), refused here at once and in a word. The client's ONE copy: the refusal and
- *  its words («أكبر من 200 ميغابايت») both read it. There is no duration check on the phone: the worker keeps the
- *  first 15 s of a longer video. */
-export const STORY_VIDEO_MAX_BYTES = 200 * 1024 * 1024;
+import { STORY_VIDEO_MAX_BYTES } from "@/lib/storage/limits";
+
+/** The video ceiling, in bytes — ONE definition for the client, the DAL and the worker (`@kareem/storage-paths`, through
+ *  the client-safe `@/lib/storage/limits`; DEC-293: 200 MB). Refused here at once and in a word; the words read it too.
+ *  There is no duration check on the phone: the worker keeps the first 15 s of a longer video. */
+export { STORY_VIDEO_MAX_BYTES };
 /** The ceiling in the words' unit — megabytes, as the refusal says it. */
 export const STORY_VIDEO_MAX_MB = STORY_VIDEO_MAX_BYTES / (1024 * 1024);
 /** A photograph's long edge after preparation: a story is a phone's screen, never a sensor's 12 MP. */
