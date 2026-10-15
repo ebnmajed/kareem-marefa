@@ -6,8 +6,7 @@ Refs: REQ-STO-011, REQ-STO-012, REQ-STO-016, DEC-248 §5 – §6.
 ## 1 · THE CONTRACT (the capture UI, `story-client`, codes against this)
 
 > ★ **Amended by DEC-293 (2026-10-15)** — the phone's own camera app makes the file. **No length refusal**: the worker
-> keeps the first 15.0 s of any accepted video. **The ceiling is 200 MB** (`209715200`) once the lead promotes
-> `supabase/proposed/content/01_story_media_size.sql` as 0225 (§8). `too_long` is never written again; it is still
+> keeps the first 15.0 s of any accepted video. **The ceiling is 50 MB** (`52428800`) — 0225 and `ef966ee3` (§8). `too_long` is never written again; it is still
 > read on older failed rows.
 
 The bytes never pass through Vercel: every upload is a PUT from the browser straight to Supabase Storage on a signed
@@ -31,7 +30,7 @@ not a failed request (§2.3).
 
 | Step | Request | Success | Errors |
 |---|---|---|---|
-| 1 | `POST /api/stories/video` `{ sessionId, ext: "mp4"\|"mov"\|"webm", declaredByteSize (≤ 209715200) }` | `201 { frameId, upload: { bucket: "story-media", path, signedUrl, token, contentType } }` | `400 invalid_input` · `403 not_authorized` · `413 file_too_large` · `500 upload_failed` |
+| 1 | `POST /api/stories/video` `{ sessionId, ext: "mp4"\|"mov"\|"webm", declaredByteSize (≤ 52428800) }` | `201 { frameId, upload: { bucket: "story-media", path, signedUrl, token, contentType } }` | `400 invalid_input` · `403 not_authorized` · `413 file_too_large` · `500 upload_failed` |
 | 2 | `PUT upload.signedUrl` with header `content-type: upload.contentType` (**always the one the server returned, never `file.type`**), body = the bytes | `200` | `413` · `400` · `403` |
 | 3 | `POST /api/stories/video/complete` `{ frameId, sessionId, path: upload.path, byteSize, caption? }` — idempotent: a retry of the same `frameId` is `202` again | `202 { status: "processing", frameId }` | as step 1, plus `400 caption_too_long` |
 | 4 ★ new | `GET /api/stories/video/{frameId}` — poll every 2 s while `processing`, stop at 90 s | `200 { state: "processing" }` · `200 { state: "visible", durationMs, posterUrl }` · `200 { state: "failed", reason: "too_large"\|"unsupported"\|"failed" }` (`"too_long"` only on frames failed before DEC-293) | `404 not_found` (not yours, removed, or never completed) · `400 invalid_input` |
@@ -46,8 +45,7 @@ design (0199 §A — an uploaded source can never be overwritten), and `photos` 
   `{ error }`; its only 5xx is `500 { error: "upload_failed" }` (a database or Storage failure — retryable);
 - `/complete` is idempotent on its id (a frame or photo already recorded answers `202` again), so retry it freely;
 - a signed upload URL is valid for 2 hours; past that, start over at step 1 (a new id).
-- No TUS/resumable endpoint yet: one PUT of up to 200 MB, retried whole if it drops (§8.4 names the resumable option
-  should room Wi-Fi prove too weak for that).
+- No TUS/resumable endpoint: one PUT of up to 50 MB, retried whole if it drops.
 
 **Choosing `ext`** — the worker sniffs the bytes and never trusts the extension, so `ext` only picks the PUT's content
 type (the bucket admits `video/mp4`, `video/quicktime`, `video/webm`):
@@ -64,7 +62,7 @@ type (the bucket admits `video/mp4`, `video/quicktime`, `video/webm`):
   spatial-audio APAC track) is **dropped, not refused**; the first decodable one is kept;
 - **any length** — the rendition is **the first 15.0 s** of what was uploaded, and the rest is never stored (DEC-293 §3).
   A video shorter than 15 s is kept whole. A file with no duration in its header (a MediaRecorder WebM) is fine;
-- ≤ **200 MB** (`209715200` bytes) by the object's own length — the bucket refuses a larger PUT itself (`413`/`400`),
+- ≤ **50 MB** (`52428800` bytes) by the object's own length — the bucket refuses a larger PUT itself (`413`/`400`),
   and the worker refuses `too_large` if one ever lands.
 
 **What the client must do with each outcome**
@@ -72,14 +70,13 @@ type (the bucket admits `video/mp4`, `video/quicktime`, `video/webm`):
   object URL it still holds) or a neutral panel with the word.
 - `visible` — the frame plays for everyone; `posterUrl` is a signed URL (10 minutes).
 - `failed` — **only the author** sees it, with the word for the reason:
-  `too_large` «أكبر من 200 ميغابايت» · `unsupported` «صيغة غير مدعومة» · `failed` «تعذّر» · (an old row's `too_long`:
+  `too_large` «أكبر من 50 ميغابايت» · `unsupported` «صيغة غير مدعومة» · `failed` «تعذّر» · (an old row's `too_long`:
   «أطول من 15 ثانية»).
   Nobody else ever sees a failed frame (RLS — `story_frames_read_own`).
 
-**The client's own courtesy checks** must use the server's figures: refuse a file over **209715200 bytes** before
-uploading, at once, in a word; **never refuse for length** (DEC-293 §3) — a longer video is uploaded and trimmed by the
-worker. (Before 0225 is on production the bucket still refuses over 62914560 with a 413 on the PUT — read as
-`too_large`; nothing else changes.)
+**The client's own courtesy checks** use the server's figure — `STORY_VIDEO_MAX_BYTES` from `@/lib/storage/limits`
+(52428800): refuse a file over it at once, before the PUT, in a word; **never refuse for length** (DEC-293 §3) — a
+longer video is uploaded and the worker keeps its first 15 s.
 
 ## 2 · WHY IT FAILED — the evidence
 
@@ -355,3 +352,14 @@ one call; a 401 with a non-JSON body → returned at once. I ran exactly these f
 
 **Also worth the lead's call** (not required by the fix): the wrapper turns the symptom into a ≤ 3 s delay; if it keeps
 firing, the skew is on Supabase's side (Auth vs PostgREST hosts) and is a support ticket with these six timestamps.
+
+## 8 · THE CEILING — 50 MB (DEC-293 §3)
+
+**`STORY_VIDEO_MAX_BYTES = 52428800`** — one constant in `packages/storage-paths/src/content.ts`, re-exported by the DAL,
+the worker and `src/lib/storage/limits.ts` (the capture's client-safe door); the bucket's `file_size_limit` and
+`begin_story_video()`'s declared-size check hold the same figure in 0225 (the lead's, `ef966ee3`).
+
+**Why 50 and not more:** the project is on Supabase's Free plan, whose project-wide upload limit is fixed at 50 MB and
+caps every bucket — a larger bucket figure would never be reached. That holds about 50 s of an iPhone's default
+1080p30 HEVC (≈ 60 MB a minute, Apple's figure) and less at 4K; a clip over it is refused on the phone at once, and
+trimming to 15 s happens on the worker for everything under it. Raising it means a paid plan first.
