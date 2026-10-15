@@ -979,7 +979,15 @@ stores no figure** — the live count, the recap's stats and a caption on a phot
 
 #### `ENT-story_views`
 **Serves:** `REQ-STO-006`, `REQ-STO-010` (`0198`)
-`org_id`, `member_id`, `frame_id`, `viewed_at`; primary key `(member_id, frame_id)`. A member's own, and nobody else's.
+`org_id`, `member_id`, `frame_id`, `viewed_at` (first seen); ★ `0228` (`DEC-297`, `REQ-VEW-002`): `last_seen_at`,
+`times_seen`, `completed_at` (a video watched to its end); primary key `(member_id, frame_id)`. A member's own row;
+the count and the list leave only through definer functions.
+
+#### `ENT-content_views`
+**Serves:** `REQ-VEW-001` … `REQ-VEW-004` (`0228`, `DEC-297`)
+`org_id`, `member_id`, `kind` (`view_subject`: `frame` · `post` · `recap` · `announcement`, never `frame` here),
+`session_id` (a post or a recap), `announcement_id`, `subject_id` (generated), `first_seen_at`, `last_seen_at`,
+`times_seen`; primary key `(member_id, kind, subject_id)`. Written only by `record_views()`.
 
 #### `ENT-story_reactions`
 **Serves:** `REQ-STO-005` (`0198`)

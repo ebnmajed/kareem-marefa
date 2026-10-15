@@ -842,7 +842,8 @@ for insert and update, so "opens at completion, closes 14 days later" is one rul
 | `member_seen_marks` | §5.7c | §5.7c | §5.7c | — | A member's own bookmark of what they have seen (`0162`, `DEC-197`). No timestamp; no delete; the worker never touches it. |
 | `feed_announcements` | §5.7d | §5.7d | §5.7d | §5.7d | An org's announcements in the feed (`0164`, `DEC-206` §3, `REQ-UIX-056`). Members read what is published and unexpired; an admin reads and writes all of the org's. The update grant is by column. The worker never touches it. |
 | `story_frames` | §5.7e | — | — | — | A session's story (`0198`, `DEC-248` §5, `REQ-STO-001` … `018`). Members read what is visible and inside 24 h; the author reads their own unfinished video; staff read all. **No client write** — every write is a definer function. |
-| `story_views` | §5.7e | §5.7e | — | — | A member's own record of what they viewed; nobody else's, staff included (`REQ-STO-010`). |
+| `story_views` | §5.7e | §5.7e | — | — | A member's own record of what they viewed; nobody else's, staff included. ★ Since `0228` (`DEC-297`) the count and the list leave only through `view_counts()` / `view_list()`, and `record_views()` writes it; the insert policy stays for `main` until the follow-up migration. |
+| `content_views` | §5.7f | — | — | — | A member's own record of a post, a recap or an announcement they viewed (`0228`, `DEC-297`, `REQ-VEW-002`). **No client write** — `record_views()` only; counts and lists through `view_counts()` / `view_list()`. |
 | `story_reactions` | §5.7e | §5.7e | §5.7e | §5.7e | One per member per frame; the update grant is by column; no ledger row, ever (`REQ-STO-005`). |
 | `story_frame_takedowns` | §5.7e | — | — | — | «أزلني» on a video frame; the requester and staff read; written only by definer functions (`REQ-STO-014`). |
 
@@ -947,6 +948,16 @@ definer alone.
 | `certificates` | §5.8a | **P5** | **P5** | — | Serial allocation holds a lock. |
 | `certificate_serial_counters` | — | — | — | — | **No policy at all.** Touched only inside `allocate_serial()`. |
 
+
+#### §5.7f — views — `content_views` (`0228`, `DEC-297`)
+One row per member per subject — first seen, last seen, times seen. A member reads their own rows and nobody else's,
+staff included; **no client role writes one**. `record_views()` re-derives that the caller may see each subject, skips
+their own and an impersonation session; `view_counts()` returns reach to whoever may see the subject; `view_list()`
+returns name, avatar and day to the subject's owners and staff only. Cases in `tests/rls/views.test.ts`.
+```sql
+create policy "content_views_read_own"      on content_views for select to authenticated;  -- member_id = auth_member_id(); no staff policy
+grant select on content_views to authenticated;                                             -- no insert, update or delete: record_views() only
+```
 #### §5.8a — `certificates`
 ```sql
 create policy "certs_read_self_or_admin" on certificates for select to authenticated

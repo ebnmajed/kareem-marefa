@@ -131,6 +131,12 @@ export async function seed(tx: Tx): Promise<M7Fixture> {
       [org.id, m2.published, org.mod.memberId, `${org.id}/sessions/${m2.published}/frames/x/video.mp4`, `${org.id}/sessions/${m2.published}/frames/x/poster.webp`],
     );
     await tx.q(`insert into public.story_views (org_id, member_id, frame_id) values ($1, $2, $3)`, [org.id, org.members[0].memberId, frame]);
+    // 0228 (DEC-297): one view of each content kind, so the sweep meets org B's rows in `content_views` too.
+    await tx.q(`insert into public.content_views (org_id, member_id, kind, session_id) values ($1, $2, 'post', $3), ($1, $2, 'recap', $3)`, [org.id, org.members[0].memberId, m2.published]);
+    await tx.q(
+      `insert into public.content_views (org_id, member_id, kind, announcement_id) select $1, $2, 'announcement', id from public.feed_announcements where org_id = $1 limit 1`,
+      [org.id, org.members[0].memberId],
+    );
     await tx.q(`insert into public.story_reactions (org_id, frame_id, member_id, kind) values ($1, $2, $3, 'clap')`, [org.id, frame, org.members[0].memberId]);
     await tx.q(`insert into public.story_frame_takedowns (org_id, frame_id, requester_id) values ($1, $2, $3)`, [org.id, video, org.members[0].memberId]);
   }

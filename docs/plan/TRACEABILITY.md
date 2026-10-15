@@ -9,7 +9,7 @@
 | Artifact | Count |
 |---|---|
 | Requirements (`REQ-*`) | **484** |
-| Entities (`ENT-*`) | **91** |
+| Entities (`ENT-*`) | **92** |
 | Stories (`STORY-*`) | **303** |
 | Screens cited (`SCR-*`) | 60 |
 | Jobs cited (`JOB-*`) | 48 |
@@ -669,10 +669,10 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
-| `REQ-VEW-001` | — | — | `SCR-010` | — | — | `STORY-VEW-001` | M36 |
-| `REQ-VEW-002` | — | — | `SCR-010` | — | — | `STORY-VEW-001` | M36 |
-| `REQ-VEW-003` | — | — | `SCR-010` | — | — | `STORY-VEW-002` | M36 |
-| `REQ-VEW-004` | — | — | `SCR-010` | — | — | `STORY-VEW-002` | M36 |
+| `REQ-VEW-001` | `ENT-content_views` | — | `SCR-010` | — | — | `STORY-VEW-001` | M36 |
+| `REQ-VEW-002` | `ENT-content_views` `ENT-story_views` | — | `SCR-010` | — | — | `STORY-VEW-001` | M36 |
+| `REQ-VEW-003` | `ENT-content_views` | — | `SCR-010` | — | — | `STORY-VEW-002` | M36 |
+| `REQ-VEW-004` | `ENT-content_views` | — | `SCR-010` | — | — | `STORY-VEW-002` | M36 |
 | `REQ-VEW-005` | — | — | `SCR-029` | — | — | `STORY-VEW-003` | M36 |
 | `REQ-VEW-006` | — | — | `SCR-010` | — | — | `STORY-VEW-001` | M36 |
 
