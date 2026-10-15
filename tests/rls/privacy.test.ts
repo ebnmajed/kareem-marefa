@@ -83,6 +83,8 @@ describe("platform — the data export (REQ-PRF-006, REQ-NFR-013)", () => {
           // 0135 (wave 10): which surveys the member answered — never what they
           // said. `data-export-surveys.test.ts` proves the second half.
           "surveys_answered",
+          // 0228 (DEC-297): the member's own views — never anyone else's look at their subjects.
+          "views",
         ].sort(),
       );
       expect((payload.member as { email: string }).email).toBe(me.email);

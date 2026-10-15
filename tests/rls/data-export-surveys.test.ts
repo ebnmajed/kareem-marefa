@@ -72,7 +72,7 @@ describe("RPC-build_data_export_payload.surveys_no_answers", () => {
       await tx.asOwner();
       const keys = Object.keys(await payloadOf(tx, f.a.members[1].memberId)).sort();
       expect(keys).toEqual(
-        ["certificates", "check_ins", "comments", "generated_at", "interests", "member", "org", "photos", "points_ledger", "ratings_given", "rsvps", "surveys_answered"].sort(),
+        ["certificates", "check_ins", "comments", "generated_at", "interests", "member", "org", "photos", "points_ledger", "ratings_given", "rsvps", "surveys_answered", "views"].sort(), // 0228 (DEC-297) adds the member's own views
       );
     });
   });
