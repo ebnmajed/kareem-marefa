@@ -201,6 +201,8 @@ export function StoryViewer({ open, stories, storyIndex, onClose: closeNow, onFr
   const [paused, setPaused] = useState(false);
   const [held, setHeld] = useState(false);
   const [hidden, setHidden] = useState(false);
+  // «المزيد» is open: the clock holds, so the frame — and the menu that belongs to it — stays until the member answers.
+  const [menuOpen, setMenuOpen] = useState(false);
   const [restart, setRestart] = useState(0);
   const elapsedRef = useRef(0);
 
@@ -217,6 +219,7 @@ export function StoryViewer({ open, stories, storyIndex, onClose: closeNow, onFr
       setRestart((n) => n + 1);
       setPaused(false);
       setHeld(false);
+      setMenuOpen(false);
     }
   }
   useEffect(() => {
@@ -291,7 +294,7 @@ export function StoryViewer({ open, stories, storyIndex, onClose: closeNow, onFr
 
   if (!story || !frame) return null;
   // `paused` from outside: a sheet the caller opened over the viewer (a report) holds the clock without pressing pause.
-  const running = open && !paused && !held && !hidden && !heldOutside;
+  const running = open && !paused && !held && !hidden && !heldOutside && !menuOpen;
   const total = story.frames.length;
   const teamColour = teamColorOrNull(story.teamColor);
 
@@ -387,7 +390,7 @@ export function StoryViewer({ open, stories, storyIndex, onClose: closeNow, onFr
           <RadixDialog.Title className="sr-only">{labels.dialog}</RadixDialog.Title>
           <div
             data-frame-id={frame.id}
-            data-paused={pauseOn || undefined}
+            data-paused={pauseOn || menuOpen || undefined}
             style={teamColour ? ({ "--team": teamColour } as CSSProperties) : undefined}
             className="relative flex h-full w-full flex-col overflow-hidden bg-void max-w-[calc(100dvh*0.625)] pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
           >
@@ -443,6 +446,7 @@ export function StoryViewer({ open, stories, storyIndex, onClose: closeNow, onFr
                 {frame.moderation ? (
                   <Menu
                     align="end"
+                    onOpenChange={setMenuOpen}
                     trigger={
                       <button type="button" aria-label={frame.moderation.menuLabel} className={CONTROL}>
                         <MoreIcon aria-hidden />

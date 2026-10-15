@@ -193,6 +193,27 @@ describe("the run", () => {
     expect(screen.getByRole("button", { name: "أوقف مؤقتًا" })).toHaveAttribute("aria-pressed", "false");
   });
 
+  // The owner, 2026-10-15: «the ⋯ menu doesn't show anything when pressed». The menu belongs to its frame: while it is
+  // open the clock holds, or a photo's 5 s would move the story on — and close it under the member's finger.
+  it("★ «المزيد» open holds the clock; closing it lets the frame run again", () => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance"] });
+    const select = vi.fn();
+    const own = story("m", 2);
+    own.frames[0] = { ...own.frames[0]!, moderation: { menuLabel: "المزيد", items: [{ label: "أزلني", onSelect: select }] } };
+    render(<Harness stories={[own]} />);
+    const trigger = screen.getByRole("button", { name: "المزيد" });
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(document.querySelector("[data-frame-id]")).toHaveAttribute("data-paused");
+    act(() => vi.advanceTimersByTime(8000));
+    expect(shown()).toBe("m-1");
+    fireEvent.click(screen.getByRole("menuitem", { name: "أزلني" }));
+    expect(select).toHaveBeenCalled();
+    expect(document.querySelector("[data-frame-id]")).not.toHaveAttribute("data-paused");
+    act(() => vi.advanceTimersByTime(5200));
+    expect(shown()).toBe("m-2");
+  });
+
   it("a clock held from outside (a sheet over the viewer) does not advance", () => {
     vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance"] });
     render(<Harness paused />);
