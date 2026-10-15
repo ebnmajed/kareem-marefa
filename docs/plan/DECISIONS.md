@@ -11256,6 +11256,35 @@ outcome told a member «لم تُسجّل حضورك» beside a working check-in
 
 - **Documents changed:** `01-prd.md` (`REQ-CHK-016`), `03-permissions-rls.md`, `STATUS.md`
 
+## DEC-295 — A story is captured with the phone's own camera; a longer video keeps its first 15 seconds
+
+**Date:** 2026-10-15 · **Status:** accepted · **By:** the owner · **Refs:** REQ-STO-011, REQ-STO-012, REQ-EVT-013 · **Amends:** `DEC-245` (the capture screen, STO-11), `DEC-248` §6 (contract 6's refusal over 15 s and its 60 MB) · **Migration:** `0226` if the bucket's size limit moves (below)
+
+**The owner**, after recording a story on an iPhone failed («the video errored out completely», and the capture screen
+showed «no controls»): «Use the phone's own camera app for recording, through a standard file picker that opens the
+camera. On iPhone that's the real Camera app: its own controls, rotation handled properly, stabilisation, and both
+cameras. What you give up: our custom screen and the visible 0:15 countdown. … keep the first 15 seconds of a longer
+video instead of refusing anything over 16 seconds. The caption would still be added on our own screen after the video
+is taken.»
+
+**Ruling.**
+1. **No live camera in the product.** `«أضف»` opens the platform's own capture through a file input — a photo
+   (`accept="image/*" capture="environment"`), a video (`accept="video/*" capture="environment"`) and the gallery (no
+   `capture`). `getUserMedia`, `MediaRecorder`, the hold-to-record gesture and the 0:15 countdown leave the product. On a
+   desktop the same inputs open the file picker. ★ **Photos go the same way as video** — the owner's «what you give up:
+   our custom screen» is the whole screen, and one path is one thing to keep working.
+2. **Our screen begins after the take**: the review (the photo, or the video playing through our own control), the one
+   caption line, `«أعد»` (pick again) and `«انشر»`, with the upload's progress, retry and refusals as the robust-media
+   work built them (`notes/story-media.md`). REQ-EVT-013's notice stays at the point of upload.
+3. **A longer video is trimmed, not refused**: the worker keeps the first 15.0 s of any accepted video and stores that.
+   The size ceiling stays the server's to measure from the bytes; it is set by what a phone's camera app produces for
+   the length a member is likely to film (a plan names the figure), and the client refuses above it at once, in a word.
+4. **REQ-STO-011 is amended**: «a photograph or a video from the phone's own camera or the gallery, with one caption
+   line»; «the 15-second limit is enforced on what was uploaded — a longer video keeps its first 15 seconds». «Recording
+   can be started and stopped by taps alone» is now the platform camera's, and `DEC-093` is met by a file input.
+
+- **Documents changed:** `01-prd.md` (REQ-STO-011), `STATUS.md`
+
 ## DEC-296 — An admin checks in any member, to any session, at any time
 
 **Date:** 2026-10-15 · **Status:** accepted · **By:** the owner · **Refs:** REQ-CHK-008, REQ-CHK-011, REQ-CHK-013, REQ-CHK-017 · **Amends:** `REQ-CHK-008`, `DEC-141` ruling 6 · **Migration:** `0227`

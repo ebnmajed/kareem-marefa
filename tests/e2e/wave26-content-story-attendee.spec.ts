@@ -182,14 +182,16 @@ test("«أضف» is the checked-in attendee's alone; a gallery photograph goes t
   await page.click('[data-story-viewer] button[aria-label="أضف"]');
   const capture = page.locator("[data-story-capture]");
   await expect(capture).toBeVisible();
-  await expect(capture.getByRole("radio", { name: "فيديو" })).toBeVisible();
+  await expect(capture).toHaveAttribute("data-state", "choose");
+  await expect(capture.locator('input[data-source="video"]')).toHaveAttribute("capture", "environment");
   await page.screenshot({ path: join(SHOTS, "wave26-content-capture-photo-390.png") });
 
   await capture.getByLabel("من الاستوديو").setInputFiles({ name: "room.jpg", mimeType: "image/jpeg", buffer: jpeg() });
   await capture.getByLabel("تعليق").fill(CAPTION);
   await page.screenshot({ path: join(SHOTS, "wave26-content-capture-review-390.png") });
   await page.click('[data-story-capture] button:has-text("انشر")');
-  await expect(capture.getByRole("status")).toHaveText("جارٍ التجهيز");
+  await expect(capture).toBeHidden();
+  await expect(page.getByText("جارٍ التجهيز", { exact: true })).toBeVisible();
 
   if (WORKER) {
     await expect
@@ -201,27 +203,22 @@ test("«أضف» is the checked-in attendee's alone; a gallery photograph goes t
   }
 });
 
-test("★★ a video recorded and stopped by TAPS alone — page.click() on the mode and on the shutter, never a hold (DEC-093)", async ({ context, page }) => {
-  // playwright.config.ts launches Chromium with a fake camera and microphone; the permission is this context's.
-  await context.grantPermissions(["camera", "microphone"]);
+test("★★ a video from the phone's own camera (DEC-295): the file input, then our review, caption and publish — no hold, no recorder", async ({ page }) => {
   await page.setViewportSize(PHONE);
-  await signIn(context, email.attendee);
+  await signIn(page.context(), email.attendee);
   await openStory(page);
   await page.click('[data-story-viewer] button[aria-label="أضف"]');
   const capture = page.locator("[data-story-capture]");
   await expect(capture).toBeVisible();
 
-  await page.click('[data-story-capture] [role="radio"]:has-text("فيديو")');
-  await expect(capture.getByRole("radio", { name: "فيديو" })).toHaveAttribute("aria-checked", "true");
-  await page.click('[data-story-capture] button[aria-label="ابدأ التسجيل"]');
-  await expect(capture.getByRole("button", { name: "أوقف التسجيل" })).toHaveAttribute("aria-pressed", "true");
-  await expect(capture).toHaveAttribute("data-state", "recording");
-  await expect(capture.locator('[data-slot="elapsed"]')).toContainText("0:02", { timeout: 5_000 });
-  await page.screenshot({ path: join(SHOTS, "wave26-content-capture-recording-390.png") });
-  await page.click('[data-story-capture] button[aria-label="أوقف التسجيل"]');
+  const video = capture.locator('input[data-source="video"]');
+  await expect(video).toHaveAttribute("accept", /video\//);
+  await expect(video).toHaveAttribute("capture", "environment");
+  await video.setInputFiles({ name: "clip.webm", mimeType: "video/webm", buffer: await webm(page) });
 
   await expect(capture).toHaveAttribute("data-state", "review");
-  await expect(capture.locator("video[controls]")).toBeVisible();
+  await expect(capture.locator("[data-review-video]")).toBeVisible();
+  await expect(capture.getByRole("button", { name: "تابِع" })).toBeVisible();
   await page.click('[data-story-capture] button:has-text("انشر")');
   await expect(capture.getByRole("status")).toHaveText("جارٍ التجهيز", { timeout: 30_000 });
   // The recorded clip's own frame exists — processing until the worker decides (visible at once if one is running).
@@ -284,3 +281,36 @@ test("SCR-044's «قصص الحضور»: staff remove a frame with its reason �
   expect((await db.query(`select count(*)::int as n from public.audit_log where action = 'story_frame.removed' and subject_id = $1`, [videoFrame])).rows[0].n).toBe(1);
   expect((await db.query(`select count(*)::int as n from public.points_ledger where member_id = $1`, [ids.attendee])).rows[0].n).toBe(before);
 });
+
+// A real 2 s WebM, recorded from a canvas in the page — what a gallery or a camera app hands the input.
+async function webm(page: Page): Promise<Buffer> {
+  const b64 = await page.evaluate(async () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 320;
+    canvas.height = 568;
+    const ctx = canvas.getContext("2d")!;
+    const rec = new MediaRecorder(canvas.captureStream(30), { mimeType: "video/webm" });
+    const chunks: Blob[] = [];
+    rec.ondataavailable = (e) => chunks.push(e.data);
+    const done = new Promise<void>((r) => (rec.onstop = () => r()));
+    rec.start(250);
+    const t0 = performance.now();
+    await new Promise<void>((r) => {
+      const draw = () => {
+        const t = performance.now() - t0;
+        ctx.fillStyle = `hsl(${(t / 10) % 360} 70% 50%)`;
+        ctx.fillRect(0, 0, 320, 568);
+        if (t < 2000) requestAnimationFrame(draw);
+        else r();
+      };
+      draw();
+    });
+    rec.stop();
+    await done;
+    const buf = new Uint8Array(await new Blob(chunks).arrayBuffer());
+    let s = "";
+    for (const b of buf) s += String.fromCharCode(b);
+    return btoa(s);
+  });
+  return Buffer.from(b64, "base64");
+}

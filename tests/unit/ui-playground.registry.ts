@@ -153,7 +153,7 @@ export const REGISTRY: Record<string, Entry> = {
   // wave 26 (DEC-245, DEC-251 §4): born inside the scope — `content`'s two, and the last primitives the programme adds.
   // The viewer's ground is the void under a story; its one keyframe is `story-frame-in`, still under reduced motion.
   "story-viewer.tsx": tokens("story-viewer", ["bg-canvas", "bg-void", "bg-chrome", "border-fg-heading", "font-display"], "story-viewer-scope.test.tsx"),
-  "story-capture.tsx": tokens("story-capture", ["bg-void", "bg-chrome", "bg-signal", "border-fg-heading"], "story-capture-scope.test.tsx"),
+  "story-capture.tsx": tokens("story-capture", ["bg-void", "bg-chrome", "bg-fg-heading"], "story-capture-scope.test.tsx"),
 
   // ── `event`'s — its first (wave 19, DEC-214) ──
   "star-input.tsx": tokens("star-input", ["text-signal", "text-edge-strong", "text-fg-muted", "text-error"], "star-input-scope.test.tsx"),

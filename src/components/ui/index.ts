@@ -1909,41 +1909,36 @@ export interface StoryViewerProps {
   };
 }
 
-/** `content` · `story-capture.tsx` — REQ-STO-011, DEC-093. Presentational: the camera lives in `components/stories/use-camera.ts`. */
-export type StoryCaptureMode = "photo" | "video";
-export type StoryCaptureState = "idle" | "denied" | "recording" | "review" | "uploading" | "processing" | "refused" | "error";
+/** `content` · `story-capture.tsx` — REQ-STO-011, DEC-093, DEC-295. Presentational. No live camera: the phone's own
+ *  camera app and gallery through three file inputs; this screen begins after the take. */
+export type StoryCaptureSource = "photo" | "video" | "gallery";
+export type StoryCaptureState = "choose" | "review" | "uploading" | "processing" | "refused" | "error";
 export interface StoryCaptureProps {
   open: boolean;
   state: StoryCaptureState;
-  mode: StoryCaptureMode;
-  onModeChange: (mode: StoryCaptureMode) => void;
-  /** The live preview or the review — a <video>/<img> the caller owns. */
-  preview: ReactNode;
-  elapsedSeconds: number;
-  /** 15 — read from the caller's constant, drawn «0:07 / 0:15». */
-  limitSeconds: number;
-  /** Photo mode: tap. Video mode: tap toggles start/stop (DEC-093). */
-  onShutter: () => void;
-  /** Photo mode only — the gesture: a hold starts video, release stops. */
-  onHoldStart?: () => void;
-  onHoldEnd?: () => void;
-  /** Gallery: the caller's handler receives the chosen File; accept = jpeg/png/webp/mp4/quicktime/webm. */
-  onPick: (file: File) => void;
-  onFlip?: () => void;        // absent → no flip button (one camera)
+  /** The take under review — an <img>, or a <video> with the caller's own play control. Unused while "choose". */
+  preview?: ReactNode;
+  /** A file from one of the three inputs: photo (`image/*`, capture=environment), video (`video/*`, capture=environment),
+   *  gallery (`image/*,video/*`, no capture). */
+  onPick: (file: File, source: StoryCaptureSource) => void;
   caption: string;
   onCaptionChange: (value: string) => void;
   captionMaxLength: number;   // 100
   onSubmit: () => void;
+  /** «أعد» — back to the three choices. */
   onRetake: () => void;
   onClose: () => void;
-  /** The status line for the non-idle states — «جارٍ التجهيز», «أطول من 15 ثانية», «تعذّر». */
+  /** The status line — «جارٍ الرفع 45%», «جارٍ التجهيز», «أكبر من … ميغابايت», «تعذّر». */
   message?: string;
+  /** 0..1 while `state` is "uploading"; absent → indeterminate. */
+  progress?: number;
   labels: {
-    dialog: string; close: string; photoMode: string; videoMode: string;
-    shutterPhoto: string; recordStart: string; recordStop: string;
-    gallery: string; flip: string; caption: string; submit: string; retake: string;
+    dialog: string; close: string;
+    photo: string; video: string; gallery: string;
+    caption: string; submit: string; retake: string;
     /** REQ-EVT-013: «تُشارَك مع الجميع في المؤسسة» — at the point of upload, never buried. */
     notice: string;
-    elapsed: (seconds: number, limit: number) => string;
+    /** «أعد المحاولة» — the "error" state keeps the take; this button calls `onSubmit`. */
+    retry?: string;
   };
 }
