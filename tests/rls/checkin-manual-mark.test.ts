@@ -37,7 +37,7 @@ async function makeSession(tx: Tx, org: Org, opts: { state: string; startsInMinu
 }
 
 describe("RPC-mark_checked_in_manually.window", () => {
-  it("an admin marks a member present ANY time after the scheduled start, no ceiling, even on an archived session", async () => {
+  it("an admin marks a member present long after the scheduled end, no ceiling, even on an archived session", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
       // 10 hours past the scheduled end — well past the 2h ceiling that
@@ -49,11 +49,40 @@ describe("RPC-mark_checked_in_manually.window", () => {
     });
   });
 
-  it("an admin is refused on a cancelled session, and before the scheduled start", async () => {
+  it("★ DEC-296: an admin marks ANY member BEFORE the scheduled start — no reservation needed", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      const future = await makeSession(tx, f.a, { state: "published", startsInMinutes: 60 * 24 * 3, endsInMinutes: 60 * 24 * 3 + 60 });
+      // members[0] holds no reservation on this session: the admin's mark does not ask for one.
+      const [{ n }] = await tx.q<{ n: number }>(`select count(*)::int as n from public.rsvps where session_id = $1`, [future]);
+      expect(n).toBe(0);
+      await tx.as(f.a.admin.claims);
+      const [ci] = await tx.q<{ method: string; member_id: string }>(`select * from public.mark_checked_in_manually($1, $2, $3)`, [future, f.a.members[0].memberId, "سجّل مسبقًا"]);
+      expect(ci.method).toBe("manual");
+      expect(ci.member_id).toBe(f.a.members[0].memberId);
+    });
+  });
+
+  it("★ DEC-296: an admin is still refused on a session nobody can attend — cancelled, or never published", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      const draft = await makeSession(tx, f.a, { state: "draft", startsInMinutes: -60, endsInMinutes: 0 });
+      await tx.as(f.a.admin.claims);
+      expect(await errorMessage(() => tx.q(`select * from public.mark_checked_in_manually($1, $2, $3)`, [draft, f.a.members[0].memberId, "سبب"]))).toMatch(/not_open/);
+
+      await tx.asOwner();
+      const live = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
+      await tx.q(`update public.sessions set state = 'cancelled', cancellation_reason = 'أُلغيت' where id = $1`, [live]);
+      await tx.as(f.a.admin.claims);
+      expect(await errorMessage(() => tx.q(`select * from public.mark_checked_in_manually($1, $2, $3)`, [live, f.a.members[0].memberId, "سبب"]))).toMatch(/not_open/);
+    });
+  });
+
+  it("a moderator is still refused before the scheduled start (DEC-296 is the admin's alone)", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
       const future = await makeSession(tx, f.a, { state: "published", startsInMinutes: 60, endsInMinutes: 120 });
-      await tx.as(f.a.admin.claims);
+      await tx.as(f.a.mod.claims);
       expect(await errorMessage(() => tx.q(`select * from public.mark_checked_in_manually($1, $2, $3)`, [future, f.a.members[0].memberId, "سبب"]))).toMatch(/not_open/);
     });
   });

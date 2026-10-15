@@ -11255,3 +11255,25 @@ outcome told a member «لم تُسجّل حضورك» beside a working check-in
    check-in screen's own title and submit are unchanged.
 
 - **Documents changed:** `01-prd.md` (`REQ-CHK-016`), `03-permissions-rls.md`, `STATUS.md`
+
+## DEC-296 — An admin checks in any member, to any session, at any time
+
+**Date:** 2026-10-15 · **Status:** accepted · **By:** the owner · **Refs:** REQ-CHK-008, REQ-CHK-011, REQ-CHK-013, REQ-CHK-017 · **Amends:** `REQ-CHK-008`, `DEC-141` ruling 6 · **Migration:** `0227`
+
+**The owner:** «i want the admin to have the ability to manually checkin users to any event at anytime».
+
+**What stood in the way.** `mark_checked_in_manually()` already let an admin mark long after the session (no ceiling,
+archived included); it refused **before the day's start**. And SCR-044's sheet offered only **members holding a
+reservation** — a member who never reserved could not be checked in by hand at all.
+
+**Ruling.**
+1. An **admin** marks **any active member of the org**, with no reservation, at **any time** — before the day, during
+   it, or after — on a **published, running, completed or archived** session. A cancelled or never-published session
+   is refused: nobody can attend it. (`0227` replaces the function; the admin branch is the only change.)
+2. The sheet lists the seat-holders first, then every other active member not already present that day.
+3. **A moderator is unchanged** — seat-holders, inside the code family's window.
+4. Unchanged for everyone: the mandatory reason and the audit row; a presenter of the session is never marked
+   (`REQ-CHK-011`); one per member per day; the overlap refusal (`REQ-CHK-013`); contract 5's two hooks, so a hand-mark
+   earns exactly what a code check-in earns (`REQ-CHK-008`).
+
+- **Documents changed:** `01-prd.md` (`REQ-CHK-008`), `03-permissions-rls.md`, `STATUS.md`
