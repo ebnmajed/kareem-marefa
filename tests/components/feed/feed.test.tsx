@@ -46,6 +46,8 @@ function feed(over: Partial<FeedData> = {}): FeedData {
       { day: "2026-09-29", entries: [{ kind: "recap", key: "recap:s3", day: "2026-09-29", at: "2026-09-29T17:00:00Z", post: post("s3") }] },
     ],
     recaps: {},
+    // DEC-297 (views.md §1.2): the views maps every Feed carries; empty draws no count.
+    views: { post: {}, recap: {}, announcement: {} },
     attention: null,
     timeZone: "Asia/Riyadh",
     today: TODAY,

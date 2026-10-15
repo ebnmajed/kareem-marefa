@@ -62,7 +62,8 @@ export default async function MyPrivacyPage({ params }: { params: Promise<{ loca
             promise that the file carries no other member's data, said to the person it protects. */}
         <div className="flex flex-col gap-2">
           <SettingsGroup title={t("groupData")} showTitle={false} rows={rows} />
-          {[...exported.captions, t("exportNote")].map((line) => (
+          {/* ★ REQ-VEW-005 (DEC-297): the one line that says a view is visible to whoever posted and to staff. */}
+          {[...exported.captions, t("exportNote"), t("viewsNote")].map((line) => (
             <p key={line} className="px-1 text-caption text-fg-muted">
               {line}
             </p>

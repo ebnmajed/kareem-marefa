@@ -4,7 +4,6 @@ import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requestPhotoTakedown } from "@/lib/dal/photos";
 import {
-  recordStoryViews,
   removeStoryFrame,
   reportStoryFrame,
   requestStoryFrameTakedown,
@@ -14,18 +13,9 @@ import type { RemoveAttendeeFrameState } from "@/components/stories/state";
 
 // ★ DEC-290: a reaction is not written here any more — it goes through `POST /api/reactions` beside these, so it
 // never waits behind the views' flush.
-// Session stories — the viewer's and the strip's small writes (REQ-STO-005, REQ-STO-010, REQ-STO-014, REQ-STO-015,
-// REQ-STO-017). Uploads are Route Handlers (`src/app/api/stories/**`), never these. Server Actions dispatch one at a
-// time per client, so the viewer's views are BATCHED by its caller, never fired in parallel.
-
-export async function recordStoryViewsAction(locale: string, frameIds: string[]): Promise<void> {
-  try {
-    await recordStoryViews(locale, frameIds);
-  } catch (e) {
-    unstable_rethrow(e);
-    // A view that fails to write is a ring that reads unseen once more — never an error in front of the member.
-  }
-}
+// Session stories — the viewer's and the strip's small writes (REQ-STO-014, REQ-STO-015, REQ-STO-017). Uploads are
+// Route Handlers (`src/app/api/stories/**`), never these. ★ A view is not written here any more (DEC-297, REQ-VEW-006):
+// it goes through the page's view tracker to `POST /api/views`.
 
 export async function reportStoryFrameAction(locale: string, frameId: string, reason: string): Promise<{ outcome: FrameReportOutcome } | { error: string }> {
   try {

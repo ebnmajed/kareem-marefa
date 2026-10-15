@@ -8,6 +8,7 @@ import { RecapPost } from "@/components/feed/recap-post";
 import { dayHeading } from "@/components/feed/relative";
 import { RingRow } from "@/components/feed/ring-row";
 import { SessionPost } from "@/components/feed/session-post";
+import { ViewSubject } from "@/components/views/view-subject";
 import { StaffStrip } from "@/components/feed/staff-strip";
 import { CalendarConnectPrompt } from "@/components/calendar/calendar-connect-prompt";
 import { AvatarImportPrompt } from "@/components/privacy/avatar-import-prompt";
@@ -80,12 +81,34 @@ async function FeedBody({ locale }: { locale: string }) {
               <SectionHeader id={`feed-day-${group.day}`} title={dayHeading(group.day, feed.today, t, locale)} />
               {group.entries.map((entry) => {
                 switch (entry.kind) {
+                  // ★ Views (REQ-VEW-001, DEC-297): each of the three counted kinds is watched by the page's one tracker
+                  // through a plain wrapper, and draws its count from `feed.views` (views.md §1.2 — a missing key draws
+                  // nothing). An achievement is not counted.
                   case "session":
-                    return <SessionPost key={entry.key} post={entry.post} locale={locale} today={feed.today} />;
+                    return (
+                      <ViewSubject key={entry.key} kind="post" id={entry.post.id}>
+                        <SessionPost post={entry.post} locale={locale} today={feed.today} views={feed.views.post[entry.post.id]} />
+                      </ViewSubject>
+                    );
                   case "recap":
-                    return <RecapPost key={entry.key} post={entry.post} extra={feed.recaps[entry.post.id] ?? { count: 0, photos: [], hasMaterials: false }} locale={locale} now={now} today={feed.today} />;
+                    return (
+                      <ViewSubject key={entry.key} kind="recap" id={entry.post.id}>
+                        <RecapPost
+                          post={entry.post}
+                          extra={feed.recaps[entry.post.id] ?? { count: 0, photos: [], hasMaterials: false }}
+                          locale={locale}
+                          now={now}
+                          today={feed.today}
+                          views={feed.views.recap[entry.post.id]}
+                        />
+                      </ViewSubject>
+                    );
                   case "announcement":
-                    return <Announcement key={entry.key} announcement={entry.announcement} locale={locale} now={now} day={entry.day} today={feed.today} />;
+                    return (
+                      <ViewSubject key={entry.key} kind="announcement" id={entry.announcement.id}>
+                        <Announcement announcement={entry.announcement} locale={locale} now={now} day={entry.day} today={feed.today} views={feed.views.announcement[entry.announcement.id]} />
+                      </ViewSubject>
+                    );
                   case "achievement":
                     return <Achievement key={entry.key} item={entry.item} locale={locale} now={now} day={entry.day} today={feed.today} />;
                 }

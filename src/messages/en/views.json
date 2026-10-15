@@ -1,3 +1,8 @@
 {
-  "views": {}
+  "views": {
+    "count": "{count, plural, =0 {Seen by no one} one {Seen by one member} other {Seen by {value} members}}",
+    "title": "Seen by",
+    "more": "{count, plural, one {and one more} other {and {value} more}}",
+    "failed": "Couldn't load"
+  }
 }

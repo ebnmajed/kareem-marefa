@@ -284,6 +284,13 @@ describe("the gestures — enhancements over the controls", () => {
 });
 
 describe("the dialog", () => {
+  it("draws a frame's view count — the caller's node — in its bottom row (DEC-297)", () => {
+    const one = story("v", 1);
+    one.frames[0] = { ...one.frames[0]!, views: <span data-testid="views">7</span> };
+    render(<Harness stories={[one]} />);
+    expect(screen.getByTestId("views")).toBeInTheDocument();
+  });
+
   it("is named, and announces the position", () => {
     render(<Harness />);
     expect(screen.getByRole("dialog", { name: labels.dialog })).toBeInTheDocument();

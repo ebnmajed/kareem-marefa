@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import type { SessionPost } from "@/components/browse/session-post";
 import { LikeButton } from "@/components/feed/like-button";
+import { ViewCount, type ViewCountData } from "@/components/views/view-count";
 import { timeAgo } from "@/components/feed/relative";
 import { formatNumber } from "@/components/sessions/numerals";
 import { FeedItem } from "@/components/ui/feed-item";
@@ -11,7 +12,21 @@ import type { RecapExtra } from "@/lib/dal/feed";
 // photographs; the newest three; the like; «المواد» as a link to the session's materials, drawn only when a
 // material the viewer may open exists — never a download.
 
-export async function RecapPost({ post, extra, locale, now, today }: { post: SessionPost; extra: RecapExtra; locale: string; now: Date; today: string }) {
+export async function RecapPost({
+  post,
+  extra,
+  locale,
+  now,
+  today,
+  views,
+}: {
+  post: SessionPost;
+  extra: RecapExtra;
+  locale: string;
+  now: Date;
+  today: string;
+  views?: ViewCountData;
+}) {
   const [t, tBrowse] = await Promise.all([getTranslations("feed"), getTranslations("browse")]);
   const lead = post.presenters[0] ?? null;
   // A co-presented session is not one person's: the lead's name, then browse's «وآخر» / «وآخران» / «و3 آخرون».
@@ -39,7 +54,13 @@ export async function RecapPost({ post, extra, locale, now, today }: { post: Ses
         </>
       }
       photos={extra.photos.map((p) => ({ src: p.url, alt: t("recap.photoAlt", { title: post.title }), width: p.width, height: p.height }))}
-      reactions={<LikeButton locale={locale} sessionId={post.id} liked={post.likedByMe} count={post.likeCount} groupLabel={t("post.reactions")} likeLabel={t("post.like")} failedLabel={t("post.likeFailed")} />}
+      reactions={
+        <span className="flex flex-wrap items-center gap-2">
+          <LikeButton locale={locale} sessionId={post.id} liked={post.likedByMe} count={post.likeCount} groupLabel={t("post.reactions")} likeLabel={t("post.like")} failedLabel={t("post.likeFailed")} />
+          {/* ★ Views (REQ-VEW-003): the recap's own count — never at 0; the list for its presenters and staff. */}
+          <ViewCount kind="recap" id={post.id} views={views} />
+        </span>
+      }
       materials={extra.hasMaterials ? { href: `${post.href}#materials`, label: t("recap.materials") } : null}
     />
   );

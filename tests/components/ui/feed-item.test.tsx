@@ -60,6 +60,13 @@ describe("FeedItem — announcement", () => {
     const p = container.querySelector("article p:last-of-type")!;
     expect(p.className).not.toMatch(/line-clamp|overflow-hidden|truncate/);
   });
+
+  it("draws the caller's footer under the body (DEC-297 — the view count), and nothing without one", () => {
+    const { container } = renderIn(<FeedItem variant="announcement" sourceLabel="إعلان" time="أمس" body="نص" footer={<span data-testid="views">3</span>} />);
+    const article = container.querySelector("article")!;
+    expect(within(article).getByTestId("views")).toBeInTheDocument();
+    expect(article.lastElementChild).toContainElement(within(article).getByTestId("views"));
+  });
 });
 
 describe("FeedItem — recap", () => {

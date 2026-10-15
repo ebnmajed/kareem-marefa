@@ -24,7 +24,8 @@
       "deactivateReasonLabel": "Reason for the request",
       "deactivateSubmit": "Send the request",
       "cancel": "Cancel",
-      "deactivateSent": "Your request was sent. Your org's admin will see it in the audit log."
+      "deactivateSent": "Your request was sent. Your org's admin will see it in the audit log.",
+      "viewsNote": "Whoever posted a story, a post or an announcement, and staff, can see that you viewed it."
     },
     "avatar": {
       "prompt": {

@@ -53,7 +53,7 @@ function Achievement({ icon, children, context, time, className = "" }: FeedItem
   );
 }
 
-function Announcement({ sourceLabel, body, time, className = "" }: FeedItemAnnouncementProps) {
+function Announcement({ sourceLabel, body, time, footer, className = "" }: FeedItemAnnouncementProps) {
   return (
     <article data-variant="announcement" className={`${FRAME} flex-col gap-2 bg-raised ${className}`}>
       <div className="flex items-center gap-2">
@@ -64,6 +64,8 @@ function Announcement({ sourceLabel, body, time, className = "" }: FeedItemAnnou
       <p className="whitespace-pre-line break-words text-body font-semibold text-fg-heading">
         <bdi dir="auto">{body}</bdi>
       </p>
+      {/* ★ Add-only (DEC-297): the caller's footer — the announcement's view count. Absent → nothing drawn. */}
+      {footer ? <div className="flex items-center gap-2">{footer}</div> : null}
     </article>
   );
 }
