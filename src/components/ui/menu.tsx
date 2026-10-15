@@ -35,14 +35,14 @@ const toneClass: Record<string, string> = {
   error: "text-error data-[highlighted]:bg-error-bg",
 };
 
-export function Menu({ trigger, items, align = "start" }: MenuProps) {
+export function Menu({ trigger, items, align = "start", onOpenChange }: MenuProps) {
   // ★ Wave 15 (DEC-188): inside the playground's scope the portal lands
   // INSIDE the scope's element, so the menu wears the scope. Outside a
   // scope this is `undefined` — Radix's default, `<body>`, exactly as
   // before the wave.
   const landing = usePlayPortal();
   return (
-    <DropdownMenu.Root>
+    <DropdownMenu.Root onOpenChange={onOpenChange}>
       <DropdownMenu.Trigger asChild>{trigger}</DropdownMenu.Trigger>
       <DropdownMenu.Portal container={landing}>
         {/* No entrance animation in M9 — `16` §16.2 moves the motion system to
@@ -50,7 +50,7 @@ export function Menu({ trigger, items, align = "start" }: MenuProps) {
         <DropdownMenu.Content
           align={align}
           sideOffset={6}
-          className="z-40 min-w-48 rounded-card border border-edge bg-canvas p-1.5 shadow-[var(--shadow-card)] pg:bg-surface pg:shadow-none"
+          className="z-[60] min-w-48 rounded-card border border-edge bg-canvas p-1.5 shadow-[var(--shadow-card)] pg:bg-surface pg:shadow-none"
         >
           {items.map((item, i) => {
             // The page on show: `aria-current` for a screen reader, and a check

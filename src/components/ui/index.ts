@@ -568,6 +568,8 @@ export interface MenuProps {
   trigger: ReactNode;
   items: MenuItem[];
   align?: "start" | "end";
+  /** Called with the menu's open state — a caller that must react (the story viewer holds its clock). */
+  onOpenChange?: (open: boolean) => void;
 }
 
 /** `console` · `tabs.tsx` — Radix, RTL-aware through the existing provider. */
