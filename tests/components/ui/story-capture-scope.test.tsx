@@ -8,7 +8,7 @@ import { StoryCapture } from "@/components/ui/story-capture";
 const RAW = /\b(?:navy|silver|slate)-|#[0-9a-fA-F]{3,8}\b|\bduration-\d|\b(?:bg|text|border)-(?:black|white)\b/;
 const labels: StoryCaptureProps["labels"] = {
   dialog: "أضف إلى القصة", close: "إغلاق", photo: "صورة", video: "فيديو", gallery: "من الاستوديو",
-  caption: "تعليق", submit: "انشر", retake: "أعد", retry: "أعد المحاولة", notice: "تُشارَك مع الجميع في المؤسسة",
+  caption: "تعليق", submit: "انشر", retake: "إعادة", retry: "أعد المحاولة", notice: "تُشارَك مع الجميع في المؤسسة",
 };
 
 function show(state: StoryCaptureState) {

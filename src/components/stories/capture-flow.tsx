@@ -317,7 +317,7 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
 }
 
 /** The take, played back under review. ★ NOT the browser's own controls: they draw at the video's bottom edge, exactly
- *  where the caption, «أعد» and «انشر» sit, so on a phone the take had no visible way to play (the owner's report).
+ *  where the caption, «إعادة» and «انشر» sit, so on a phone the take had no visible way to play (the owner's report).
  *  One centred button — a tap, never a gesture (DEC-093) — plays it with its sound and pauses it; the still read from
  *  the take is the poster, so it is never a black box. */
 function ReviewVideo({ src, poster, playLabel, pauseLabel }: { src: string; poster: string | null; playLabel: string; pauseLabel: string }) {

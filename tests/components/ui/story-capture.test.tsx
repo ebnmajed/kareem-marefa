@@ -1,6 +1,6 @@
 // `<StoryCapture>` — REQ-STO-011, DEC-093, DEC-293. No live camera: three file inputs open the phone's own camera app
 // (photo, video) and the gallery; each is one big labelled button, a tap. The screen after the take: the review, the
-// caption, «أعد» and «انشر», the upload's progress, a failure that keeps the take; the notice at the point of upload.
+// caption, «إعادة» and «انشر», the upload's progress, a failure that keeps the take; the notice at the point of upload.
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -15,7 +15,7 @@ const labels: StoryCaptureProps["labels"] = {
   gallery: "من الاستوديو",
   caption: "تعليق",
   submit: "انشر",
-  retake: "أعد",
+  retake: "إعادة",
   retry: "أعد المحاولة",
   notice: "تُشارَك مع الجميع في المؤسسة",
 };
@@ -88,14 +88,14 @@ describe("DEC-293 — the phone's own camera, through three file inputs", () => 
 });
 
 describe("the screen after the take", () => {
-  it("review: the take, the caption, «أعد» back to the choices and «انشر»; the notice says where it goes", async () => {
+  it("review: the take, the caption, «إعادة» back to the choices and «انشر»; the notice says where it goes", async () => {
     const user = userEvent.setup();
     const props = show({ state: "review" });
     expect(screen.getByTestId("take")).toBeInTheDocument();
     expect(screen.getByLabelText("تعليق")).toHaveAttribute("maxLength", "100");
     await user.click(screen.getByRole("button", { name: "انشر" }));
     expect(props.onSubmit).toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "أعد" }));
+    await user.click(screen.getByRole("button", { name: "إعادة" }));
     expect(props.onRetake).toHaveBeenCalled();
     expect(screen.getByText("تُشارَك مع الجميع في المؤسسة")).toBeInTheDocument();
   });
@@ -104,10 +104,10 @@ describe("the screen after the take", () => {
     show({ state: "uploading", progress: 0.42, message: "جارٍ الرفع 42%" });
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "42");
     expect(screen.getByRole("status")).toHaveTextContent("جارٍ الرفع 42%");
-    expect(screen.getByRole("button", { name: "أعد" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "إعادة" })).toBeDisabled();
   });
 
-  it("★ error: the take is kept — «أعد» and «أعد المحاولة», which submits again", async () => {
+  it("★ error: the take is kept — «إعادة» and «أعد المحاولة», which submits again", async () => {
     const user = userEvent.setup();
     const props = show({ state: "error", message: "لا اتصال" });
     expect(screen.getByTestId("take")).toBeInTheDocument();

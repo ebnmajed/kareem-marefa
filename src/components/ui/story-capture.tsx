@@ -16,7 +16,7 @@ import { usePlayPortal } from "@/components/ui/scope-portal";
 // opens the camera is the member's own.
 //
 // Our screen begins AFTER the take: the review (the caller's preview — a photo, or a video with its own play button),
-// the one caption line, «أعد» (back to the three) and «انشر», the upload's progress, and a failure that keeps the take
+// the one caption line, «إعادة» (back to the three) and «انشر», the upload's progress, and a failure that keeps the take
 // with «أعد المحاولة». The notice says where the post goes, at the point of upload (REQ-EVT-013).
 
 // The wildcard is spliced in rather than written after a slash: the registry gate strips «/» + «*» as a comment opener
