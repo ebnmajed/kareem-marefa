@@ -18,6 +18,7 @@ const FILES = [
   "content/0003_story_video.sql",
   "content/0004_story_moderation.sql",
   "content/0005_resolve_report_story_frame.sql",
+  "content/01_story_media_size.sql", // DEC-295 §3 — the 50 MB ceiling (0226 once promoted)
 ];
 
 async function prepare(tx: Tx) {
@@ -220,7 +221,8 @@ describe("RPC-begin_story_video / record_story_video / fail_story_video", () => 
     });
   });
 
-  it("✗ outside the gate, on a path not this frame's, over 60 MB declared", async () => {
+  // ★ DEC-295 §3 (a ledger line): the ceiling moved 60 MB → 50 MB: the Free plan's global upload limit caps every bucket at 50 MB.
+  it("✗ outside the gate, on a path not this frame's, over 50 MB declared; ✓ a 49 MB camera clip", async () => {
     await withTx(async (tx) => {
       const f = await prepare(tx);
       const frame = crypto.randomUUID();
@@ -230,7 +232,10 @@ describe("RPC-begin_story_video / record_story_video / fail_story_video", () => 
       await tx.as(f.a.members[1].claims);
       expect(await errorCode(() => tx.q(`select public.begin_story_video($1, $2, $3, 1000)`, [frame, f.m2.a.published, source(f.a.id, f.m2.a.published, crypto.randomUUID())]))).toBe("22023");
       expect(await errorCode(() => tx.q(`select public.begin_story_video($1, $2, $3, 1000)`, [frame, f.m2.a.published, source(f.a.id, f.m2.a.published, frame, "svg")]))).toBe("22023");
-      expect(await errorCode(() => tx.q(`select public.begin_story_video($1, $2, $3, 62914561)`, [frame, f.m2.a.published, source(f.a.id, f.m2.a.published, frame)]))).toBe("23514");
+      expect(await errorCode(() => tx.q(`select public.begin_story_video($1, $2, $3, 52428801)`, [frame, f.m2.a.published, source(f.a.id, f.m2.a.published, frame)]))).toBe("23514");
+      await tx.q(`select public.begin_story_video($1, $2, $3, 51380224)`, [frame, f.m2.a.published, source(f.a.id, f.m2.a.published, frame)]);
+      await tx.asOwner();
+      expect(await tx.q(`select file_size_limit::bigint::text as n from storage.buckets where id = 'story-media'`)).toEqual([{ n: "52428800" }]);
     });
   });
 

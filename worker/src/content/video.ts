@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { STORY_VIDEO_MAX_BYTES } from "@kareem/storage-paths";
 import { promisify } from "node:util";
 
 // An attendee's story video, IN the worker image — REQ-STO-016, DEC-248 §6, DEC-181.
@@ -7,8 +8,9 @@ import { promisify } from "node:util";
 // and zip. No npm package touches the bytes: this file spawns the binaries as pdf.ts spawns pdftoppm.
 //
 // ★ THREE RULES THIS FILE EXISTS TO HOLD.
-//   1. The server decides the limits — 15 seconds and 60 MB — from `ffprobe`'s reading of the bytes that landed,
-//      never from the client's word.
+//   1. The server decides from the bytes that landed, never from the client's word: the size (50 MB) is the object's
+//      own length, and the length kept is the first 15 seconds of whatever was uploaded (DEC-295 §3 — a longer video
+//      is trimmed, not refused).
 //   2. Nothing a phone wrote into the container survives. A phone's video carries its GPS position in its container
 //      exactly as a photograph carries it in EXIF (REQ-EVT-011): `-map_metadata -1` drops the global tags, the
 //      per-stream `-map_metadata:s:* -1` the stream tags, `-map_chapters -1` the chapters, and the EXPLICIT maps with
@@ -20,16 +22,19 @@ import { promisify } from "node:util";
 
 const execFileP = promisify(execFile);
 
-/** REQ-STO-016 — named once. The capture stops at 15.0 s; one frame of container rounding is tolerated. */
+/** REQ-STO-016, DEC-295 §3 — named once. A story video is at most 15.0 s: the rendition keeps the FIRST 15.0 s of any
+ *  accepted source and nothing after — a 40-second clip from the phone's camera app is stored as its first 15 seconds,
+ *  never refused for its length. (`too_long` survives only as a reason on rows failed before DEC-295.) */
 export const STORY_VIDEO_MAX_SECONDS = 15;
-export const STORY_VIDEO_TOLERANCE_SECONDS = 0.1;
-/** 60 MB — the same figure as the `story-media` bucket's `file_size_limit` (0198), which refuses the PUT at the edge. */
-export const STORY_VIDEO_MAX_BYTES = 60 * 1024 * 1024;
+/** 50 MB — the bucket's own `file_size_limit` refuses a larger PUT at the edge; this refuses one that ever lands. The
+ *  one figure lives in the path builder's package, shared with the app (notes/story-media.md §8). */
+export { STORY_VIDEO_MAX_BYTES };
 /** The rendition: at most 720 px on the short side, 30 fps, 2.5 Mbit/s video, 128 kbit/s audio — ≈ 5 MB for 15 s. */
 export const STORY_VIDEO_SHORT_SIDE = 720;
 export const STORY_VIDEO_MAX_DIMENSION = 4096;
 export const FFPROBE_TIMEOUT_MS = 15_000;
-export const FFMPEG_TIMEOUT_MS = 120_000;
+/** 15 s of a 4K60 HEVC source decoded in software on two threads, scaled to 720 p and encoded — with room. */
+export const FFMPEG_TIMEOUT_MS = 240_000;
 export const POSTER_TIMEOUT_MS = 15_000;
 
 /** ffmpeg's own demuxer names — the only two this task will ever hand it. */
@@ -84,42 +89,72 @@ export interface ProbeResult {
   streams?: ProbeStream[];
 }
 
-export const VIDEO_CODECS = new Set(["h264", "hevc", "vp8", "vp9", "av1"]);
-export const AUDIO_CODECS = new Set(["aac", "opus", "vorbis", "mp3"]);
+/** What a phone or a browser records, and what Debian's ffmpeg 5.1 decodes (libdav1d for AV1). MPEG-4 Part 2 is an
+ *  older Android's 3GP. Anything else is `unsupported`. */
+export const VIDEO_CODECS = new Set(["h264", "hevc", "vp8", "vp9", "av1", "mpeg4"]);
+/** An audio track in one of these is kept (re-encoded to AAC). A track in any other — an iPhone 16's spatial-audio
+ *  APAC, which ffmpeg 5.1 cannot decode and reads as `none` — is DROPPED, never a reason to refuse the video. */
+export const AUDIO_CODECS = new Set([
+  "aac", "opus", "vorbis", "mp3", "alac", "flac", "ac3", "eac3", "amr_nb", "amr_wb",
+  "pcm_s16le", "pcm_s16be", "pcm_s24le", "pcm_s24be", "pcm_s32le", "pcm_f32le", "pcm_u8",
+]);
 
-export type ProbeVerdict =
-  | { ok: true; durationSeconds: number; hasAudio: boolean }
-  | { ok: false; reason: "too_long" | "too_large" | "unsupported" };
-
-/** The server's decision on what was uploaded — from ffprobe's reading and the object's own byte length, never from
- *  anything the client declared. */
-export function judgeProbe(probe: ProbeResult, byteSize: number): ProbeVerdict {
-  if (!Number.isFinite(byteSize) || byteSize <= 0 || byteSize > STORY_VIDEO_MAX_BYTES) return { ok: false, reason: "too_large" };
+/** The streams the rendition is made from, by ABSOLUTE index: the first allowed video stream and the first decodable
+ *  audio stream (null — the video is silent). Null when there is no allowed video at all. */
+export function pickStreams(probe: ProbeResult): { video: ProbeStream; audioIndex: number | null } | null {
   const streams = probe.streams ?? [];
-  const video = streams.find((s) => s.codec_type === "video");
-  if (!video || !video.codec_name || !VIDEO_CODECS.has(video.codec_name)) return { ok: false, reason: "unsupported" };
-  if ((video.width ?? 0) > STORY_VIDEO_MAX_DIMENSION || (video.height ?? 0) > STORY_VIDEO_MAX_DIMENSION) return { ok: false, reason: "unsupported" };
-  const audio = streams.find((s) => s.codec_type === "audio");
-  if (audio && (!audio.codec_name || !AUDIO_CODECS.has(audio.codec_name))) return { ok: false, reason: "unsupported" };
-  const duration = Number(probe.format?.duration ?? video.duration);
-  if (!Number.isFinite(duration) || duration <= 0) return { ok: false, reason: "unsupported" };
-  if (duration > STORY_VIDEO_MAX_SECONDS + STORY_VIDEO_TOLERANCE_SECONDS) return { ok: false, reason: "too_long" };
-  return { ok: true, durationSeconds: duration, hasAudio: !!audio };
+  const video = streams.find((s) => s.codec_type === "video" && !!s.codec_name && VIDEO_CODECS.has(s.codec_name));
+  if (!video) return null;
+  const audio = streams.find((s) => s.codec_type === "audio" && !!s.codec_name && AUDIO_CODECS.has(s.codec_name));
+  return { video, audioIndex: audio ? audio.index : null };
 }
 
-/** The one rendition. Autorotation is ffmpeg's default, so the display matrix is applied to the pixels and none is
- *  written; the scale keeps the aspect, the short side at most 720 px, both sides even. */
-export function ffmpegArgs(demuxer: StoryVideoDemuxer, input: string, output: string, hasAudio: boolean): string[] {
+function seconds(v: string | undefined): number | null {
+  const n = Number(v);
+  return v !== undefined && Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** The container's own duration, else the longest stream's — null when neither is written (a MediaRecorder WebM writes
+ *  `N/A`: its header goes out before the recording ends). Informational since DEC-295: nothing is refused for its
+ *  length, and the stored duration is read from the rendition, which ffmpeg writes whole. */
+export function durationFromProbe(probe: { format?: { duration?: string }; streams?: { duration?: string }[] }): number | null {
+  const format = seconds(probe.format?.duration);
+  if (format !== null) return format;
+  const streams = (probe.streams ?? []).map((s) => seconds(s.duration)).filter((n): n is number => n !== null);
+  return streams.length > 0 ? Math.max(...streams) : null;
+}
+
+export type ProbeVerdict =
+  | { ok: true; durationSeconds: number | null; hasAudio: boolean; videoIndex: number; audioIndex: number | null }
+  | { ok: false; reason: "too_large" | "unsupported" };
+
+/** The server's decision on what was uploaded — from ffprobe's reading and the object's own byte length, never from
+ *  anything the client declared. ★ Length is not a reason to refuse (DEC-295 §3): `ffmpegArgs()` keeps the first 15 s. */
+export function judgeProbe(probe: ProbeResult, byteSize: number): ProbeVerdict {
+  if (!Number.isFinite(byteSize) || byteSize <= 0 || byteSize > STORY_VIDEO_MAX_BYTES) return { ok: false, reason: "too_large" };
+  const picked = pickStreams(probe);
+  if (!picked) return { ok: false, reason: "unsupported" };
+  const { video, audioIndex } = picked;
+  if ((video.width ?? 0) > STORY_VIDEO_MAX_DIMENSION || (video.height ?? 0) > STORY_VIDEO_MAX_DIMENSION) return { ok: false, reason: "unsupported" };
+  return { ok: true, durationSeconds: durationFromProbe(probe), hasAudio: audioIndex !== null, videoIndex: video.index, audioIndex };
+}
+
+/** The one rendition, from the two streams `pickStreams()` chose (by absolute index). Autorotation is ffmpeg's
+ *  default, so the display matrix is applied to the pixels and none is written; the scale keeps the aspect, the short
+ *  side at most 720 px, both sides even. ★ `-t 15` is an INPUT option: the demuxer stops reading at 15.0 s, so a long
+ *  4K source is never decoded past what is kept (DEC-295 §3). */
+export function ffmpegArgs(demuxer: StoryVideoDemuxer, input: string, output: string, streams: { videoIndex: number; audioIndex: number | null }): string[] {
   const s = STORY_VIDEO_SHORT_SIDE;
+  const hasAudio = streams.audioIndex !== null;
   return [
     "-hide_banner", "-nostdin", "-v", "error", "-y",
     "-protocol_whitelist", "file",
     "-f", demuxer,
+    "-t", String(STORY_VIDEO_MAX_SECONDS),
     "-i", input,
-    "-map", "0:v:0",
-    ...(hasAudio ? ["-map", "0:a:0"] : []),
+    "-map", `0:${streams.videoIndex}`,
+    ...(hasAudio ? ["-map", `0:${streams.audioIndex}`] : []),
     "-dn", "-sn",
-    "-t", String(STORY_VIDEO_MAX_SECONDS + STORY_VIDEO_TOLERANCE_SECONDS),
     // `trunc(…/2)*2`: a source with an odd short side (719 px) would otherwise keep it, and libx264 refuses an odd
     // dimension in yuv420p. The other side is `-2`, which ffmpeg already rounds to even.
     "-vf", `scale='if(lte(iw,ih),trunc(min(${s},iw)/2)*2,-2)':'if(lte(iw,ih),-2,trunc(min(${s},ih)/2)*2)',format=yuv420p`,
@@ -139,15 +174,21 @@ export function ffmpegArgs(demuxer: StoryVideoDemuxer, input: string, output: st
   ];
 }
 
-/** One poster frame from the STRIPPED rendition — never the source — as PNG, for cwebp to make WebP. */
+/** One poster frame from the STRIPPED rendition — never the source — as PNG, for cwebp to make WebP. Not the first
+ *  frame: a phone's first frames are often dark while the exposure settles, and a black poster reads as a broken
+ *  video. From `min(1 s, d/4)` the `thumbnail` filter picks, of the next ~1 s of frames, the one closest to their
+ *  average — a frame representative of the shot rather than a fade or a flash. Fewer frames than that (a very short
+ *  clip) and it picks from those it has. */
+export const POSTER_SAMPLE_FRAMES = 30;
 export function posterArgs(rendition: string, output: string, durationSeconds: number): string[] {
-  const at = Math.max(0, Math.min(0.5, durationSeconds / 2));
+  const at = Math.max(0, Math.min(1, durationSeconds / 4));
   return [
     "-hide_banner", "-nostdin", "-v", "error", "-y",
     "-protocol_whitelist", "file",
+    "-ss", at.toFixed(3),
     "-f", "mp4",
     "-i", rendition,
-    "-ss", at.toFixed(3),
+    "-vf", `thumbnail=${POSTER_SAMPLE_FRAMES}`,
     "-frames:v", "1",
     "-f", "image2", "-c:v", "png",
     output,
@@ -163,7 +204,7 @@ export function cwebpPosterArgs(input: string, output: string): string[] {
 export const ALLOWED_FORMAT_TAGS = new Set(["major_brand", "minor_version", "compatible_brands"]);
 export interface RenditionProbe {
   format?: { duration?: string; tags?: Record<string, string> };
-  streams?: { codec_type?: string; width?: number; height?: number; tags?: Record<string, string> }[];
+  streams?: { codec_type?: string; width?: number; height?: number; duration?: string; tags?: Record<string, string> }[];
   chapters?: unknown[];
 }
 export function auditRendition(probe: RenditionProbe): string | null {
@@ -200,9 +241,9 @@ export function auditArgs(demuxer: "mp4" | StoryVideoDemuxer, input: string): st
 export class ToolTimeout extends Error {}
 
 /** Spawns one of the image's binaries with a wall-clock limit; a timeout kills it with SIGKILL. */
-export async function runTool(cmd: string, args: string[], timeoutMs: number): Promise<string> {
+export async function runTool(cmd: string, args: string[], timeoutMs: number, maxBuffer = 1024 * 1024): Promise<string> {
   try {
-    const { stdout } = await execFileP(cmd, args, { timeout: timeoutMs, killSignal: "SIGKILL", maxBuffer: 1024 * 1024 });
+    const { stdout } = await execFileP(cmd, args, { timeout: timeoutMs, killSignal: "SIGKILL", maxBuffer });
     return stdout;
   } catch (e) {
     const err = e as NodeJS.ErrnoException & { stderr?: string; killed?: boolean; signal?: string };

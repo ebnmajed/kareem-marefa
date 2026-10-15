@@ -1,21 +1,23 @@
 import type { Task } from "graphile-worker";
 import { createHash } from "node:crypto";
-import { readFile, stat, writeFile } from "node:fs/promises";
+import { open, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { storyVideoPath, storyVideoPosterPath, storyVideoSourcePath, type StoryVideoSourceExt } from "@kareem/storage-paths";
-import { deleteObject, downloadObject, isNotFound, uploadObject } from "../content/storage.js";
+import { deleteObject, downloadObjectToFile, isNotFound, uploadObject } from "../content/storage.js";
 import { withTempDir } from "../content/pdf.js";
 import { sniffImageKind } from "../content/exif.js";
 import {
   FFMPEG_TIMEOUT_MS,
   FFPROBE_TIMEOUT_MS,
   POSTER_TIMEOUT_MS,
+  STORY_VIDEO_MAX_SECONDS,
   ToolTimeout,
   auditArgs,
   auditRendition,
   cwebpPosterArgs,
   ffmpegArgs,
   ffprobeArgs,
+  durationFromProbe,
   judgeProbe,
   posterArgs,
   runTool,
@@ -28,8 +30,9 @@ import {
 // (supabase/proposed/content/0003) the moment the browser's own PUT to `story-media` succeeded; key
 // `story_video:{frame_id}`, queue `story_video` — one transcode at a time on the worker — three attempts.
 //
-// ★ The bytes are sniffed, then `ffprobe` decides the 15-second and 60 MB limits, then `ffmpeg` writes ONE H.264/AAC
-// MP4 with every container tag and every non-A/V track dropped, the rendition is PROBED AGAIN and refused if anything a
+// ★ The source is streamed to disk and sniffed, `ffprobe` reads its streams and the object's own length decides the
+// 50 MB ceiling, then `ffmpeg` writes ONE H.264/AAC MP4 of the FIRST 15.0 s (DEC-295 §3 — a longer video is trimmed,
+// never refused) with every container tag and every non-A/V track dropped, the rendition is PROBED AGAIN and refused if anything a
 // phone wrote survived, a poster frame is cut from the rendition, both are uploaded, `record_story_video()` makes the
 // frame visible (its 24 hours start then), and the source is deleted. Any refusal — `ffprobe`'s, the sniff's, the
 // audit's, a timeout — calls `fail_story_video()`: the frame is `failed`, its author reads «تعذّر», nobody else sees
@@ -57,8 +60,15 @@ function isPayload(p: unknown): p is Payload {
 
 const BUCKET = "story-media";
 
+/** Up to 50 MB from Storage, same region as the worker — minutes of room for a slow link. */
+const SOURCE_DOWNLOAD_TIMEOUT_MS = 300_000;
+
+/** The source is not there (see the download): the frame is already failed, nothing to retry. */
+class Gone extends Error {}
+
 class Refused extends Error {
-  constructor(readonly reason: "too_long" | "too_large" | "unsupported" | "failed", detail: string) {
+  // ★ No `too_long` since DEC-295 §3: a longer video keeps its first 15 s. The reason survives on older failed rows.
+  constructor(readonly reason: "too_large" | "unsupported" | "failed", detail: string) {
     super(detail);
   }
 }
@@ -92,45 +102,53 @@ export const transcode_story_video: Task = async (payload, helpers) => {
     return fail("failed", "the source path is not this frame's", { deleteFiles: false });
   }
 
-  let raw: Uint8Array;
-  try {
-    raw = await downloadObject(BUCKET, sourcePath);
-  } catch (e) {
-    // Storage down or slow is not «gone»: retried, and failed only on the last attempt (the header's contract).
-    if (!isNotFound(e)) {
-      if (helpers.job.attempts >= helpers.job.max_attempts) return fail("failed", (e as Error).message);
-      throw e;
-    }
-    // Gone already: a retry after a run that finished, or a PUT that never happened. Fail the frame if it is still
-    // processing (a no-op otherwise) — nothing is left to transcode.
-    await helpers.query(`select public.fail_story_video($1, 'failed') as envelope`, [frameId]);
-    helpers.logger.warn(`transcode_story_video: ${frameId} — no source at ${sourcePath}: ${(e as Error).message}`);
-    return;
-  }
-
   try {
     await withTempDir("story-", async (dir) => {
-      const demuxer = sniffVideoContainer(raw.subarray(0, 128));
-      if (!demuxer) throw new Refused("unsupported", "not an ISO-BMFF, QuickTime or EBML container");
-
       const source = join(dir, "source");
       const rendition = join(dir, "video.mp4");
       const posterPng = join(dir, "poster.png");
       const posterWebp = join(dir, "poster.webp");
-      await writeFile(source, raw);
+
+      // Streamed to disk, never held in memory: a source may be 50 MB (DEC-295 §3).
+      let byteLength: number;
+      try {
+        byteLength = await downloadObjectToFile(BUCKET, sourcePath, source, SOURCE_DOWNLOAD_TIMEOUT_MS);
+      } catch (e) {
+        // Gone already: a retry after a run that finished, or a PUT that never happened. Fail the frame if it is still
+        // processing (a no-op otherwise) — nothing is left to transcode. Anything else (Storage down or slow) is not
+        // «gone»: it falls to the outer handler, retried and failed only on the last attempt.
+        if (!isNotFound(e)) throw e;
+        await helpers.query(`select public.fail_story_video($1, 'failed') as envelope`, [frameId]);
+        helpers.logger.warn(`transcode_story_video: ${frameId} — no source at ${sourcePath}: ${(e as Error).message}`);
+        throw new Gone();
+      }
+
+      const head = new Uint8Array(128);
+      const fh = await open(source, "r");
+      try {
+        await fh.read(head, 0, 128, 0);
+      } finally {
+        await fh.close();
+      }
+      const demuxer = sniffVideoContainer(head);
+      if (!demuxer) throw new Refused("unsupported", "not an ISO-BMFF, QuickTime or EBML container");
 
       const probe = JSON.parse(await runTool("ffprobe", ffprobeArgs(demuxer, source), FFPROBE_TIMEOUT_MS)) as ProbeResult;
-      const verdict = judgeProbe(probe, raw.byteLength);
-      if (!verdict.ok) throw new Refused(verdict.reason, `ffprobe: ${verdict.reason}`);
+      const verdict = judgeProbe(probe, byteLength);
+      if (!verdict.ok) {
+        const codecs = (probe.streams ?? []).map((s) => `${s.codec_type ?? "?"}:${s.codec_name ?? "?"}`).join(",");
+        throw new Refused(verdict.reason, `ffprobe: ${verdict.reason} (${demuxer}, ${byteLength} bytes, ${codecs})`);
+      }
 
-      await runTool("ffmpeg", ffmpegArgs(demuxer, source, rendition, verdict.hasAudio), FFMPEG_TIMEOUT_MS);
+      await runTool("ffmpeg", ffmpegArgs(demuxer, source, rendition, verdict), FFMPEG_TIMEOUT_MS);
 
       // ★ The proof, on every run: the rendition is read back and refused if anything survived.
       const out = JSON.parse(await runTool("ffprobe", auditArgs("mp4", rendition), FFPROBE_TIMEOUT_MS)) as RenditionProbe;
       const wrong = auditRendition(out);
       if (wrong) throw new Refused("failed", `rendition audit: ${wrong}`);
       const video = out.streams?.find((s) => s.codec_type === "video");
-      const durationSeconds = Number(out.format?.duration ?? verdict.durationSeconds);
+      // The rendition's own length — trimmed to 15.0 s, and measured from a file ffmpeg wrote whole.
+      const durationSeconds = durationFromProbe(out) ?? Math.min(verdict.durationSeconds ?? STORY_VIDEO_MAX_SECONDS, STORY_VIDEO_MAX_SECONDS);
 
       await runTool("ffmpeg", posterArgs(rendition, posterPng, durationSeconds), POSTER_TIMEOUT_MS);
       await runTool("cwebp", cwebpPosterArgs(posterPng, posterWebp), POSTER_TIMEOUT_MS);
@@ -155,9 +173,11 @@ export const transcode_story_video: Task = async (payload, helpers) => {
         createHash("sha256").update(bytes).digest("hex"),
       ]);
       await deleteObject(BUCKET, sourcePath).catch(() => undefined);
-      helpers.logger.info(`transcode_story_video: ${frameId} visible — ${durationSeconds.toFixed(1)} s, ${size} bytes, no tag left`);
+      const sourceSeconds = verdict.durationSeconds === null ? "?" : verdict.durationSeconds.toFixed(1);
+      helpers.logger.info(`transcode_story_video: ${frameId} visible — ${durationSeconds.toFixed(1)} s kept of ${sourceSeconds} s, ${byteLength} → ${size} bytes, no tag left`);
     });
   } catch (e) {
+    if (e instanceof Gone) return;
     if (e instanceof Refused) return fail(e.reason, e.message);
     if (e instanceof ToolTimeout) return fail("failed", e.message);
     if (e instanceof Error && e.message.startsWith("content/video:")) return fail("failed", e.message);

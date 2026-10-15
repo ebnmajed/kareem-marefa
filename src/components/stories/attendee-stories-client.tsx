@@ -7,7 +7,9 @@ import { Sheet } from "@/components/ui/sheet";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
+import { CameraIcon, ImageIcon } from "@/components/ui/icons";
 import { formatNumber } from "@/components/sessions/numerals";
+import { STORY_VIDEO_MAX_MB } from "@/components/stories/media";
 import { REMOVE_ATTENDEE_FRAME_INITIAL, type RemoveAttendeeFrameState } from "@/components/stories/state";
 import type { AttendeeStoryFrame } from "@/lib/dal/story-frames";
 
@@ -34,6 +36,10 @@ export function AttendeeStoriesClient({
   const t = useTranslations("stories.admin");
   const tf = useTranslations("stories.frame");
   const tm = useTranslations("photos.moderation");
+  const tc = useTranslations("stories.capture");
+  // A failed video says why (story-media.md §1.2) — the same words the author read in the capture.
+  const failedWord = (f: AttendeeStoryFrame) =>
+    f.failureReason === "too_long" ? tc("tooLong") : f.failureReason === "too_large" ? tc("tooLarge", { size: formatNumber(STORY_VIDEO_MAX_MB) }) : f.failureReason === "unsupported" ? tc("unsupported") : tf("failed");
   const toast = useToast();
   const [target, setTarget] = useState<AttendeeStoryFrame | null>(null);
   // ★ Every answer is SAID, never swallowed: «سُجّل القرار» when the database removed it (or had already), the
@@ -71,7 +77,13 @@ export function AttendeeStoriesClient({
               {f.thumbUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- a signed URL
                 <img src={f.thumbUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
-              ) : null}
+              ) : (
+                // ★ No picture yet — processing, or a frame that failed and never had one: a neutral panel with the kind's
+                // glyph, never an empty dark box that reads as a black video (the owner's report, 2026-10-14).
+                <span aria-hidden className="absolute inset-0 flex items-center justify-center bg-raised text-2xl text-fg-muted">
+                  {f.kind === "video" ? <CameraIcon /> : <ImageIcon />}
+                </span>
+              )}
               {pill ? (
                 <span className="relative self-start rounded-pill bg-chrome px-1.5 py-0.5 text-caption font-bold">
                   <bdi dir={f.kind === "video" ? "ltr" : undefined}>{pill}</bdi>
@@ -79,7 +91,7 @@ export function AttendeeStoriesClient({
               ) : null}
               {f.state !== "visible" || f.hidden ? (
                 <span className="relative self-start rounded-pill bg-chrome px-1.5 py-0.5 text-caption">
-                  {f.state === "failed" ? tf("failed") : f.state === "processing" ? tf("processing") : t("hidden")}
+                  {f.state === "failed" ? failedWord(f) : f.state === "processing" ? tf("processing") : t("hidden")}
                 </span>
               ) : null}
               {/* `AdminAttendance.dc.html`: the poster's team ring at the start, «أزل» at the end, on one row. The name is

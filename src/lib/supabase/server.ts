@@ -2,6 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { createServerClient as createSsrClient } from "@supabase/ssr";
 import { supabaseEnv } from "@/lib/supabase/env";
+import { withClockSkewRetry } from "@/lib/supabase/skew-retry";
 
 // The server-side client for ALL data access (04 §5.1). It runs as
 // `authenticated` with the user's JWT, so RLS applies to every query it
@@ -11,6 +12,9 @@ export async function createServerClient() {
   const { url, key } = supabaseEnv();
   const cookieStore = await cookies();
   return createSsrClient(url, key, {
+    // A token minted a moment ago can be «issued at future» to PostgREST's clock (PGRST303): retried, not shown as an
+    // error page. skew-retry.ts.
+    global: { fetch: withClockSkewRetry() },
     cookies: {
       getAll() {
         return cookieStore.getAll();

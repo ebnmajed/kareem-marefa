@@ -4785,12 +4785,12 @@ holding pauses; swiping down closes.
 
 #### REQ-STO-011 — A checked-in attendee adds a frame from the room
 **Serves:** STO-11 · owner 2026-10-04 (`DEC-NEXT-41`)
-A photograph by a tap or a video of up to 15 seconds by a hold, from the camera or the gallery, with one caption line.
+A photograph or a video from the phone's own camera or the gallery, with one caption line (`DEC-295`).
 **Acceptance:**
 - «أضف» is present only for a member checked in to the session, from its start until 24 hours after its end, and the
   server refuses everyone else whatever the screen shows.
-- Recording a video can be started and stopped by taps alone.
-- The 15-second limit is enforced in capture and again on what was uploaded.
+- The take is made by the platform's own camera through a file input; the caption is added on our screen after it.
+- The 15-second limit is enforced on what was uploaded: a longer video keeps its first 15 seconds.
 
 #### REQ-STO-012 — An attendee's photograph is an album photograph; a video is a frame only
 **Serves:** STO-12 · `REQ-EVT-010` · `REQ-EVT-011` · `REQ-PTS-006`
