@@ -492,6 +492,8 @@ export function StoryViewer({ open, stories, storyIndex, onClose: closeNow, onFr
             </div>
 
             <div className={`relative z-10 flex items-center gap-2 px-4 ${held ? "opacity-0" : ""}`}>
+              {/* ★ DEC-297 (add-only): the frame's view count, at the inline-start of the bottom row — the caller's node. */}
+              {frame.views ?? null}
               {frame.reactions ? (
                 <ReactionBar label={frame.reactions.label} items={frame.reactions.items} onToggle={frame.reactions.onToggle} pending={frame.reactions.pending} className="flex-nowrap! gap-1.5!" />
               ) : null}

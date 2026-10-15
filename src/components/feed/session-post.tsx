@@ -19,6 +19,7 @@ import { Poster } from "@/components/ui/poster";
 import { MomentPart, ReserveCta, ReserveMoment, ReserveRefused, type ReserveMomentLabels } from "@/components/sessions/moment-reserve";
 import { SessionCta } from "@/components/ui/session-cta";
 import { Sticker } from "@/components/ui/sticker";
+import { ViewCount, type ViewCountData } from "@/components/views/view-count";
 
 // A session post on the home's feed — SCR-010, `Home.dc.html:45-93`, `HomeDesktop.dc.html:51-91`,
 // REQ-UIX-055, DEC-206 §4.45 – §4.61, DEC-207 §2. Built from the artboard, not from the timeline's card.
@@ -55,7 +56,7 @@ function presenterLine(post: SessionPostData) {
   return lead;
 }
 
-export async function SessionPost({ post, locale, today }: { post: SessionPostData; locale: string; today: string }) {
+export async function SessionPost({ post, locale, today, views }: { post: SessionPostData; locale: string; today: string; views?: ViewCountData }) {
   const [t, tDays, tEvent, tBrowse, tm] = await Promise.all([
     getTranslations("feed"),
     getTranslations("sessions.days"),
@@ -197,6 +198,8 @@ export async function SessionPost({ post, locale, today }: { post: SessionPostDa
                 <CommentIcon className="text-base" />
                 {post.commentCount > 0 ? <bdi className="tabular-nums">{formatNumber(post.commentCount)}</bdi> : null}
               </Link>
+              {/* ★ Views (REQ-VEW-003): how many members saw this post — never at 0; the list for its presenters and staff. */}
+              <ViewCount kind="post" id={post.id} views={views} />
               <span className="flex-1" />
               {seats ? <span className="text-caption text-fg-muted">{seats}</span> : null}
               {shareUrl ? (

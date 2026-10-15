@@ -6,6 +6,7 @@ import { Avatar, teamColorOrNull } from "@/components/ui/avatar";
 import { formatDate, formatNumber, formatTime } from "@/components/sessions/numerals";
 import type { StoryFrame, StorySession } from "@/lib/dal/stories";
 import type { StoryMediaHrefs } from "@/lib/dal/story-frames";
+import { markCompleted } from "@/components/views/tracker";
 
 // The frame bodies — what `ui/story-viewer` draws in its slot (`StoryLive`, `StoryPhoto`, `StoryRecap`,
 // `StoryAttendee` .dc.html; REQ-STO-004, REQ-STO-013). `content`'s, rendered from `sessions'` DTO: every figure is
@@ -218,7 +219,17 @@ export function FrameBody({
       }
       return (
         <div className="relative h-full bg-void">
-          <video ref={videoRef} src={hrefs.videoUrl} poster={hrefs.posterUrl} muted playsInline preload="auto" className="absolute inset-0 h-full w-full object-contain" />
+          {/* ★ DEC-297 (REQ-VEW-002): a video watched to its end says so, once — «completed» on the frame's record. */}
+          <video
+            ref={videoRef}
+            src={hrefs.videoUrl}
+            poster={hrefs.posterUrl}
+            muted
+            playsInline
+            preload="auto"
+            onEnded={() => markCompleted({ kind: "frame", id: frame.id })}
+            className="absolute inset-0 h-full w-full object-contain"
+          />
           {length ? (
             // The length pill at the inline-end as `StoryAttendee` draws it — below the viewer's two header rows, never under them.
             <span className="absolute end-4 top-40 rounded-pill bg-chrome px-2.5 py-1 text-caption font-bold">

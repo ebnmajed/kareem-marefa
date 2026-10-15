@@ -12,7 +12,9 @@ import { Button } from "@/components/ui/button";
 import { formatNumber } from "@/components/sessions/numerals";
 import { FrameBody, frameAge, frameDurationMs } from "@/components/stories/frames";
 import { CaptureFlow } from "@/components/stories/capture-flow";
-import { recordStoryViewsAction, removeMeFromFrameAction, reportStoryFrameAction } from "@/components/stories/actions";
+import { removeMeFromFrameAction, reportStoryFrameAction } from "@/components/stories/actions";
+import { flushViews, markShown } from "@/components/views/tracker";
+import { ViewCount } from "@/components/views/view-count";
 import type { PreparedStories } from "@/components/stories/prepared";
 import type { StoryReactionKind } from "@/lib/dal/reactions";
 import { queueReaction } from "@/lib/reactions/queue";
@@ -26,7 +28,6 @@ import type { StoryFrame } from "@/lib/dal/stories";
 const REACTIONS: readonly StoryReactionKind[] = ["heart", "fire", "clap", "idea"];
 const GLYPH: Record<StoryReactionKind, string> = { heart: "❤️", fire: "🔥", clap: "👏", idea: "💡" };
 
-const VIEWS_FLUSH_MS = 4000;
 
 type ReactionEntry = PreparedStories["reactions"][string];
 
@@ -70,23 +71,11 @@ export function useStoryHost(prepared: PreparedStories) {
   const [report, setReport] = useState<{ frameId: string; error: string | null } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // ── views: a queue, flushed one action at a time ─────────────────────────
-  const queue = useRef<string[]>([]);
-  const inFlight = useRef(false);
-  const flush = useCallback(async () => {
-    // A loop, never a recursion: whatever arrived while a batch was in flight goes in the next one.
-    if (inFlight.current) return;
-    inFlight.current = true;
-    while (queue.current.length > 0) {
-      const batch = queue.current.splice(0, queue.current.length);
-      await recordStoryViewsAction(locale, batch);
-    }
-    inFlight.current = false;
-  }, [locale]);
-  // ★ BATCHED ON A TIMER, NOT PER FRAME (DEC-278). Server Actions run one at a time per client, so a view written the
-  // moment each frame appeared stood in front of every reaction tapped on it — the «I tapped and nothing happened» the
-  // owner saw. Views wait a few seconds and leave together, and always on close.
-  const flushTimer = useRef<number | null>(null);
+  // ── views (REQ-VEW-001, REQ-VEW-006, DEC-297): a frame shown is a frame seen, handed to the page's one tracker,
+  // which batches it with the feed's views and sends it through `POST /api/views` — never a Server Action, so a view
+  // never stands in front of a reaction (the DEC-278 trap the old timed flush worked around).
+  // While the list of who viewed is open, the story holds, as it does under the report sheet.
+  const [viewsOpen, setViewsOpen] = useState(false);
   // ★ The next frame's picture is fetched while this one shows (DEC-278), so a tap forward never waits on the network.
   const preloaded = useRef(new Set<string>());
   const preload = useCallback(
@@ -108,14 +97,9 @@ export function useStoryHost(prepared: PreparedStories) {
       const fi = si < 0 ? -1 : sessions[si].frames.findIndex((x) => x.id === frameId);
       if (fi >= 0) preload(sessions[si].frames[fi + 1] ?? sessions[si + 1]?.frames[sessions[si + 1].firstUnseenIndex]);
       setSeen((prev) => (prev.has(frameId) ? prev : new Set(prev).add(frameId)));
-      queue.current.push(frameId);
-      if (flushTimer.current === null)
-        flushTimer.current = window.setTimeout(() => {
-          flushTimer.current = null;
-          void flush();
-        }, VIEWS_FLUSH_MS);
+      markShown({ kind: "frame", id: frameId });
     },
-    [flush, preload, sessions],
+    [preload, sessions],
   );
 
   // One ref per video frame: the viewer's clock reads the element (REQ-STO-007's «a video its length»).
@@ -199,6 +183,8 @@ export function useStoryHost(prepared: PreparedStories) {
             ? { label: f.action.kind === "download_materials" ? t("action.downloadMaterials") : t("action.openSession"), href: f.action.href }
             : undefined,
           reactions: visible ? { label: t("viewer.reactions"), items, onToggle: (k: string) => void react(f.id, k) } : undefined,
+          // ★ DEC-297: how many members saw this frame — never at 0; who, for its owners and staff (views.md §1.2).
+          views: visible && f.views ? <ViewCount kind="frame" id={f.id} views={f.views} onOpenChange={setViewsOpen} className="text-fg-heading" /> : undefined,
           moderation:
             attendee && visible
               ? {
@@ -238,13 +224,11 @@ export function useStoryHost(prepared: PreparedStories) {
 
   const close = useCallback(() => {
     setOpenAt(null);
-    if (flushTimer.current !== null) {
-      window.clearTimeout(flushTimer.current);
-      flushTimer.current = null;
-    }
-    void flush();
+    setViewsOpen(false);
+    // The views seen in this opening leave now, ahead of the refresh that redraws the rings.
+    flushViews();
     router.refresh();
-  }, [flush, router]);
+  }, [router]);
 
   const labels = {
     dialog: t("viewer.dialog", { title: sessions[openAt ?? lastIndex]?.title ?? "" }),
@@ -277,7 +261,7 @@ export function useStoryHost(prepared: PreparedStories) {
         onClose={close}
         onFrameShown={onFrameShown}
         returnFocusTo={opener}
-        paused={report !== null}
+        paused={report !== null || viewsOpen}
         labels={labels}
       />
       <Sheet open={report !== null} onOpenChange={(o) => (o ? null : setReport(null))} title={t("moderation.report")}>

@@ -171,7 +171,7 @@ SQL the moment a table is renamed; `ENT-check_ins` cannot, because the name *is*
 | `EVT` | Event page | `DSC` | Discovery and search |
 | `INT` | i18n, RTL, typography | `NFR` | Non-functional |
 | `UIX` | Interface system ★ | `SUR` | Survey ★ |
-| `STO` | Session stories ★★ | | |
+| `STO` | Session stories ★★ | `VEW` | Views ★ |
 
 Sequences are **per area**, not global. A global sequence tempts renumbering, and a renumbered
 requirement breaks every citation pointing at it.

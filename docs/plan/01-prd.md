@@ -4785,7 +4785,8 @@ holding pauses; swiping down closes.
 **Serves:** STO-10
 **Acceptance:**
 - A viewed frame is recorded once per member, and the record survives a reload and another device.
-- No member, and no staff role, reads another member's views.
+- ★ Amended by `DEC-297`: the record is the member's, and who viewed a frame is shown to that frame's owners and staff
+  as `REQ-VEW-004` says; the count is shown to everyone who sees the frame (`REQ-VEW-003`).
 
 #### REQ-STO-011 — A checked-in attendee adds a frame from the room
 **Serves:** STO-11 · owner 2026-10-04 (`DEC-NEXT-41`)
@@ -4840,6 +4841,45 @@ A photograph or a video from the phone's own camera or the gallery, with one cap
 **Acceptance:**
 - No screen authors, edits or schedules a generated frame.
 - A cancelled session shows no frame to members and has no ring.
+
+## 25a. Views — `VEW` (`DEC-297`)
+
+#### REQ-VEW-001 — A view is counted when a member actually saw the thing
+**Serves:** the owner, 2026-10-15 (`DEC-297`)
+**Acceptance:**
+- Four subjects are counted: a story frame, a session's post in the feed, a session's recap, an announcement.
+- A view is at least half of the subject on screen for at least one second (a story frame: shown in the viewer).
+- A member's own subject is not counted for them, and nothing is counted inside an impersonation session.
+
+#### REQ-VEW-002 — Reach and impressions are recorded once, and recomputable
+**Acceptance:**
+- One record per member per subject holds the first and the last time seen and how many times; reach is the number of
+  records, impressions their sum.
+- A video frame's record also says whether it was watched to its end.
+- A member writes only their own records, for subjects they may see; the server re-derives both.
+
+#### REQ-VEW-003 — Everyone who sees a subject sees its count
+**Acceptance:**
+- A story frame, a post, a recap and an announcement show «N» unique viewers to every member who can see it.
+- A count is computed, never stored on the subject, and never shown at 0.
+
+#### REQ-VEW-004 — The subject's owners and staff see who viewed it
+**Acceptance:**
+- Tapping the count opens the list of members who viewed, newest first, to: an attendee frame's author; for a
+  generated frame, a post or a recap, the session's accepted presenters; an announcement's author; and every admin and
+  moderator. Anyone else sees the count only.
+- The list carries a member's display name and avatar, nothing else — never a time finer than the day.
+- An anonymised member leaves the list and the count.
+
+#### REQ-VEW-005 — Members are told their views are visible
+**Acceptance:**
+- `/app/me/privacy` and the privacy notice say, in one line, that the poster and staff can see that you viewed a story,
+  a post or an announcement.
+
+#### REQ-VEW-006 — Recording views never slows the screen
+**Acceptance:**
+- Views are batched on the device and sent at most every few seconds and when the page is left, through a Route
+  Handler, never a Server Action; a failed send is retried once and otherwise dropped.
 
 ---
 

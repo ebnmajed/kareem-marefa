@@ -24,7 +24,8 @@
       "deactivateReasonLabel": "سبب الطلب",
       "deactivateSubmit": "أرسل الطلب",
       "cancel": "إلغاء",
-      "deactivateSent": "أُرسل طلبك. سيراه مشرف مؤسستك في سجل التدقيق."
+      "deactivateSent": "أُرسل طلبك. سيراه مشرف مؤسستك في سجل التدقيق.",
+      "viewsNote": "يرى صاحب القصة أو المنشور أو الإعلان والمشرفون أنك شاهدته."
     },
     "avatar": {
       "prompt": {

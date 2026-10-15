@@ -703,7 +703,7 @@ The screens above are described in prose; this is the machine-checkable index be
 | SCR-005 legal | `REQ-NFR-015` |
 | SCR-007 public session card | `REQ-DSC-006`, `REQ-UIX-003` |
 | SCR-006 verify | `REQ-CRT-007`, `REQ-CRT-009`, `REQ-CRT-010`, `REQ-CRT-011`, `REQ-INT-010`, `REQ-UIX-115` |
-| SCR-010 home ★ **the sessions timeline** (DEC-112) | `REQ-TSK-004`, `REQ-REC-009`, `REQ-UIX-002`, `REQ-UIX-012`, `REQ-UIX-021`, `REQ-UIX-022`, `REQ-UIX-023`, ★ `REQ-STO-001` … `REQ-STO-007`, `REQ-STO-009` … `REQ-STO-016` — **the ring row, the story viewer and the capture** (wave 26) |
+| SCR-010 home ★ **the sessions timeline** (DEC-112) | `REQ-TSK-004`, `REQ-REC-009`, `REQ-UIX-002`, `REQ-UIX-012`, `REQ-UIX-021`, `REQ-UIX-022`, `REQ-UIX-023`, ★ `REQ-STO-001` … `REQ-STO-007`, `REQ-STO-009` … `REQ-STO-016` — **the ring row, the story viewer and the capture** (wave 26), ★ `REQ-VEW-001` … `REQ-VEW-004`, `REQ-VEW-006` — **the views count and who viewed, on a post, a recap, an announcement and a story frame** (`DEC-297`) |
 | SCR-011 sessions | `REQ-DSC-001`, `REQ-DSC-002`, `REQ-DSC-003`, `REQ-DSC-005`, `REQ-DSC-007`, `REQ-SES-011`, `REQ-UIX-003`, `REQ-UIX-005`, `REQ-UIX-012`, `REQ-UIX-021`, `REQ-UIX-022` |
 | SCR-012 event page | `REQ-UIX-024`, `REQ-SES-013`, `REQ-SES-008`, `REQ-SES-010`, `REQ-EVT-001` … `REQ-EVT-015`, `REQ-MAT-001`, `REQ-MAT-006`, `REQ-MAT-007`, `REQ-RSV-001` … `REQ-RSV-011`, `REQ-CAL-001`, `REQ-CAL-002`, `REQ-TSK-001` … `REQ-TSK-005`, `REQ-SES-014`, `REQ-UIX-003`, `REQ-UIX-004`, `REQ-UIX-015`, `REQ-UIX-018`, `REQ-UIX-019`, `REQ-ADM-021`, `REQ-DSG-027`, ★ `REQ-STO-008`, `REQ-STO-018` |
 | SCR-013 viewer | `REQ-MAT-002`, `REQ-MAT-003`, `REQ-MAT-004`, `REQ-MAT-005`, `REQ-MAT-007`, `REQ-MAT-010`, `REQ-MAT-011`, `REQ-MAT-012`, `REQ-UIX-005` |
@@ -722,7 +722,7 @@ The screens above are described in prose; this is the machine-checkable index be
 | SCR-026 notifications | `REQ-NTF-001`, `REQ-NTF-003`, `REQ-NTF-005`, `REQ-NTF-006`, `REQ-UIX-076` |
 | SCR-027 leaderboards | `REQ-LDR-001`, `REQ-LDR-002`, `REQ-LDR-003`, `REQ-LDR-007`, `REQ-LDR-008`, `REQ-UIX-078` |
 | SCR-028 companies | `REQ-LDR-004`, `REQ-LDR-005`, `REQ-LDR-006`, `REQ-UIX-079`, `REQ-UIX-082` |
-| SCR-029 settings ★ | `REQ-NTF-003`, `REQ-LDR-008`, `REQ-CAL-003`, `REQ-UIX-077`, ★ `REQ-UIX-117` — **`/app/me/privacy`, a hub page reached from here** (`DEC-NEXT-39`) |
+| SCR-029 settings ★ | `REQ-NTF-003`, `REQ-LDR-008`, `REQ-CAL-003`, `REQ-UIX-077`, ★ `REQ-UIX-117` — **`/app/me/privacy`, a hub page reached from here** (`DEC-NEXT-39`), ★ `REQ-VEW-005` — its line that views are visible (`DEC-297`) |
 | SCR-040 dashboard | `REQ-ADM-004` |
 | SCR-041 proposals | `REQ-PRO-005`, `REQ-PRO-007`, `REQ-PRO-009` |
 | SCR-042 sessions | `REQ-ADM-005`, `REQ-SES-003`, `REQ-SES-005`, `REQ-SES-012` |

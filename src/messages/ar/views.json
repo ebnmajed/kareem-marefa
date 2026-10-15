@@ -1,0 +1,8 @@
+{
+  "views": {
+    "count": "{count, plural, zero {لم يشاهده أحد} one {شاهده عضو واحد} two {شاهده عضوان} few {شاهده {value} أعضاء} many {شاهده {value} عضوًا} other {شاهده {value} عضو}}",
+    "title": "شاهدوه",
+    "more": "{count, plural, zero {} one {وعضو آخر} two {وعضوان آخران} few {و{value} أعضاء آخرين} many {و{value} عضوًا آخرين} other {و{value} عضو آخرين}}",
+    "failed": "تعذّر"
+  }
+}

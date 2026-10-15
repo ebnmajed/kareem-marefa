@@ -11306,3 +11306,29 @@ reservation** — a member who never reserved could not be checked in by hand at
    earns exactly what a code check-in earns (`REQ-CHK-008`).
 
 - **Documents changed:** `01-prd.md` (`REQ-CHK-008`), `03-permissions-rls.md`, `STATUS.md`
+
+## DEC-297 — Views: everyone sees how many, the owners and staff see who
+
+**Date:** 2026-10-15 · **Status:** accepted · **By:** the owner · **Refs:** REQ-VEW-001 … 006, REQ-STO-010 · **Amends:** `REQ-STO-010` (views were private to the member) · **Migration:** `0228`
+
+**The owner:** «now i want to add impressions and views, like how many users saw a post and how many users saw the
+story». Asked who sees the counts: **everyone**. Asked counts only or who viewed: **«who viewed for stories, posts and
+announcements so it is consistent and less custom rules for each»**.
+
+**Ruling.**
+1. **Four subjects**: a story frame, a session's post in the feed, a recap, an announcement. A view is ≥ 50 % of the
+   subject on screen for ≥ 1 s (the viewer's frame: shown). Own subjects and impersonation are not counted.
+2. **One record per member per subject** — first seen, last seen, times seen; a video's «watched to the end». Reach is
+   the headline; impressions are the sum. `story_views` (`0198`) is the stories' record and gains what it needs; the
+   other three share one new table. Written only through a definer function that re-derives visibility.
+3. **The count is shown to everyone who can see the subject** (`REQ-VEW-003`).
+4. **Who viewed — one rule for all four**: the subject's owners (an attendee frame's author; a session's accepted
+   presenters for a generated frame, a post or a recap; an announcement's author) and every admin and moderator. Name
+   and avatar only, no time finer than the day. ★ The owner's «who viewed» did not say to whom; the lead chose owners
+   and staff, Instagram's rule and the narrower reading of a privacy change. The owner may widen it.
+5. **Members are told** on the privacy page and in the notice (PDPL transparency). No opt-out — the owner asked for one
+   rule.
+6. **Not this decision:** conversions (taps into a session, reservations from a post), a views dashboard, per-day
+   history.
+
+- **Documents changed:** `00-overview.md`, `01-prd.md` (§25a, `REQ-STO-010`), `STATUS.md`

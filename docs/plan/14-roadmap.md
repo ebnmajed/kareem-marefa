@@ -1058,6 +1058,19 @@ migration (`0224`).
 **Demonstrable:** the seven messages rendered from real data at 600 px and 390 px; the owner's own read in Gmail web,
 the Gmail app, Apple Mail and Outlook.
 
+## M36 — views · `DEC-297`
+
+The owner's ask: how many members saw a post and a story, and who. Everyone sees the count; a subject's owners and
+staff see who viewed. One PR, one migration (`0228`).
+
+| Work | Requirements | Track | PR |
+|---|---|---|---|
+| What a view is, the record, the definer functions, the counts and the lists | `REQ-VEW-001`, `REQ-VEW-002`, `REQ-VEW-003`, `REQ-VEW-004` | lead + teammates | — |
+| The tracker, the count on four subjects, the list sheet, the privacy line | `REQ-VEW-003` … `REQ-VEW-006` | teammates | — |
+
+**Demonstrable:** two members view a post, a recap, an announcement and a story frame; both see «2»; the presenter
+and an admin see both names; a third member sees «2» and no names; the author's own view counts for nobody.
+
 ## 3. Dependencies
 
 ```mermaid

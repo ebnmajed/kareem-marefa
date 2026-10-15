@@ -7,6 +7,7 @@ import { getAchievementItems, type AchievementItem } from "@/lib/dal/recognition
 import { getSessionPosts } from "@/lib/dal/search";
 import { sessionClient } from "@/lib/dal/session";
 import { getShellData, type ShellAttention } from "@/lib/dal/shell";
+import { getViewCounts, type ViewCount } from "@/lib/dal/views";
 
 // The home's one read model — SCR-010, REQ-UIX-055, REQ-UIX-056, STORY-UIX-044, DEC-206, DEC-207.
 //
@@ -47,6 +48,9 @@ export interface Feed {
   recaps: Record<string, RecapExtra>;
   /** Staff only; null for a member. */
   attention: ShellAttention | null;
+  /** REQ-VEW-003 (DEC-297) — unique viewers per subject; a missing key means nothing to draw (never 0). A post and a
+   *  recap are both keyed by the session's id. */
+  views: { post: Record<string, ViewCount>; recap: Record<string, ViewCount>; announcement: Record<string, ViewCount> };
   timeZone: string;
   /** "YYYY-MM-DD" on the org's calendar. */
   today: string;
@@ -106,9 +110,14 @@ export const getFeed = cache(async (locale: string): Promise<Feed> => {
     return new Set(((data ?? []) as { session_id: string }[]).map((r) => r.session_id));
   };
 
-  const [photos, withMaterials] = await Promise.all([
+  const live = postsData.posts.filter((p) => p.phase !== "ended").map((p) => p.id);
+  const [photos, withMaterials, postViews, recapViews, announcementViews] = await Promise.all([
     settled("recap photos", getRecapPhotos(locale, ended), new Map<string, RecapPhotos>()),
     settled("recap materials", materialsRead(), new Set<string>()),
+    // Views are a figure beside an item, never the item: a failed read draws no counts and the feed renders.
+    settled("post views", getViewCounts(locale, "post", live), {}),
+    settled("recap views", getViewCounts(locale, "recap", ended), {}),
+    settled("announcement views", getViewCounts(locale, "announcement", announcements.map((a) => a.id)), {}),
   ]);
 
   const recaps: Record<string, RecapExtra> = {};
@@ -120,6 +129,7 @@ export const getFeed = cache(async (locale: string): Promise<Feed> => {
     groups: groupFeed(toEntries({ posts: postsData.posts, achievements, announcements }, timeZone), today),
     recaps,
     attention: isStaff ? shell.attention : null,
+    views: { post: postViews, recap: recapViews, announcement: announcementViews },
     timeZone,
     today,
     now: nowIso,
