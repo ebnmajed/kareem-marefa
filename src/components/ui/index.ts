@@ -1208,6 +1208,8 @@ export interface FeedItemAnnouncementProps extends FeedItemBase {
   sourceLabel: string;
   /** Plain text, drawn whole in `<bdi dir="auto">`, never clamped. */
   body: string;
+  /** Under the body — the views count (DEC-297). */
+  footer?: ReactNode;
 }
 
 /** A completed session's recap. */
@@ -1879,6 +1881,8 @@ export interface StoryViewerFrame {
   /** The frame's body — rendered by the caller (`components/stories/frame-*.tsx`). */
   content: ReactNode;
   /** ms. Photo 5000, text 6000; a video passes its own length and drives the clock itself (`media`). */
+  /** The frame's views count (DEC-297) — drawn in the viewer's bottom row. */
+  views?: ReactNode;
   durationMs: number;
   /** The frame's own age — «قبل 12 دقيقة» — appended to the header's meta line. The frame's, not the story's. */
   age?: string;
