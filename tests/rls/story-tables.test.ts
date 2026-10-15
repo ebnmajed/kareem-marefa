@@ -155,14 +155,16 @@ describe("POL-story_frames.no_client_write · one_per_trigger", () => {
 });
 
 describe("POL-story_views.own", () => {
-  it("a member records a view of a frame they may read, once, and reads only their own", async () => {
+  // ★ 0229 (DEC-297, a ledger line): no client inserts a view any more — `record_views()` is the one door in.
+  it("a member records a view of a frame they may read through record_views(), once, and reads only their own", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       await tx.as(f.a.members[1].claims);
       const [{ id }] = await tx.q<{ id: string }>(`select id from public.story_frames where kind = 'published'`);
-      const view = `insert into public.story_views (org_id, member_id, frame_id) values ($1, $2, $3) on conflict (member_id, frame_id) do nothing returning 1 as ok`;
-      expect(await tx.q(view, [f.a.id, f.a.members[1].memberId, id])).toEqual([{ ok: 1 }]);
-      expect(await tx.q(view, [f.a.id, f.a.members[1].memberId, id])).toEqual([]);
+      expect(await errorCode(() => tx.q(`insert into public.story_views (org_id, member_id, frame_id) values ($1, $2, $3)`, [f.a.id, f.a.members[1].memberId, id]))).toBe("42501");
+      const record = `select public.record_views(jsonb_build_array(jsonb_build_object('kind', 'frame', 'id', $1::uuid))) as n`;
+      await tx.q(record, [id]);
+      await tx.q(record, [id]);
       expect(await tx.q<{ n: number }>(`select count(*)::int as n from public.story_views`)).toEqual([{ n: 1 }]); // not the fixture author's
     });
   });

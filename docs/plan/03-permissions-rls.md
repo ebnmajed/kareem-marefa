@@ -842,7 +842,7 @@ for insert and update, so "opens at completion, closes 14 days later" is one rul
 | `member_seen_marks` | §5.7c | §5.7c | §5.7c | — | A member's own bookmark of what they have seen (`0162`, `DEC-197`). No timestamp; no delete; the worker never touches it. |
 | `feed_announcements` | §5.7d | §5.7d | §5.7d | §5.7d | An org's announcements in the feed (`0164`, `DEC-206` §3, `REQ-UIX-056`). Members read what is published and unexpired; an admin reads and writes all of the org's. The update grant is by column. The worker never touches it. |
 | `story_frames` | §5.7e | — | — | — | A session's story (`0198`, `DEC-248` §5, `REQ-STO-001` … `018`). Members read what is visible and inside 24 h; the author reads their own unfinished video; staff read all. **No client write** — every write is a definer function. |
-| `story_views` | §5.7e | §5.7e | — | — | A member's own record of what they viewed; nobody else's, staff included. ★ Since `0228` (`DEC-297`) the count and the list leave only through `view_counts()` / `view_list()`, and `record_views()` writes it; the insert policy stays for `main` until the follow-up migration. |
+| `story_views` | §5.7e | §5.7e | — | — | A member's own record of what they viewed; nobody else's, staff included. ★ Since `0228` (`DEC-297`) the count and the list leave only through `view_counts()` / `view_list()`, and `record_views()` writes it; `0229` dropped the insert policy and grant: no client writes it. |
 | `content_views` | §5.7f | — | — | — | A member's own record of a post, a recap or an announcement they viewed (`0228`, `DEC-297`, `REQ-VEW-002`). **No client write** — `record_views()` only; counts and lists through `view_counts()` / `view_list()`. |
 | `story_reactions` | §5.7e | §5.7e | §5.7e | §5.7e | One per member per frame; the update grant is by column; no ledger row, ever (`REQ-STO-005`). |
 | `story_frame_takedowns` | §5.7e | — | — | — | «أزلني» on a video frame; the requester and staff read; written only by definer functions (`REQ-STO-014`). |
@@ -925,8 +925,7 @@ create policy "story_frames_read_own"       on story_frames for select to authen
 create policy "story_frames_staff_read"     on story_frames for select to authenticated;  -- org_id = auth_org_id() and is_staff() — expired, hidden and removed too (REQ-STO-017)
 grant select on story_frames to authenticated;                                             -- no insert, update or delete for anyone: definer functions only
 create policy "story_views_read_own"        on story_views for select to authenticated;   -- member_id = auth_member_id(); no staff policy (REQ-STO-010)
-create policy "story_views_insert_own"      on story_views for insert to authenticated;   -- the same, and the frame is one the caller may read now
-grant select, insert on story_views to authenticated;
+grant select on story_views to authenticated;                                              -- no insert since 0229: record_views() only (DEC-297)
 create policy "story_reactions_read"        on story_reactions for select to authenticated;  -- the org's, for a frame the caller may read
 create policy "story_reactions_insert_own"  on story_reactions for insert to authenticated;  -- member_id = auth_member_id(), a readable frame
 create policy "story_reactions_update_own"  on story_reactions for update to authenticated;  -- the same, both sides
