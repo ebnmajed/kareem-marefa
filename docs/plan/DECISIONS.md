@@ -11332,3 +11332,33 @@ announcements so it is consistent and less custom rules for each»**.
    history.
 
 - **Documents changed:** `00-overview.md`, `01-prd.md` (§25a, `REQ-STO-010`), `STATUS.md`
+
+## DEC-298 — A company may carry a logo; the company board stands on a podium like the members'
+
+**Date:** 2026-10-15 · **Status:** accepted · **By:** the owner · **Refs:** REQ-ADM-026, REQ-UIX-079, REQ-UIX-043, REQ-LDR-004 · **Reverses:** `DEC-195` §4 · **Migration:** `0230`
+
+**The owner:** «I want to be able to upload a logo for each company, and the companies leader board is similar to the
+members leaderboard, the order and cup thingy». And, while it was being built: «you may keep the companies accent
+color, it's cute».
+
+**Ruling.**
+1. **A company may carry a logo** (`REQ-ADM-026`). `DEC-195` §4 refused one so the colour would stay the company's
+   identity on the avatar's ring; that reason is kept, not the refusal: **a member's avatar still wears only the
+   ring** (`REQ-PRF-009`), and the logo is drawn only where the **company** is the subject — the company board and
+   `SCR-048`. The team colour stays: it frames the logo, and a company with none shows its initial on its colour.
+2. **Storage is the brand logo's**: a `design_assets` row uploaded through the existing sniffed route (raster only,
+   `DEC-009`), named by `companies.logo_asset_id`. A guard refuses another org's asset; a trigger audits
+   `company.logo_changed`. Members read it through `/api/companies/{id}/logo`, proxied as the viewer under a new,
+   additive storage policy scoped to the org — `0126`'s shape, never opened to `anon`, no `service_role`.
+3. **The company board reads like the members'** (`REQ-UIX-079` amended): the first three ranked companies on
+   `ui/podium`, second · first · third, the cup over the first; the rest as `race-bar` rows keeping both metrics
+   (`REQ-LDR-004`). An unranked company never stands on the podium. `podium`, `rank-row` and `race-bar` gain add-only
+   props for a company's mark; no new primitive (`ui/` stays at its count).
+4. **Not this decision:** the logo on the home's race card, posters, certificates or mail; a company page.
+
+- **Documents changed:** `01-prd.md` (`REQ-ADM-026` new; `REQ-UIX-043`, `REQ-UIX-079` amended), `02-domain-model.md`, `03-permissions-rls.md`, `14-roadmap.md` (M37), `15-backlog.md`, `STATUS.md`
+- **Ledger:** `tests/components/leaderboards/boards.test.tsx` — the CompanyBoard row cases pass five companies so rows
+  exist under the podium; four new cases (podium order and cup, logos, unranked off the podium, «فريقك» on the
+  podium); the negative-total case reads the podium too. `tests/components/admin/companies-add-colour.test.tsx` — «no
+  logo» becomes «the logo's file input has no name, so the file is never posted». `companies-{domains,table}.test.tsx`
+  — fixtures gain `logoAssetId`/`logoSrc`, the form gains `locale`/`imageLimitMb`. New `tests/rls/company-logo.test.ts`.

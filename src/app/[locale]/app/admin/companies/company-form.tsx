@@ -13,12 +13,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { AdminCompany } from "@/lib/dal/admin-lists";
 import { hasAttempted, summaryErrors, was } from "@/lib/form-state";
+import { CompanyLogoField } from "./company-logo-field";
 import { COMPANY_FIELDS, NO_TEAM_COLOUR, emptyCompanyState, type CompanyConfirm, type CompanyField, type CompanyState } from "./state";
 import { TEAM_COLOUR_HEX, TEAM_COLOUR_NAMES, teamColourNameOf } from "./team-colours";
 
 // SCR-048's one form — create (`?new=1`) and edit (`?edit=<id>`), written for wave 22 from `AdminCompanies.dc.html`'s
 // edit sheet. The name and the team colour: the seven named colours and «بلا لون», each a swatch AND its name in
-// words, never a hex field (`REQ-UIX-043`). ★★ No logo field (`DEC-195` §4).
+// words, never a hex field (`REQ-UIX-043`). ★ DEC-298 (reversing `DEC-195` §4): and the company's logo.
 //
 // ★ wave 27 (`DEC-254` §2, `REQ-ADM-024`): the company's DOMAINS, one per line, as `SCR-049`'s add sheet takes its
 // addresses — `M11b.md`'s «the row's edit sheet holds … domains». LTR text in an RTL form: the textarea is `dir="ltr"`
@@ -35,10 +36,14 @@ export function CompanyForm({
   action,
   company,
   closeHref,
+  locale,
+  imageLimitMb,
 }: {
   action: (prev: CompanyState, formData: FormData) => Promise<CompanyState>;
   company: AdminCompany | null;
   closeHref: string;
+  locale: string;
+  imageLimitMb: number;
 }) {
   const t = useTranslations("admin.companies");
   const stored = company ? (teamColourNameOf(company.teamColor) ?? NO_TEAM_COLOUR) : NO_TEAM_COLOUR;
@@ -82,6 +87,14 @@ export function CompanyForm({
             <Field id={FIELD_ID.name} label={t("nameLabel")} required error={err("name")}>
               <Input name="name" defaultValue={attempted ? was(state, "name") : (company?.name ?? "")} maxLength={120} />
             </Field>
+            <CompanyLogoField
+              locale={locale}
+              name={company?.name ?? ""}
+              teamColor={company?.teamColor ?? null}
+              initialAssetId={company?.logoAssetId ?? null}
+              initialSrc={company?.logoSrc ?? null}
+              imageLimitMb={imageLimitMb}
+            />
             <Field id={FIELD_ID.domains} label={t("domainsLabel")} hint={t("domainsHint")} error={domainsError}>
               <Textarea
                 name="domains"

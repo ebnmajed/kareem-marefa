@@ -1071,6 +1071,19 @@ staff see who viewed. One PR, one migration (`0228`).
 **Demonstrable:** two members view a post, a recap, an announcement and a story frame; both see «2»; the presenter
 and an admin see both names; a third member sees «2» and no names; the author's own view counts for nobody.
 
+## M37 — company logos, and the company board on a podium · `DEC-298`
+
+The owner's ask: a logo for each company, and the company board read like the members' — the order and the cup. One
+PR, one migration (`0230`).
+
+| Work | Requirements | Track | PR |
+|---|---|---|---|
+| The column, the guard, the audit, the members' read door, the upload on `SCR-048` | `REQ-ADM-026` | lead | — |
+| The podium of the first three ranked companies with the cup; logos on the podium and the rows | `REQ-UIX-079` | lead | — |
+
+**Demonstrable:** an admin uploads a logo on `SCR-048`; a member of the org sees it on the company board's podium; a
+member of another org gets a 404 from the logo route.
+
 ## 3. Dependencies
 
 ```mermaid

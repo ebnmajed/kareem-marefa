@@ -48,7 +48,7 @@ describe("the add form — the team colour, chosen while adding", () => {
       <NextIntlClientProvider locale="ar" messages={messages}>
         <ToastProvider closeLabel="إغلاق">
           <main>
-            <CompanyForm action={async (s) => s} company={null} closeHref="/app/admin/companies" />
+            <CompanyForm action={async (s) => s} company={null} closeHref="/app/admin/companies" locale="ar" imageLimitMb={20} />
           </main>
         </ToastProvider>
       </NextIntlClientProvider>,
@@ -64,11 +64,14 @@ describe("the add form — the team colour, chosen while adding", () => {
     expect(screen.getByRole("radio", { name: "بلا لون" })).toBeChecked();
   });
 
-  it("★ has no hex field, no free colour input and no logo — a company is a name and a colour (DEC-195 §4)", () => {
+  // ★ DEC-298 (reversing DEC-195 §4): the logo is a picker whose input has NO name, so the file is never posted.
+  it("★ has no hex field and no free colour input — and the logo's file input posts nothing", () => {
     renderForm();
     expect(document.querySelector('input[type="color"]')).toBeNull();
-    expect(document.querySelector('input[type="file"]')).toBeNull();
-    expect(document.querySelectorAll("input:not([type=radio]):not([type=hidden])")).toHaveLength(1); // the name
+    const file = document.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(file).not.toBeNull();
+    expect(file!.name).toBe("");
+    expect(document.querySelectorAll('input:not([type=radio]):not([type=hidden]):not([type=file])')).toHaveLength(1); // the name
     expect(document.body.textContent).not.toMatch(/#[0-9a-f]{6}/i);
   });
 });
@@ -110,7 +113,7 @@ describe("the form's summary (wave 8, F4)", () => {
       <NextIntlClientProvider locale="ar" messages={messages}>
         <ToastProvider closeLabel="إغلاق">
           <main>
-            <CompanyForm action={async (s) => ({ ...s, errors: { name: "nameRequired" }, attempt: s.attempt + 1 })} company={null} closeHref="/app/admin/companies" />
+            <CompanyForm action={async (s) => ({ ...s, errors: { name: "nameRequired" }, attempt: s.attempt + 1 })} company={null} closeHref="/app/admin/companies" locale="ar" imageLimitMb={20} />
           </main>
         </ToastProvider>
       </NextIntlClientProvider>,

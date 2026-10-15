@@ -127,9 +127,49 @@ const company = (rank: number, over: Partial<CompanyBoardRow> = {}): CompanyBoar
   ...over,
 });
 
+// ★ DEC-298 (the owner, 2026-10-15): the company board reads like the members' — the first three RANKED companies on
+// the podium with the cup over the first, each with its logo or its initial; the rest as rows. The row cases below now
+// pass five companies so rows exist under the podium (ledger, DEC-298).
+const podium = [company(1), company(2), company(3)];
+
 describe("CompanyBoard", () => {
+  it("★ the first three stand on the podium, the cup over the first, rank order in the DOM — the rest are rows", async () => {
+    const ui = await CompanyBoard({ rows: [...podium, company(4), company(5)], metric: "points_per_active_member" });
+    const { container } = render(<Wrap>{ui}</Wrap>);
+    const places = container.querySelectorAll("[data-slot=podium] > li");
+    expect(Array.from(places).map((p) => p.textContent)).toEqual([expect.stringContaining("شركة 1"), expect.stringContaining("شركة 2"), expect.stringContaining("شركة 3")]);
+    expect(places[0].querySelector("svg, [data-object]")).not.toBeNull();
+    const rows = container.querySelectorAll("[data-slot=board-rows] > li");
+    expect(Array.from(rows).map((r) => r.textContent)).toEqual([expect.stringContaining("شركة 4"), expect.stringContaining("شركة 5")]);
+  });
+
+  it("★ a company's logo is drawn on the podium and on its row; without one, its initial", async () => {
+    const logo = "/api/companies/c1/logo?v=x";
+    const ui = await CompanyBoard({ rows: [company(1, { logoSrc: logo }), company(2), company(3), company(4, { logoSrc: "/api/companies/c4/logo?v=y" })], metric: "total_points" });
+    const { container } = render(<Wrap>{ui}</Wrap>);
+    const marks = container.querySelectorAll("[data-slot=podium] [data-slot=company-mark]");
+    expect(marks).toHaveLength(3);
+    expect(marks[0].querySelector("img")!.getAttribute("src")).toBe(logo);
+    expect(marks[1].querySelector("img")).toBeNull();
+    expect(marks[1].textContent).toBe("ش");
+    expect(container.querySelector("[data-slot=board-rows] [data-slot=logo] img")!.getAttribute("src")).toBe("/api/companies/c4/logo?v=y");
+  });
+
+  it("★ an unranked company never stands on the podium", async () => {
+    const ui = await CompanyBoard({ rows: [company(1), company(2, { unranked: true })], metric: "points_per_active_member" });
+    const { container } = render(<Wrap>{ui}</Wrap>);
+    expect(container.querySelectorAll("[data-slot=podium] > li")).toHaveLength(1);
+    expect(container.querySelector("[data-slot=board-rows] > li")!.textContent).toContain("شركة 2");
+  });
+
+  it("★ the viewer's company on the podium says «فريقك»", async () => {
+    const ui = await CompanyBoard({ rows: [company(1), company(2, { isOwn: true }), company(3)], metric: "total_points" });
+    const { container } = render(<Wrap>{ui}</Wrap>);
+    expect(container.querySelectorAll("[data-slot=podium] > li")[1].textContent).toContain("فريقك");
+  });
+
   it("★ both metrics on every row, the ranking one said and marked; the header names them once", async () => {
-    const ui = await CompanyBoard({ rows: [company(1), company(2, { isOwn: true })], metric: "points_per_active_member" });
+    const ui = await CompanyBoard({ rows: [...podium, company(4), company(5, { isOwn: true })], metric: "points_per_active_member" });
     const { container } = render(<Wrap>{ui}</Wrap>);
     const rows = container.querySelectorAll("[data-slot=board-rows] > li");
     for (const row of Array.from(rows)) {
@@ -140,7 +180,7 @@ describe("CompanyBoard", () => {
   });
 
   it("★ «N نشطًا» after each name, from the frozen pair — and nothing when it cannot be derived", async () => {
-    const ui = await CompanyBoard({ rows: [{ ...company(1), active: 18 }, { ...company(2), active: null }], metric: "points_per_active_member" });
+    const ui = await CompanyBoard({ rows: [...podium, { ...company(4), active: 18 }, { ...company(5), active: null }], metric: "points_per_active_member" });
     const { container } = render(<Wrap>{ui}</Wrap>);
     const rows = container.querySelectorAll("[data-slot=board-rows] > li");
     expect(rows[0].textContent).toContain("18 نشطًا");
@@ -148,7 +188,7 @@ describe("CompanyBoard", () => {
   });
 
   it("★ «بلا ترتيب»: a company below the snapshot's minimum draws no rank, and says so beside its count (REQ-UIX-082)", async () => {
-    const ui = await CompanyBoard({ rows: [{ ...company(1), active: 18 }, { ...company(2), active: 2, unranked: true }], metric: "points_per_active_member" });
+    const ui = await CompanyBoard({ rows: [...podium, { ...company(4), active: 18 }, { ...company(5), active: 2, unranked: true }], metric: "points_per_active_member" });
     const { container } = render(<Wrap>{ui}</Wrap>);
     const rows = container.querySelectorAll("[data-slot=board-rows] > li");
     expect(rows[1].textContent).toContain("بلا ترتيب · عضوان نشطان");
@@ -157,17 +197,20 @@ describe("CompanyBoard", () => {
   });
 
   it("follows the org's metric when it is total points", async () => {
-    const ui = await CompanyBoard({ rows: [company(1)], metric: "total_points" });
+    const ui = await CompanyBoard({ rows: [...podium, company(4)], metric: "total_points" });
     const { container } = render(<Wrap>{ui}</Wrap>);
     expect(container.querySelector("[data-slot=board-rows] li")!.textContent).toContain("الترتيب حسبه: مجموع النقاط");
   });
 
-  it("a negative company total reads left to right", async () => {
-    const ui = await CompanyBoard({ rows: [company(1, { totalPoints: -40, pointsPerActiveMember: -2 })], metric: "total_points" });
+  it("a negative company total reads left to right — on the podium and on a row", async () => {
+    const ui = await CompanyBoard({ rows: [company(1, { totalPoints: -40, pointsPerActiveMember: -2 }), company(2), company(3), company(4, { totalPoints: -50 })], metric: "total_points" });
     const { container } = render(<Wrap>{ui}</Wrap>);
-    expect(Array.from(container.querySelectorAll("bdi[dir=ltr]")).some((b) => b.textContent?.includes("-40"))).toBe(true);
+    const ltr = Array.from(container.querySelectorAll("bdi[dir=ltr]")).map((b) => b.textContent ?? "");
+    expect(ltr.some((t) => t.includes("-40"))).toBe(true);
+    expect(ltr.some((t) => t.includes("-50"))).toBe(true);
   });
 });
+
 
 describe("the breakdown", () => {
   const breakdown: CompanyPointsBreakdown = {
