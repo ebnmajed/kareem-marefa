@@ -7,8 +7,9 @@ import { promisify } from "node:util";
 // and zip. No npm package touches the bytes: this file spawns the binaries as pdf.ts spawns pdftoppm.
 //
 // ★ THREE RULES THIS FILE EXISTS TO HOLD.
-//   1. The server decides the limits — 15 seconds and 60 MB — from `ffprobe`'s reading of the bytes that landed,
-//      never from the client's word.
+//   1. The server decides from the bytes that landed, never from the client's word: the size (200 MB) is the object's
+//      own length, and the length kept is the first 15 seconds of whatever was uploaded (DEC-293 §3 — a longer video
+//      is trimmed, not refused).
 //   2. Nothing a phone wrote into the container survives. A phone's video carries its GPS position in its container
 //      exactly as a photograph carries it in EXIF (REQ-EVT-011): `-map_metadata -1` drops the global tags, the
 //      per-stream `-map_metadata:s:* -1` the stream tags, `-map_chapters -1` the chapters, and the EXPLICIT maps with
@@ -20,19 +21,19 @@ import { promisify } from "node:util";
 
 const execFileP = promisify(execFile);
 
-/** REQ-STO-016 — named once. A story video is at most 15.0 s: the rendition is TRIMMED to exactly that. A source up to
- *  one second longer is accepted and trimmed — a phone's recorder cannot stop within a frame (Safari's «15 s» MP4
- *  measured 15.233 s, its audio running past its video; notes/story-media.md §2.1); one longer than that is refused,
- *  so a 30-second gallery clip is never silently cut in half. */
+/** REQ-STO-016, DEC-293 §3 — named once. A story video is at most 15.0 s: the rendition keeps the FIRST 15.0 s of any
+ *  accepted source and nothing after — a 40-second clip from the phone's camera app is stored as its first 15 seconds,
+ *  never refused for its length. (`too_long` survives only as a reason on rows failed before DEC-293.) */
 export const STORY_VIDEO_MAX_SECONDS = 15;
-export const STORY_VIDEO_TOLERANCE_SECONDS = 1;
-/** 60 MB — the same figure as the `story-media` bucket's `file_size_limit` (0198), which refuses the PUT at the edge. */
-export const STORY_VIDEO_MAX_BYTES = 60 * 1024 * 1024;
+/** 200 MB — the same figure as the `story-media` bucket's `file_size_limit` (0225, notes/story-media.md §8), which
+ *  refuses the PUT at the edge: a minute of the iPhone's default 1080p30 HEVC is ≈ 60 MB, of 4K30 ≈ 170 MB. */
+export const STORY_VIDEO_MAX_BYTES = 200 * 1024 * 1024;
 /** The rendition: at most 720 px on the short side, 30 fps, 2.5 Mbit/s video, 128 kbit/s audio — ≈ 5 MB for 15 s. */
 export const STORY_VIDEO_SHORT_SIDE = 720;
 export const STORY_VIDEO_MAX_DIMENSION = 4096;
 export const FFPROBE_TIMEOUT_MS = 15_000;
-export const FFMPEG_TIMEOUT_MS = 120_000;
+/** 15 s of a 4K60 HEVC source decoded in software on two threads, scaled to 720 p and encoded — with room. */
+export const FFMPEG_TIMEOUT_MS = 240_000;
 export const POSTER_TIMEOUT_MS = 15_000;
 
 /** ffmpeg's own demuxer names — the only two this task will ever hand it. */
@@ -112,8 +113,9 @@ function seconds(v: string | undefined): number | null {
   return v !== undefined && Number.isFinite(n) && n > 0 ? n : null;
 }
 
-/** The container's own duration, else the longest stream's — null when neither is written, which is what a
- *  MediaRecorder WebM carries (`N/A`: its header is written before the recording ends). Then `packetEndArgs()`. */
+/** The container's own duration, else the longest stream's — null when neither is written (a MediaRecorder WebM writes
+ *  `N/A`: its header goes out before the recording ends). Informational since DEC-293: nothing is refused for its
+ *  length, and the stored duration is read from the rendition, which ffmpeg writes whole. */
 export function durationFromProbe(probe: { format?: { duration?: string }; streams?: { duration?: string }[] }): number | null {
   const format = seconds(probe.format?.duration);
   if (format !== null) return format;
@@ -121,57 +123,25 @@ export function durationFromProbe(probe: { format?: { duration?: string }; strea
   return streams.length > 0 ? Math.max(...streams) : null;
 }
 
-/** The fallback measure: every packet's timestamp and length within the FIRST 60 s (`-read_intervals %+60`), so the
- *  output is bounded however long the upload is, and 60 s is far enough past 16 to know it is too long. */
-export const PACKET_WINDOW_SECONDS = 60;
-export function packetEndArgs(demuxer: StoryVideoDemuxer, input: string): string[] {
-  return [
-    "-v", "error", "-hide_banner",
-    "-protocol_whitelist", "file",
-    "-f", demuxer,
-    "-read_intervals", `%+${PACKET_WINDOW_SECONDS}`,
-    "-show_entries", "packet=pts_time,duration_time",
-    "-of", "csv=p=0",
-    "-i", input,
-  ];
-}
-
-/** The end of the last packet — max(pts + duration) — from `packetEndArgs()`'s CSV; `N/A` fields count as 0 length or
- *  are skipped. Null when no packet carried a timestamp. */
-export function parsePacketEnd(csv: string): number | null {
-  let end: number | null = null;
-  for (const line of csv.split("\n")) {
-    const [ptsRaw, durRaw] = line.trim().split(",");
-    const pts = Number(ptsRaw);
-    if (!ptsRaw || !Number.isFinite(pts)) continue;
-    const dur = Number(durRaw);
-    const at = pts + (Number.isFinite(dur) && dur > 0 ? dur : 0);
-    if (end === null || at > end) end = at;
-  }
-  return end !== null && end > 0 ? end : null;
-}
-
 export type ProbeVerdict =
-  | { ok: true; durationSeconds: number; hasAudio: boolean; videoIndex: number; audioIndex: number | null }
-  | { ok: false; reason: "too_long" | "too_large" | "unsupported" };
+  | { ok: true; durationSeconds: number | null; hasAudio: boolean; videoIndex: number; audioIndex: number | null }
+  | { ok: false; reason: "too_large" | "unsupported" };
 
 /** The server's decision on what was uploaded — from ffprobe's reading and the object's own byte length, never from
- *  anything the client declared. `measured` is `parsePacketEnd()`'s answer, given when the probe carries no duration. */
-export function judgeProbe(probe: ProbeResult, byteSize: number, measured: number | null = null): ProbeVerdict {
+ *  anything the client declared. ★ Length is not a reason to refuse (DEC-293 §3): `ffmpegArgs()` keeps the first 15 s. */
+export function judgeProbe(probe: ProbeResult, byteSize: number): ProbeVerdict {
   if (!Number.isFinite(byteSize) || byteSize <= 0 || byteSize > STORY_VIDEO_MAX_BYTES) return { ok: false, reason: "too_large" };
   const picked = pickStreams(probe);
   if (!picked) return { ok: false, reason: "unsupported" };
   const { video, audioIndex } = picked;
   if ((video.width ?? 0) > STORY_VIDEO_MAX_DIMENSION || (video.height ?? 0) > STORY_VIDEO_MAX_DIMENSION) return { ok: false, reason: "unsupported" };
-  const duration = durationFromProbe(probe) ?? measured;
-  if (duration === null || !Number.isFinite(duration) || duration <= 0) return { ok: false, reason: "unsupported" };
-  if (duration > STORY_VIDEO_MAX_SECONDS + STORY_VIDEO_TOLERANCE_SECONDS) return { ok: false, reason: "too_long" };
-  return { ok: true, durationSeconds: duration, hasAudio: audioIndex !== null, videoIndex: video.index, audioIndex };
+  return { ok: true, durationSeconds: durationFromProbe(probe), hasAudio: audioIndex !== null, videoIndex: video.index, audioIndex };
 }
 
 /** The one rendition, from the two streams `pickStreams()` chose (by absolute index). Autorotation is ffmpeg's
  *  default, so the display matrix is applied to the pixels and none is written; the scale keeps the aspect, the short
- *  side at most 720 px, both sides even; the length is cut at exactly 15.0 s. */
+ *  side at most 720 px, both sides even. ★ `-t 15` is an INPUT option: the demuxer stops reading at 15.0 s, so a long
+ *  4K source is never decoded past what is kept (DEC-293 §3). */
 export function ffmpegArgs(demuxer: StoryVideoDemuxer, input: string, output: string, streams: { videoIndex: number; audioIndex: number | null }): string[] {
   const s = STORY_VIDEO_SHORT_SIDE;
   const hasAudio = streams.audioIndex !== null;
@@ -179,11 +149,11 @@ export function ffmpegArgs(demuxer: StoryVideoDemuxer, input: string, output: st
     "-hide_banner", "-nostdin", "-v", "error", "-y",
     "-protocol_whitelist", "file",
     "-f", demuxer,
+    "-t", String(STORY_VIDEO_MAX_SECONDS),
     "-i", input,
     "-map", `0:${streams.videoIndex}`,
     ...(hasAudio ? ["-map", `0:${streams.audioIndex}`] : []),
     "-dn", "-sn",
-    "-t", String(STORY_VIDEO_MAX_SECONDS),
     // `trunc(…/2)*2`: a source with an odd short side (719 px) would otherwise keep it, and libx264 refuses an odd
     // dimension in yuv420p. The other side is `-2`, which ffmpeg already rounds to even.
     "-vf", `scale='if(lte(iw,ih),trunc(min(${s},iw)/2)*2,-2)':'if(lte(iw,ih),-2,trunc(min(${s},ih)/2)*2)',format=yuv420p`,

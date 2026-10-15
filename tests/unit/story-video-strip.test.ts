@@ -12,8 +12,6 @@ import {
   ffmpegArgs,
   ffprobeArgs,
   judgeProbe,
-  packetEndArgs,
-  parsePacketEnd,
   posterArgs,
   runTool,
   sniffVideoContainer,
@@ -78,15 +76,6 @@ describe.skipIf(!runnable && !required)("a phone's video, transcoded by the work
     expect(bytes).toContain("iPhone");
   });
 
-  it("refuses 20 seconds from ffprobe's reading", async () => {
-    const src = phoneVideo("long.mov", 20);
-    const head = new Uint8Array(readFileSync(src).subarray(0, 128));
-    const demuxer = sniffVideoContainer(head);
-    expect(demuxer).toBe("mov");
-    const probe = JSON.parse(await runTool("ffprobe", ffprobeArgs(demuxer!, src), FFPROBE_TIMEOUT_MS)) as ProbeResult;
-    expect(judgeProbe(probe, readFileSync(src).byteLength)).toEqual({ ok: false, reason: "too_long" });
-  }, 60_000); // making a 20-second 1080 × 1920 fixture takes longer than vitest's 5 s default
-
   it("transcodes 12 seconds into one MP4 with no tag, no chapter, no data track and no location in its bytes", async () => {
     const src = phoneVideo("twelve.mov", 12);
     const head = new Uint8Array(readFileSync(src).subarray(0, 128));
@@ -116,27 +105,46 @@ describe.skipIf(!runnable && !required)("a phone's video, transcoded by the work
   async function measure(src: string) {
     const demuxer = sniffVideoContainer(new Uint8Array(readFileSync(src).subarray(0, 128)))!;
     const probe = JSON.parse(await runTool("ffprobe", ffprobeArgs(demuxer, src), FFPROBE_TIMEOUT_MS)) as ProbeResult;
-    const measured = durationFromProbe(probe) === null ? parsePacketEnd(await runTool("ffprobe", packetEndArgs(demuxer, src), FFPROBE_TIMEOUT_MS, 8 << 20)) : null;
-    return { demuxer, probe, measured, verdict: judgeProbe(probe, readFileSync(src).byteLength, measured) };
+    return { demuxer, probe, verdict: judgeProbe(probe, readFileSync(src).byteLength) };
   }
-
-  it("measures a WebM that carries no duration (as MediaRecorder writes it) from its packets — 3 s passes, 20 s is refused", async () => {
-    const short = await measure(make("live-3.webm", ["-f", "lavfi", "-i", "testsrc=size=640x360:rate=30:duration=3", "-c:v", "libvpx", "-deadline", "realtime", "-live", "1", "-f", "webm"]));
-    expect(durationFromProbe(short.probe)).toBeNull();
-    expect(short.measured).toBeCloseTo(3, 1);
-    expect(short.verdict.ok).toBe(true);
-    const long = await measure(make("live-20.webm", ["-f", "lavfi", "-i", "testsrc=size=640x360:rate=30:duration=20", "-c:v", "libvpx", "-deadline", "realtime", "-live", "1", "-f", "webm"]));
-    expect(long.verdict).toEqual({ ok: false, reason: "too_long" });
-  }, 180_000);
-
-  it("accepts a recording that stopped at 15.8 s and trims the rendition to 15.0 s", async () => {
-    const src = make("over.mp4", ["-f", "lavfi", "-i", "testsrc=size=640x360:rate=30:duration=15.8", "-f", "lavfi", "-i", "sine=duration=15.8", "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac"]);
+  async function transcode(src: string, name: string) {
     const { demuxer, verdict } = await measure(src);
     if (!verdict.ok) throw new Error(`refused: ${verdict.reason}`);
-    const out = join(dir, "trimmed.mp4");
+    const out = join(dir, name);
     await runTool("ffmpeg", ffmpegArgs(demuxer, src, out, verdict), FFMPEG_TIMEOUT_MS);
     const audit = JSON.parse(await runTool("ffprobe", auditArgs("mp4", out), FFPROBE_TIMEOUT_MS));
+    return { verdict, audit, out };
+  }
+
+  // ★ DEC-293 §3 — a longer video keeps its first 15 seconds; it is never refused for its length.
+  it("keeps the FIRST 15.0 s of a 40-second video — red for 20 s, then blue: the rendition ends red", async () => {
+    const src = make("forty.mov", [
+      "-f", "lavfi", "-i", "color=red:size=640x360:rate=30:duration=20",
+      "-f", "lavfi", "-i", "color=blue:size=640x360:rate=30:duration=20",
+      "-f", "lavfi", "-i", "sine=duration=40",
+      "-filter_complex", "[0][1]concat=n=2:v=1[v]", "-map", "[v]", "-map", "2:a",
+      "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac",
+      "-metadata", `location=${ISO6709}`, "-movflags", "use_metadata_tags", "-f", "mov",
+    ]);
+    const { verdict, audit, out } = await transcode(src, "forty.mp4");
+    expect(verdict.ok && verdict.durationSeconds).toBeCloseTo(40, 0);
+    const kept = durationFromProbe(audit)!;
+    expect(kept).toBeGreaterThan(14.9);
+    expect(kept).toBeLessThanOrEqual(15.05);
+    expect(auditRendition(audit)).toBeNull();
+    expect(readFileSync(out).toString("latin1")).not.toContain(LATITUDE);
+    // The rendition's LAST frame, as one RGB pixel: red (the source's 0 – 20 s), never blue (20 – 40 s).
+    const px = execFileSync("ffmpeg", ["-v", "error", "-sseof", "-0.2", "-i", out, "-frames:v", "1", "-vf", "scale=1:1", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"]);
+    expect(px[0]).toBeGreaterThan(150);
+    expect(px[2]).toBeLessThan(100);
+  }, 240_000);
+
+  it("accepts a WebM that carries no duration (as MediaRecorder writes it) — 20 s live WebM kept as its first 15 s", async () => {
+    const src = make("live-20.webm", ["-f", "lavfi", "-i", "testsrc=size=640x360:rate=30:duration=20", "-c:v", "libvpx", "-deadline", "realtime", "-live", "1", "-f", "webm"]);
+    const { verdict, audit } = await transcode(src, "live-20.mp4");
+    expect(verdict.ok && verdict.durationSeconds).toBeNull();
     expect(durationFromProbe(audit)).toBeLessThanOrEqual(15.05);
+    expect(durationFromProbe(audit)).toBeGreaterThan(14.9);
   }, 180_000);
 
   it("cuts a poster that is not the black first second", async () => {
