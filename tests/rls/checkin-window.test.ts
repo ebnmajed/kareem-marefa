@@ -57,7 +57,7 @@ describe("RPC-check_in.floor / .ceiling / .switch_closed / .attendance_states", 
     });
   });
 
-  it("still accepts a real check-in during the 2h grace window, even though the row is already `completed`", async () => {
+  it("still accepts a real check-in during the 8h grace window, even though the row is already `completed`", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
       await tx.asOwner();
@@ -73,10 +73,10 @@ describe("RPC-check_in.floor / .ceiling / .switch_closed / .attendance_states", 
     });
   });
 
-  it("refuses session_ended once the 2h ceiling has passed, computed from the SCHEDULED end", async () => {
+  it("refuses session_ended once the 8h ceiling has passed (DEC-294), computed from the SCHEDULED end", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
-      const sessionId = await makeSession(tx, f.a, { state: "completed", startsInMinutes: -300, endsInMinutes: -130 }); // ended 2h10m ago
+      const sessionId = await makeSession(tx, f.a, { state: "completed", startsInMinutes: -660, endsInMinutes: -490 }); // ended 8h10m ago
       await tx.as(f.a.members[0].claims);
       expect((await checkIn(tx, sessionId, "WHATEVER")).status).toBe("session_ended");
     });
@@ -128,7 +128,7 @@ describe("RPC-ensure_check_in_code.floor_ceiling — supersedes 0078's .only_liv
       expect(code.code).toMatch(/^[ACDEFGHJKMNPQRTUVWXY34679]{6}$/);
 
       await tx.asOwner();
-      await tx.q(`update public.sessions set starts_at = now() - interval '5 hours', ends_at = now() - interval '3 hours' where id = $1`, [sessionId]);
+      await tx.q(`update public.sessions set starts_at = now() - interval '11 hours', ends_at = now() - interval '9 hours' where id = $1`, [sessionId]);
       await tx.as(f.a.members[0].claims);
       expect(await errorMessage(() => tx.q(`select * from public.ensure_check_in_code($1)`, [sessionId]))).toMatch(/not_open/);
     });
@@ -165,10 +165,10 @@ describe("RPC-set_check_in_open.role_set / .ceiling / .audited", () => {
     });
   });
 
-  it("refuses opening past the 2h ceiling; closing is always allowed", async () => {
+  it("refuses opening past the 8h ceiling (DEC-294); closing is always allowed", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
-      const sessionId = await makeSession(tx, f.a, { state: "completed", startsInMinutes: -300, endsInMinutes: -130, checkInOpen: false }); // ceiling passed
+      const sessionId = await makeSession(tx, f.a, { state: "completed", startsInMinutes: -660, endsInMinutes: -490, checkInOpen: false }); // ceiling passed
       await tx.as(f.a.admin.claims);
       expect(await errorMessage(() => tx.q(`select * from public.set_check_in_open($1, true)`, [sessionId]))).toMatch(/ceiling_passed/);
       // Closing an already-closed session past the ceiling is a harmless no-op, not refused.

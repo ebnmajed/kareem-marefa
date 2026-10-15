@@ -1086,6 +1086,7 @@ any **مشرف المؤسسة** may close it, and reopen it, at any time.
 
 #### REQ-CHK-016 — Check-in closes two hours after the session's scheduled end, absolutely
 **Serves:** owner 2026-09-15 · DEC-113
+★ **Amended by `DEC-294` (owner, 2026-10-14):** the ceiling is **`ends_at` + 8 hours**, everywhere below that reads «2 hours»; `DEC-151`'s cap by the next day's start is unchanged.
 From **`ends_at` + 2 hours** the switch can no longer be opened, and an open switch stops admitting.
 **Acceptance:**
 - The ceiling is enforced by the RPC, not by the screen — a forged request past it is refused.

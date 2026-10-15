@@ -11191,6 +11191,71 @@ generated family name. Unit 5,981.
 
 - **Documents changed:** `STATUS.md`
 
+## DEC-293 — One check-in answer per surface: where, when and to whom the button appears
+
+**Date:** 2026-10-14 · **Status:** accepted · **By:** the owner · **Refs:** REQ-CHK-010, REQ-CHK-011, REQ-CHK-014, REQ-CHK-016, REQ-UIX-015, REQ-UIX-061 · **Amends:** `DEC-195` §2.5's call sites · **Migration:** none
+
+**The owner:** «i want a proper fix for the checkin button appearing it is confusing where and when it appears and to
+whome».
+
+**What was wrong.** Three predicates answered «may I offer check-in» for two surfaces, and they disagreed:
+
+1. **The event page's primary** came from `eventCheckInLink()`, which was never handed the session's days. On a
+   workshop it judged the whole span: **between two days it offered a check-in the screen then refused** («not
+   started»), and a member checked in on day 1 **lost day 2's button** (any check-in read as today's).
+2. **The action card** recomputed the answer *with* the days — so the card and the primary/bar could differ.
+3. **The feed post** asked only while the phase was open or live, so **in the two-hour grace after the end** the event
+   page offered check-in and the feed did not.
+4. **`TimelineSession.canCheckIn`** was a fourth copy that nothing read.
+
+**Ruling — where and when.** The page computes `checkInOffer()` **once, with its days** (`eventCheckIn()`), and the
+primary, the card and the phone's bar read that one answer. The feed asks the same function in every phase, so both
+surfaces offer check-in exactly while the resolved day takes attendance — from its start to its ceiling — the room's
+switch is open, and the viewer has not checked in to that day. The dead timeline field is deleted.
+
+**Ruling — to whom** (the owner, asked 2026-10-14):
+
+| Viewer | Check-in |
+|---|---|
+| Member with a confirmed seat | the primary, while the day takes attendance |
+| Member with no seat, or waitlisted | the primary, only when the session allows walk-ins (`REQ-CHK-010`) |
+| Presenter of the session | never (`REQ-CHK-011`) — the host view is their button |
+| ★ Staff holding no seat of their own | **«شاشة التقديم» is the primary; the walk-in check-in is a secondary on the card**, never the primary and never the feed post's action |
+| Staff who reserved a seat | an attendee — the primary, as any member |
+
+`check_in()` remains the authority (`REQ-NFR-001`); nothing here widens what the database accepts.
+
+- **Documents changed:** `STATUS.md`
+
+## DEC-294 — Check-in stays open eight hours after the session; the host side follows the window, not the clock; the button reads «Check-in»
+
+**Date:** 2026-10-14 · **Status:** accepted · **By:** the owner · **Refs:** REQ-CHK-016, REQ-CHK-014, REQ-CHK-015, REQ-CHK-008, REQ-UIX-015 · **Amends:** `REQ-CHK-016`, `DEC-141`'s two hours · **Migration:** `0225`
+
+**The owner:** «i want it to change the name of it to "Check-in" yes in english as is, and want it to stay visible until 8
+hours after the session» · «btw even the 2hours ceiling isn't working» · «i want it to also apply on current sessions, and
+i need it live asap».
+
+**Why the two hours never worked.** The database honoured the grace window — `check_in()` accepts a code to
+`check_in_ceiling()` — but everything on the host side was keyed on the clock phase, which reads `ended` at `ends_at`:
+(1) the matrix took «شاشة التقديم» away from presenters and staff at the end, so nobody could reach the code; (2) the
+host view stopped listening and rotating at the end, so a rotating code on the wall went stale within its period and
+every attempt failed `invalid_code`; (3) the switch and marking by hand disappeared with it. And the event page's
+outcome told a member «لم تُسجّل حضورك» beside a working check-in button.
+
+**Ruling.**
+1. **The ceiling is `ends_at + 8 h`** (`0225`: `check_in_ceiling()` replaced — every gate calls it, so the code issuer,
+   the switch, the rotation, the manual mark and the day resolver move together; `CHECK_IN_CEILING_MS` is its twin).
+   `DEC-151`'s cap by the next day's start is unchanged. ★ **It applies to every existing session at once**: the ceiling
+   is computed from each day's `ends_at` on every call — nothing is stored.
+2. **The host side follows the window, not the phase.** A presenter or staff member keeps «شاشة التقديم» while a day
+   takes attendance; the host view listens, rotates and keeps the switch and the manual mark while a code exists
+   (the RPC mints none outside the window).
+3. **The outcome card waits** until check-in is no longer offered.
+4. **The button reads «Check-in»**, in English, in both catalogues — the event page's and the feed post's. The
+   check-in screen's own title and submit are unchanged.
+
+- **Documents changed:** `01-prd.md` (`REQ-CHK-016`), `03-permissions-rls.md`, `STATUS.md`
+
 ## DEC-295 — A story is captured with the phone's own camera; a longer video keeps its first 15 seconds
 
 **Date:** 2026-10-15 · **Status:** accepted · **By:** the owner · **Refs:** REQ-STO-011, REQ-STO-012, REQ-EVT-013 · **Amends:** `DEC-245` (the capture screen, STO-11), `DEC-248` §6 (contract 6's refusal over 15 s and its 60 MB) · **Migration:** `0226` if the bucket's size limit moves (below)

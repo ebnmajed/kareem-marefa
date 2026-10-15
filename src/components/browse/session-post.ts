@@ -150,17 +150,23 @@ export function postAction(
   const href = `/app/sessions/${c.id}`;
   if (c.phase === "cancelled" || viewer.isPresenter) return { kind: "none" };
 
+  // ★ The event page's own answer, asked in EVERY phase: the window runs to the day's ceiling (`ends_at + 2 h`),
+  // past the moment the phase reads `ended`, so gating it on open/live hid a check-in the room still accepted.
+  const offer = checkInOffer(
+    { state: c.state, startsAt: c.startsAt, endsAt: c.endsAt, durationMinutes: c.durationMinutes, days: c.days },
+    { isStaff: viewer.isStaff, isPresenter: false, rsvpStatus: viewer.mine, checkedIn: viewer.attended,
+      // Per day at more than one day (DEC-195 §2.5); at one, any active check-in IS the day's.
+      checkedInDayIds: c.days.length > 1 ? viewer.checkedInDayIds : undefined },
+    c.allowWalkIns,
+    c.checkInOpen,
+    now,
+  );
+  // ★ Staff with no hold of their own run the room: their button is the host view, and the walk-in check-in is a
+  // secondary on the event page — never the post's one action (the owner, 2026-10-14; `primaryActionFor()`).
+  const runsTheRoom = viewer.isStaff && viewer.mine === null;
+  if (offer === "offer" && !runsTheRoom) return { kind: "checkIn", href: `${href}/check-in`, booked: viewer.mine === "confirmed" };
+
   if (c.phase === "open" || c.phase === "live") {
-    const offer = checkInOffer(
-      { state: c.state, startsAt: c.startsAt, endsAt: c.endsAt, durationMinutes: c.durationMinutes, days: c.days },
-      { isStaff: viewer.isStaff, isPresenter: false, rsvpStatus: viewer.mine, checkedIn: viewer.attended,
-        // Per day at more than one day (DEC-195 §2.5); at one, any active check-in IS the day's.
-        checkedInDayIds: c.days.length > 1 ? viewer.checkedInDayIds : undefined },
-      c.allowWalkIns,
-      c.checkInOpen,
-      now,
-    );
-    if (offer === "offer") return { kind: "checkIn", href: `${href}/check-in`, booked: viewer.mine === "confirmed" };
     if (offer === "recorded") return { kind: "attended", href };
     if (viewer.mine) return { kind: "booked", hold: viewer.mine === "confirmed" ? "seat" : "waitlist", waitlistPosition: viewer.waitlistPosition, href };
     if (c.phase === "open" && (seat === "available" || seat === "unlimited")) return { kind: "reserve", href };

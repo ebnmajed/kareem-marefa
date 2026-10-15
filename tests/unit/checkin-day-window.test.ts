@@ -35,8 +35,8 @@ describe("no days passed — every pre-wave-9 caller takes the path it always di
   it("is eligible inside the session's own window, and refused either side of it", () => {
     expect(reason(session(null))).toBeNull();
     expect(reason({ state: "in_progress", startsAt: at(1), endsAt: at(3) })).toBe("not_started");
-    expect(reason({ state: "in_progress", startsAt: at(-6), endsAt: at(-3) })).toBe("session_ended");
-    // The grace window, REQ-CHK-016: ended 1 h ago, still inside end + 2 h.
+    expect(reason({ state: "in_progress", startsAt: at(-12), endsAt: at(-9) })).toBe("session_ended"); // past end + 8 h (DEC-294)
+    // The grace window, REQ-CHK-016 (DEC-294): ended 1 h ago, still inside end + 8 h.
     expect(reason({ state: "in_progress", startsAt: at(-3), endsAt: at(-1) })).toBeNull();
     expect(reason(session(null), false)).toBe("check_in_closed");
   });
@@ -47,7 +47,7 @@ describe("one day — identical to no days, by arithmetic and not by a branch", 
     const one = (fromH: number, toH: number) => session([day("d1", 1, fromH, toH)]);
     expect(reason(one(-1, 1))).toBeNull();
     expect(reason(one(1, 3))).toBe("not_started");
-    expect(reason(one(-6, -3))).toBe("session_ended");
+    expect(reason(one(-12, -9))).toBe("session_ended");
     expect(reason(one(-3, -1))).toBeNull(); // the grace window survives: no next day, no cap
     expect(reason(one(-1, 1), false)).toBe("check_in_closed");
   });
@@ -77,7 +77,7 @@ describe("three days — the window, the switch and the ceiling are the day's", 
   });
 
   it("★ after day 2's ceiling, with day 3 still ahead, the answer is session_ended — the envelope check_in() returns", () => {
-    const ended = session([day("d1", 1, -50, -48), day("d2", 2, -6, -4), day("d3", 3, 22, 24)]);
+    const ended = session([day("d1", 1, -50, -48), day("d2", 2, -12, -10), day("d3", 3, 22, 24)]);
     expect(reason(ended)).toBe("session_ended");
     // ★ and the day it is about is day 2, not day 3 — so the screen's label
     // and its refusal are about the same meeting.
@@ -93,8 +93,8 @@ describe("three days — the window, the switch and the ceiling are the day's", 
 
 describe("between two days — the grace window, and the cap that ends it", () => {
   it("a gap WIDER than the grace: day 1's ceiling has passed, so session_ended", () => {
-    // day 1 ended 5 h ago; its ceiling was 3 h ago; day 2 is 5 h away.
-    const s = session([day("d1", 1, -7, -5), day("d2", 2, 5, 7)]);
+    // day 1 ended 11 h ago; its ceiling (+ 8 h, DEC-294) was 3 h ago; day 2 is 5 h away.
+    const s = session([day("d1", 1, -13, -11), day("d2", 2, 5, 7)]);
     expect(reason(s)).toBe("session_ended");
   });
 

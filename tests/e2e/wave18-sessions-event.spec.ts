@@ -213,7 +213,7 @@ test("live, phone: a count, the check-in with «مقعدك محجوز», the rot
   const main = page.locator("#main");
   const attend = main.getByRole("region", { name: "الحضور" });
   await expect(attend).toContainText("حاضرًا الآن");
-  await expect(attend.getByRole("link", { name: /تسجيل الحضور.*مقعدك محجوز/ })).toHaveAttribute("href", /\/check-in$/);
+  await expect(attend.getByRole("link", { name: /Check-in.*مقعدك محجوز/ })).toHaveAttribute("href", /\/check-in$/);
   await expect(attend).toContainText("يتغيّر كل 10 دقائق");
   await expect(attend).toContainText("+35 نقطة تصل عند انتهاء الجلسة");
   await expect(main.getByText("شاهد القصة")).toBeVisible();

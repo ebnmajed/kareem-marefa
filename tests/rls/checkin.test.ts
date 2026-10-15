@@ -226,12 +226,12 @@ describe("POL-check_ins.window", () => {
     });
   });
 
-  it("a code entered after the two-hour ceiling is rejected as session_ended (DEC-141)", async () => {
+  it("a code entered after the eight-hour ceiling is rejected as session_ended (DEC-141)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       await tx.asOwner();
-      // ends_at + 2 h is the ceiling (0084); inside it a completed session still takes a code.
-      const sessionId = await makeSession(tx, f.a, { state: "completed", startsInMinutes: -240, endsInMinutes: -180 });
+      // ends_at + 8 h is the ceiling (0225, DEC-294); inside it a completed session still takes a code.
+      const sessionId = await makeSession(tx, f.a, { state: "completed", startsInMinutes: -600, endsInMinutes: -540 });
 
       await tx.as(f.a.members[0].claims);
       const r = await checkIn(tx, sessionId, "WHATEVER");

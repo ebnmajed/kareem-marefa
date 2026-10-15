@@ -208,8 +208,9 @@ export function sessionPhase(session: PhaseInput, now: Date = new Date()): Sessi
 
 // ── 1a · the days ─────────────────────────────────────────────────────────
 
-/** REQ-CHK-016: check-in may stay open until the day's end + 2 h, and no later. */
-export const CHECK_IN_CEILING_MS = 2 * 3_600_000;
+/** REQ-CHK-016 as amended by DEC-294: check-in may stay open until the day's end + 8 h, and no later — the twin of
+ *  `public.check_in_ceiling()` (0225). */
+export const CHECK_IN_CEILING_MS = 8 * 3_600_000;
 
 export type DayPhase = "upcoming" | "live" | "ended";
 

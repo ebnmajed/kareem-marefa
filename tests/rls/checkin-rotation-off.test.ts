@@ -79,7 +79,7 @@ describe("REQ-CHK-019 — rotation off: one code for the day, to its ceiling", (
 
       const first = await ensure(tx, f.a, s.id);
       expect(t(first.valid_until)).toBe(t(await ceilingOf(tx, s.days[0])));
-      expect(t(first.valid_until)).toBe(await now(tx) + 3 * 3_600_000); // ends_at (+1 h) + 2 h, one day
+      expect(t(first.valid_until)).toBe(await now(tx) + 9 * 3_600_000); // ends_at (+1 h) + 8 h, one day (DEC-294)
 
       // the host view's next read, and the worker's twin, both find it current
       expect((await ensure(tx, f.a, s.id)).id).toBe(first.id);
@@ -104,7 +104,7 @@ describe("REQ-CHK-019 — rotation off: one code for the day, to its ceiling", (
       const f = await seed(tx);
       await setUp(tx);
       await setRotation(tx, f.a, null);
-      const s = await makeSession(tx, f.a, [[-5, -4]]); // ceiling was 2 h ago
+      const s = await makeSession(tx, f.a, [[-11, -10]]); // ceiling (end + 8 h) was 2 h ago
       await tx.asServiceRole();
       const [row] = await tx.q<{ id: string | null }>(`select (public.rotate_check_in_code($1, $2)).id as id`, [s.id, s.days[0]]);
       expect(row.id).toBeNull();

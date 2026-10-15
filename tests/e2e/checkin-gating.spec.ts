@@ -133,7 +133,7 @@ test("a member with no seat, on a live session with walk-ins off, sees none of t
   await expect(page.getByRole("heading", { name: "مهام ما قبل الجلسة" })).toHaveCount(0);
   // ★★ Bug (e), the worst of the five: no check-in link without a seat when
   // walk-ins are off.
-  await expect(page.getByRole("link", { name: "تسجيل الحضور" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Check-in" })).toHaveCount(0);
 });
 
 test("a confirmed member sees the calendar, the tasks heading, and the check-in link on the same live session", async ({ context, page }) => {
@@ -154,5 +154,5 @@ test("a confirmed member sees the calendar, the tasks heading, and the check-in 
   await expect(page.getByRole("heading", { name: "مهام ما قبل الجلسة" })).toBeVisible();
   // ★ Wave 18 PR B (SCR-012 rebuilt, DEC-206): under `lg` the same primary is drawn twice — on the action card and in
   // the phone's bottom `action-bar` — so the phone resolves two links and desktop one; the first is the card's.
-  await expect(page.getByRole("link", { name: "تسجيل الحضور" }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Check-in" }).first()).toBeVisible();
 });

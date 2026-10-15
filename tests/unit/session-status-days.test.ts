@@ -130,14 +130,14 @@ describe("dayPhase", () => {
 });
 
 describe("checkInDay — rule 1 of public.resolve_session_day(), and only rule 1", () => {
-  it("the ceiling is the day's end + 2 h, exclusive (REQ-CHK-016)", () => {
-    expect(CHECK_IN_CEILING_MS).toBe(2 * H);
+  it("the ceiling is the day's end + 8 h, exclusive (REQ-CHK-016, DEC-294)", () => {
+    expect(CHECK_IN_CEILING_MS).toBe(8 * H); // DEC-294
     expect(checkInDay([WED, THU, FRI], at(-0.1))).toBeNull();
     expect(checkInDay([WED, THU, FRI], at(0))?.id).toBe("d1");
-    expect(checkInDay([WED, THU, FRI], at(3.9))?.id).toBe("d1"); //  18:00–20:00, open to 22:00
-    expect(checkInDay([WED, THU, FRI], at(4))).toBeNull(); //       ★ day 1 is shut while days 2 and 3 are still ahead
+    expect(checkInDay([WED, THU, FRI], at(9.9))?.id).toBe("d1"); //  18:00–20:00, open to 04:00
+    expect(checkInDay([WED, THU, FRI], at(10))).toBeNull(); //       ★ day 1 is shut while days 2 and 3 are still ahead
     expect(checkInDay([WED, THU, FRI], at(24))?.id).toBe("d2");
-    expect(checkInDay([WED, THU, FRI], at(52))).toBeNull();
+    expect(checkInDay([WED, THU, FRI], at(58))).toBeNull();
   });
 
   it("★ a day's ceiling is capped by the next day's start (DEC-151): a 9–12 and a 13–16 day never both hold an instant", () => {
@@ -148,18 +148,18 @@ describe("checkInDay — rule 1 of public.resolve_session_day(), and only rule 1
     expect(checkInDay([morning, afternoon], at(4))?.id).toBe("pm"); //    13:00 — the cap: the next meeting has begun
     expect(checkInDay([morning, afternoon], at(4.5))?.id).toBe("pm"); //  13:30 — one answer, not two
     expect(checkInCeiling([morning, afternoon], 0)).toBe(at(4).getTime()); //  capped at 13:00, not 14:00
-    expect(checkInCeiling([morning, afternoon], 1)).toBe(at(9).getTime()); //  the last day: end + 2 h, uncapped
+    expect(checkInCeiling([morning, afternoon], 1)).toBe(at(15).getTime()); // the last day: end + 8 h, uncapped
   });
 
   it("the cap is inert when the next day is far enough away, and at one day by arithmetic", () => {
-    expect(checkInCeiling([WED, THU, FRI], 0)).toBe(at(4).getTime()); // 20:00 + 2 h; Thursday is a day away
-    expect(checkInCeiling([WED], 0)).toBe(at(4).getTime()); //           one day: no next day, no cap
+    expect(checkInCeiling([WED, THU, FRI], 0)).toBe(at(10).getTime()); // 20:00 + 8 h; Thursday is a day away
+    expect(checkInCeiling([WED], 0)).toBe(at(10).getTime()); //           one day: no next day, no cap
   });
 
   it("one day: exactly the window a one-day session has today", () => {
     expect(checkInDay([WED], at(1))?.id).toBe("d1");
-    expect(checkInDay([WED], at(3.99))?.id).toBe("d1");
-    expect(checkInDay([WED], at(4))).toBeNull();
+    expect(checkInDay([WED], at(9.99))?.id).toBe("d1");
+    expect(checkInDay([WED], at(10))).toBeNull();
   });
 });
 

@@ -385,16 +385,16 @@ describe("resolve_session_day() — contract 4's one rule for «which day?»", (
       const ceiling = async (day: string) =>
         (await tx.q<{ h: string }>(`select extract(epoch from public.check_in_ceiling($1) - now()) / 3600 as h`, [day]))[0].h;
       expect(Number(await ceiling(morning))).toBeCloseTo(13, 6); //   capped at the afternoon's start, not 14
-      expect(Number(await ceiling(afternoon))).toBeCloseTo(18, 6); // the last day: end + 2 h, uncapped
+      expect(Number(await ceiling(afternoon))).toBeCloseTo(24, 6); // the last day: end + 8 h, uncapped (DEC-294)
     });
   });
 
-  it("RPC-check_in_ceiling.capped_by_next_day — at one day it is ends_at + 2 h, exactly today's ceiling; callable by no client role", async () => {
+  it("RPC-check_in_ceiling.capped_by_next_day — at one day it is ends_at + 8 h (DEC-294); callable by no client role", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       const [d] = await daysOf(tx, f.m2.a.published);
       const [r] = await tx.q<{ same: boolean }>(
-        `select public.check_in_ceiling($1) = (select ends_at + interval '2 hours' from public.sessions where id = $2) as same`,
+        `select public.check_in_ceiling($1) = (select ends_at + interval '8 hours' from public.sessions where id = $2) as same`,
         [d.id, f.m2.a.published],
       );
       expect(r.same).toBe(true);

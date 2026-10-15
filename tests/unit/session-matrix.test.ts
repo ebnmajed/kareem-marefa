@@ -132,12 +132,12 @@ describe("checkInIneligibleReason — the specific reason, not just the boolean"
     expect(checkInIneligibleReason(early, confirmed, false, true, NOW)).toBe("not_started");
   });
 
-  it("session_ended — once the 2h ceiling itself has passed (REQ-CHK-016)", () => {
-    const pastCeiling: PhaseInput = { state: "completed", startsAt: at(-3.5), endsAt: at(-2.17) };
+  it("session_ended — once the 8h ceiling itself has passed (REQ-CHK-016, DEC-294)", () => {
+    const pastCeiling: PhaseInput = { state: "completed", startsAt: at(-9.5), endsAt: at(-8.17) };
     expect(checkInIneligibleReason(pastCeiling, confirmed, false, true, NOW)).toBe("session_ended");
   });
 
-  it("★ null during the 2h grace window — the reason string matches the boolean's own pinning test", () => {
+  it("★ null during the 8h grace window — the reason string matches the boolean's own pinning test", () => {
     const graceWindow: PhaseInput = { state: "in_progress", startsAt: at(-1.5), endsAt: at(-0.5) };
     expect(checkInIneligibleReason(graceWindow, confirmed, false, true, NOW)).toBeNull();
   });
@@ -203,21 +203,21 @@ describe("checkInWindowAllowed — DEC-141, self-contained: never through sessio
   // knowledge of the 2h ceiling), and `viewerRelation()` would reclassify a
   // confirmed, not-yet-checked-in member as "absent" — the bug this function
   // exists to route around entirely.
-  it("★ still offers check-in during the 2h grace window, even though the screen already calls the session ended", () => {
+  it("★ still offers check-in during the 8h grace window, even though the screen already calls the session ended", () => {
     const graceWindow: PhaseInput = { state: "in_progress", startsAt: at(-1.5), endsAt: at(-0.5) };
     expect(checkInWindowAllowed(graceWindow, confirmed, false, true, NOW)).toBe(true);
   });
 
-  it("refuses once the 2h ceiling itself has passed", () => {
-    const pastCeiling: PhaseInput = { state: "completed", startsAt: at(-3.5), endsAt: at(-2.17) }; // ends 2h10m ago
+  it("refuses once the 8h ceiling itself has passed (DEC-294)", () => {
+    const pastCeiling: PhaseInput = { state: "completed", startsAt: at(-9.5), endsAt: at(-8.17) }; // ends 8h10m ago
     expect(checkInWindowAllowed(pastCeiling, confirmed, false, true, NOW)).toBe(false);
   });
 
   it("the ceiling is computed from the SCHEDULED end, not extended by a late actual finish (REQ-CHK-016)", () => {
     // The row is still in_progress (the clock job hasn't caught up), but the
-    // scheduled end was well over 2h ago — the ceiling doesn't care that the
+    // scheduled end was well over 8h ago — the ceiling doesn't care that the
     // room is apparently still running.
-    const overrun: PhaseInput = { state: "in_progress", startsAt: at(-4), endsAt: at(-2.5) };
+    const overrun: PhaseInput = { state: "in_progress", startsAt: at(-10), endsAt: at(-8.5) };
     expect(checkInWindowAllowed(overrun, confirmed, false, true, NOW)).toBe(false);
   });
 });

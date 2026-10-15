@@ -59,6 +59,22 @@ describe("postAction — a feed never reserves; every action is a link (§4.57)"
     expect(postAction(live, "available", viewer({ mine: "confirmed", attended: true }), NOW).kind).toBe("attended");
   });
 
+  it("★ the grace window: an ended session still taking attendance offers check-in, as the event page does", () => {
+    const grace = candidate({ state: "completed", phase: "ended", startsAt: at(-1.5), endsAt: at(-0.5), checkInOpen: true });
+    expect(postAction(grace, "closed", viewer({ mine: "confirmed" }), NOW).kind).toBe("checkIn");
+    // Past the ceiling (ends_at + 8 h, DEC-294), never.
+    const late = candidate({ state: "completed", phase: "ended", startsAt: at(-9.5), endsAt: at(-8.5), checkInOpen: true });
+    expect(postAction(late, "closed", viewer({ mine: "confirmed" }), NOW).kind).toBe("none");
+  });
+
+  it("★ staff with no hold of their own run the room: the walk-in check-in is never the post's action", () => {
+    const live = candidate({ state: "in_progress", phase: "live", startsAt: at(-0.5), endsAt: at(0.5), checkInOpen: true, allowWalkIns: true });
+    expect(postAction(live, "available", viewer({ isStaff: true }), NOW).kind).toBe("none");
+    // A member through the same door is offered it; staff who reserved are attendees.
+    expect(postAction(live, "available", viewer(), NOW).kind).toBe("checkIn");
+    expect(postAction(live, "available", viewer({ isStaff: true, mine: "confirmed" }), NOW).kind).toBe("checkIn");
+  });
+
   it("★ the viewer's own session, and a cancelled one, offer nothing (REQ-CHK-011)", () => {
     expect(postAction(candidate(), "available", viewer({ isPresenter: true }), NOW).kind).toBe("none");
     expect(postAction(candidate({ state: "cancelled", phase: "cancelled" }), "available", viewer({ mine: "confirmed" }), NOW).kind).toBe("none");
