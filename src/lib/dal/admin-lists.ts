@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { companyLogoHref } from "@/components/scoring/company-logo-href";
 import { readAll } from "@/lib/dal/admin-paging";
 import { sessionClient } from "@/lib/dal/session";
 
@@ -38,6 +39,9 @@ export interface AdminCompany {
   /** ★ wave 27 (`REQ-ADM-024`): the company's email domains, lowercase, sorted — read from `company_domains`, which
    *  only an admin may read (0203). LTR text: every rendering wraps each in `<bdi dir="ltr">`. */
   domains: string[];
+  /** DEC-298 (`0230`): the logo's `design_assets` id, or null — and its href for drawing it (`companyLogoHref()`). */
+  logoAssetId: string | null;
+  logoSrc: string | null;
 }
 
 /** What a write did — never success for a write that matched no row (`DEC-232` §3.1). */
@@ -122,7 +126,7 @@ export async function listCompaniesForAdmin(locale: string): Promise<AdminCompan
   if (!client) return null;
   const { supabase } = client;
 
-  const rows = await readAll("companies", (from, to) => supabase.from("companies").select("id, name, deactivated_at, team_color").order("id").range(from, to));
+  const rows = await readAll("companies", (from, to) => supabase.from("companies").select("id, name, deactivated_at, team_color, logo_asset_id").order("id").range(from, to));
   if (rows.length === 0) return [];
 
   const memberRows = await readAll("members", (from, to) =>
@@ -143,6 +147,8 @@ export async function listCompaniesForAdmin(locale: string): Promise<AdminCompan
       activeMemberCount: active.get(c.id as string) ?? 0,
       teamColor: c.team_color as string | null,
       domains: (domains.get(c.id as string) ?? []).sort(),
+      logoAssetId: (c.logo_asset_id as string | null) ?? null,
+      logoSrc: companyLogoHref(c.id as string, c.logo_asset_id as string | null),
     }))
     .sort((a, b) => Number(a.deactivatedAt !== null) - Number(b.deactivatedAt !== null) || a.name.localeCompare(b.name, "ar"));
 }
@@ -166,6 +172,17 @@ export async function updateCompany(locale: string, companyId: string, input: Co
   if (!z.uuid().safeParse(companyId).success) return { ok: false };
   const { supabase } = await sessionClient(locale);
   return wrote(await supabase.from("companies").update({ name: input.name, team_color: teamColorHex }).eq("id", companyId).select("id"));
+}
+
+/** DEC-298 (`0230`): set or clear a company's logo — a `design_assets` row the admin uploaded through the asset
+ *  route (sniffed, raster only, DEC-009). The database refuses another org's asset (23514) and audits the change
+ *  (`company.logo_changed`); the same id again writes nothing. */
+export async function setCompanyLogo(locale: string, companyId: string, logoAssetId: string | null): Promise<ListWrite> {
+  if (!z.uuid().safeParse(companyId).success) return { ok: false };
+  if (logoAssetId !== null && !z.uuid().safeParse(logoAssetId).success) return { ok: false };
+  const client = await requireAdmin(locale);
+  if (!client) return { ok: false };
+  return wrote(await client.supabase.from("companies").update({ logo_asset_id: logoAssetId }).eq("id", companyId).select("id"));
 }
 
 /** Deactivate or restore — the only exit a company has (REQ-ADM-008). */

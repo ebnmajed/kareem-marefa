@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { companyInput, saveCompanyWithDomains, setCompanyActive } from "@/lib/dal/admin-lists";
+import { companyInput, saveCompanyWithDomains, setCompanyActive, setCompanyLogo } from "@/lib/dal/admin-lists";
 import type { Locale } from "@/i18n/routing";
 import { formStateFrom, was, withErrors, withFormError, zodErrors } from "@/lib/form-state";
 import { COMPANY_FIELDS, NO_TEAM_COLOUR, domainLines, emptyCompanyState, type CompanyField, type CompanyState } from "./state";
@@ -69,10 +69,21 @@ export async function saveCompany(locale: Locale, companyId: string | null, prev
         saved: false,
         confirm: { moving: result.moving, held: result.held, token: result.token, companyName: result.companyName, changed: result.status === "changed" },
       };
-    case "saved":
+    case "saved": {
+      // DEC-298: the logo the field left, bound now that the company exists. A form that posts no `logo` field (an
+      // older page open across a deploy) leaves the logo as it is; an empty one clears it.
+      const logo = formData.get("logo");
+      if (typeof logo === "string") {
+        const logoId = logo === "" ? null : logo;
+        if (logoId !== null && !z.uuid().safeParse(logoId).success) return fail(captured);
+        const bound = await setCompanyLogo(locale, result.companyId, logoId);
+        if (!bound.ok) return fail(captured, "logoNotSaved");
+        revalidatePath(`/${locale}/app/leaderboards`);
+      }
       revalidatePath(`/${locale}/app/admin/companies`);
       revalidatePath(`/${locale}/app/admin/members`);
       return { ...emptyCompanyState, saved: true };
+    }
     default:
       return fail(captured);
   }

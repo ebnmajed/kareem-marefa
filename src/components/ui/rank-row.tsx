@@ -1,5 +1,6 @@
+import type { CSSProperties } from "react";
 import type { RankRowProps } from "@/components/ui";
-import { Avatar } from "@/components/ui/avatar";
+import { Avatar, teamColorOrNull } from "@/components/ui/avatar";
 import { ArrowIcon } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
 
@@ -30,6 +31,29 @@ import { Link } from "@/components/ui/link";
 // marker and the self outline take the heading ink there — `pg-light:` — and
 // stay a shape that meets 3:1 (SC 1.4.11).
 
+// ★ DEC-298 (the owner, reversing DEC-195 §4): a COMPANY's place on the company board draws the company's mark — its
+// logo on a bone plate (a logo is drawn for a white page; the dark ground would swallow a dark one), framed in the
+// team colour; without a logo, its initial on its colour. A rounded square, never a circle: a circle is a person.
+// A member's avatar never shows it — the ring stays the ring (REQ-PRF-009).
+const MARK_SIZE = { 32: "h-8 w-8 text-[0.8125rem] border-2", 64: "h-16 w-16 text-[1.625rem] border-4" } as const;
+
+export function CompanyMark({ name, teamColor, logoSrc = null, size = 32 }: { name: string; teamColor: string | null | undefined; logoSrc?: string | null; size?: 32 | 64 }) {
+  const colour = teamColorOrNull(teamColor);
+  const style = colour ? ({ "--team": colour } as CSSProperties) : undefined;
+  const frame = colour ? "border-team" : "border-team-neutral";
+  const fill = logoSrc ? "bg-sticker-bone" : colour ? "bg-team text-on-team" : "bg-raised text-fg-heading";
+  return (
+    <span aria-hidden="true" data-slot="company-mark" className={`relative inline-flex shrink-0 items-center justify-center rounded-tile font-display font-extrabold ${MARK_SIZE[size]} ${frame} ${fill}`} style={style}>
+      {/* The initial is always drawn under the image, as `Avatar` does: a logo that fails to load leaves it showing. */}
+      <bdi>{name.trim().charAt(0) || "؟"}</bdi>
+      {logoSrc ? (
+        // eslint-disable-next-line @next/next/no-img-element -- our proxied copy at `/api/companies/{id}/logo`, drawn contained.
+        <img src={logoSrc} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full rounded-[inherit] bg-sticker-bone object-contain p-[8%]" />
+      ) : null}
+    </span>
+  );
+}
+
 export function RankRow({
   rank,
   rankLabel,
@@ -38,6 +62,8 @@ export function RankRow({
   company,
   teamColor,
   avatarSrc = null,
+  kind = "member",
+  logoSrc = null,
   points,
   pointsLabel,
   selfLabel,
@@ -59,7 +85,11 @@ export function RankRow({
         <bdi aria-hidden="true">{String(rank)}</bdi>
       </span>
 
-      <Avatar memberId={memberId} displayName={displayName} src={avatarSrc} size={32} decorative teamColor={teamColor} />
+      {kind === "company" ? (
+        <CompanyMark name={displayName} teamColor={teamColor} logoSrc={logoSrc} />
+      ) : (
+        <Avatar memberId={memberId} displayName={displayName} src={avatarSrc} size={32} decorative teamColor={teamColor} />
+      )}
 
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="flex flex-wrap items-center gap-x-2 text-body font-bold text-fg-heading">

@@ -29,9 +29,9 @@ function Wrap({ children }: { children: React.ReactNode }) {
 }
 
 const COMPANIES: Row[] = [
-  { id: "11111111-1111-4111-8111-111111111111", name: "شركة الأولى", deactivatedAt: null, memberCount: 9, activeMemberCount: 7, teamColor: "#35d0ff", quarterPoints: 25, domains: ["first.example", "first.sa"] },
-  { id: "22222222-2222-4222-8222-222222222222", name: "شركة الثانية", deactivatedAt: null, memberCount: 0, activeMemberCount: 0, teamColor: null, quarterPoints: null, domains: [] },
-  { id: "33333333-3333-4333-8333-333333333333", name: "شركة قديمة", deactivatedAt: "2026-09-01T00:00:00Z", memberCount: 2, activeMemberCount: 0, teamColor: null, quarterPoints: null, domains: [] },
+  { id: "11111111-1111-4111-8111-111111111111", name: "شركة الأولى", deactivatedAt: null, memberCount: 9, activeMemberCount: 7, teamColor: "#35d0ff", quarterPoints: 25, domains: ["first.example", "first.sa"], logoAssetId: null, logoSrc: null },
+  { id: "22222222-2222-4222-8222-222222222222", name: "شركة الثانية", deactivatedAt: null, memberCount: 0, activeMemberCount: 0, teamColor: null, quarterPoints: null, domains: [], logoAssetId: null, logoSrc: null },
+  { id: "33333333-3333-4333-8333-333333333333", name: "شركة قديمة", deactivatedAt: "2026-09-01T00:00:00Z", memberCount: 2, activeMemberCount: 0, teamColor: null, quarterPoints: null, domains: [], logoAssetId: null, logoSrc: null },
 ];
 const table = () => screen.getByRole("table");
 const rows = () => within(table()).getAllByRole("row").slice(1);

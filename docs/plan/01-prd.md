@@ -2812,6 +2812,19 @@ member may switch off.
 
 ---
 
+#### REQ-ADM-026 — A company may carry a logo, shown where the company is the subject
+**Serves:** `DEC-298` · `REQ-ADM-008` · `REQ-LDR-004` · `REQ-UIX-079` · `09` `SCR-048`, `SCR-028`
+An **مشرف المؤسسة** may upload a logo for each **شركة** on `SCR-048`, replace it or remove it. It is drawn where the
+company itself is the subject — the company board's podium and rows, and `SCR-048`'s table — and never on a member's
+avatar, which keeps the team-colour ring (`REQ-UIX-043`, `REQ-PRF-009`).
+**Acceptance:**
+- The logo is a raster image sniffed on its content after it lands — PNG, JPEG or WebP; never an SVG (`DEC-009`).
+- The column is nullable and additive; a company with none shows its initial on its team colour.
+- A logo must be an asset of the company's own org, refused by the database otherwise.
+- Members of the org read it through a route that proxies it as the viewer; another org's member and `anon` are
+  refused, and a replaced or cleared logo is closed at once. No `service_role` serves it.
+- A change is audited (`company.logo_changed`).
+
 ## 21. Internationalization, RTL and typography — `INT`
 
 #### REQ-INT-001 — Arabic is the launch language, with full RTL
@@ -3592,8 +3605,8 @@ element as the CSS variable `--team`.
 - No migration writes a colour onto a company.
 - ★ The colour is chosen **when the company is created**, on the add form, with the same named-colour picker as
   the edit path — the named colours and «بلا لون», never a hex field — and the insert carries it (`DEC-195` §3).
-- ★★ **A company has no logo** (`DEC-195` §4): a name, a team colour, and active-or-deactivated is the whole
-  entity. The colour is the company's identity; a logo beside the ring would be a second one.
+- ~~★★ **A company has no logo** (`DEC-195` §4)~~ — reversed by the owner (`DEC-298`): a company may carry a logo
+  (`REQ-ADM-026`). The colour still rings a member's avatar; the logo is drawn only where the company is the subject.
 
 #### REQ-UIX-044 — A moment plays once per occurrence, from one shared mechanism, and never on a re-render
 **Serves:** `DEC-195` §2 · `DEC-183` §2 · `REQ-UIX-014` · `REQ-UIX-019` · `REQ-UIX-020`
@@ -4075,6 +4088,9 @@ the member's own company marked; and «كيف حصلت شركتك على نقا�
 - A member with no company sees the prompt to choose one in place of the breakdown.
 - A company below the minimum of active members has no rank and says so.
 - Every figure is the snapshot's or the live computation's that the board already reads; none is a literal.
+- ★ `DEC-298`: the board reads like the members' (`REQ-UIX-078`) — the first three **ranked** companies on the
+  podium, second · first · third, the cup over the first, each with its logo or its initial; the rest as rows. An
+  unranked company never stands on the podium.
 
 #### REQ-UIX-080 — No explainer copy
 **Serves:** `DEC-216` §5.14 · `DEC-NEXT-25`

@@ -351,7 +351,8 @@
         "domainsInvalid": "نطاق لا يُقبل.",
         "domainMalformed": "<d>{domain}</d> ليس نطاقًا.",
         "domainTaken": "<d>{domain}</d> على شركة «<t>{company}</t>».",
-        "domainsTooMany": "عشرون نطاقًا على الأكثر."
+        "domainsTooMany": "عشرون نطاقًا على الأكثر.",
+        "logoNotSaved": "حُفظت الشركة ولم يُحفظ الشعار"
       },
       "teamColourLabel": "لون الفريق",
       "newCompany": "شركة جديدة",
@@ -376,7 +377,21 @@
       "moveCount": "{count, plural, zero {لا ينتقل أحد إلى «<t>{name}</t>»} one {ينتقل عضو واحد إلى «<t>{name}</t>»} two {ينتقل عضوان إلى «<t>{name}</t>»} few {ينتقل <bdi>{value}</bdi> أعضاء إلى «<t>{name}</t>»} many {ينتقل <bdi>{value}</bdi> عضوًا إلى «<t>{name}</t>»} other {ينتقل <bdi>{value}</bdi> عضو إلى «<t>{name}</t>»}}",
       "heldCount": "{count, plural, zero {لا يبقى أحد خارجها} one {يبقى عضو واحد مكانه لأن مشرفًا وضعه يدويًا} two {يبقى عضوان مكانهما لأن مشرفًا وضعهما يدويًا} few {يبقى <bdi>{value}</bdi> أعضاء مكانهم لأن مشرفًا وضعهم يدويًا} many {يبقى <bdi>{value}</bdi> عضوًا مكانهم لأن مشرفًا وضعهم يدويًا} other {يبقى <bdi>{value}</bdi> عضو مكانهم لأن مشرفًا وضعهم يدويًا}}",
       "moveChanged": "تغيّر العدد منذ ضغطت «احفظ».",
-      "moveConfirm": "انقل واحفظ"
+      "moveConfirm": "انقل واحفظ",
+      "logo": {
+        "label": "الشعار",
+        "none": "بلا شعار",
+        "remove": "أزل الشعار",
+        "uploading": "يُرفع الشعار…",
+        "formats": "PNG · JPEG · WebP",
+        "errors": {
+          "file_too_large": "الملف أكبر من الحد المسموح",
+          "rejected_content": "PNG أو JPEG أو WebP فقط",
+          "unreadable": "تعذّرت قراءة الصورة",
+          "not_authorized": "تعذّر رفع الشعار",
+          "unknown": "تعذّر رفع الشعار"
+        }
+      }
     },
     "members": {
       "title": "الأعضاء",
@@ -609,6 +624,7 @@
         },
         "company": {
           "team_color_changed": "تغيير لون فريق شركة",
+          "logo_changed": "تغيير شعار شركة",
           "created": "إنشاء شركة",
           "changed": "تعديل شركة",
           "deactivated": "تعطيل شركة",
