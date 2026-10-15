@@ -2,9 +2,12 @@
 //
 //   1. Two members look at a session's post, an announcement and the session's story frame — the post and the
 //      announcement held on screen past a second, the frame shown in the viewer — and leave.
-//   2. A third member sees «2» on each and nothing to press (the count is everyone's; the list is not).
-//   3. The session's presenter (the post's and the generated frame's owner) and the announcement's author, an admin,
-//      press the count and see the two names — and the day, nothing finer.
+//   The session's presenter looks too: the post's and the generated frame's OWNER, so their look is recorded and never
+//   counted there — but the announcement is the admin's, so for it the presenter is an ordinary viewer.
+//   2. A third member sees «2» on the post and the frame, «3» on the announcement, and nothing to press (the count is
+//      everyone's; the list is not).
+//   3. The presenter presses the post's count and sees the two names; the announcement's author, an admin, sees three
+//      — the presenter among them — and the day, nothing finer.
 //   4. An owner's own look is never counted.
 //
 // Every page-level locator comes from `#main` (DEC-145). Run: `npm run test:e2e:local -- tests/e2e/views-counts.spec.ts
@@ -156,14 +159,20 @@ test("two members look; the owners' own looks are recorded but never counted", a
   await expect.poll(() => counted("frame"), { timeout: 15_000 }).toEqual(expect.arrayContaining(viewers));
 });
 
-test("a third member sees «2» on the post, the announcement and the frame — and nothing to press", async ({ context, page }) => {
+test("a third member sees «2» on the post and the frame, «3» on the announcement — and nothing to press", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
   await signIn(context, email.three);
   await home(page);
-  for (const subject of [post(page), notice(page)]) {
+  // ★ The announcement is the admin's, not the presenter's: the presenter's look counts there (the first run expected
+  // «2» everywhere and read «3» on the announcement — the test's arithmetic, not a defect). The counts are drawn by the
+  // server at page load, before this member's own look could be recorded.
+  for (const [subject, label, figure] of [
+    [post(page), "شاهده عضوان", "2"],
+    [notice(page), "شاهده 3 أعضاء", "3"],
+  ] as const) {
     const count = subject.locator("[data-view-count]");
-    await expect(count).toHaveAttribute("aria-label", "شاهده عضوان");
-    await expect(count.locator("bdi")).toHaveText("2");
+    await expect(count).toHaveAttribute("aria-label", label);
+    await expect(count.locator("bdi")).toHaveText(figure);
     await expect(subject.locator("button[data-view-count]")).toHaveCount(0);
   }
   await page.screenshot({ path: join(SHOTS, "views-member-feed-390.png") });
@@ -175,18 +184,20 @@ test("a third member sees «2» on the post, the announcement and the frame — 
 
 test("the presenter sees who viewed the post and the frame; the admin who viewed the announcement — names and the day", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
-  for (const [who, subject] of [
-    ["presenter", post],
-    ["admin", notice],
+  for (const [who, subject, presenterListed] of [
+    ["presenter", post, false],
+    ["admin", notice, true],
   ] as const) {
     await signIn(context, email[who]);
     await home(page);
     await subject(page).locator("button[data-view-count]").click();
     const sheet = page.getByRole("dialog", { name: "شاهدوه" });
-    await expect(sheet.locator("[data-viewer-list] li")).toHaveCount(2);
+    await expect(sheet.locator("[data-viewer-list] li")).toHaveCount(presenterListed ? 3 : 2);
     await expect(sheet).toContainText(NAMES.one);
     await expect(sheet).toContainText(NAMES.two);
-    await expect(sheet).not.toContainText(NAMES.presenter);
+    // The presenter owns the post (never listed there) and is an ordinary viewer of the admin's announcement.
+    if (presenterListed) await expect(sheet).toContainText(NAMES.presenter);
+    else await expect(sheet).not.toContainText(NAMES.presenter);
     expect(await sheet.textContent()).not.toMatch(/\d{1,2}:\d{2}/);
     await page.screenshot({ path: join(SHOTS, `views-${who}-list-390.png`) });
     await page.keyboard.press("Escape");
