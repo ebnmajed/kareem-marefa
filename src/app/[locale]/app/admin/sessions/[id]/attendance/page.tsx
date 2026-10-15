@@ -11,8 +11,10 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { TagChip } from "@/components/ui/tag-chip";
 import { Textarea } from "@/components/ui/textarea";
 import { getAttendanceReport, getHostView, type AttendanceRow } from "@/lib/dal/checkin";
+import { listMembersForAdmin } from "@/lib/dal/admin-members";
 import { getRatingsForAdmin } from "@/lib/dal/ratings";
 import { requireSession } from "@/lib/dal/session";
+import { canMarkManually, manualMarkCandidates } from "@/components/checkin/manual-mark-scope";
 import { checkInCeiling, resolveDay } from "@/lib/session-status";
 import { markManually, markManuallyNoScript, removeCheckInAction } from "./actions";
 import { AttendanceBoard, type BoardRow } from "./_components/attendance-board";
@@ -52,11 +54,13 @@ export default async function AttendancePage({
   setRequestLocale(locale);
   const sp = await searchParams;
 
-  const [report, session, t, tDays] = await Promise.all([
+  const [report, session, t, tDays, orgMembers] = await Promise.all([
     getAttendanceReport(locale, id),
     requireSession(locale),
     getTranslations("checkin.attendance"),
     getTranslations("sessions.days"),
+    // ★ DEC-296: an admin may mark ANY member of the org, not only a seat-holder. Null for a moderator (admin-only read).
+    listMembersForAdmin(locale).catch(() => null),
   ]);
   if (report === null) notFound();
 
@@ -92,13 +96,10 @@ export default async function AttendancePage({
   const dayStarted = selected ? Date.parse(selected.startsAt) <= now : false;
   const ceiling = dayIndex >= 0 ? checkInCeiling(report.days, dayIndex) : null;
 
-  // ★ Who may mark by hand (REQ-CHK-008, REQ-CHK-017, DEC-228 §4.6): an admin at any time once the day has begun, a
-  // completed session included; a moderator inside the RPC's own window. The RPC re-checks both.
-  const canMark =
-    !!selected &&
-    dayStarted &&
-    !cancelled &&
-    (isAdmin || ((state === "published" || state === "in_progress" || state === "completed") && (ceiling === null || now < ceiling)));
+  // ★ Who may mark by hand (REQ-CHK-008, REQ-CHK-017, DEC-296): an admin ANY member at ANY time — before the day,
+  // during it, or long after — on a published, running, completed or archived session; a moderator a seat-holder,
+  // inside the RPC's own window. The RPC re-checks both.
+  const canMark = canMarkManually({ isAdmin, state, hasDay: !!selected, dayStarted, ceiling, now });
 
   const cellOf = (r: AttendanceRow) => r.days.find((c) => c.dayId === selected?.id) ?? null;
   const tz = report.timeZone; // D8: the session's zone, as the host view uses
@@ -127,8 +128,9 @@ export default async function AttendancePage({
       removal: status === "removed" ? { reason: c?.removalReason ?? null, by: c?.removedByName ?? null } : null,
       days: manyDays ? t("daysAttended", { value: formatNumber(r.daysAttended), total: formatNumber(report.days.length) }) : null,
       complete: manyDays && r.attendanceComplete,
-      // K13/K14: a seat of some kind, missing on THIS day — a removed member may be marked again.
-      canMark: canMark && holdsSeat && status !== "present",
+      // K13/K14: missing on THIS day — a removed member may be marked again. A moderator marks a seat-holder; an admin
+      // anyone (DEC-296).
+      canMark: canMark && (isAdmin || holdsSeat) && status !== "present",
       // K16: admin-only, an ACTIVE check-in on THIS day.
       canRevoke: isAdmin && status === "present",
     };
@@ -136,7 +138,11 @@ export default async function AttendancePage({
 
   const show: Show = sp.show === "present" || sp.show === "absent" ? sp.show : "all";
   const rows = show === "all" ? allRows : allRows.filter((r) => r.status === show);
-  const candidates = allRows.filter((r) => r.canMark).map((r) => ({ value: r.memberId, label: r.name ?? r.memberId }));
+  // ★ DEC-296: an admin's sheet offers every active member of the org not already present on this day — the
+  // seat-holders first, as the table lists them, then everyone else by name. A moderator's, the table's rows.
+  const listed = allRows.filter((r) => r.canMark).map((r) => ({ value: r.memberId, label: r.name ?? r.memberId }));
+  const present = new Set(allRows.filter((r) => r.status === "present").map((r) => r.memberId));
+  const candidates = manualMarkCandidates(listed, present, canMark && isAdmin ? orgMembers : null);
 
   const query = (next: Partial<{ day: string; show: Show; manual: boolean }>) => {
     const q = new URLSearchParams();

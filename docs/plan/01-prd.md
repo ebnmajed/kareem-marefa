@@ -1014,6 +1014,10 @@ difference.
 - Manual marks are audited and flagged in every CSV export.
 - A manual mark grants exactly the same rights as a code check-in — D24 is not weakened by the
   backup.
+- ★ **Amended by `DEC-296` (owner, 2026-10-15):** an **admin** may mark **any active member of the org** — a
+  reservation is not required — on any published, running, completed or archived session, **at any time**: before
+  the day begins, during it, or long after. A moderator keeps the code family's window and marks seat-holders. A
+  presenter of the session is never marked (`REQ-CHK-011`), and the overlap refusal stands (`REQ-CHK-013`).
 
 #### REQ-CHK-009 — The verified check-in is the sole trigger
 **Serves:** D24

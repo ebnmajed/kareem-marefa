@@ -1934,7 +1934,7 @@ generated suite is the highest-value test in the product.
 | `RPC-schedule_session.walk_ins_unchanged` | Rescheduling WITHOUT passing the parameter (the default, `null`) leaves `allow_walk_ins` exactly as it was. |
 | `RPC-schedule_session.walk_ins_changed_audited` | A reschedule that actually changes `allow_walk_ins` writes a `session.walk_ins_changed` row with the old and new values, KEPT SEPARATE from `session.scheduled`'s own row (the lead's promotion-review fix) — a reschedule that leaves it unchanged writes none. |
 | `RPC-set_session_walk_ins.retired` | The function no longer exists — DEC-118: no door but `schedule_session()`. |
-| `RPC-mark_checked_in_manually.window` | An admin marks a member present any time after the scheduled start, including on an archived session; a moderator is refused outside the code family's floor/ceiling; both are refused on a cancelled session. |
+| `RPC-mark_checked_in_manually.window` | ★ Since `0227` (`DEC-296`): an admin marks any member present at any time — before the scheduled start too, with no reservation — on a published, running, completed or archived session, and is refused on a cancelled or never-published one; a moderator is refused outside the code family's floor/ceiling. |
 | `RPC-mark_checked_in_manually.award_points` | A manual mark enqueues exactly one `award_points` job, keyed `pts:check_in:<check_in.id>` — the same key shape a code check-in uses. |
 | `RPC-remove_check_in.admin_only` | A member, a presenter and a moderator are all refused `not_authorized`; only an admin succeeds. |
 | `RPC-remove_check_in.reason_required` | An empty reason is refused before anything is written. |

@@ -387,7 +387,7 @@ describe("the day's code", () => {
 // the manual mark and the removal
 // ═══════════════════════════════════════════════════════════════════════════
 describe("an admin corrects Tuesday's list on Thursday", () => {
-  it("marks a past day present, is refused not_open on a FUTURE day, and a moderator is still bound by that day's ceiling", async () => {
+  it("marks a past day present and (DEC-296) a FUTURE day too; a moderator is still bound by that day's ceiling", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       await tx.asOwner();
@@ -405,9 +405,9 @@ describe("an admin corrects Tuesday's list on Thursday", () => {
         s.days[0],
       ]);
       expect(past.session_day_id).toBe(s.days[0]);
-      expect(
-        await errorMessage(() => tx.q(`select * from public.mark_checked_in_manually($1, $2, 'مبكرًا', $3)`, [s.id, member.memberId, s.days[2]])),
-      ).toMatch(/not_open/);
+      // ★ DEC-296: an admin may mark a day that has not begun.
+      const [future] = await tx.q<{ session_day_id: string }>(`select * from public.mark_checked_in_manually($1, $2, 'مبكرًا', $3)`, [s.id, member.memberId, s.days[2]]);
+      expect(future.session_day_id).toBe(s.days[2]);
 
       await tx.as(f.a.mod.claims);
       expect(

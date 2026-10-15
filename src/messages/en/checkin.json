@@ -41,7 +41,7 @@
         "not_authorized": "You don't have permission to mark attendance manually",
         "reason_required": "A reason is required",
         "not_found": "Session not found",
-        "not_open": "Manual check-in is only available during the session",
+        "not_open": "Manual check-in isn't available for this session right now",
         "member_not_found": "That member isn't in this organisation",
         "presenter_cannot_check_in": "The session's presenter cannot be marked present",
         "unknown": "Something went wrong — try again"
