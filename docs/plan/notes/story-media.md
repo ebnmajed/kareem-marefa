@@ -174,8 +174,8 @@ libdav1d). No new job.
   - video `202` → «جارٍ التجهيز» over the take's own still, then the author's poll (§1.2 step 4, every 2 s, 90 s):
     `visible` closes the capture; `failed` with `too_long` / `too_large` / `unsupported` hands the camera back with the
     word; `failed`/other keeps the take with «أعد المحاولة» (a fresh upload); `404` is not followed.
-  - a gallery video is refused over **16 s** or 62914560 bytes (the server's figures); a kind it cannot read →
-    «صيغة غير مدعومة».
+  - ★ superseded by `DEC-293`: no length refusal on the phone (the worker keeps the first 15 s); a video over
+    52428800 bytes is refused at once, «أكبر من 50 ميغابايت»; a kind it cannot read → «صيغة غير مدعومة».
   - closing aborts whatever is in flight; nothing writes state after unmount.
 - **`ui/story-capture.tsx`**: `error` keeps the take — «أعد» and «أعد المحاولة» (`labels.retry`); `uploading` draws a
   `progressbar` (scaleX, no transition, reduced-motion safe); `refused` re-enables the shutter. Every control stays a
@@ -204,10 +204,12 @@ libdav1d). No new job.
 
 ### 4.5 · On a real phone (the lead / the owner)
 
-iOS Safari and Android Chrome, each: record 3 s by taps → publish → bar → «جارٍ التجهيز» → closes when visible;
-record until it stops itself at 0:15 → accepted (not «أطول من 15 ثانية»); pick a 30 s gallery video → refused at once;
-pick an iPhone HEVC `.mov` under 16 s → visible; take a photo → closes with the toast, **no error page**; airplane mode
-mid-upload → «لا اتصال» with the take kept → back online → «أعد المحاولة» → visible.
+★ Since `DEC-293` (the phone's own camera): iOS Safari and Android Chrome, each — «أضف» → «فيديو» opens the Camera
+app → film 5 s → our review → «انشر» → bar → «جارٍ التجهيز» → visible; film 40 s → accepted, the story shows the first
+15 s; «صورة» → take a photo → closes with the toast, **no error page**; «من الاستوديو» → an iPhone HEVC `.mov` →
+visible; a gallery video over 50 MB → «أكبر من 50 ميغابايت» at once; airplane mode mid-upload → «لا اتصال» with the take
+kept → back online → «أعد المحاولة» → visible. Open the capture from the viewer's «أضف», the ring's «قصتك» and the
+event page's «أضف إلى القصة», with Safari's toolbar shown and collapsed: close and the three choices are on screen.
 
 ## 5 · THE SERVER, MEASURED — real recordings through the worker's own arguments
 
