@@ -8,7 +8,7 @@ import { promisify } from "node:util";
 // and zip. No npm package touches the bytes: this file spawns the binaries as pdf.ts spawns pdftoppm.
 //
 // ★ THREE RULES THIS FILE EXISTS TO HOLD.
-//   1. The server decides from the bytes that landed, never from the client's word: the size (200 MB) is the object's
+//   1. The server decides from the bytes that landed, never from the client's word: the size (50 MB) is the object's
 //      own length, and the length kept is the first 15 seconds of whatever was uploaded (DEC-293 §3 — a longer video
 //      is trimmed, not refused).
 //   2. Nothing a phone wrote into the container survives. A phone's video carries its GPS position in its container
@@ -26,7 +26,7 @@ const execFileP = promisify(execFile);
  *  accepted source and nothing after — a 40-second clip from the phone's camera app is stored as its first 15 seconds,
  *  never refused for its length. (`too_long` survives only as a reason on rows failed before DEC-293.) */
 export const STORY_VIDEO_MAX_SECONDS = 15;
-/** 200 MB — the bucket's own `file_size_limit` refuses a larger PUT at the edge; this refuses one that ever lands. The
+/** 50 MB — the bucket's own `file_size_limit` refuses a larger PUT at the edge; this refuses one that ever lands. The
  *  one figure lives in the path builder's package, shared with the app (notes/story-media.md §8). */
 export { STORY_VIDEO_MAX_BYTES };
 /** The rendition: at most 720 px on the short side, 30 fps, 2.5 Mbit/s video, 128 kbit/s audio — ≈ 5 MB for 15 s. */

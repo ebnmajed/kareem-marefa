@@ -110,7 +110,7 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
     setMessage(tooLargeOr(key));
   }
 
-  /** The word for a refusal; «أكبر من 200 ميغابايت» carries the ceiling read from the one constant. */
+  /** The word for a refusal; «أكبر من 50 ميغابايت» carries the ceiling read from the one constant. */
   function tooLargeOr(key: "tooLong" | "tooLarge" | "unsupported"): string {
     return key === "tooLarge" ? t("capture.tooLarge", { size: formatNumber(STORY_VIDEO_MAX_MB) }) : t(`capture.${key}`);
   }

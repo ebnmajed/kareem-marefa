@@ -80,8 +80,8 @@ describe("DEC-293 — the phone's own camera, through three file inputs", () => 
   });
 
   it("refused: the word, and the three choices again", () => {
-    show({ state: "refused", message: "أكبر من 200 ميغابايت" });
-    expect(screen.getByRole("status")).toHaveTextContent("أكبر من 200 ميغابايت");
+    show({ state: "refused", message: "أكبر من 50 ميغابايت" });
+    expect(screen.getByRole("status")).toHaveTextContent("أكبر من 50 ميغابايت");
     expect(screen.getByLabelText("صورة")).toBeInTheDocument();
     expect(screen.getByLabelText("من الاستوديو")).toBeInTheDocument();
   });

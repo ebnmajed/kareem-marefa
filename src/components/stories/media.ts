@@ -5,7 +5,7 @@
 import { STORY_VIDEO_MAX_BYTES } from "@/lib/storage/limits";
 
 /** The video ceiling, in bytes — ONE definition for the client, the DAL and the worker (`@kareem/storage-paths`, through
- *  the client-safe `@/lib/storage/limits`; DEC-293: 200 MB). Refused here at once and in a word; the words read it too.
+ *  the client-safe `@/lib/storage/limits`; DEC-293: 50 MB). Refused here at once and in a word; the words read it too.
  *  There is no duration check on the phone: the worker keeps the first 15 s of a longer video. */
 export { STORY_VIDEO_MAX_BYTES };
 /** The ceiling in the words' unit — megabytes, as the refusal says it. */

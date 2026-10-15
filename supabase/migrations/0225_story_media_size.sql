@@ -1,27 +1,22 @@
--- content — story media's size ceiling, 60 MB → 200 MB (DEC-293 §3; REQ-STO-011, REQ-STO-016). For the lead to promote
--- as 0225. notes/story-media.md §8 is the measurement behind the figure.
+-- 0225 — story media's size ceiling, 60 MB → 50 MB (DEC-293 §3; REQ-STO-011, REQ-STO-016). Promoted from
+-- supabase/proposed/content/01_story_media_size.sql.
 --
--- Since DEC-293 a story video comes from the phone's own camera app, not our recorder, and is TRIMMED to its first
--- 15.0 s by the worker rather than refused — so the upload is whatever the camera wrote for however long the member
--- filmed. Apple's own figures for one minute (Settings › Camera › Record Video, HEVC): 1080p30 ≈ 60 MB (the default),
--- 1080p60 ≈ 100 MB, 4K30 ≈ 170 MB, 4K60 ≈ 400 MB; «Most Compatible» (H.264) about double. Android 1080p30 H.264
--- ≈ 130 MB. 200 MB holds a minute at every common setting but 4K60 (≈ 30 s there) and 4K H.264.
+-- Since DEC-293 a story video comes from the phone's own camera app and is TRIMMED to its first 15.0 s by the worker
+-- rather than refused, so the upload is whatever the camera wrote. ★ The project is on Supabase's Free plan, whose
+-- global upload limit is fixed at 50 MB and caps every bucket — 0198's 60 MB was never reachable. The owner ruled the
+-- figure to the plan's: 50 MB (2026-10-15). About 50 s of iPhone 1080p30 HEVC (the default), ≈ 18 s of 4K30.
 --
 -- Two places hold the figure, both here, in one file so they cannot drift:
 --   1. the bucket's `file_size_limit` — Storage refuses a larger PUT itself (the bytes never pass through the app);
 --   2. `begin_story_video()`'s declared-size check — the frame is never written for a declared size over it.
--- ★ The project-wide «Upload file size limit» (Dashboard › Storage › Settings) caps EVERY bucket; it must be at least
---   200 MB or the bucket's figure is not reached (the Free plan's ceiling is 50 MB). The owner's to check.
--- NOT moved: `story_frames.byte_size` (0198) — that is the RENDITION's size (≤ 15 s at ≤ 2.5 Mbit/s ≈ 5 MB), and stays
--- capped at 62914560. `allowed_mime_types` unchanged — the client maps every other video type onto mp4/mov/webm.
+-- NOT moved: `story_frames.byte_size` (0198) — the RENDITION's size (≤ 15 s, ≈ 5 MB). `allowed_mime_types` unchanged.
 --
--- Forward-only and additive: `main`'s app refuses declared sizes over 60 MB itself (its zod and its client), so between
--- this migration and the code that follows nothing new is admitted that `main` sends; `main`'s worker refuses > 60 MB
--- objects as `too_large`, which no `main` client produces.
+-- Forward-only: `main`'s app declares up to 60 MB, but the plan's global limit already refuses anything over 50 MB at
+-- the PUT, so `begin_story_video()` refusing 50 – 60 MB admits nothing less than production does today.
 
-update storage.buckets set file_size_limit = 209715200 where id = 'story-media';
+update storage.buckets set file_size_limit = 52428800 where id = 'story-media';
 
--- begin_story_video() — 0199's, verbatim but for the ceiling (62914560 → 209715200).
+-- begin_story_video() — 0199's, verbatim but for the ceiling (62914560 → 52428800).
 create or replace function public.begin_story_video(
   p_frame_id           uuid,
   p_session_id         uuid,
@@ -45,7 +40,7 @@ begin
      or substr(p_storage_path, char_length(v_prefix) + 1) not in ('mp4', 'mov', 'webm') then
     raise exception 'invalid_path' using errcode = '22023';
   end if;
-  if p_declared_byte_size is null or p_declared_byte_size <= 0 or p_declared_byte_size > 209715200 then
+  if p_declared_byte_size is null or p_declared_byte_size <= 0 or p_declared_byte_size > 52428800 then
     raise exception 'file_too_large' using errcode = '23514';
   end if;
   if v_caption is not null and char_length(v_caption) > 100 then

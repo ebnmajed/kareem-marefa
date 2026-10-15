@@ -297,7 +297,7 @@ test("a video over the server's byte ceiling is refused at once, in a word — n
   closeSync(fd);
   await capture.locator('input[data-source="video"]').setInputFiles(path);
   await expect(capture).toHaveAttribute("data-state", "refused");
-  await expect(capture.getByRole("status")).toHaveText("أكبر من 200 ميغابايت");
+  await expect(capture.getByRole("status")).toHaveText("أكبر من 50 ميغابايت");
   await page.screenshot({ path: join(SHOTS, "story-media-video-too-large-390.png") });
   expect(sent).toBe(0);
 });

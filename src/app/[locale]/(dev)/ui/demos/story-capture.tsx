@@ -10,7 +10,7 @@ import { StoryCapture } from "@/components/ui/story-capture";
 
 const STATES: { key: string; label: string; state: StoryCaptureState; message?: string; progress?: number }[] = [
   { key: "choose", label: "اختر", state: "choose" },
-  { key: "refused", label: "أكبر من المسموح", state: "refused", message: "أكبر من 200 ميغابايت" },
+  { key: "refused", label: "أكبر من المسموح", state: "refused", message: "أكبر من 50 ميغابايت" },
   { key: "review", label: "مراجعة", state: "review" },
   { key: "uploading", label: "جارٍ الرفع", state: "uploading", message: "جارٍ الرفع 42%", progress: 0.42 },
   { key: "error", label: "تعذّر الرفع", state: "error", message: "لا اتصال" },

@@ -110,13 +110,13 @@ describe("judgeProbe — the server decides, from the bytes", () => {
     expect(durationFromProbe({ streams: [{ duration: "14.9" }, { duration: "15.2" }] })).toBe(15.2);
     expect(durationFromProbe({ format: { duration: "0" }, streams: [] })).toBeNull();
   });
-  it("refuses over 200 MB by the object's own length, and passes a 150 MB camera clip", () => {
-    expect(STORY_VIDEO_MAX_BYTES).toBe(209_715_200); // the bucket's file_size_limit (0225) and begin_story_video()'s
+  it("refuses over 50 MB by the object's own length, and passes a 40 MB camera clip", () => {
+    expect(STORY_VIDEO_MAX_BYTES).toBe(52_428_800); // the bucket's file_size_limit (0225) and begin_story_video()'s
     // ONE figure: the worker's and the phone's are the path builder's own constant, not copies.
     expect(PACKAGE_MAX).toBe(STORY_VIDEO_MAX_BYTES);
     expect(CLIENT_MAX).toBe(STORY_VIDEO_MAX_BYTES);
     expect(judgeProbe(ok, STORY_VIDEO_MAX_BYTES + 1)).toEqual({ ok: false, reason: "too_large" });
-    expect(judgeProbe(ok, 150 * 1024 * 1024).ok).toBe(true);
+    expect(judgeProbe(ok, 40 * 1024 * 1024).ok).toBe(true);
   });
   it("refuses no video stream and an unknown codec", () => {
     expect(judgeProbe({ format: { duration: "3" }, streams: [{ index: 0, codec_type: "audio", codec_name: "aac" }] }, 1).ok).toBe(false);
