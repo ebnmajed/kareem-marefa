@@ -11,6 +11,8 @@ import {
   sniffVideoContainer,
 } from "../../worker/src/content/video";
 import { storyCwebpArgs, storyResize } from "../../worker/src/content/story-derivative";
+import { STORY_VIDEO_MAX_BYTES as PACKAGE_MAX } from "@kareem/storage-paths";
+import { STORY_VIDEO_MAX_BYTES as CLIENT_MAX } from "@/lib/storage/limits";
 
 // REQ-STO-016, DEC-248 §6 — what the worker hands ffprobe and ffmpeg, without the binaries. The real strip is proven
 // against ffmpeg itself in story-video-strip.test.ts, inside the worker image.
@@ -110,6 +112,9 @@ describe("judgeProbe — the server decides, from the bytes", () => {
   });
   it("refuses over 200 MB by the object's own length, and passes a 150 MB camera clip", () => {
     expect(STORY_VIDEO_MAX_BYTES).toBe(209_715_200); // the bucket's file_size_limit (0225) and begin_story_video()'s
+    // ONE figure: the worker's and the phone's are the path builder's own constant, not copies.
+    expect(PACKAGE_MAX).toBe(STORY_VIDEO_MAX_BYTES);
+    expect(CLIENT_MAX).toBe(STORY_VIDEO_MAX_BYTES);
     expect(judgeProbe(ok, STORY_VIDEO_MAX_BYTES + 1)).toEqual({ ok: false, reason: "too_large" });
     expect(judgeProbe(ok, 150 * 1024 * 1024).ok).toBe(true);
   });

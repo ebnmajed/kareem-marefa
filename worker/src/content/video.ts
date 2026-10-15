@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { STORY_VIDEO_MAX_BYTES } from "@kareem/storage-paths";
 import { promisify } from "node:util";
 
 // An attendee's story video, IN the worker image — REQ-STO-016, DEC-248 §6, DEC-181.
@@ -25,9 +26,9 @@ const execFileP = promisify(execFile);
  *  accepted source and nothing after — a 40-second clip from the phone's camera app is stored as its first 15 seconds,
  *  never refused for its length. (`too_long` survives only as a reason on rows failed before DEC-293.) */
 export const STORY_VIDEO_MAX_SECONDS = 15;
-/** 200 MB — the same figure as the `story-media` bucket's `file_size_limit` (0225, notes/story-media.md §8), which
- *  refuses the PUT at the edge: a minute of the iPhone's default 1080p30 HEVC is ≈ 60 MB, of 4K30 ≈ 170 MB. */
-export const STORY_VIDEO_MAX_BYTES = 200 * 1024 * 1024;
+/** 200 MB — the bucket's own `file_size_limit` refuses a larger PUT at the edge; this refuses one that ever lands. The
+ *  one figure lives in the path builder's package, shared with the app (notes/story-media.md §8). */
+export { STORY_VIDEO_MAX_BYTES };
 /** The rendition: at most 720 px on the short side, 30 fps, 2.5 Mbit/s video, 128 kbit/s audio — ≈ 5 MB for 15 s. */
 export const STORY_VIDEO_SHORT_SIDE = 720;
 export const STORY_VIDEO_MAX_DIMENSION = 4096;

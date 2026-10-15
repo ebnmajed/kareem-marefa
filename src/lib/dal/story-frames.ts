@@ -2,7 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
-import { photoStoryPath, storyVideoSourcePath, type StoryVideoSourceExt } from "@/lib/storage/paths";
+import { STORY_VIDEO_MAX_BYTES, photoStoryPath, storyVideoSourcePath, type StoryVideoSourceExt } from "@/lib/storage/paths";
 
 // Session stories — the attendee half (REQ-STO-005, REQ-STO-010 … REQ-STO-017, DEC-248, DEC-251). `content`'s module;
 // `sessions'` `stories.ts` is the read model of a session's story and this module never reads a session's tables.
@@ -126,8 +126,8 @@ export async function completeStoryPhoto(locale: string, input: z.input<typeof c
 // ─── the capture: a video into `story-media` ─────────────────────────────────────────────────────────────────────
 
 /** 200 MB (DEC-293 §3, 0225) — the bucket's own `file_size_limit` is the edge, and `begin_story_video()` checks the
- *  declared size against the same figure; this is a courtesy refusal before the PUT. */
-export const STORY_VIDEO_MAX_BYTES = 200 * 1024 * 1024;
+ *  declared size against the same figure; this is a courtesy refusal before the PUT. One figure: the path builder's. */
+export { STORY_VIDEO_MAX_BYTES };
 
 export const initiateStoryVideoInput = z.object({
   sessionId: z.uuid(),
