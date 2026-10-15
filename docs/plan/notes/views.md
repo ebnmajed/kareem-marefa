@@ -51,7 +51,7 @@ Where it appears (one batched read per screen, §3.1):
 | the home feed — a session's post | `Feed` (`src/lib/dal/feed.ts`) | `views.post: Record<sessionId, ViewCount>` |
 | the home feed — a recap | `Feed` | `views.recap: Record<sessionId, ViewCount>` |
 | the home feed — an announcement | `Feed` | `views.announcement: Record<announcementId, ViewCount>` |
-| the story viewer — a frame | the frames `stories.ts` returns (`sessions'` module — see §7) | `views: ViewCount \| null` on every frame |
+| the story viewer — a frame | the frames `stories.ts` returns (`sessions'` module — see §7) | `views?: ViewCount \| null` on every frame (optional so older fixtures type-check; treat `undefined` as `null`) |
 
 A missing key in a `Record` means «no count to draw». (The feed carries maps rather than a field on each item because
 the items come from three other modules' DTOs; `feed.ts` is the one place that merges them.)
@@ -91,7 +91,9 @@ and as a recap after, and the two are different things a member saw.
 | `times_seen` | `integer not null default 1 check (times_seen >= 1)` | impressions |
 | `completed_at` | `timestamptz null` | a video frame watched to its end — the first time it was (null for a photo or a text frame) |
 
-Backfill: `last_seen_at = viewed_at`, `times_seen = 1`. ★ **Its insert policy and its `insert` grant go** — every write
+Backfill: `last_seen_at = viewed_at`, `times_seen = 1`. ★ **As built (the lead's 0228): the insert policy and grant are
+KEPT until after the merge**, so `main`'s viewer keeps recording «seen» on the new schema; a later migration removes
+them. Planned: **its insert policy and its `insert` grant go** — every write
 is the definer function now (DEC-297 §2); `story_views_read_own` stays (the ring's «seen», `stories.ts`). The PK
 `(member_id, frame_id)` and `story_views_frame_id_idx` (0212) stay.
 
@@ -145,8 +147,10 @@ route ignores it; the tests read it).
    - `recap`: as `post`, **and** state ∈ `completed, archived` (only an ended session has a recap).
    - `announcement`: `feed_announcements` in the caller's org, `published_at <= now()`, not expired
      (`feed_announcements_read_published`, `0164`). An admin's look at a draft in the console is not a view.
-3. **Skip the caller's own subject** (§4): the frame's author; for a generated frame, a post or a recap, an accepted
-   presenter of the session; the announcement's author.
+3. ★ **The caller's own subject IS recorded, and never counted** (changed at build, §4): the story ring's «seen» reads
+   `story_views` (`story_feed()`), so an author whose own frame were never recorded would see their own ring unseen for
+   ever. Every read (`view_counts`, `view_list`) excludes owners' rows — which also covers a co-presenter added later and
+   an author's row written by 0198's old insert policy.
 4. **Upsert**: insert with `first_seen_at`/`viewed_at = last_seen_at = now()`, `times_seen = 1`; on conflict
    `last_seen_at = now(), times_seen = times_seen + 1` **only when the existing `last_seen_at < now() - 30 s`** (a
    retried batch is idempotent). `completed_at = coalesce(completed_at, now())` when `completed` and the frame is a
@@ -159,7 +163,7 @@ every frame of the org, as `story_frames_staff_read`), the number of distinct vi
 anonymised (`members.anonymised_at is null`); a row is returned only when `viewers ≥ 1`. `can_list` is §4's rule. One
 grouped query per call — the feed calls it three times (post, recap, announcement ids), the viewer once.
 
-### 3.3 · `view_list(p_kind view_subject, p_id uuid, p_limit integer default 200) returns table (member_id uuid, display_name text, avatar_key text, avatar_version integer, seen_on date)`
+### 3.3 · `view_list(p_kind view_subject, p_id uuid, p_limit integer default 200) returns table (member_id uuid, display_name text, avatar_key text, avatar_version bigint, seen_on date, total integer)`
 
 `security definer`, `stable`. Raises `42501` unless the caller may see the subject (§3.1 step 2) **and** `can_list`
 (§4). Rows: the viewers, anonymised excluded, newest first by `last_seen_at`, `seen_on` = the date of `last_seen_at`
@@ -346,3 +350,21 @@ It is drawn with the page's existing caption style beside the export note, and n
 - **E2E** (`tests/e2e/views-counts.spec.ts`, local Supabase): two members see a post, a recap, an announcement and a
   story frame; a third member sees «2» on each and no list; the presenter/author and an admin see the count and the
   list of the two (names, the day), newest first; the author's own view is not counted; nothing is drawn at 0.
+
+## 9 · AS BUILT — the server half
+
+- **SQL**: `supabase/proposed/content/02_views.sql` — `view_can_see()` and `view_member_owns()` (internal: execute
+  revoked from every client role), `record_views()`, `view_counts()`, `view_list()`, and `anonymise_members()` (0223's
+  text) / `build_data_export_payload()` (0135's text) with the «0228» additions, verbatim otherwise. For the lead to
+  promote into 0228.
+- ★ **One change from the plan** (§3.1 step 3): the owner's own look IS recorded and never counted — the reads exclude
+  owners' rows. The ring's «seen» reads `story_views`, so skipping the write would leave an author's own ring unseen.
+- **DAL**: `src/lib/dal/views.ts` — `ViewCount`, `Viewer`, `ViewerList`, `VIEW_KINDS`, `recordViewsInput`,
+  `collapseViews()`, `recordViews()`, `getViewCounts()`, `getViewerList()`, `hasMemberSession()`.
+- **Routes**: `src/app/api/views/route.ts` (POST, 204), `src/app/api/views/[kind]/[id]/route.ts` (GET, 404 on refusal,
+  `no-store`).
+- **Folded in**: `Feed.views` (`src/lib/dal/feed.ts`, required — `{ post, recap, announcement }`, each a
+  `Record<id, ViewCount>`; a failed read draws no counts); `StoryFrame.views?` (`src/lib/dal/stories.ts`, one
+  `view_counts('frame', …)` call, add-only — the lead's grant as `sessions'` custodian).
+- **Tests**: `tests/rls/views.test.ts` (9 cases, through `applyProposed()` on 0228's tables), `tests/unit/views-route.test.ts` (9).
+- **Retired**: `recordStoryViews()` in `story-frames.ts` — `story-client`'s viewer posts to `/api/views` (8e911637).

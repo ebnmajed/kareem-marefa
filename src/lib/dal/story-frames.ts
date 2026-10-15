@@ -221,20 +221,6 @@ function mapCaptureError(error: { code?: string; message: string } | null): stri
   return `stories: ${error?.message ?? "the capture failed"}`;
 }
 
-// ─── views (REQ-STO-010) ─────────────────────────────────────────────────────────────────────────────────────────
-
-/** Once per member per frame: a plain insert under the self-only policy, whose check reads the frame under the
- *  caller's own RLS — so a view is written only for a frame the member may see now. A repeat is nothing. */
-export async function recordStoryViews(locale: string, frameIds: string[]): Promise<void> {
-  const ids = [...new Set(frameIds)].filter((id) => z.uuid().safeParse(id).success).slice(0, 100);
-  if (ids.length === 0) return;
-  const { session, supabase } = await sessionClient(locale);
-  const { error } = await supabase
-    .from("story_views")
-    .upsert(ids.map((frame_id) => ({ org_id: session.orgId, member_id: session.memberId, frame_id })), { onConflict: "member_id,frame_id", ignoreDuplicates: true });
-  if (error) throw new Error(`story_views: ${error.message}`);
-}
-
 // ─── a member's moderation of a frame (REQ-STO-014, REQ-STO-015) ─────────────────────────────────────────────────
 
 export type FrameReportOutcome = "reported" | "already_reported" | "own_frame" | "not_visible" | "not_reportable" | "reason_required";

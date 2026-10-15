@@ -5,6 +5,7 @@ import { sessionClient } from "@/lib/dal/session";
 import { getSessionPoster } from "@/lib/dal/posters";
 import { readPresenterProfiles, storyVenueFrom, type EventPresenter, type SessionState } from "@/lib/dal/sessions";
 import { sessionPhase, type DayWindow } from "@/lib/session-status";
+import { getViewCounts, type ViewCount } from "@/lib/dal/views";
 
 // The story feed (contract 4, DEC-248 §5, DEC-251 §4) — the ring row's sessions and each session's frames, with what
 // each frame draws. `content` renders these types and never queries a session's tables itself.
@@ -57,6 +58,9 @@ interface FrameBase {
   expiresAt: string;
   /** I have a `story_views` row for this frame (REQ-STO-010). */
   seen: boolean;
+  /** REQ-VEW-003 (DEC-297) — unique viewers; null when nobody else has viewed (never drawn at 0). `canList`: I may
+   *  open who viewed it (an owner, or staff — REQ-VEW-004). */
+  views?: ViewCount | null;
   /** The day a per-day frame is of; null for a session-level frame. */
   dayId: string | null;
   /** «اليوم 2» — null when the session has one day, or the frame is session-level. */
@@ -285,7 +289,7 @@ export const getStoryFeed = cache(async (locale: string): Promise<StoryFeed> => 
   const liveRows = rows.filter((r) => r.kind === "live" && r.session_day_id);
   const recapSessions = [...new Set(rows.filter((r) => r.kind === "recap").map((r) => r.session_id))];
   const publishedSessions = [...new Set(rows.filter((r) => r.kind === "published").map((r) => r.session_id))];
-  const [liveCounts, recaps, recapPhotos, posters] = await Promise.all([
+  const [liveCounts, recaps, recapPhotos, posters, frameViews] = await Promise.all([
     Promise.all(liveRows.map(async (r) => [r.frame_id, await liveCount(supabase, r.session_id, r.session_day_id as string)] as const)),
     Promise.all(recapSessions.map(async (id) => [id, await recapFigures(supabase, id)] as const)),
     recapSessions.length > 0
@@ -299,6 +303,11 @@ export const getStoryFeed = cache(async (locale: string): Promise<StoryFeed> => 
           .order("id", { ascending: true })
       : Promise.resolve({ data: [], error: null }),
     Promise.all(publishedSessions.map(async (id) => [id, (await getSessionPoster(locale, id, "story"))?.imageUrl ?? null] as const)),
+    // One call for every frame's count (DEC-297); a failed read draws no counts rather than no story.
+    getViewCounts(locale, "frame", rows.map((r) => r.frame_id)).catch((e: unknown) => {
+      console.error("stories: view counts failed; the story renders without them", e);
+      return {} as Record<string, ViewCount>;
+    }),
   ]);
   if (recapPhotos.error) throw new Error(`photos (recap): ${recapPhotos.error.message}`);
   const liveCountByFrame = new Map(liveCounts);
@@ -332,6 +341,7 @@ export const getStoryFeed = cache(async (locale: string): Promise<StoryFeed> => 
           triggeredAt: r.triggered_at,
           expiresAt: new Date(Date.parse(r.triggered_at) + DAY_MS).toISOString(),
           seen: r.seen,
+          views: frameViews[r.frame_id] ?? null,
           dayId: r.session_day_id,
           dayPosition: multi && day ? day.position : null,
           action: open,
