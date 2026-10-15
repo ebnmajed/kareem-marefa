@@ -1,24 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import type { StoryCaptureMode, StoryCaptureState } from "@/components/ui";
+import type { StoryCaptureState } from "@/components/ui";
 import { StoryCapture } from "@/components/ui/story-capture";
 
-// The gallery's `story-capture` demo — contract 2 (DEC-251), REQ-STO-011, DEC-093. Every state from props, each opened
-// by a button: idle in «صورة» and in «فيديو», recording at 0:07, review with a caption, processing, refused (a
-// gallery video over 15 seconds), the camera denied. The preview is a solid ground: no camera in the gallery.
+// The gallery's `story-capture` demo — contract 2 (DEC-251), REQ-STO-011, DEC-293. Every state from props, each opened
+// by a button: the three choices, a refusal (a file over the ceiling), the review with a caption, uploading at 42 %, a
+// failed upload with «أعد المحاولة», processing. The take is a solid ground: no camera and no file in the gallery.
 
-const STATES: { key: string; label: string; state: StoryCaptureState; mode: StoryCaptureMode; message?: string; elapsed?: number }[] = [
-  { key: "photo", label: "صورة", state: "idle", mode: "photo" },
-  { key: "video", label: "فيديو", state: "idle", mode: "video" },
-  { key: "recording", label: "يسجّل", state: "recording", mode: "video", elapsed: 7 },
-  { key: "review", label: "مراجعة", state: "review", mode: "photo" },
-  { key: "processing", label: "جارٍ التجهيز", state: "processing", mode: "video", message: "جارٍ التجهيز" },
-  { key: "refused", label: "أطول من 15 ثانية", state: "refused", mode: "video", message: "أطول من 15 ثانية" },
-  { key: "denied", label: "بلا كاميرا", state: "denied", mode: "photo", message: "لا وصول إلى الكاميرا" },
+const STATES: { key: string; label: string; state: StoryCaptureState; message?: string; progress?: number }[] = [
+  { key: "choose", label: "اختر", state: "choose" },
+  { key: "refused", label: "أكبر من المسموح", state: "refused", message: "أكبر من 60 ميغابايت" },
+  { key: "review", label: "مراجعة", state: "review" },
+  { key: "uploading", label: "جارٍ الرفع", state: "uploading", message: "جارٍ الرفع 42%", progress: 0.42 },
+  { key: "error", label: "تعذّر الرفع", state: "error", message: "لا اتصال" },
+  { key: "processing", label: "جارٍ التجهيز", state: "processing", message: "جارٍ التجهيز" },
 ];
-
-const pad = (n: number) => `0:${String(n).padStart(2, "0")}`;
 
 export function StoryCaptureDemo() {
   const [open, setOpen] = useState<string | null>(null);
@@ -35,36 +32,27 @@ export function StoryCaptureDemo() {
         <StoryCapture
           open
           state={current.state}
-          mode={current.mode}
-          onModeChange={() => {}}
           preview={<div className="h-full w-full bg-surface" />}
-          elapsedSeconds={current.elapsed ?? 0}
-          limitSeconds={15}
-          onShutter={() => {}}
-          onPick={() => {}}
-          onFlip={() => {}}
+          onPick={() => setOpen("review")}
           caption={caption}
           onCaptionChange={setCaption}
           captionMaxLength={100}
           onSubmit={() => {}}
-          onRetake={() => {}}
+          onRetake={() => setOpen("choose")}
           onClose={() => setOpen(null)}
+          progress={current.progress}
           message={current.message}
           labels={{
             dialog: "أضف إلى القصة",
             close: "إغلاق",
-            photoMode: "صورة",
-            videoMode: "فيديو",
-            shutterPhoto: "التقط صورة",
-            recordStart: "ابدأ التسجيل",
-            recordStop: "أوقف التسجيل",
+            photo: "صورة",
+            video: "فيديو",
             gallery: "من الاستوديو",
-            flip: "قلب الكاميرا",
             caption: "تعليق",
             submit: "انشر",
-            retake: "أعد",
+            retake: "إعادة",
+            retry: "أعد المحاولة",
             notice: "تُشارَك مع الجميع في المؤسسة",
-            elapsed: (s, l) => `${pad(s)} / ${pad(l)}`,
           }}
         />
       ) : null}

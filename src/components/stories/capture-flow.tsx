@@ -1,20 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import type { StoryCaptureMode, StoryCaptureState } from "@/components/ui";
+import type { StoryCaptureSource, StoryCaptureState } from "@/components/ui";
 import { StoryCapture } from "@/components/ui/story-capture";
 import { formatNumber } from "@/components/sessions/numerals";
 import {
-  STORY_PHOTO_MAX_EDGE,
-  STORY_VIDEO_LIMIT_SECONDS,
   STORY_VIDEO_MAX_BYTES,
-  fitWithin,
-  pickRecorderType,
   preparePhoto,
   readHead,
   sniffVideoExt,
-  videoDuration,
   videoExtFromName,
   videoExtFromType,
   videoPoster,
@@ -25,17 +20,16 @@ import { UploadError, isAlreadyUploaded, postJson, putBlob, withRetry } from "@/
 import { useToast } from "@/components/ui/toast";
 import { PauseIcon, PlayIcon } from "@/components/ui/icons";
 
-// «أضف» — the camera, the recorder and the two uploads behind `ui/story-capture` (REQ-STO-011, REQ-STO-012,
-// REQ-STO-016). A photograph goes through the album's OWN door (`/api/upload/photo`, then `/api/stories/photo/complete`
-// for the caption and the capture gate); a video PUTs to `story-media` and completes at `/api/stories/video/complete`.
-// The bytes never pass through Vercel. The 15-second limit is enforced HERE (the recorder stops itself, a longer
-// gallery video is refused) and AGAIN on the server from ffprobe's reading — this side is a courtesy, never the rule.
-// The member is told it is processing, never that it was posted (DEC-139).
+// «أضف» — the take and the two uploads behind `ui/story-capture` (REQ-STO-011, REQ-STO-012, REQ-STO-016, DEC-293).
+// ★★ NO LIVE CAMERA (DEC-293): the phone's own camera app and gallery hand over a File through the primitive's three
+// inputs; this file begins there. A photograph goes through the album's OWN door (`/api/upload/photo`, then
+// `/api/stories/photo/complete` for the caption and the capture gate); a video PUTs to `story-media` and completes at
+// `/api/stories/video/complete`. The bytes never pass through Vercel. The length is the worker's: it keeps the first
+// 15 s of a longer video — the phone refuses only a file over the server's byte ceiling, at once and in a word. The
+// member is told it is processing, never that it was posted (DEC-139).
 //
 // ★ ROBUST BY CONSTRUCTION (the owner's report of 2026-10-14, docs/plan/notes/story-media.md):
-// - the recorder's container is feature-detected, and what it WROTE is read from the bytes before upload — never the
-//   type it was asked for; an empty recording is never uploaded;
-// - the 15-second stop is a timer set at the start, exact, not a poll;
+// - a video's container is read from its bytes before upload — never from the picker's label;
 // - a photograph is prepared on the phone — upright, a phone's size, no metadata — before it leaves;
 // - the bytes PUT with progress, a timeout and a retry with backoff; a step that succeeded is never repeated, so a
 //   retry after a dropped connection resumes where it stopped;
@@ -43,23 +37,18 @@ import { PauseIcon, PlayIcon } from "@/components/ui/icons";
 // - nothing refreshes the page while the capture is open (the parent reads it again on close);
 // - the review and the «processing» state show a still of the take, never a black box.
 
-export { STORY_VIDEO_LIMIT_SECONDS };
 const CAPTION_MAX = 100;
-/** The server trims a recording that ran to 16 s and refuses one past it (docs/plan/notes/story-media.md §1.2): a
- *  gallery video is refused here by the same figure, never by a stricter one. */
-const PICK_LIMIT_SECONDS = STORY_VIDEO_LIMIT_SECONDS + 1;
 /** The author's poll while a video is transcoded — every 2 s, for at most 90 s (the contract's step 4). */
 const POLL_MS = 2000;
 const POLL_FOR_MS = 90_000;
 const SIGNED_URL_FOR_MS = 110 * 60_000;
 /** The age of a signed URL is read in an event handler, never in render. */
 const clock = () => performance.now();
+const IMAGE_NAME = /\.(jpe?g|png|webp|heic|heif|gif|avif)$/i;
 
 type VideoStatus = { state: "processing" } | { state: "visible" } | { state: "failed"; reason?: "too_long" | "too_large" | "unsupported" | "failed" };
 
-type Draft =
-  | { kind: "photo"; blob: Blob; type: PhotoKind }
-  | { kind: "video"; blob: Blob; ext: VideoExt; seconds: number | null };
+type Draft = { kind: "photo"; blob: Blob; type: PhotoKind } | { kind: "video"; blob: Blob; ext: VideoExt };
 
 /** What has already succeeded for the draft in hand — so a retry starts at the first step that did not. */
 type Ticket = {
@@ -73,99 +62,27 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
   const t = useTranslations("stories");
   const locale = useLocale();
   const toast = useToast();
-  const live = useRef<HTMLVideoElement | null>(null);
-  /** The live preview's element, given the stream WHENEVER either arrives first. ★ The capture is a dialog whose
-   *  content mounts in a portal a render after this component, so a stream that resolved quickly (a permission
-   *  already granted) found no element and the preview stayed black (DEC-274). A callback ref closes that race. */
-  const attach = useCallback((el: HTMLVideoElement | null) => {
-    live.current = el;
-    if (!el || !stream.current || el.srcObject === stream.current) return;
-    try {
-      // iOS plays a <video> inline only when these are ATTRIBUTES at play() — never fullscreen in the native player,
-      // which has no shutter and no way back (the owner's «there weren't any [controls]»).
-      el.muted = true;
-      el.setAttribute("muted", "");
-      el.setAttribute("playsinline", "");
-      el.setAttribute("webkit-playsinline", "");
-      el.srcObject = stream.current;
-      void el.play?.()?.catch(() => undefined);
-    } catch {
-      // An element that refuses the stream is not a refused camera: the shutter still works from `live`.
-    }
-  }, []);
-  const stream = useRef<MediaStream | null>(null);
-  const recorder = useRef<MediaRecorder | null>(null);
-  const started = useRef(0);
-  const limitTimer = useRef<number | null>(null);
   const mounted = useRef(true);
   const inflight = useRef<AbortController | null>(null);
   const ticket = useRef<Ticket>({});
   const poll = useRef<number | null>(null);
 
-  const [mode, setMode] = useState<StoryCaptureMode>("photo");
-  const [state, setState] = useState<StoryCaptureState>("idle");
-  const [facing, setFacing] = useState<"environment" | "user">("environment");
-  const [elapsed, setElapsed] = useState(0);
+  const [state, setState] = useState<StoryCaptureState>("choose");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [draftUrl, setDraftUrl] = useState<string | null>(null);
   const [posterUrl, setPosterUrl] = useState<string | null>(null);
   const [progress, setProgress] = useState<number | undefined>(undefined);
   const [caption, setCaption] = useState("");
   const [message, setMessage] = useState<string | undefined>(undefined);
-  /** Why the camera is not ours — the DOMException's name (`NotAllowedError`, `NotFoundError`, `NotReadableError`), or
-   *  `unsupported` with no `mediaDevices` (an insecure origin). Read by the page and by a spec, never guessed. */
-  const [cameraError, setCameraError] = useState<string | null>(null);
 
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
       inflight.current?.abort();
-      if (limitTimer.current !== null) window.clearTimeout(limitTimer.current);
       if (poll.current !== null) window.clearTimeout(poll.current);
     };
   }, []);
-
-  // The camera, for as long as the capture is open and nothing is under review. Video and sound first; video alone if
-  // the microphone is refused. ★ The page's own `Permissions-Policy` must allow `camera` and `microphone` for `self`,
-  // or both are refused before any prompt (`NotAllowedError`) — the reason is kept, so a refusal says which it was.
-  useEffect(() => {
-    if (draft) return;
-    let cancelled = false;
-    const media = typeof navigator !== "undefined" ? navigator.mediaDevices : undefined;
-    if (!media?.getUserMedia) {
-      queueMicrotask(() => !cancelled && setCameraError("unsupported"));
-      return () => {
-        cancelled = true;
-      };
-    }
-    media
-      .getUserMedia({ video: { facingMode: facing }, audio: true })
-      .catch(() => media.getUserMedia({ video: { facingMode: facing } }))
-      .then((s) => {
-        if (cancelled) return s.getTracks().forEach((tr) => tr.stop());
-        stream.current = s;
-        setCameraError(null);
-        attach(live.current);
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setCameraError(e instanceof DOMException ? e.name : "failed");
-      });
-    return () => {
-      cancelled = true;
-      stream.current?.getTracks().forEach((tr) => tr.stop());
-      stream.current = null;
-    };
-  }, [facing, draft, attach]);
-
-  // The elapsed figure while recording. The STOP is not here: it is a timer set at the start (`startRecording`).
-  useEffect(() => {
-    if (state !== "recording") return;
-    const id = window.setInterval(() => {
-      setElapsed(Math.min(STORY_VIDEO_LIMIT_SECONDS, Math.floor((performance.now() - started.current) / 1000)));
-    }, 200);
-    return () => window.clearInterval(id);
-  }, [state]);
 
   useEffect(() => () => (draftUrl ? URL.revokeObjectURL(draftUrl) : undefined), [draftUrl]);
   useEffect(() => () => (posterUrl ? URL.revokeObjectURL(posterUrl) : undefined), [posterUrl]);
@@ -187,105 +104,27 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
     }
   }
 
-  function refuse(key: "tooLong" | "tooLarge" | "tooShort" | "unsupported") {
+  function refuse(key: "tooLong" | "tooLarge" | "unsupported") {
     setState("refused");
     setMessage(t(`capture.${key}`));
   }
 
-  function takePhoto() {
-    const el = live.current;
-    if (!el || !el.videoWidth) return;
-    // Drawn at a phone's size from the start; a canvas carries no metadata.
-    const size = fitWithin(el.videoWidth, el.videoHeight, STORY_PHOTO_MAX_EDGE);
-    const canvas = document.createElement("canvas");
-    canvas.width = size.width;
-    canvas.height = size.height;
-    canvas.getContext("2d")?.drawImage(el, 0, 0, size.width, size.height);
-    canvas.toBlob((blob) => (blob && blob.size > 0 ? review({ kind: "photo", blob, type: "jpeg" }) : setMessage(t("frame.failed"))), "image/jpeg", 0.88);
-  }
-
-  function startRecording() {
-    const s = stream.current;
-    if (!s || recorder.current?.state === "recording") return;
-    if (typeof MediaRecorder === "undefined") return refuse("unsupported");
-    const requested = pickRecorderType(MediaRecorder.isTypeSupported?.bind(MediaRecorder));
-    let rec: MediaRecorder;
-    try {
-      rec = requested ? new MediaRecorder(s, { mimeType: requested }) : new MediaRecorder(s);
-    } catch {
-      // A type the browser said yes to and then refused: its own default is the last resort.
-      try {
-        rec = new MediaRecorder(s);
-      } catch {
-        return refuse("unsupported");
-      }
-    }
-    const chunks: Blob[] = [];
-    rec.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) chunks.push(e.data);
-    };
-    rec.onstop = () => {
-      if (limitTimer.current !== null) window.clearTimeout(limitTimer.current);
-      limitTimer.current = null;
-      recorder.current = null;
-      if (!mounted.current) return;
-      const seconds = (performance.now() - started.current) / 1000;
-      // What the recorder WROTE: its own `mimeType`, else the first chunk's, else what was asked for. The bytes are
-      // read again at upload (`resolveExt`), so a recorder that misreports is corrected before the server sees it.
-      const actual = rec.mimeType || chunks[0]?.type || requested || "";
-      const blob = new Blob(chunks, { type: actual.split(";")[0] || "video/mp4" });
-      if (blob.size === 0) return refuse("tooShort");
-      review({ kind: "video", blob, ext: videoExtFromType(actual) ?? "mp4", seconds: Math.min(seconds, STORY_VIDEO_LIMIT_SECONDS) });
-    };
-    rec.onerror = () => {
-      if (rec.state === "recording") rec.stop();
-    };
-    // ★ The limit is a timer from the first frame, not a poll: fifteen seconds exactly. Armed at `start()` and armed
-    // again by `onstart`, which is when the recorder really began (Safari starts a beat late).
-    const arm = () => {
-      if (limitTimer.current !== null) window.clearTimeout(limitTimer.current);
-      started.current = performance.now();
-      limitTimer.current = window.setTimeout(() => {
-        if (rec.state === "recording") rec.stop();
-      }, STORY_VIDEO_LIMIT_SECONDS * 1000);
-    };
-    rec.onstart = arm;
-    recorder.current = rec;
-    setElapsed(0);
+  /** A file from the camera app or the gallery. Its kind is read from the file, never from which button opened the
+   *  picker — a gallery hands over either, and some Android cameras label nothing. */
+  async function onPick(file: File, source: StoryCaptureSource) {
     setMessage(undefined);
-    // A timeslice, so a recording stopped early or cut short by the system still hands over what it captured.
-    rec.start(1000);
-    arm();
-    setState("recording");
-  }
-
-  function stopRecording() {
-    if (recorder.current?.state === "recording") recorder.current.stop();
-  }
-
-  function onShutter() {
-    if (mode === "photo") takePhoto();
-    else if (state === "recording") stopRecording();
-    else startRecording();
-  }
-
-  async function onPick(file: File) {
-    setMessage(undefined);
-    const isImage = file.type.startsWith("image/") || (!file.type && /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name));
+    const isImage = file.type.startsWith("image/") || (!file.type && IMAGE_NAME.test(file.name)) || (!file.type && source === "photo");
     if (isImage) {
       const prepared = await preparePhoto(file);
       if (!mounted.current) return;
       if (!prepared) return refuse("unsupported");
       return review({ kind: "photo", blob: prepared.blob, type: prepared.kind });
     }
-    const ext = videoExtFromType(file.type) ?? videoExtFromName(file.name) ?? sniffVideoExt(await readHead(file));
+    const ext = videoExtFromType(file.type) ?? videoExtFromName(file.name) ?? sniffVideoExt(await readHead(file).catch(() => new Uint8Array()));
     if (!mounted.current) return;
     if (!ext) return refuse("unsupported");
     if (file.size > STORY_VIDEO_MAX_BYTES) return refuse("tooLarge");
-    const seconds = await videoDuration(file);
-    if (!mounted.current) return;
-    if (Number.isFinite(seconds) && seconds > PICK_LIMIT_SECONDS) return refuse("tooLong");
-    review({ kind: "video", blob: file, ext, seconds: Number.isFinite(seconds) ? seconds : null });
+    review({ kind: "video", blob: file, ext });
   }
 
   function retake() {
@@ -297,7 +136,7 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
     setDraftUrl(null);
     setPosterUrl(null);
     setProgress(undefined);
-    setState("idle");
+    setState("choose");
     setMessage(undefined);
   }
 
@@ -402,7 +241,7 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
   }
 
   /** The author's own video, followed until the worker has answered: ready closes the capture (the parent reads the
-   *  story again and it is there); a refusal says why and hands the camera back; silence past 90 s leaves it saying
+   *  story again and it is there); a refusal says why and offers the three choices again; silence past 90 s leaves it saying
    *  «جارٍ التجهيز» — the story says the same. A route that does not answer (404) is not followed. */
   function watch(frameId: string, left: number) {
     poll.current = window.setTimeout(async () => {
@@ -441,58 +280,37 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
       ) : (
         <ReviewVideo src={draftUrl} poster={posterUrl} playLabel={t("viewer.resume")} pauseLabel={t("viewer.pause")} />
       )
-    ) : (
-      <video ref={attach} autoPlay muted playsInline disablePictureInPicture data-camera-error={cameraError ?? undefined} className="h-full w-full object-cover" />
-    );
+    ) : undefined;
 
-  const denied = cameraError !== null && !draft && state === "idle";
   const percent = progress === undefined ? undefined : `${formatNumber(Math.round(progress * 100))}%`;
   return (
     <StoryCapture
       open
-      state={denied ? "denied" : state}
-      mode={mode}
-      onModeChange={setMode}
+      state={state}
       preview={preview}
-      elapsedSeconds={elapsed}
-      limitSeconds={STORY_VIDEO_LIMIT_SECONDS}
-      onShutter={onShutter}
-      onHoldStart={startRecording}
-      onHoldEnd={stopRecording}
-      onPick={(f) => void onPick(f)}
-      onFlip={() => setFacing((f) => (f === "user" ? "environment" : "user"))}
+      onPick={(f, source) => void onPick(f, source)}
       caption={caption}
       onCaptionChange={setCaption}
       captionMaxLength={CAPTION_MAX}
       onSubmit={() => void submit()}
       onRetake={retake}
       onClose={() => {
-        stopRecording();
         inflight.current?.abort();
         onClose();
       }}
       progress={state === "uploading" ? progress : undefined}
-      message={denied ? t("capture.denied") : state === "uploading" && percent ? t("capture.uploading", { percent }) : message}
+      message={state === "uploading" && percent ? t("capture.uploading", { percent }) : message}
       labels={{
         dialog: t("capture.dialog"),
         close: t("viewer.close"),
-        photoMode: t("capture.photo"),
-        videoMode: t("capture.video"),
-        shutterPhoto: t("capture.shutter"),
-        recordStart: t("capture.start"),
-        recordStop: t("capture.stop"),
+        photo: t("capture.photo"),
+        video: t("capture.video"),
         gallery: t("capture.gallery"),
-        flip: t("capture.flip"),
         caption: t("capture.caption"),
         submit: t("capture.submit"),
         retake: t("capture.retake"),
         retry: t("capture.retry"),
         notice: t("capture.notice"),
-        elapsed: (s, limit) =>
-          t("capture.elapsed", {
-            elapsed: `${formatNumber(Math.floor(s / 60))}:${String(s % 60).padStart(2, "0")}`,
-            limit: `${formatNumber(Math.floor(limit / 60))}:${String(limit % 60).padStart(2, "0")}`,
-          }),
       }}
     />
   );

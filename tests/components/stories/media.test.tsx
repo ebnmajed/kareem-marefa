@@ -1,37 +1,10 @@
-// The capture's media helpers (REQ-STO-011, REQ-STO-016, DEC-248 §6): the recorder's container chosen by feature
-// detection for an iOS-like and a Chrome-like browser, the container read from the bytes, a photograph's size.
+// The capture's media helpers (REQ-STO-011, REQ-STO-016, DEC-248 §6, DEC-293): the container read from the bytes and
+// the picker's labels, a photograph's size.
 import { describe, expect, it } from "vitest";
-import { fitWithin, pickRecorderType, readHead, sniffVideoExt, videoExtFromName, videoExtFromType } from "@/components/stories/media";
+import { fitWithin, readHead, sniffVideoExt, videoExtFromName, videoExtFromType } from "@/components/stories/media";
 
 const bytes = (...xs: (number | string)[]) =>
   new Uint8Array(xs.flatMap((x) => (typeof x === "string" ? [...x].map((c) => c.charCodeAt(0)) : [x])));
-
-describe("pickRecorderType — feature-detected, never guessed", () => {
-  it("iOS Safari records MP4 only: it gets MP4", () => {
-    expect(pickRecorderType((t) => t === "video/mp4")).toBe("video/mp4");
-  });
-
-  it("Chrome with H.264/AAC MP4 gets it first — the worker's own rendition", () => {
-    const chrome = new Set(["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/webm;codecs=vp9,opus", "video/webm", "video/mp4"]);
-    expect(pickRecorderType((t) => chrome.has(t))).toBe("video/mp4;codecs=avc1.42E01E,mp4a.40.2");
-  });
-
-  it("an older Chrome (WebM, and a bare MP4 that means Opus-in-MP4) gets WebM VP9", () => {
-    const chrome = new Set(["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"]);
-    expect(pickRecorderType((t) => chrome.has(t))).toBe("video/webm;codecs=vp9,opus");
-  });
-
-  it("a browser that throws on a codec string skips it; one with no recorder gets nothing", () => {
-    expect(
-      pickRecorderType((t) => {
-        if (t.includes("codecs")) throw new Error("bad codec string");
-        return t === "video/webm";
-      }),
-    ).toBe("video/webm");
-    expect(pickRecorderType(undefined)).toBeUndefined();
-    expect(pickRecorderType(() => false)).toBeUndefined();
-  });
-});
 
 describe("the container from the bytes", () => {
   it("EBML is WebM; ftyp is MP4; ftyp `qt  ` is QuickTime; anything else is nothing", () => {

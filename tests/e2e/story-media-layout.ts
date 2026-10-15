@@ -43,22 +43,21 @@ async function onScreen(page: Page, name: string, locator: ReturnType<Page["loca
 
 export function suite(engine: "chromium" | "webkit") {
   for (const size of SIZES) {
-    test(`${engine} ${size.width}×${size.height}: close, mode, gallery, shutter and flip are on screen`, async ({ page }) => {
+    test(`${engine} ${size.width}×${size.height}: close and the three choices are on screen`, async ({ page }) => {
       await page.setViewportSize(size);
-      const capture = await openDemo(page, "صورة");
+      const capture = await openDemo(page, "اختر");
       await onScreen(page, "close", capture.getByRole("button", { name: "إغلاق" }));
-      await onScreen(page, "photo mode", capture.getByRole("radio", { name: "صورة" }));
-      await onScreen(page, "video mode", capture.getByRole("radio", { name: "فيديو" }));
+      // Each choice is the label of its file input (DEC-293): the label is what a tap lands on.
+      await onScreen(page, "photo", capture.locator("label", { hasText: "صورة" }));
+      await onScreen(page, "video", capture.locator("label", { hasText: "فيديو" }));
       await onScreen(page, "gallery", capture.locator("label", { hasText: "من الاستوديو" }));
-      await onScreen(page, "shutter", capture.getByRole("button", { name: "التقط صورة" }));
-      await onScreen(page, "flip", capture.getByRole("button", { name: "قلب الكاميرا" }));
-      await page.screenshot({ path: join(SHOTS, `story-capture-${engine}-idle-${size.width}x${size.height}.png`) });
+      await page.screenshot({ path: join(SHOTS, `story-capture-${engine}-choose-${size.width}x${size.height}.png`) });
     });
 
     test(`${engine} ${size.width}×${size.height}: review's retake and publish are on screen`, async ({ page }) => {
       await page.setViewportSize(size);
       const capture = await openDemo(page, "مراجعة");
-      await onScreen(page, "retake", capture.getByRole("button", { name: "أعد", exact: true }));
+      await onScreen(page, "retake", capture.getByRole("button", { name: "إعادة", exact: true }));
       await onScreen(page, "publish", capture.getByRole("button", { name: "انشر" }));
       await page.screenshot({ path: join(SHOTS, `story-capture-${engine}-review-${size.width}x${size.height}.png`) });
     });

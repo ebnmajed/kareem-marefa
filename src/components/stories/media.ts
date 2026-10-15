@@ -1,40 +1,15 @@
-// The capture's media helpers — what a phone's camera, recorder and gallery hand us, made into something the server
+// The capture's media helpers — what a phone's camera app and gallery hand us (DEC-293), made into something the server
 // can take (REQ-STO-011, REQ-STO-016, DEC-248 §6). Plain functions, no React, so each is tested on its own. The server
-// stays the authority on every limit (ffprobe decides 15 s and 60 MB); these are the fast, honest answer on the phone.
+// stays the authority on every limit (ffprobe reads the length and the size); these are the fast, honest answer on the phone.
 
-export const STORY_VIDEO_LIMIT_SECONDS = 15;
+/** The video ceiling, in bytes — the server's figure (story-media.md §1.2), refused here at once and in a word. There
+ *  is no duration check on the phone any more: the worker keeps the first 15 s of a longer video (DEC-293). */
 export const STORY_VIDEO_MAX_BYTES = 60 * 1024 * 1024;
-/** A recording shorter than this, or one that wrote no bytes, is a slip of the finger — never uploaded. */
-export const STORY_VIDEO_MIN_SECONDS = 0.5;
 /** A photograph's long edge after preparation: a story is a phone's screen, never a sensor's 12 MP. */
 export const STORY_PHOTO_MAX_EDGE = 2048;
 
 export type VideoExt = "mp4" | "mov" | "webm";
 export type PhotoKind = "jpeg" | "png" | "webp";
-
-/** The recorder's container, in order of preference. ★ Feature-detected, never guessed from the user agent:
- *  iOS Safari records MP4 only; Chrome records WebM everywhere and MP4 (H.264) from 126. H.264/AAC first because the
- *  worker's rendition is H.264/AAC; WebM before a bare «video/mp4», which in Chrome means Opus-in-MP4. */
-export const RECORDER_TYPES = [
-  "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
-  "video/mp4;codecs=avc1,mp4a",
-  "video/webm;codecs=vp9,opus",
-  "video/webm;codecs=vp8,opus",
-  "video/webm",
-  "video/mp4",
-] as const;
-
-export function pickRecorderType(isTypeSupported: ((type: string) => boolean) | undefined): string | undefined {
-  if (!isTypeSupported) return undefined;
-  for (const type of RECORDER_TYPES) {
-    try {
-      if (isTypeSupported(type)) return type;
-    } catch {
-      // A browser that throws on a codec string it does not parse simply does not support it.
-    }
-  }
-  return undefined;
-}
 
 /** The container from the bytes themselves — what the recorder actually wrote, never what it was asked for. */
 export function sniffVideoExt(head: Uint8Array): VideoExt | null {
@@ -83,42 +58,6 @@ export async function readHead(blob: Blob, bytes = 16): Promise<Uint8Array> {
       reader.readAsArrayBuffer(slice);
     }),
   );
-}
-
-/** A video's length in seconds, or NaN when the browser cannot say within `timeoutMs`. ★ A MediaRecorder WebM carries
- *  no duration and reports `Infinity` until it is seeked past its end — so it is seeked, and read again. */
-export function videoDuration(blob: Blob, timeoutMs = 5000): Promise<number> {
-  return new Promise((resolve) => {
-    const el = document.createElement("video");
-    const url = URL.createObjectURL(blob);
-    let settled = false;
-    const done = (value: number) => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timer);
-      el.removeAttribute("src");
-      el.load?.();
-      URL.revokeObjectURL(url);
-      resolve(value);
-    };
-    const timer = window.setTimeout(() => done(Number.NaN), timeoutMs);
-    el.preload = "metadata";
-    el.muted = true;
-    el.onloadedmetadata = () => {
-      if (Number.isFinite(el.duration) && el.duration > 0) return done(el.duration);
-      el.ontimeupdate = () => {
-        el.ontimeupdate = null;
-        done(Number.isFinite(el.duration) ? el.duration : Number.NaN);
-      };
-      try {
-        el.currentTime = Number.MAX_SAFE_INTEGER;
-      } catch {
-        done(Number.NaN);
-      }
-    };
-    el.onerror = () => done(Number.NaN);
-    el.src = url;
-  });
 }
 
 /** A still from a video, as a JPEG blob, for the review and the «processing» tile — so neither is ever black (iOS

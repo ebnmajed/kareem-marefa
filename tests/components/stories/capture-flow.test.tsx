@@ -1,137 +1,43 @@
-// «أضف»'s camera and recorder behind `ui/story-capture` (REQ-STO-011, DEC-093) — with a FAKE stream and a fake
-// MediaRecorder, so the tap-only path is proven where jsdom has no camera: the shutter starts and stops a recording by
-// taps; a refused camera says so and keeps its reason (`data-camera-error`), and the gallery stays open.
-import { act, render, screen, waitFor } from "@testing-library/react";
+// «أضف» behind `ui/story-capture` (REQ-STO-011, REQ-STO-016, DEC-293): the phone's own camera app and gallery hand over
+// a File; this flow reviews it, uploads it robustly — progress, a retry that resumes, refusals in a word — and never
+// refreshes the page under the dialog. The transport's backoff sleeps are skipped: a retry is proven by its count.
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import stories from "@/messages/ar/stories.json";
 import { CaptureFlow } from "@/components/stories/capture-flow";
+import { STORY_VIDEO_MAX_BYTES } from "@/components/stories/media";
 
 const refresh = vi.fn();
 vi.mock("next/navigation", async (orig) => ({ ...(await orig<typeof import("next/navigation")>()), useRouter: () => ({ refresh }) }));
-// The transport's backoff sleeps are skipped: a retry is proven by its count, not by waiting for it.
 vi.mock("@/components/stories/upload", async (orig) => {
   const real = await orig<typeof import("@/components/stories/upload")>();
   return { ...real, withRetry: <T,>(fn: (a: number) => Promise<T>, o: object = {}) => real.withRetry(fn, { ...o, sleep: async () => {} }) };
 });
 
-class FakeRecorder {
-  static isTypeSupported = (t: string) => t.startsWith("video/webm");
-  state: "inactive" | "recording" = "inactive";
-  ondataavailable: ((e: { data: Blob }) => void) | null = null;
-  onstop: (() => void) | null = null;
-  constructor(public stream: MediaStream, public options: { mimeType: string }) {}
-  start() {
-    this.state = "recording";
-  }
-  stop() {
-    this.state = "inactive";
-    this.ondataavailable?.({ data: new Blob(["x"], { type: "video/webm" }) });
-    this.onstop?.();
-  }
-}
-
-function fakeStream(): MediaStream {
-  return { getTracks: () => [{ stop: () => {} }] } as unknown as MediaStream;
-}
+const SESSION = "11111111-1111-4111-8111-111111111111";
+const FRAME = "22222222-2222-4222-8222-222222222222";
+const MOV = new Uint8Array([0, 0, 0, 0x14, 0x66, 0x74, 0x79, 0x70, 0x71, 0x74, 0x20, 0x20, 0, 0, 0, 0]);
+const MP4 = new Uint8Array([0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 0, 0, 0, 0]);
+const WEBM = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
 function show(onClose: () => void = () => {}) {
   return render(
     <NextIntlClientProvider locale="ar" messages={stories}>
-      <CaptureFlow sessionId="11111111-1111-4111-8111-111111111111" onClose={onClose} />
+      <CaptureFlow sessionId={SESSION} onClose={onClose} />
     </NextIntlClientProvider>,
   );
 }
 
-afterEach(() => vi.unstubAllGlobals());
+const captureState = () => document.querySelector("[data-story-capture]")?.getAttribute("data-state");
 
-describe("CaptureFlow", () => {
-  it("records and stops a video by taps alone, on a stream that resolved", async () => {
-    const user = userEvent.setup();
-    vi.stubGlobal("MediaRecorder", FakeRecorder);
-    Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia: vi.fn().mockResolvedValue(fakeStream()) } });
-    URL.createObjectURL = vi.fn(() => "blob:x");
-    URL.revokeObjectURL = vi.fn();
-    show();
-    await act(async () => {});
-    await user.click(screen.getByRole("radio", { name: "فيديو" }));
-    const start = screen.getByRole("button", { name: "ابدأ التسجيل" });
-    expect(start).toBeEnabled();
-    await user.click(start);
-    expect(screen.getByRole("button", { name: "أوقف التسجيل" })).toHaveAttribute("aria-pressed", "true");
-    await user.click(screen.getByRole("button", { name: "أوقف التسجيل" }));
-    expect(document.querySelector("[data-story-capture]")).toHaveAttribute("data-state", "review");
+/** A file from one of the three inputs, as the phone's camera app or gallery hands it over. */
+async function pick(label: "صورة" | "فيديو" | "من الاستوديو", file: File) {
+  await act(async () => {
+    fireEvent.change(screen.getByLabelText(label), { target: { files: [file] } });
   });
-
-  it("★ a camera that never answers (a prompt left open) still draws every control — close, mode, gallery, shutter", async () => {
-    Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia: vi.fn(() => new Promise(() => {})) } });
-    show();
-    await act(async () => {});
-    expect(screen.getByRole("button", { name: "إغلاق" })).toBeEnabled();
-    expect(screen.getByRole("radio", { name: "فيديو" })).toBeEnabled();
-    expect(screen.getByLabelText("من الاستوديو")).toBeEnabled();
-    expect(screen.getByRole("button", { name: "التقط صورة" })).toBeInTheDocument();
-  });
-
-  it("a camera with no mediaDevices at all (an insecure page) still draws close and the gallery", async () => {
-    Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: undefined });
-    show();
-    await act(async () => {});
-    expect(screen.getByRole("button", { name: "إغلاق" })).toBeEnabled();
-    expect(screen.getByLabelText("من الاستوديو")).toBeEnabled();
-  });
-
-  it("a refused camera says so, keeps its reason, and leaves the gallery open", async () => {
-    Object.defineProperty(navigator, "mediaDevices", {
-      configurable: true,
-      value: { getUserMedia: vi.fn().mockRejectedValue(new DOMException("blocked by Permissions-Policy", "NotAllowedError")) },
-    });
-    show();
-    await act(async () => {});
-    expect(await screen.findByRole("status")).toHaveTextContent("لا وصول إلى الكاميرا");
-    expect(document.querySelector("[data-camera-error]")).toHaveAttribute("data-camera-error", "NotAllowedError");
-    expect(screen.getByRole("button", { name: "التقط صورة" })).toBeDisabled();
-    expect(screen.getByLabelText("من الاستوديو")).toBeEnabled();
-  });
-});
-
-// ── the robust path (the owner's report of 2026-10-14): an iOS-like and a Chrome-like recorder, the upload's states,
-// the retry that resumes, and no page refresh while the capture is open ──────────────────────────────────────────────
-
-const SESSION = "11111111-1111-4111-8111-111111111111";
-const FRAME = "22222222-2222-4222-8222-222222222222";
-const MP4 = new Uint8Array([0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 0, 0, 0, 0]);
-const WEBM = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-
-/** A recorder that behaves like one browser: what it says it supports, the type it writes, and its bytes. */
-function recorderLike(supports: (t: string) => boolean, writes: { type: string; bytes: Uint8Array<ArrayBuffer> | null }) {
-  return class {
-    static isTypeSupported = supports;
-    state: "inactive" | "recording" = "inactive";
-    mimeType: string;
-    ondataavailable: ((e: { data: Blob }) => void) | null = null;
-    onstop: (() => void) | null = null;
-    onerror: (() => void) | null = null;
-    constructor(
-      public stream: MediaStream,
-      public options?: { mimeType: string },
-    ) {
-      this.mimeType = writes.type;
-    }
-    start() {
-      this.state = "recording";
-    }
-    stop() {
-      this.state = "inactive";
-      if (writes.bytes) this.ondataavailable?.({ data: new Blob([writes.bytes], { type: writes.type }) });
-      this.onstop?.();
-    }
-  };
 }
-
-const iosRecorder = recorderLike((t) => t === "video/mp4", { type: "video/mp4", bytes: MP4 });
-const chromeRecorder = recorderLike((t) => t.startsWith("video/webm"), { type: "video/webm;codecs=vp9,opus", bytes: WEBM });
 
 /** Each PUT answers from this list in turn; the last answer repeats. */
 let putPlan: { status: number; network?: boolean }[] = [];
@@ -164,111 +70,140 @@ class PlannedXhr {
 
 /** The author's poll (`GET /api/stories/video/{id}`) answers 404 — not followed — unless a test says otherwise. */
 let statusAnswer: () => Response = () => new Response(JSON.stringify({ error: "not_found" }), { status: 404 });
-function routes(init: Response | (() => Response)) {
+function routes(init: () => Response) {
   const calls: { url: string; body: Record<string, unknown> }[] = [];
-  const fetchMock = vi.fn(async (url: string, opts: { method?: string; body?: string }) => {
-    if (!opts.method || opts.method === "GET") return statusAnswer();
-    calls.push({ url, body: JSON.parse(opts.body ?? "{}") as Record<string, unknown> });
-    if (url === "/api/stories/video" || url === "/api/upload/photo") return typeof init === "function" ? init() : init.clone();
-    return new Response(JSON.stringify({ status: "processing" }), { status: 202 });
-  });
-  vi.stubGlobal("fetch", fetchMock);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, opts: { method?: string; body?: string }) => {
+      if (!opts.method || opts.method === "GET") return statusAnswer();
+      calls.push({ url, body: JSON.parse(opts.body ?? "{}") as Record<string, unknown> });
+      if (url === "/api/stories/video" || url === "/api/upload/photo") return init();
+      return new Response(JSON.stringify({ status: "processing" }), { status: 202 });
+    }),
+  );
   return calls;
 }
 
 const videoInit = () =>
-  new Response(JSON.stringify({ frameId: FRAME, upload: { path: `org/${SESSION}/${FRAME}.mp4`, signedUrl: "https://storage.test/put", contentType: "video/mp4" } }), {
+  new Response(JSON.stringify({ frameId: FRAME, upload: { path: `org/${SESSION}/${FRAME}.mov`, signedUrl: "https://storage.test/put", contentType: "video/quicktime" } }), {
+    status: 201,
+  });
+const photoInit = () =>
+  new Response(JSON.stringify({ photoId: FRAME, upload: { path: `org/${SESSION}/${FRAME}.jpg`, signedUrl: "https://storage.test/put", contentType: "image/jpeg" } }), {
     status: 201,
   });
 
-async function recordVideo(recorder: unknown, onClose?: () => void) {
-  const user = userEvent.setup();
-  vi.stubGlobal("MediaRecorder", recorder);
+const cameraVideo = () => new File([MOV], "IMG_0042.MOV", { type: "video/quicktime" });
+
+beforeEach(() => {
   vi.stubGlobal("XMLHttpRequest", PlannedXhr);
-  Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia: vi.fn().mockResolvedValue(fakeStream()) } });
   URL.createObjectURL = vi.fn(() => "blob:x");
   URL.revokeObjectURL = vi.fn();
-  show(onClose);
-  await act(async () => {});
-  await user.click(screen.getByRole("radio", { name: "فيديو" }));
-  await user.click(screen.getByRole("button", { name: "ابدأ التسجيل" }));
-  await user.click(screen.getByRole("button", { name: "أوقف التسجيل" }));
-  return user;
-}
+  putPlan = [{ status: 200 }];
+  puts = 0;
+});
 
-const captureState = () => document.querySelector("[data-story-capture]")?.getAttribute("data-state");
+afterEach(() => {
+  vi.unstubAllGlobals();
+  refresh.mockClear();
+  statusAnswer = () => new Response(JSON.stringify({ error: "not_found" }), { status: 404 });
+});
 
-describe("CaptureFlow — robust uploads", () => {
-  afterEach(() => {
-    putPlan = [];
-    puts = 0;
-    refresh.mockClear();
-    statusAnswer = () => new Response(JSON.stringify({ error: "not_found" }), { status: 404 });
+describe("CaptureFlow — the phone's own camera, then our screen (DEC-293)", () => {
+  it("opens on the three choices, and asks for no camera of its own", () => {
+    const getUserMedia = vi.fn();
+    Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia } });
+    show();
+    expect(captureState()).toBe("choose");
+    expect(screen.getByLabelText("صورة")).toHaveAttribute("capture", "environment");
+    expect(screen.getByLabelText("فيديو")).toHaveAttribute("capture", "environment");
+    expect(screen.getByLabelText("من الاستوديو")).not.toHaveAttribute("capture");
+    expect(getUserMedia).not.toHaveBeenCalled();
   });
 
-  it("the author's video is followed until the worker answers: ready closes the capture", async () => {
-    putPlan = [{ status: 200 }];
-    statusAnswer = () => new Response(JSON.stringify({ state: "visible", durationMs: 9000, posterUrl: "https://storage.test/p" }), { status: 200 });
-    routes(videoInit);
-    const onClose = vi.fn();
-    const user = await recordVideo(iosRecorder, onClose);
-    await user.click(screen.getByRole("button", { name: "انشر" }));
-    await waitFor(() => expect(captureState()).toBe("processing"));
-    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1), { timeout: 3500 });
-  });
-
-  it("a refusal from the worker says why — «أطول من 15 ثانية» — and hands the camera back", async () => {
-    putPlan = [{ status: 200 }];
-    statusAnswer = () => new Response(JSON.stringify({ state: "failed", reason: "too_long" }), { status: 200 });
-    routes(videoInit);
-    const user = await recordVideo(iosRecorder);
-    await user.click(screen.getByRole("button", { name: "انشر" }));
-    await waitFor(() => expect(captureState()).toBe("refused"), { timeout: 3500 });
-    expect(screen.getByRole("status")).toHaveTextContent("أطول من 15 ثانية");
-    expect(screen.getByRole("button", { name: "ابدأ التسجيل" })).toBeEnabled();
-  });
-
-  it("iOS-like: MP4 is recorded, uploaded as mp4, and the member reads «جارٍ التجهيز» — the page is not refreshed under the dialog", async () => {
-    putPlan = [{ status: 200 }];
+  it("a video from the camera app: reviewed, uploaded as the container its bytes say, «جارٍ التجهيز» — no refresh under the dialog", async () => {
     const calls = routes(videoInit);
-    const user = await recordVideo(iosRecorder);
+    const user = userEvent.setup();
+    show();
+    await pick("فيديو", cameraVideo());
     expect(captureState()).toBe("review");
     await user.click(screen.getByRole("button", { name: "انشر" }));
     await waitFor(() => expect(captureState()).toBe("processing"));
     expect(screen.getByRole("status")).toHaveTextContent("جارٍ التجهيز");
     expect(calls.map((c) => c.url)).toEqual(["/api/stories/video", "/api/stories/video/complete"]);
-    expect(calls[0]!.body).toMatchObject({ sessionId: SESSION, ext: "mp4", declaredByteSize: MP4.byteLength });
-    expect(calls[1]!.body).toMatchObject({ frameId: FRAME, byteSize: MP4.byteLength });
+    expect(calls[0]!.body).toMatchObject({ sessionId: SESSION, ext: "mov", declaredByteSize: MOV.byteLength });
+    expect(calls[1]!.body).toMatchObject({ frameId: FRAME, byteSize: MOV.byteLength });
     expect(refresh).not.toHaveBeenCalled();
   });
 
-  it("Chrome-like: what the recorder WROTE (WebM bytes) is what the server is told", async () => {
-    putPlan = [{ status: 200 }];
+  it("★ a long video is NOT refused on the phone — the worker keeps its first 15 s", async () => {
+    routes(videoInit);
+    show();
+    // Any length: the flow never reads a duration any more.
+    await pick("من الاستوديو", new File([MP4], "long-clip.mp4", { type: "video/mp4" }));
+    expect(captureState()).toBe("review");
+  });
+
+  it("a gallery file with no type is read by its name, then by its bytes", async () => {
     const calls = routes(videoInit);
-    const user = await recordVideo(chromeRecorder);
+    const user = userEvent.setup();
+    show();
+    await pick("من الاستوديو", new File([WEBM], "clip.webm", { type: "" }));
     await user.click(screen.getByRole("button", { name: "انشر" }));
     await waitFor(() => expect(captureState()).toBe("processing"));
     expect(calls[0]!.body).toMatchObject({ ext: "webm" });
   });
 
-  it("★ a recorder that misreports its type is corrected by the bytes", async () => {
-    putPlan = [{ status: 200 }];
+  it("★ a label the bytes contradict is corrected by the bytes", async () => {
     const calls = routes(videoInit);
-    const user = await recordVideo(recorderLike((t) => t === "video/webm", { type: "video/webm", bytes: MP4 }));
+    const user = userEvent.setup();
+    show();
+    await pick("من الاستوديو", new File([MP4], "clip.webm", { type: "video/webm" }));
     await user.click(screen.getByRole("button", { name: "انشر" }));
     await waitFor(() => expect(captureState()).toBe("processing"));
     expect(calls[0]!.body).toMatchObject({ ext: "mp4" });
   });
 
-  it("a dropped PUT is retried on its own; a PUT that keeps failing keeps the take, says why, and «أعد المحاولة» resumes without a new upload slot", async () => {
+  it("★ over the server's ceiling: refused at once, in a word, nothing sent — and the choices are back", async () => {
+    const calls = routes(videoInit);
+    show();
+    const big = cameraVideo();
+    Object.defineProperty(big, "size", { value: STORY_VIDEO_MAX_BYTES + 1 });
+    await pick("فيديو", big);
+    expect(captureState()).toBe("refused");
+    expect(screen.getByRole("status")).toHaveTextContent("أكبر من");
+    expect(screen.getByLabelText("فيديو")).toBeInTheDocument();
+    expect(calls).toHaveLength(0);
+  });
+
+  it("a file that is neither a picture nor a video is «صيغة غير مدعومة»", async () => {
+    routes(videoInit);
+    show();
+    await pick("من الاستوديو", new File(["%PDF-1.7"], "notes.pdf", { type: "application/pdf" }));
+    expect(captureState()).toBe("refused");
+    expect(screen.getByRole("status")).toHaveTextContent("صيغة غير مدعومة");
+  });
+
+  it("«إعادة» goes back to the three choices", async () => {
+    routes(videoInit);
+    const user = userEvent.setup();
+    show();
+    await pick("فيديو", cameraVideo());
+    await user.click(screen.getByRole("button", { name: "إعادة" }));
+    expect(captureState()).toBe("choose");
+    expect(screen.getByLabelText("فيديو")).toBeInTheDocument();
+  });
+
+  it("a dropped PUT is retried on its own; one that keeps failing keeps the take, says why, and «أعد المحاولة» resumes without a new upload slot", async () => {
     putPlan = [{ status: 0, network: true }];
     const calls = routes(videoInit);
-    const user = await recordVideo(iosRecorder);
+    const user = userEvent.setup();
+    show();
+    await pick("فيديو", cameraVideo());
     await user.click(screen.getByRole("button", { name: "انشر" }));
     await waitFor(() => expect(captureState()).toBe("error"));
     expect(puts).toBe(3);
     expect(screen.getByRole("status")).toHaveTextContent("لا اتصال");
-    expect(screen.getByRole("button", { name: "أعد" })).toBeEnabled();
     putPlan = [{ status: 200 }];
     await user.click(screen.getByRole("button", { name: "أعد المحاولة" }));
     await waitFor(() => expect(captureState()).toBe("processing"));
@@ -277,9 +212,10 @@ describe("CaptureFlow — robust uploads", () => {
   });
 
   it("a refusal is an answer, never retried: «الإضافة لمن سجّل حضوره»", async () => {
-    putPlan = [{ status: 200 }];
     const calls = routes(() => new Response(JSON.stringify({ error: "not_authorized" }), { status: 403 }));
-    const user = await recordVideo(iosRecorder);
+    const user = userEvent.setup();
+    show();
+    await pick("فيديو", cameraVideo());
     await user.click(screen.getByRole("button", { name: "انشر" }));
     await waitFor(() => expect(captureState()).toBe("error"));
     expect(screen.getByRole("status")).toHaveTextContent("الإضافة لمن سجّل حضوره");
@@ -287,9 +223,35 @@ describe("CaptureFlow — robust uploads", () => {
     expect(puts).toBe(0);
   });
 
-  it("★ the review plays the take with ONE tapped control — never the browser's controls, which sit under «أعد» and «انشر»", async () => {
+  it("the author's video is followed until the worker answers: ready closes the capture", async () => {
+    statusAnswer = () => new Response(JSON.stringify({ state: "visible", durationMs: 9000, posterUrl: "https://storage.test/p" }), { status: 200 });
     routes(videoInit);
-    const user = await recordVideo(iosRecorder);
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    show(onClose);
+    await pick("فيديو", cameraVideo());
+    await user.click(screen.getByRole("button", { name: "انشر" }));
+    await waitFor(() => expect(captureState()).toBe("processing"));
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1), { timeout: 3500 });
+  });
+
+  it("a refusal from the worker says why and offers the choices again", async () => {
+    statusAnswer = () => new Response(JSON.stringify({ state: "failed", reason: "unsupported" }), { status: 200 });
+    routes(videoInit);
+    const user = userEvent.setup();
+    show();
+    await pick("فيديو", cameraVideo());
+    await user.click(screen.getByRole("button", { name: "انشر" }));
+    await waitFor(() => expect(captureState()).toBe("refused"), { timeout: 3500 });
+    expect(screen.getByRole("status")).toHaveTextContent("صيغة غير مدعومة");
+    expect(screen.getByLabelText("من الاستوديو")).toBeInTheDocument();
+  });
+
+  it("★ the review plays the take with ONE tapped control — never the browser's controls", async () => {
+    routes(videoInit);
+    const user = userEvent.setup();
+    show();
+    await pick("فيديو", cameraVideo());
     expect(document.querySelector("[data-story-capture] video[controls]")).toBeNull();
     const video = document.querySelector<HTMLVideoElement>("[data-review-video]")!;
     expect(video).toHaveAttribute("playsinline");
@@ -299,58 +261,16 @@ describe("CaptureFlow — robust uploads", () => {
     expect(play).toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "أوقف مؤقتًا" })).toBeInTheDocument();
   });
-
-  it("a recording that wrote no bytes is never uploaded", async () => {
-    const calls = routes(videoInit);
-    await recordVideo(recorderLike((t) => t === "video/mp4", { type: "video/mp4", bytes: null }));
-    expect(captureState()).toBe("refused");
-    expect(screen.getByRole("status")).toHaveTextContent("قصير جدًا");
-    expect(screen.getByRole("button", { name: "ابدأ التسجيل" })).toBeEnabled();
-    expect(calls).toHaveLength(0);
-  });
-
-  it("the recorder stops itself at 15 seconds exactly, by a timer from the start", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    try {
-      vi.stubGlobal("MediaRecorder", iosRecorder);
-      Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia: vi.fn().mockResolvedValue(fakeStream()) } });
-      URL.createObjectURL = vi.fn(() => "blob:x");
-      URL.revokeObjectURL = vi.fn();
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-      show();
-      await act(async () => {});
-      await user.click(screen.getByRole("radio", { name: "فيديو" }));
-      await user.click(screen.getByRole("button", { name: "ابدأ التسجيل" }));
-      expect(captureState()).toBe("recording");
-      await act(async () => void vi.advanceTimersByTime(14_900));
-      expect(captureState()).toBe("recording");
-      await act(async () => void vi.advanceTimersByTime(200));
-      expect(captureState()).toBe("review");
-    } finally {
-      vi.useRealTimers();
-    }
-  });
 });
 
-describe("CaptureFlow — a photograph from the gallery", () => {
-  it("is prepared (or kept, when the phone cannot redraw it), uploaded through the album's door with its caption, and the capture closes", async () => {
-    const user = userEvent.setup();
-    vi.stubGlobal("XMLHttpRequest", PlannedXhr);
+describe("CaptureFlow — a photograph", () => {
+  it("from the camera app: prepared (or kept when the phone cannot redraw it), through the album's door with its caption, and the capture closes", async () => {
     vi.stubGlobal("createImageBitmap", vi.fn().mockRejectedValue(new Error("no decoder")));
-    putPlan = [{ status: 200 }];
-    Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia: vi.fn().mockResolvedValue(fakeStream()) } });
-    URL.createObjectURL = vi.fn(() => "blob:x");
-    URL.revokeObjectURL = vi.fn();
-    const calls = routes(
-      () =>
-        new Response(JSON.stringify({ photoId: FRAME, upload: { path: `org/${SESSION}/${FRAME}.jpg`, signedUrl: "https://storage.test/put", contentType: "image/jpeg" } }), {
-          status: 201,
-        }),
-    );
+    const calls = routes(photoInit);
     const onClose = vi.fn();
+    const user = userEvent.setup();
     show(onClose);
-    await act(async () => {});
-    await user.upload(screen.getByLabelText("من الاستوديو"), new File([new Uint8Array([0xff, 0xd8, 0xff])], "IMG_1.jpg", { type: "image/jpeg" }));
+    await pick("صورة", new File([new Uint8Array([0xff, 0xd8, 0xff])], "image.jpg", { type: "image/jpeg" }));
     await waitFor(() => expect(captureState()).toBe("review"));
     await user.type(screen.getByLabelText("تعليق"), "الشريحة الثالثة");
     await user.click(screen.getByRole("button", { name: "انشر" }));
@@ -360,7 +280,5 @@ describe("CaptureFlow — a photograph from the gallery", () => {
     expect(calls.map((c) => c.url)).toEqual(["/api/upload/photo", "/api/stories/photo/complete"]);
     expect(calls[0]!.body).toMatchObject({ sessionId: SESSION, kind: "jpeg" });
     expect(calls[1]!.body).toMatchObject({ photoId: FRAME, kind: "jpeg", caption: "الشريحة الثالثة" });
-    putPlan = [];
-    puts = 0;
   });
 });
