@@ -281,7 +281,8 @@ describe("story_feed() — the member's view, for everyone (REQ-STO-002, 003, 00
         ["published", false],
         ["video", false],
       ]);
-      await tx.q(`insert into public.story_views (org_id, member_id, frame_id) values ($1, $2, $3)`, [f.a.id, f.a.members[1].memberId, rows[0].frame_id]);
+      // 0229 (DEC-297, a ledger line): a view is recorded through record_views(), never a client insert.
+      await tx.q(`select public.record_views(jsonb_build_array(jsonb_build_object('kind', 'frame', 'id', $1::uuid)))`, [rows[0].frame_id]);
       expect((await tx.q<{ seen: boolean }>(`select seen from public.story_feed() where frame_id = $1`, [rows[0].frame_id]))[0].seen).toBe(true);
 
       await tx.as(f.b.members[0].claims);
