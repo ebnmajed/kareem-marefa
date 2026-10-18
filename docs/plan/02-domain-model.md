@@ -514,6 +514,11 @@ carried onto its one day while `n ≤ 1`) and checked at commit by a deferred co
 `sessions.require_all_days boolean not null default true` sits beside `certificate_mode`
 (`REQ-SES-017`).
 
+★ `sessions.logged_retrospectively boolean not null default false` (`0231`, `DEC-299`, `REQ-SES-025`): an event
+logged after it happened. Set by `create_session(p_retrospective)` and **immutable** (a trigger refuses any change);
+every day of such a session must have ended (`session_days_past_only`), and `publish_past_session()` takes it
+published → in_progress → completed in one transaction with `completed_at = ends_at`.
+
 ★ **`REQ-TSK-002` is untouched and matters more here:** tasks stay **reminder-only and are never
 read by any check-in path**. Attaching them to a day puts them beside that day's attendance in the
 schema for the first time, and that is precisely the invariant a later reader assumes away.

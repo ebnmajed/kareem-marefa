@@ -226,6 +226,10 @@ export async function saveSchedule(
     await scheduleSession(locale, sessionId, parsed.data);
   } catch (e) {
     unstable_rethrow(e);
+    // DEC-299 (REQ-SES-025): a past event's days must all have ended — the database's refusal, said at the date.
+    if (e instanceof Error && e.message.includes("past_event_not_past")) {
+      return { ...withErrors(state, { startsAt: "pastEventNotPast" }), saved: false, published: false };
+    }
     return { ...withFormError(state, "failed"), saved: false, published: false };
   }
   revalidatePath(`/${locale}/app/admin/sessions/${sessionId}/schedule`);
@@ -234,15 +238,19 @@ export async function saveSchedule(
   revalidatePath(`/${locale}/app/admin/sessions/${sessionId}`, "layout");
 
   if (intent === "publish") {
+    let pastEvent = false;
     try {
-      await publishSession(locale, sessionId);
+      // `?.`: a caller mocking the DAL with no answer is an ordinary publish.
+      pastEvent = (await publishSession(locale, sessionId))?.pastEvent === true;
     } catch (e) {
       unstable_rethrow(e);
       // The schedule IS saved; only the publish was refused — publish_session()
       // names the gap, and the page lists it.
       return { ...withFormError(state, "publishFailed"), saved: true, published: false };
     }
-    return { ...state, saved: true, published: true };
+    revalidatePath(`/${locale}/app/admin/sessions`);
+    // A past event is completed by its publish (DEC-299): who came is the next act.
+    return { ...state, saved: true, published: true, next: pastEvent ? `/app/admin/sessions/${sessionId}/attendance?manual=1` : null };
   }
   return { ...state, saved: true, published: false };
 }

@@ -620,6 +620,8 @@ export interface AttendanceReport {
   days: CheckInDay[];
   /** `sessions.require_all_days` (REQ-SES-017) — what «أكمل الحضور» means for this session. */
   requireAllDays: boolean;
+  /** DEC-299 (REQ-SES-025), add-only: an event logged after it happened — its mark reads «سُجّلت بأثر رجعي». */
+  pastEvent?: boolean;
   timeZone: string;
   counts: {
     reserved: number;
@@ -694,7 +696,7 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
   if (session.role !== "admin" && session.role !== "moderator") return null;
 
   const [sessionRes, rsvpsRes, checkInsRes, days, completeRes] = await Promise.all([
-    supabase.from("sessions").select("id, title, state, time_zone, require_all_days").eq("id", sessionId).maybeSingle(),
+    supabase.from("sessions").select("id, title, state, time_zone, require_all_days, logged_retrospectively").eq("id", sessionId).maybeSingle(),
     supabase.from("rsvps").select("member_id, status, members(display_name, avatar_version, avatar_key, companies(team_color))").eq("session_id", sessionId),
     // `!check_ins_member_id_fkey` / `remover:...!check_ins_removed_by_fkey`:
     // `check_ins` has THREE foreign keys into `members` now (`member_id`,
@@ -864,6 +866,7 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
     rows,
     days: days.map(asCheckInDay),
     requireAllDays: sessionRes.data.require_all_days !== false,
+    pastEvent: (sessionRes.data as { logged_retrospectively?: boolean }).logged_retrospectively === true,
     timeZone: sessionRes.data.time_zone,
     counts: {
       reserved: rsvpsRes.data?.length ?? 0,

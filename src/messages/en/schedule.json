@@ -145,10 +145,12 @@
     },
     "actions": {
       "publish": "Publish the session",
+      "publishPast": "Log it as held",
       "saveOnly": "Save only",
       "saveChanges": "Save changes",
       "pending": "Saving…",
       "publishNote": "Publishing notifies every member and opens booking.",
+      "publishNotePast": "Nobody is notified; the event is recorded as completed on its date.",
       "editedNote": "Everyone booked or waitlisted is told what changed in the time or the place, and their calendars update."
     },
     "missing": {
@@ -168,6 +170,7 @@
     },
     "errors": {
       "startsAtRequired": "Choose the session's date and time.",
+      "pastEventNotPast": "A past event: every day must already have ended.",
       "durationRange": "The duration is between 15 and 480 minutes.",
       "endBeforeStart": "The end comes after the start.",
       "endRequired": "Set the end of the session, or work it out from the duration.",

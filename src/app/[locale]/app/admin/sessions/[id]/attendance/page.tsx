@@ -237,6 +237,8 @@ export default async function AttendancePage({
         emptyAction={emptyAction}
         clearFilter={show === "all" ? undefined : { label: t("filter.all"), href: query({ show: "all" }) }}
         sheetRequested={sp.manual === "1"}
+        // DEC-299: a past event's attendees are added after the fact — the reason is written for the admin.
+        defaultReason={report.pastEvent ? t("pastReason") : ""}
         filters={
           <div role="group" aria-label={t("filter.label")} className="flex flex-wrap items-center gap-2">
             <TagChip label={t("filter.all")} count={allRows.length} href={query({ show: "all" })} selected={show === "all"} />

@@ -115,6 +115,8 @@
       "memberPlaceholder": "اختر عضوًا",
       "reasonLabel": "السبب",
       "mark": "سجّل حضوره",
+      "markMany": "{count, plural, zero {سجّل حضورهم} one {سجّل حضوره} two {سجّل حضور الاثنين} few {سجّل حضور {value} أعضاء} many {سجّل حضور {value} عضوًا} other {سجّل حضور {value} عضو}}",
+      "pastReason": "سُجّلت بأثر رجعي",
       "done": "سُجّل حضوره.",
       "listTitle": "كل من حجز أو حضر",
       "empty": "لا حجوزات ولا تسجيلات حضور بعد.",

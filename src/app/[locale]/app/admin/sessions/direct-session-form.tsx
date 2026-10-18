@@ -53,12 +53,15 @@ export function DirectSessionForm({
   categories,
   members,
   defaultEventType = DEFAULT_EVENT_TYPE,
+  pastEvent = false,
 }: {
   action: (prev: CreateSessionState, formData: FormData) => Promise<CreateSessionState>;
   categories: { id: string; name: string }[];
   members: { id: string; displayName: string | null }[];
   /** REQ-SES-022: the type «create» was opened for; a talk otherwise. */
   defaultEventType?: EventType;
+  /** DEC-299 (REQ-SES-025): an event that already happened — created silent, scheduled in the past. */
+  pastEvent?: boolean;
 }) {
   const t = useTranslations("admin.sessions");
   const tType = useTranslations("sessions.eventType");
@@ -79,6 +82,7 @@ export function DirectSessionForm({
     <form action={formAction} noValidate className="max-w-2xl space-y-6">
       {hasAttempted(state) ? <FormSummary key={state.attempt} title={t("errorSummaryTitle")} errors={summary} /> : null}
       {state.formError ? <FormAlert>{t(`errors.${state.formError}`)}</FormAlert> : null}
+      {pastEvent ? <input type="hidden" name="pastEvent" value="1" /> : null}
 
       {/* REQ-SES-022: «نوع الفعالية», the four types, a talk unless chosen. */}
       <RadioGroup
@@ -138,7 +142,7 @@ export function DirectSessionForm({
       </Field>
 
       <Button type="submit" pending={pending} pendingLabel={t("creating")}>
-        {t("create")}
+        {pastEvent ? t("createPast") : t("create")}
       </Button>
     </form>
   );

@@ -226,6 +226,8 @@ export const directSessionInput = z
     presenterIds: z.array(z.uuid()).max(10),
     /** REQ-SES-022: the admin's choice on «create»; a talk when none is made. */
     eventType: z.enum(EVENT_TYPES).default("talk"),
+    /** DEC-299 (REQ-SES-025): an event that already happened — `create_session(p_retrospective)`. */
+    pastEvent: z.boolean().default(false),
   })
   .strict();
 export type DirectSessionInput = z.infer<typeof directSessionInput>;
@@ -248,6 +250,7 @@ export async function createSessionDirect(locale: string, input: DirectSessionIn
     p_level: input.level,
     p_language: input.language,
     p_presenters: input.presenterIds,
+    p_retrospective: input.pastEvent ?? false,
   });
   if (error || !data) throw new Error(`create_session: ${error?.message ?? "no id"}`);
   // ★ REQ-SES-022: `create_session()` starts a direct session as a talk; the admin's other choice is applied
@@ -311,6 +314,8 @@ export interface SchedulableSession {
   allowWalkIns: boolean;
   /** `sessions.require_all_days` (`REQ-SES-017`), for the multi-day control. */
   requireAllDays: boolean;
+  /** `sessions.logged_retrospectively` (DEC-299, REQ-SES-025): its days have ended; publishing completes it. */
+  pastEvent: boolean;
   timeZone: string;
   /** What REQ-SES-001 still wants before this can be published. */
   missing: ("startsAt" | "endsAt" | "capacity" | "venue")[];
@@ -364,7 +369,7 @@ export async function getSessionForSchedule(locale: string, id: string): Promise
       // path may read a task; this is a scheduling path — `sessions.ts` is in
       // no check-in import graph — and the form needs both numbers to ask
       // before it removes a day (DEC-151 ruling 6).
-      "id, title, state, language, starts_at, duration_minutes, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, capacity, rsvp_deadline_at, cancellation_cutoff_at, allow_walk_ins, require_all_days, time_zone, session_days(id, position, starts_at, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, check_ins(count), materials(count), session_tasks(count), photos(count))",
+      "id, title, state, language, starts_at, duration_minutes, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, capacity, rsvp_deadline_at, cancellation_cutoff_at, allow_walk_ins, require_all_days, logged_retrospectively, time_zone, session_days(id, position, starts_at, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, check_ins(count), materials(count), session_tasks(count), photos(count))",
     )
     .eq("id", id)
     .maybeSingle();
@@ -410,6 +415,7 @@ export async function getSessionForSchedule(locale: string, id: string): Promise
     rsvpDeadlineAt: data.rsvp_deadline_at,
     cancellationCutoffAt: data.cancellation_cutoff_at,
     allowWalkIns: data.allow_walk_ins === true,
+    pastEvent: (data as { logged_retrospectively?: boolean }).logged_retrospectively === true,
     requireAllDays: data.require_all_days !== false,
     timeZone: data.time_zone,
     missing,
@@ -610,11 +616,18 @@ export async function scheduleSession(locale: string, sessionId: string, input: 
   if (error) throw new Error(`schedule_session: ${error.message}`);
 }
 
-/** Publishing (REQ-SES-001). The gate is the table's; this reports its refusal. */
-export async function publishSession(locale: string, sessionId: string): Promise<void> {
+/**
+ * Publishing (REQ-SES-001). The gate is the table's; this reports its refusal. ★ A past event (DEC-299,
+ * REQ-SES-025) is published through `publish_past_session()`, which takes it on to completed at its own end, in
+ * the same transaction and silently. Returns whether it was one, so the caller can send the admin to attendance.
+ */
+export async function publishSession(locale: string, sessionId: string): Promise<{ pastEvent: boolean }> {
   const { supabase } = await sessionClient(locale);
-  const { error } = await supabase.rpc("publish_session", { p_session: sessionId });
-  if (error) throw new Error(`publish_session: ${error.message}`);
+  const { data: row } = await supabase.from("sessions").select("logged_retrospectively").eq("id", sessionId).maybeSingle();
+  const pastEvent = (row as { logged_retrospectively?: boolean } | null)?.logged_retrospectively === true;
+  const { error } = await supabase.rpc(pastEvent ? "publish_past_session" : "publish_session", { p_session: sessionId });
+  if (error) throw new Error(`${pastEvent ? "publish_past_session" : "publish_session"}: ${error.message}`);
+  return { pastEvent };
 }
 
 // ── A session's presenters, after it exists (SCR-043, REQ-SES-019) ──────────

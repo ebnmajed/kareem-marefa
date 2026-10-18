@@ -11362,3 +11362,51 @@ color, it's cute».
   podium); the negative-total case reads the podium too. `tests/components/admin/companies-add-colour.test.tsx` — «no
   logo» becomes «the logo's file input has no name, so the file is never posted». `companies-{domains,table}.test.tsx`
   — fixtures gain `logoAssetId`/`logoSrc`, the form gains `locale`/`imageLimitMb`. New `tests/rls/company-logo.test.ts`.
+
+## DEC-299 — An admin logs an event that already happened, silently, and adds who came
+
+**Date:** 2026-10-18 · **Status:** accepted · **By:** the owner · **Refs:** REQ-SES-025, REQ-SES-001, REQ-CHK-008, REQ-PTS-015 · **Migration:** `0231`
+
+**The owner:** «i want an org's admin to be able to add events retrospectively, so if an event happened but wasn't
+logged in before they would have a way to add it. It follows the regular addition of a new event but if it is in an old
+date it doesn't trigger notifications and the admin can add the attendees manually.»
+
+**What a past date did before this.** Nothing refused one — `schedule_session()`, the day triggers and
+`publish_session()` read no clock — so an old event published as if it were live: `MSG-session_published` to every
+member and `MSG-presenter_assigned` to its presenters (the latter at creation, before any date exists); three generated
+story frames (published, live, recap) for 24 h; `completed_at` set to the clock's now a minute later, opening a fresh
+rating window and a `MSG-rating_prompt`; `MSG-check_in_confirmed` mailed for every hand-mark; and points, the streak and
+the weekly digest counted in the current period. Hand-marks were one member at a time.
+
+**Asked, the owner chose:**
+1. **A separate entry**, «إنشاء» → «فعالية سابقة» — the same create form and the same الجدولة — so the session is a past
+   event from its first act and nothing notifies, presenters included. (Not: detected from the date at publish.)
+2. **Points dated to the event** — attendees and presenters earn what any session pays; the rows carry the event's date,
+   so this week's board, its digest and this month's streak do not move. Closed leaderboards are not rewritten.
+3. **Visible quietly** — in browse, on profiles and in the member's history as a completed session; no feed post, no
+   story, no recap.
+
+**Ruling.**
+1. `sessions.logged_retrospectively`, set by `create_session(p_retrospective)` and immutable. A past event never comes
+   from a proposal. Every one of its days must have ended (`past_event_not_past`, refused at the day row).
+2. `publish_past_session()` publishes it (every completeness refusal is `publish_session()`'s) and takes it through
+   in_progress to completed in the same transaction, `completed_at = ends_at`, check-in closed. The completion fan-out
+   runs as for any session: presenter awards, `evaluate_no_shows` (no reservation is possible, so no penalty), held
+   certificates. The rating window runs from the real end, so an old event is no longer ratable — accepted.
+3. **Silent**: the four notifying triggers carry a `WHEN` (`session_presenters_notify`, `sessions_notify`,
+   `check_ins_notify`, `materials_added_notify`), `announce_certificate()` returns for a past event's certificate, and a
+   generated story frame for one is not written. An admin's release on `SCR-045` still mails — that is a deliberate act.
+   A comment posted on the event later notifies its presenters as on any session.
+4. **Dated**: a check-in arrives at its day's start; the attendance and presenter awards, and their reversals, take the
+   session's end as `occurred_at`. Every other ledger row is today's.
+5. **Attendees**: `SCR-044`'s sheet takes several members under one reason — for every session, not only past ones; each
+   is the unchanged `mark_checked_in_manually()`, in order, in one action, and the first refusal stops the batch with the
+   unmarked still selected. For a past event the reason is written for the admin, «سُجّلت بأثر رجعي», and publishing
+   lands on الحضور with the sheet open.
+6. **Not this decision:** importing attendees from a file; logging a past event from a proposal; backfilling closed
+   leaderboard snapshots; detecting an ordinary session's past date.
+
+- **Documents changed:** `01-prd.md` (`REQ-SES-025`), `02-domain-model.md`, `03-permissions-rls.md` (four rows),
+  `14-roadmap.md` (M38), `15-backlog.md` (`STORY-SES-018`), `STATUS.md`
+- **Ledger:** none — no existing assertion changed. New: `tests/rls/past-events.test.ts`,
+  `tests/unit/attendance-mark-many.test.ts`.

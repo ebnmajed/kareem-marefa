@@ -74,6 +74,11 @@ const LOG_KEY: Record<string, string> = {
   "session.event_type_changed": "eventTypeChanged",
 };
 
+/** The request's instant, read once outside render's purity rule (the attendance page's `readClock()`). */
+function readNow(): string {
+  return new Date().toISOString();
+}
+
 export default async function SchedulePage({
   params,
   searchParams,
@@ -269,6 +274,9 @@ export default async function SchedulePage({
             published={LIVE_STATES.has(session.state)}
             proposalDurationMinutes={content.proposal?.expectedDurationMinutes ?? null}
             doneHref={here}
+            pastEvent={session.pastEvent}
+            // DEC-299: a past event's picker offers no day after today, as `session_days_past_only` refuses one.
+            latestDay={session.pastEvent ? localValue(readNow(), zone) : undefined}
             readRows={{
               presenters: <PresentersRow presenters={read.presenters} />,
               certificate,
