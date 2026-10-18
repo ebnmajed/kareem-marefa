@@ -286,6 +286,9 @@ non-scoring settings too.
 `#rrggbb` in lower case, or none. It rings a member's avatar and never fills it (`REQ-PRF-009`). Read through
 `p1_org_read` and written through `p2_admin_update`, with no new policy and no new grant. **No migration writes
 one** (`DEC-183` §4.11): it is set on `SCR-048`.
+★ **`logo_asset_id uuid references design_assets on delete set null`** (`0230`, `DEC-298`, `REQ-ADM-026`) — nullable;
+an asset of the company's **own** org (a guard refuses another's, `23514`); a change audits `company.logo_changed`.
+Members read the object through `design_assets_storage_read_company_logo`, scoped to the org.
 
 #### `ENT-company_domains`
 **Serves:** `REQ-PRF-012`, `REQ-ADM-024` · added by `DEC-254` §2 (`0203`)

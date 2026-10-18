@@ -351,7 +351,8 @@
         "domainsInvalid": "A domain was not accepted.",
         "domainMalformed": "<d>{domain}</d> is not a domain.",
         "domainTaken": "<d>{domain}</d> is on “<t>{company}</t>”.",
-        "domainsTooMany": "Twenty domains at most."
+        "domainsTooMany": "Twenty domains at most.",
+        "logoNotSaved": "The company was saved but its logo was not"
       },
       "teamColourLabel": "Team colour",
       "newCompany": "New company",
@@ -376,7 +377,21 @@
       "moveCount": "{count, plural, =0 {Nobody moves to “<t>{name}</t>”} one {One member moves to “<t>{name}</t>”} other {<bdi>{value}</bdi> members move to “<t>{name}</t>”}}",
       "heldCount": "{count, plural, =0 {Nobody stays behind} one {One member stays where an admin placed them} other {<bdi>{value}</bdi> members stay where an admin placed them}}",
       "moveChanged": "The count changed since you pressed “Save”.",
-      "moveConfirm": "Move and save"
+      "moveConfirm": "Move and save",
+      "logo": {
+        "label": "Logo",
+        "none": "No logo",
+        "remove": "Remove logo",
+        "uploading": "Uploading the logo…",
+        "formats": "PNG · JPEG · WebP",
+        "errors": {
+          "file_too_large": "The file is larger than allowed",
+          "rejected_content": "PNG, JPEG or WebP only",
+          "unreadable": "The image could not be read",
+          "not_authorized": "The logo could not be uploaded",
+          "unknown": "The logo could not be uploaded"
+        }
+      }
     },
     "members": {
       "title": "Members",
@@ -609,6 +624,7 @@
         },
         "company": {
           "team_color_changed": "Company team colour changed",
+          "logo_changed": "Company logo changed",
           "created": "Company created",
           "changed": "Company changed",
           "deactivated": "Company deactivated",

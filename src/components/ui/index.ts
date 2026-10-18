@@ -1044,6 +1044,10 @@ export interface RankRowProps extends Styleable {
   teamColor: TeamColor;
   /** DEC-287 (add-only): the member's picture from `avatarHref()`; absent or null draws the initials. */
   avatarSrc?: string | null;
+  /** DEC-298 (add-only): `company` draws the company's mark — its logo (`logoSrc`) on a plate, or its initial on its
+   *  colour — in place of a member's avatar; `memberId` then holds the company's id. Absent: a member, as before. */
+  kind?: "member" | "company";
+  logoSrc?: string | null;
   /** The digits shown, formatted by the caller. */
   points: string;
   /** What a screen reader hears — «1,410 نقطة». */
@@ -1072,6 +1076,8 @@ export interface RaceBarProps extends Styleable {
   secondary?: { label: string; value: string } | null;
   /** Set on the viewer's own company only — «فريقك». */
   ownLabel?: string | null;
+  /** DEC-298 (add-only): the company's logo — `grid` draws it in place of the ring's dot, framed in the colour. */
+  logoSrc?: string | null;
   /**
    * ★ wave 18 (DEC-207, `scoring` W3), add-only: `inline` is the one-line row the home's race draws — ring,
    * name, bar, figure. The metric is still said on every row to a screen reader (REQ-LDR-005). Default
@@ -1454,6 +1460,9 @@ export interface PodiumPlace {
   teamColor: TeamColor;
   /** DEC-287 (add-only): the member's picture from `avatarHref()`; absent or null draws the initials. */
   avatarSrc?: string | null;
+  /** DEC-298 (add-only): as `RankRowProps` — a company's place draws its mark, not an avatar. */
+  kind?: "member" | "company";
+  logoSrc?: string | null;
   /** Formatted by the caller. */
   points: string;
   pointsLabel: string;

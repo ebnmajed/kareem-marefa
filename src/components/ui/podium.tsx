@@ -2,7 +2,7 @@ import type { PodiumPlace, PodiumProps } from "@/components/ui";
 import { Avatar } from "@/components/ui/avatar";
 import { Link } from "@/components/ui/link";
 import { CupObject } from "@/components/ui/objects/cup";
-import { RankRow } from "@/components/ui/rank-row";
+import { CompanyMark, RankRow } from "@/components/ui/rank-row";
 
 // scoring's file — REQ-UIX-081, REQ-UIX-078, REQ-LDR-001, DEC-216 §5.10, DEC-218 §3.4, §3.7.
 //
@@ -16,6 +16,7 @@ import { RankRow } from "@/components/ui/rank-row";
 // through CSS `order`. A block's HEIGHT follows its position; the NUMBER on it is the place's own rank, so a tie
 // draws two «1»s without lying about either.
 //
+// ★ DEC-298 (add-only): a company's place (`kind: "company"`) draws `CompanyMark` — the company board's podium.
 // ★ The member's picture, or initials — like `rank-row` (DEC-287, reversing DEC-099's leaderboard exclusion). The company is the ring,
 // never the fill (REQ-PRF-009). The viewer's own place is outlined AND says «أنت» in words.
 //
@@ -39,7 +40,11 @@ function Place({ place, position }: { place: PodiumPlace; position: number }) {
   return (
     <li className={`relative flex w-26 min-w-0 flex-col items-center gap-1.5 ${look.order}`}>
       {position === 0 ? <CupObject size={36} shadow={false} /> : null}
-      <Avatar memberId={place.memberId} displayName={place.displayName} src={place.avatarSrc ?? null} size={64} decorative teamColor={place.teamColor} />
+      {place.kind === "company" ? (
+        <CompanyMark name={place.displayName} teamColor={place.teamColor} logoSrc={place.logoSrc ?? null} size={64} />
+      ) : (
+        <Avatar memberId={place.memberId} displayName={place.displayName} src={place.avatarSrc ?? null} size={64} decorative teamColor={place.teamColor} />
+      )}
       <span className="flex max-w-full flex-col items-center text-center">
         <span className="text-body-sm font-bold text-fg-heading">
           {place.href ? (
@@ -68,7 +73,7 @@ function Place({ place, position }: { place: PodiumPlace; position: number }) {
         </span>
         <span className="text-caption font-bold">
           <span className="sr-only">{place.pointsLabel}</span>
-          <bdi aria-hidden="true">{place.points}</bdi>
+          <bdi aria-hidden="true" dir="ltr">{place.points}</bdi>
         </span>
       </span>
     </li>
@@ -97,6 +102,8 @@ export function Podium({ label, places, className = "" }: PodiumProps) {
             company={place.company}
             teamColor={place.teamColor}
             avatarSrc={place.avatarSrc ?? null}
+            kind={place.kind}
+            logoSrc={place.logoSrc ?? null}
             points={place.points}
             pointsLabel={place.pointsLabel}
             selfLabel={place.selfLabel ?? null}

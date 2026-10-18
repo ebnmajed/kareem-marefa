@@ -3,6 +3,7 @@ import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { avatarHref } from "@/lib/dal/avatars";
+import { companyLogoHref } from "@/components/scoring/company-logo-href";
 import { companyFractions } from "@/components/scoring/race-fractions";
 
 // The four boards (SCR-027, SCR-028, `05` §6). All-time reads live from
@@ -68,6 +69,8 @@ export interface CompanyBoardRow {
   pointsPerActiveMember: number | null;
   /** wave 16 (add-only): `companies.team_color` (0160). */
   teamColor?: string | null;
+  /** DEC-298 (add-only): `companyLogoHref()`'s answer, or null — the company's logo (`0230`). */
+  logoSrc?: string | null;
   /** wave 16 (add-only): the viewer's own company — «فريقك». */
   isOwn?: boolean;
   /** wave 20, PR C (add-only, REQ-UIX-082): below the snapshot's frozen minimum of active members — «بلا ترتيب». */
@@ -180,10 +183,11 @@ export async function getLeaderboards(locale: string): Promise<Leaderboards> {
     if (error) throw new Error(`leaderboard_entries (company): ${error.message}`);
     const ids = (entries ?? []).map((e) => e.company_id).filter((id): id is string => Boolean(id));
     const { data: companies } = ids.length
-      ? await supabase.from("companies").select("id, name, team_color").in("id", ids)
-      : { data: [] as Array<{ id: string; name: string; team_color: string | null }> };
+      ? await supabase.from("companies").select("id, name, team_color, logo_asset_id").in("id", ids)
+      : { data: [] as Array<{ id: string; name: string; team_color: string | null; logo_asset_id: string | null }> };
     const companyNameOf = new Map((companies ?? []).map((c) => [c.id, c.name]));
     const companyColourOf = new Map((companies ?? []).map((c) => [c.id, (c.team_color as string | null) ?? null]));
+    const companyLogoOf = new Map((companies ?? []).map((c) => [c.id, companyLogoHref(c.id as string, c.logo_asset_id as string | null)]));
     company = {
       isFinal: companySnap.is_final,
       takenAt: companySnap.taken_at,
@@ -197,6 +201,7 @@ export async function getLeaderboards(locale: string): Promise<Leaderboards> {
           totalPoints: e.points,
           pointsPerActiveMember: e.points_per_active_member,
           teamColor: companyColourOf.get(e.company_id) ?? null,
+          logoSrc: companyLogoOf.get(e.company_id) ?? null,
           isOwn: viewerCompanyId !== null && e.company_id === viewerCompanyId,
           unranked: isUnranked(companySnap.min_active_members, e.points, e.points_per_active_member),
         })),
@@ -695,9 +700,9 @@ export async function getCompanyRace(locale: string, opts: { leaders?: number } 
   const list = (entries ?? []) as Entry[];
   if (list.length === 0) return null;
 
-  const { data: companies, error: cError } = await supabase.from("companies").select("id, name, team_color").in("id", list.map((e) => e.company_id));
+  const { data: companies, error: cError } = await supabase.from("companies").select("id, name, team_color, logo_asset_id").in("id", list.map((e) => e.company_id));
   if (cError) throw new Error(`companies (race): ${cError.message}`);
-  const byId = new Map(((companies ?? []) as Array<{ id: string; name: string; team_color: string | null }>).map((c) => [c.id, c]));
+  const byId = new Map(((companies ?? []) as Array<{ id: string; name: string; team_color: string | null; logo_asset_id: string | null }>).map((c) => [c.id, c]));
 
   const board: CompanyBoardRow[] = list.map((e) => ({
     companyId: e.company_id,
@@ -706,6 +711,7 @@ export async function getCompanyRace(locale: string, opts: { leaders?: number } 
     totalPoints: e.points,
     pointsPerActiveMember: e.points_per_active_member === null ? null : Number(e.points_per_active_member),
     teamColor: byId.get(e.company_id)?.team_color ?? null,
+    logoSrc: companyLogoHref(e.company_id, byId.get(e.company_id)?.logo_asset_id),
     isOwn: ownCompanyId !== null && e.company_id === ownCompanyId,
     unranked: isUnranked(snap.min_active_members, e.points, e.points_per_active_member),
   }));
@@ -1015,10 +1021,10 @@ export async function getCompanyCup(locale: string): Promise<CompanyCup | null> 
   type Entry = { company_id: string; rank: number; points: number; points_per_active_member: number | string | null };
   const list = (entries ?? []) as Entry[];
   const { data: companies, error: cError } = list.length
-    ? await supabase.from("companies").select("id, name, team_color").in("id", list.map((e) => e.company_id))
-    : { data: [] as Array<{ id: string; name: string; team_color: string | null }>, error: null };
+    ? await supabase.from("companies").select("id, name, team_color, logo_asset_id").in("id", list.map((e) => e.company_id))
+    : { data: [] as Array<{ id: string; name: string; team_color: string | null; logo_asset_id: string | null }>, error: null };
   if (cError) throw new Error(`companies (cup): ${cError.message}`);
-  const byId = new Map(((companies ?? []) as Array<{ id: string; name: string; team_color: string | null }>).map((c) => [c.id, c]));
+  const byId = new Map(((companies ?? []) as Array<{ id: string; name: string; team_color: string | null; logo_asset_id: string | null }>).map((c) => [c.id, c]));
 
   const today = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const { quarter, year, round } = quarterOf(snap.period_start, today);
@@ -1041,6 +1047,7 @@ export async function getCompanyCup(locale: string): Promise<CompanyCup | null> 
       totalPoints: e.points,
       pointsPerActiveMember: e.points_per_active_member === null ? null : Number(e.points_per_active_member),
       teamColor: byId.get(e.company_id)?.team_color ?? null,
+      logoSrc: companyLogoHref(e.company_id, byId.get(e.company_id)?.logo_asset_id),
       isOwn: viewerCompany !== null && e.company_id === viewerCompany,
       active: derivedActive(e.points, e.points_per_active_member),
       unranked: isUnranked(snap.min_active_members, e.points, e.points_per_active_member),

@@ -4,6 +4,7 @@ import { EditorSurface } from "@/components/admin/editor-surface";
 import { ButtonLink } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import type { Locale } from "@/i18n/routing";
+import { getImageLimitMb } from "@/lib/brand/kit";
 import { listCompaniesForAdmin } from "@/lib/dal/admin-lists";
 import { getCompanyCup } from "@/lib/dal/leaderboards";
 import { saveCompany } from "./actions";
@@ -31,7 +32,7 @@ export default async function CompaniesPage({
   setRequestLocale(locale);
   const sp = await searchParams;
 
-  const [companies, t] = await Promise.all([listCompaniesForAdmin(locale), getTranslations("admin.companies")]);
+  const [companies, t, imageLimitMb] = await Promise.all([listCompaniesForAdmin(locale), getTranslations("admin.companies"), getImageLimitMb(locale)]);
   if (companies === null) notFound();
   const cup = await getCompanyCup(locale);
   const quarter = new Map((cup?.rows ?? []).map((r) => [r.companyId, r.totalPoints]));
@@ -54,7 +55,7 @@ export default async function CompaniesPage({
 
       {creating || editing ? (
         <EditorSurface key={editing?.id ?? "new"} id="company-editor" title={editing ? t("editTitle") : t("newCompany")} closeHref={PATH} closeLabel={t("closeEditor")}>
-          <CompanyForm action={saveCompany.bind(null, locale as Locale, editing?.id ?? null)} company={editing} closeHref={PATH} />
+          <CompanyForm action={saveCompany.bind(null, locale as Locale, editing?.id ?? null)} company={editing} closeHref={PATH} locale={locale} imageLimitMb={imageLimitMb} />
         </EditorSurface>
       ) : null}
 

@@ -28,7 +28,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 // (DEC-186 §4). On the light ground the accent outline takes the heading ink
 // (DEC-186 §2).
 
-export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, rank, rankLabel, secondary, ownLabel, note = null, layout = "stacked", className = "" }: RaceBarProps) {
+export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, rank, rankLabel, secondary, ownLabel, note = null, layout = "stacked", logoSrc = null, className = "" }: RaceBarProps) {
   const own = Boolean(ownLabel);
   const colour = teamColorOrNull(teamColor);
   const ring = colour ? "border-team" : "border-team-neutral";
@@ -80,7 +80,15 @@ export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, 
         </span>
         <span className="flex min-w-0 flex-col gap-1.5">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-body font-bold leading-snug text-fg-heading">
-            <span aria-hidden="true" data-slot="ring" style={ringStyle} className={`size-5 shrink-0 rounded-pill border-[3px] bg-canvas ${ring}`} />
+            {logoSrc ? (
+              // DEC-298: the logo on a bone plate, framed in the team colour — a rounded square, never a circle.
+              <span aria-hidden="true" data-slot="logo" style={ringStyle} className={`relative size-7 shrink-0 rounded-field border-2 bg-sticker-bone ${ring}`}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- our proxied copy at `/api/companies/{id}/logo`. */}
+                <img src={logoSrc} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full rounded-[inherit] object-contain p-[10%]" />
+              </span>
+            ) : (
+              <span aria-hidden="true" data-slot="ring" style={ringStyle} className={`size-5 shrink-0 rounded-pill border-[3px] bg-canvas ${ring}`} />
+            )}
             <bdi>{companyName}</bdi>
             {own ? <span className="rounded-pill bg-accent px-2 text-caption font-bold text-on-accent pg-light:bg-fg-heading pg-light:text-canvas">{ownLabel}</span> : null}
             {note ? <span className="text-caption font-semibold text-fg-muted">{note}</span> : null}

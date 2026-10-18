@@ -5,6 +5,7 @@ import { ListRowMenu } from "@/components/admin/list-row-menu";
 import { formatNumber } from "@/components/sessions/numerals";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, DataTableSwatchCell } from "@/components/ui/data-table";
+import { CompanyMark } from "@/components/ui/rank-row";
 import type { DataTableColumn } from "@/components/ui";
 import type { AdminCompany } from "@/lib/dal/admin-lists";
 import type { Locale } from "@/i18n/routing";
@@ -14,7 +15,7 @@ import { teamColourNameOf } from "./team-colours";
 // SCR-048's table, written for wave 22 from `AdminCompanies.dc.html` (`DEC-208`: deleted first): الشركة · النطاق ·
 // الأعضاء · النشطون · الربع · ⋯. ★ The company's colour is a swatch AND its name in words (`REQ-UIX-095`, `DEC-232`'s D6 ruling);
 // none says «بلا لون». The quarter's points are READ — the quarter's company snapshot — and «—» before one exists.
-// ★ No logo (`DEC-195` §4). ★ wave 27 (`DEC-254` §2, `REQ-ADM-024`): the artboard's النطاق column, built now that a
+// ★ DEC-298: a company with a logo shows it before its name. ★ wave 27 (`DEC-254` §2, `REQ-ADM-024`): the artboard's النطاق column, built now that a
 // company carries its domains — each one LTR text in an RTL row, `<bdi dir="ltr">`; «—» for a company with none.
 
 export interface CompanyRow extends AdminCompany {
@@ -35,6 +36,7 @@ export function CompaniesTable({ companies, locale }: { companies: CompanyRow[];
         const colour = teamColourNameOf(c.teamColor);
         return (
           <span className="inline-flex flex-wrap items-center gap-2">
+            {c.logoSrc ? <CompanyMark name={c.name} teamColor={c.teamColor} logoSrc={c.logoSrc} /> : null}
             <DataTableSwatchCell color={c.teamColor} colorName={colour ? t(`teamColourNames.${colour}`) : t("teamColourNone")}>
               <bdi>{c.name}</bdi>
             </DataTableSwatchCell>

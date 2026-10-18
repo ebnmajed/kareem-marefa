@@ -89,8 +89,8 @@ describe("the form — domains are LTR text in an RTL form", () => {
           <main>
             <CompanyForm
               action={async () => state}
-              company={{ id: ID, name: "أكمي", deactivatedAt: null, memberCount: 0, activeMemberCount: 0, teamColor: null, domains: ["acme.example", "acme.sa"] }}
-              closeHref="/app/admin/companies"
+              company={{ id: ID, name: "أكمي", deactivatedAt: null, memberCount: 0, activeMemberCount: 0, teamColor: null, domains: ["acme.example", "acme.sa"], logoAssetId: null, logoSrc: null }}
+              closeHref="/app/admin/companies" locale="ar" imageLimitMb={20}
             />
           </main>
         </ToastProvider>
@@ -152,7 +152,7 @@ describe("the form — domains are LTR text in an RTL form", () => {
       <NextIntlClientProvider locale="ar" messages={messages}>
         <ToastProvider closeLabel="إغلاق">
           <main>
-            <CompanyForm action={action} company={{ id: ID, name: "أكمي", deactivatedAt: null, memberCount: 0, activeMemberCount: 0, teamColor: null, domains: [] }} closeHref="/app/admin/companies" />
+            <CompanyForm action={action} company={{ id: ID, name: "أكمي", deactivatedAt: null, memberCount: 0, activeMemberCount: 0, teamColor: null, domains: [], logoAssetId: null, logoSrc: null }} closeHref="/app/admin/companies" locale="ar" imageLimitMb={20} />
           </main>
         </ToastProvider>
       </NextIntlClientProvider>,
