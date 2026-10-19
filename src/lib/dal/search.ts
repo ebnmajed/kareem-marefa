@@ -380,7 +380,10 @@ export async function getSessionPosts(locale: string, options: { now?: Date } = 
   const { session, supabase } = await sessionClient(locale);
 
   const [sessionsRes, presentersRes, mineRes, bookmarksRes, companiesRes, settingsRes, rulePoints] = await Promise.all([
-    supabase.from("sessions").select(`${TIMELINE_SESSION_COLUMNS}, abstract`).in("state", TIMELINE_STATES).order("starts_at", { ascending: true }),
+    supabase.from("sessions").select(`${TIMELINE_SESSION_COLUMNS}, abstract`).in("state", TIMELINE_STATES)
+      // ★ DEC-299 (REQ-SES-025): a past event is in browse and on profiles, never posted to the feed — it is news to nobody.
+      .eq("logged_retrospectively", false)
+      .order("starts_at", { ascending: true }),
     supabase.from("session_presenters").select("session_id, member_id").eq("accepted", true),
     supabase.from("rsvps").select("session_id, status, waitlist_position").eq("member_id", session.memberId).in("status", ["confirmed", "waitlisted"]),
     supabase.from("bookmarks").select("session_id").eq("member_id", session.memberId),

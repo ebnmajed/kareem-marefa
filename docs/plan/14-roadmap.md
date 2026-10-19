@@ -1084,6 +1084,19 @@ PR, one migration (`0230`).
 **Demonstrable:** an admin uploads a logo on `SCR-048`; a member of the org sees it on the company board's podium; a
 member of another org gets a 404 from the logo route.
 
+## M38 — past events, logged silently · `DEC-299`
+
+The owner's ask: an event that happened but was never logged can be added after the fact, without notifying anyone,
+with its attendees added by hand. One PR, one migration (`0231`).
+
+| Work | Requirements | Track | PR |
+|---|---|---|---|
+| The flag, the past-only days, the silent triggers, the dated awards, `publish_past_session()` | `REQ-SES-025` | lead | — |
+| «فعالية سابقة» in «إنشاء», «سجّلها منتهية» on الجدولة, several members at once on الحضور | `REQ-SES-025`, `REQ-CHK-008` | lead | — |
+
+**Demonstrable:** an admin logs an event that ended last week, marks five attendees at once, and nobody receives
+anything; the five hold the attendance points, dated to that week.
+
 ## 3. Dependencies
 
 ```mermaid

@@ -185,6 +185,8 @@ export function ScheduleForm({
   published,
   readRows,
   doneHref,
+  pastEvent = false,
+  latestDay,
 }: {
   action: (prev: ScheduleState, formData: FormData) => Promise<ScheduleState>;
   venues: ScheduleVenue[];
@@ -205,6 +207,10 @@ export function ScheduleForm({
    * and «إلغاء» is a link to it. Absent, the form stays where it is, as before.
    */
   doneHref?: string;
+  /** DEC-299 (REQ-SES-025): a past event — its publish completes it, so the button says «log it». */
+  pastEvent?: boolean;
+  /** DEC-299: the last day a past event's pickers offer — today, in the org's zone. */
+  latestDay?: string;
 }) {
   const t = useTranslations("schedule");
   // ★ Contract 7's catalogue, read and never written here: one formatter names
@@ -221,7 +227,8 @@ export function ScheduleForm({
   const routerRef = useRef<{ replace: (href: string) => void } | null>(null);
   const [state, formAction, pending] = useActionState(async (prev: ScheduleState, formData: FormData) => {
     const result = await action(prev, formData);
-    if (doneHref && result.saved && !result.formError) routerRef.current?.replace(`${doneHref}?${result.published ? "published" : "saved"}=1`);
+    if (result.next && !result.formError) routerRef.current?.replace(result.next);
+    else if (doneHref && result.saved && !result.formError) routerRef.current?.replace(`${doneHref}?${result.published ? "published" : "saved"}=1`);
     return result;
   }, emptyScheduleState());
   const [pressed, setPressed] = useState<"publish" | "save">("save");
@@ -522,7 +529,7 @@ export function ScheduleForm({
             edit: (
               <div className="space-y-6">
           <Field id="startsAt" label={t("startsAt.label")} hint={t("startsAt.hint")} error={err("startsAt")} required>
-            <DateTime name="startsAt" label={t("startsAt.label")} value={startsAt} onChange={onStart} />
+            <DateTime name="startsAt" label={t("startsAt.label")} value={startsAt} onChange={onStart} max={latestDay} />
           </Field>
 
           <Field
@@ -808,7 +815,7 @@ export function ScheduleForm({
             <span className="text-label text-fg-heading">{t("missing.title")}</span> {missing.map((m) => t(`missing.${m}`)).join(" · ")}
           </p>
         ) : (
-          <p className="mb-3 text-body-sm text-fg-muted">{t(published ? "actions.editedNote" : "actions.publishNote")}</p>
+          <p className="mb-3 text-body-sm text-fg-muted">{t(published ? "actions.editedNote" : pastEvent ? "actions.publishNotePast" : "actions.publishNote")}</p>
         )}
         <div className="flex flex-wrap items-center gap-3">
           {published ? (
@@ -826,7 +833,7 @@ export function ScheduleForm({
                 pendingLabel={t("actions.pending")}
                 onClick={() => setPressed("publish")}
               >
-                {t("actions.publish")}
+                {t(pastEvent ? "actions.publishPast" : "actions.publish")}
               </Button>
               <Button
                 type="submit"

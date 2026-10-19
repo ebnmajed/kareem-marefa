@@ -46,6 +46,8 @@ export default async function AdminSessionsPage({
   if (data === null) notFound();
   const admin = data.role === "admin";
   const creating = admin && sp.new === "1";
+  // ★ DEC-299 (REQ-SES-025): «فعالية سابقة» opens the same form for an event that already happened.
+  const pastEvent = creating && sp.past === "1";
 
   const query = parseSessionQuery(sp);
   const newHref = `${sessionsHref(query)}${sessionsHref(query).includes("?") ? "&" : "?"}new=1`;
@@ -54,7 +56,7 @@ export default async function AdminSessionsPage({
 
   const [categories, ready, members] = await Promise.all([
     listCategories(locale),
-    creating ? listSchedulableProposals(locale) : Promise.resolve([]),
+    creating && !pastEvent ? listSchedulableProposals(locale) : Promise.resolve([]),
     creating ? listNameableMembers(locale) : Promise.resolve([]),
   ]);
 
@@ -85,6 +87,7 @@ export default async function AdminSessionsPage({
               }
               items={[
                 ...EVENT_TYPES.map((type) => ({ label: tTypes(type), href: `${newHref}&type=${type}#new-session` })),
+                { label: t("createPastEvent"), href: `${newHref}&past=1#new-session`, startsGroup: true },
                 { label: t("createAnnouncement"), href: "/app/admin/announcements?new=1#announcement-editor", startsGroup: true },
               ]}
             />
@@ -95,8 +98,10 @@ export default async function AdminSessionsPage({
       {creating ? (
         <section id="new-session" aria-labelledby="new-session-heading" className="mt-6 space-y-6">
           <h2 id="new-session-heading" className="text-label text-fg-heading">
-            {t("newRegionTitle")}
+            {pastEvent ? t("pastRegionTitle") : t("newRegionTitle")}
           </h2>
+          {/* A past event is logged directly: a proposal is a promise about the future (DEC-299). */}
+          {pastEvent ? null : (
           <Panel>
             <h3 className="text-label text-fg-heading">{t("readyTitle")}</h3>
             {ready.length === 0 ? (
@@ -131,14 +136,16 @@ export default async function AdminSessionsPage({
               </ul>
             )}
           </Panel>
+          )}
           <Panel>
-            <h3 className="mb-4 text-label text-fg-heading">{t("directTitle")}</h3>
+            {pastEvent ? null : <h3 className="mb-4 text-label text-fg-heading">{t("directTitle")}</h3>}
             <DirectSessionForm
               action={makeSessionDirectly.bind(null, locale as Locale)}
               categories={categories}
               members={members}
               // The type «إنشاء» was opened with (`?type=`); anything else is a talk.
               defaultEventType={typeof sp.type === "string" && isEventType(sp.type) ? sp.type : undefined}
+              pastEvent={pastEvent}
             />
           </Panel>
         </section>

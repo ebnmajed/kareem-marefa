@@ -56,7 +56,8 @@ export function dayFieldId(index: number, field: DayField): string {
  * because «انشر الجلسة» saves first: a publish the database refuses still
  * leaves a saved schedule, and the form says both.
  */
-export type ScheduleState = FormState<ScheduleField> & { saved: boolean; published: boolean };
+/** `next` (DEC-299): where a published past event goes — its attendance, to add who came. */
+export type ScheduleState = FormState<ScheduleField> & { saved: boolean; published: boolean; next?: string | null };
 
 export function emptyScheduleState(): ScheduleState {
   return { ...emptyFormState<ScheduleField>(), saved: false, published: false };

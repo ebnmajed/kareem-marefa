@@ -23,25 +23,40 @@ function dayOf(formData: FormData): string | null {
 // non-empty reason — re-checked there regardless of what this module
 // thinks the session's state is.
 
-export type ManualMarkState = { error: string | null; done: boolean; memberId?: string; reason?: string };
+export type ManualMarkState = { error: string | null; done: boolean; memberId?: string; reason?: string; memberIds?: string[]; marked?: number };
 
+/**
+ * ★ DEC-299 (REQ-SES-025): several members at once — a past event is logged with everyone who came, under one
+ * reason. Each is the same `mark_checked_in_manually()` call, in order, inside this ONE action (Server Actions
+ * serialise per client, so the loop belongs here). The first refusal is reported and the members not yet marked
+ * stay selected; those already marked are marked — the RPC is idempotent per member per day, so a retry is safe.
+ */
 export async function markManually(locale: Locale, sessionId: string, _prev: ManualMarkState, formData: FormData): Promise<ManualMarkState> {
-  const parsed = manualCheckInInput.safeParse({ memberId: formData.get("memberId")?.toString(), reason: formData.get("reason")?.toString() ?? "" });
-  // A blank reason is the one shape failure a person can cause on purpose,
-  // and the screen has a sentence for it (REQ-CHK-008: the reason is
-  // mandatory); everything else malformed is "unknown".
-  // React 19 resets a <form action> when the action resolves, so a failure
-  // hands back what was typed and each field reads its defaultValue from it
-  // (TEAM.md §5) — otherwise the member selection is gone on the retry and
-  // the browser's `required` on the select blocks the second submit.
-  const typed = { memberId: formData.get("memberId")?.toString() ?? "", reason: formData.get("reason")?.toString() ?? "" };
-  if (!parsed.success) return { error: typed.reason.trim().length === 0 ? "reason_required" : "unknown", done: false, ...typed };
+  const reason = formData.get("reason")?.toString() ?? "";
+  const ids = [...new Set(formData.getAll("memberId").map((v) => v.toString()).filter(Boolean))];
+  // React 19 resets a <form action> when the action resolves, so a failure hands back what was typed and each field
+  // reads its value from it (TEAM.md §5).
+  const typed = { memberId: ids[0] ?? "", memberIds: ids, reason };
+  if (ids.length === 0 || ids.length > 500 || !ids.every((id) => z.uuid().safeParse(id).success)) return { error: "unknown", done: false, ...typed };
+  // A blank reason is the one shape failure a person can cause on purpose (REQ-CHK-008: the reason is mandatory).
+  if (!manualCheckInInput.safeParse({ memberId: ids[0], reason }).success) {
+    return { error: reason.trim().length === 0 ? "reason_required" : "unknown", done: false, ...typed };
+  }
 
-  const result = await markCheckedInManually(locale, sessionId, parsed.data.memberId, parsed.data.reason, dayOf(formData));
-  if (!result.ok) return { error: result.error, done: false, ...typed };
+  const day = dayOf(formData);
+  let marked = 0;
+  for (const [i, memberId] of ids.entries()) {
+    const result = await markCheckedInManually(locale, sessionId, memberId, reason.trim(), day);
+    if (!result.ok) {
+      if (marked > 0) revalidatePath(`/${locale}/app/admin/sessions/${sessionId}/attendance`);
+      const left = ids.slice(i);
+      return { error: result.error, done: false, memberId: left[0], memberIds: left, reason, marked };
+    }
+    marked += 1;
+  }
 
   revalidatePath(`/${locale}/app/admin/sessions/${sessionId}/attendance`);
-  return { error: null, done: true };
+  return { error: null, done: true, marked };
 }
 
 // REQ-CHK-017, C3. `remove_check_in()` (0087) is the whole gate — admin-only,

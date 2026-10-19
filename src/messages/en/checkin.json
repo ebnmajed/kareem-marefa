@@ -115,6 +115,8 @@
       "memberPlaceholder": "Choose a member",
       "reasonLabel": "Reason",
       "mark": "Mark present",
+      "markMany": "{count, plural, one {Mark {value} present} other {Mark {value} present}}",
+      "pastReason": "Logged retrospectively",
       "done": "Marked present.",
       "listTitle": "Everyone who reserved or attended",
       "empty": "No reservations and no check-ins yet.",

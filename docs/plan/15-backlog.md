@@ -1945,6 +1945,14 @@ title template, manifest, Apple web-app and format-detection tags; the event pag
 card's HTML carries the poster, the title and the abstract, absolutely, and the RLS allowlist admits the two fields
 and no other.
 
+#### STORY-SES-018 — An admin logs a past event and adds its attendees
+**Covers:** `REQ-SES-025` · **M38** · **M** · lead
+`sessions.logged_retrospectively`, immutable; `create_session(p_retrospective)`; `publish_past_session()`; the past-only
+day guard; the notifying triggers given a `WHEN`; generated story frames dropped; arrival and awards dated to the
+event (`0231`). «فعالية سابقة» in «إنشاء»; «سجّلها منتهية» on الجدولة, landing on الحضور with the sheet open; the sheet
+marks several members under one reason. Done when a past event logged end to end writes no notification and no story
+frame, is completed at its end, and its attendees' points are dated to it.
+
 #### STORY-SES-015 — A session has an event type, and its poster follows it
 **Covers:** `REQ-SES-022` · **M31** · **M** · lead
 An enum `event_type` and a column `sessions.event_type` defaulting to `talk`; `set_event_type()`, admin only and

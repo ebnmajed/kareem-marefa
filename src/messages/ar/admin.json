@@ -97,6 +97,7 @@
       "presentersHint": "يُسند إلى كلٍّ منهم تقديم الجلسة، ويصله إشعار بذلك.",
       "presentersPlaceholder": "اكتب اسم عضو",
       "create": "أنشئ الجلسة",
+      "createPast": "أنشئ ثم حدّد التاريخ",
       "creating": "جارٍ الإنشاء…",
       "errorSummaryTitle": "يرجى تصحيح الأخطاء التالية:",
       "errors": {
@@ -174,8 +175,10 @@
       "newSession": "جلسة جديدة",
       "newSessionShort": "جديدة",
       "createMenu": "إنشاء",
+      "createPastEvent": "فعالية سابقة",
       "createAnnouncement": "إعلان",
       "newRegionTitle": "جلسة جديدة",
+      "pastRegionTitle": "تسجيل فعالية سابقة",
       "filterStatus": "الحالة: {value}",
       "filterCategory": "التصنيف: {value}",
       "filterMonth": "الشهر: {value}",
@@ -707,6 +710,7 @@
         "session": {
           "check_in_open_changed": "فتح تسجيل الحضور أو إغلاقه",
           "created_direct": "إنشاء جلسة مباشرة",
+          "logged_retrospectively": "تسجيل فعالية سابقة",
           "created_from_proposal": "إنشاء جلسة من مقترح",
           "published": "نشر جلسة",
           "scheduled": "جدولة جلسة",

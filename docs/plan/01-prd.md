@@ -736,6 +736,23 @@ tab, the event page names its session, and the app installs to a home screen wit
 - `session_public_card()` returns the abstract and the event type and no other new field.
 - A draft, a cancelled and a deleted session still preview nothing.
 
+#### REQ-SES-025 — An admin logs an event that already happened, silently, and adds who came
+**Serves:** owner 2026-10-18 · `DEC-299` · `REQ-SES-001` · `REQ-CHK-008`
+An admin may log a past event from «إنشاء» → «فعالية سابقة»: the same create form and the same الجدولة as any
+session, but **every day must already have ended**, and publishing takes it **straight to completed at its own end**.
+**Nothing notifies anyone**: not its presenters, not the members, no reminder, no rating prompt, no check-in or
+materials mail, no certificate announced automatically, no story frame and no feed post. It is visible as a completed
+session in browse and on profiles. The admin then marks its attendees on `SCR-044`, **several at once** under one
+reason, «سُجّلت بأثر رجعي» written for them. Attendance and presenter points are awarded as for any session and **dated
+to the event**, so the current week, its digest and this month's streak do not move. Certificates are held for review,
+as by default; an admin's release on `SCR-045` is deliberate and mails as it always does.
+**Acceptance:**
+- A past event with a day that has not ended is refused by the database.
+- Creating, scheduling, publishing it and marking its attendees writes no notification and no story frame.
+- Published, it is completed, with `completed_at` equal to its end; an ordinary session's publish is unchanged.
+- A hand-marked attendee arrives at the day's start, and their attendance points are dated to the session's end.
+- The flag cannot be changed after creation, and a past event cannot come from a proposal.
+
 ---
 
 ## 6. RSVP and waitlist — `RSV`

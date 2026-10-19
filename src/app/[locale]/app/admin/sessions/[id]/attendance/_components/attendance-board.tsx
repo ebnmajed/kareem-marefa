@@ -15,6 +15,7 @@ import { Menu } from "@/components/ui/menu";
 import { Sheet } from "@/components/ui/sheet";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Textarea } from "@/components/ui/textarea";
+import { formatNumber } from "@/components/sessions/numerals";
 import type { DataTableColumn, MenuItem } from "@/components/ui";
 import type { ManualMarkState, RemoveState } from "../actions";
 import { emptyManualMarkState, emptyRemoveState } from "../state";
@@ -68,6 +69,7 @@ export function AttendanceBoard({
   emptyAction,
   clearFilter,
   sheetRequested = false,
+  defaultReason = "",
 }: {
   rows: BoardRow[];
   candidates: { value: string; label: string }[];
@@ -87,6 +89,8 @@ export function AttendanceBoard({
   clearFilter?: { label: string; href: string };
   /** `?manual=1` — the sheet opens on arrival (the empty state's own action, and a link anyone can follow). */
   sheetRequested?: boolean;
+  /** DEC-299: a past event's sheet opens with its reason written — «سُجّلت بأثر رجعي» — and editable. */
+  defaultReason?: string;
 }) {
   const t = useTranslations("checkin.attendance");
   const tUi = useTranslations("ui");
@@ -99,20 +103,24 @@ export function AttendanceBoard({
     setLastRequested(sheetRequested);
     if (sheetRequested && canMark) setSheetOpen(true);
   }
-  const [member, setMember] = useState("");
-  const [reason, setReason] = useState("");
+  // ★ DEC-299 (REQ-SES-025): several members at once — the action marks each, in order.
+  const [members, setMembers] = useState<string[]>([]);
+  const [reason, setReason] = useState(defaultReason);
   const [markState, markFormAction, marking] = useActionState(markAction, emptyManualMarkState);
   const [lastMark, setLastMark] = useState(markState);
   if (markState !== lastMark) {
     setLastMark(markState);
     if (markState.done) {
       setSheetOpen(false);
-      setMember("");
-      setReason("");
+      setMembers([]);
+      setReason(defaultReason);
+    } else if (markState.memberIds) {
+      // A refusal keeps the members not yet marked selected (the ones before it are marked).
+      setMembers(markState.memberIds);
     }
   }
   function openSheet(memberId = "") {
-    setMember(memberId);
+    setMembers(memberId ? [memberId] : []);
     setSheetOpen(true);
   }
 
@@ -252,16 +260,19 @@ export function AttendanceBoard({
                 <Combobox
                   key={`${dayId}-${sheetOpen}`}
                   name="memberId"
+                  multiple
                   options={candidates}
-                  value={member ? [member] : []}
-                  onChange={(v) => setMember(v[0] ?? "")}
+                  value={members}
+                  onChange={setMembers}
                   placeholder={t("memberPlaceholder")}
                 />
               </Field>
               <Field id="manual-reason" label={t("reasonLabel")} required>
                 <Textarea name="reason" value={reason} onChange={(e) => setReason(e.target.value)} rows={2} maxLength={300} />
               </Field>
-              <SubmitButton pending={marking}>{t("mark")}</SubmitButton>
+              <SubmitButton pending={marking}>
+                {members.length > 1 ? t("markMany", { count: members.length, value: formatNumber(members.length) }) : t("mark")}
+              </SubmitButton>
             </>
           )}
           {markState.error ? (

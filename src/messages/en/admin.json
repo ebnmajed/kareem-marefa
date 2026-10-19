@@ -97,6 +97,7 @@
       "presentersHint": "Each is assigned to present the session, and is notified.",
       "presentersPlaceholder": "Type a member's name",
       "create": "Create the session",
+      "createPast": "Create, then set the date",
       "creating": "Creating…",
       "errorSummaryTitle": "Please correct the following:",
       "errors": {
@@ -174,8 +175,10 @@
       "newSession": "New session",
       "newSessionShort": "New",
       "createMenu": "Create",
+      "createPastEvent": "Past event",
       "createAnnouncement": "Announcement",
       "newRegionTitle": "New session",
+      "pastRegionTitle": "Log a past event",
       "filterStatus": "Status: {value}",
       "filterCategory": "Category: {value}",
       "filterMonth": "Month: {value}",
@@ -707,6 +710,7 @@
         "session": {
           "check_in_open_changed": "Check-in opened or closed",
           "created_direct": "Session created directly",
+          "logged_retrospectively": "Past event logged",
           "created_from_proposal": "Session created from a proposal",
           "published": "Session published",
           "scheduled": "Session scheduled",

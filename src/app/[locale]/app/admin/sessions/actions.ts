@@ -84,6 +84,8 @@ export async function makeSessionDirectly(locale: Locale, prev: CreateSessionSta
     level: was(state, "level"),
     language: was(state, "language"),
     presenterIds,
+    // DEC-299: the hidden field «فعالية سابقة» renders; never a value the member types.
+    pastEvent: formData.get("pastEvent") === "1",
   };
   const parsed = directSessionInput.safeParse(raw);
   if (!parsed.success) return withErrors(state, zodErrors<SessionField>(parsed.error, errorKey, raw));
