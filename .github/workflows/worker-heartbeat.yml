@@ -1,0 +1,61 @@
+# Watches the worker from OUTSIDE it.
+#
+# ★ WHY. From 19 Oct 13:04 UTC to 25 Oct 08:19 the worker's process was alive
+# and doing nothing — its pooler connections had died without a reset — and no
+# one knew for six days. `evaluate_alerts` runs inside the worker, so it froze
+# with it; Railway saw a running process and had nothing to restart. The worker
+# now carries its own watchdog (worker/src/index.ts), and this is the check that
+# does not depend on the worker being right about itself.
+#
+# WHAT IT READS. Four crontab lines fire every minute, and graphile-worker
+# stamps each one's last run in `_private_known_crontabs`. A stamp older than
+# ten minutes is a worker that is down or stuck. A queued job overdue by more
+# than ten minutes is the same failure seen from the other side.
+#
+# HOW IT ALERTS. The job fails, and GitHub mails the repository's owner about a
+# failed scheduled workflow. No new service, no new secret beyond the URL.
+name: worker heartbeat
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: worker-heartbeat
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    # A fork cannot read the secret, and a scheduled run only happens on the default branch.
+    if: github.repository_owner == 'ebnmajed'
+    timeout-minutes: 3
+    steps:
+      - name: the worker has run its minutely cron and is keeping up with the queue
+        env:
+          DATABASE_URL: ${{ secrets.WORKER_MONITOR_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::WORKER_MONITOR_DATABASE_URL secret is not set — the worker is unwatched"
+            exit 1
+          fi
+          result=$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At -F ' ' -c "
+            select
+              coalesce(extract(epoch from now() - (select last_execution from graphile_worker._private_known_crontabs
+                                                    where identifier = 'start_session'))::int, -1),
+              (select count(*) from graphile_worker._private_jobs
+                where run_at < now() - interval '10 minutes'
+                  and locked_at is null
+                  and attempts < max_attempts);
+          ")
+          read -r cron_age overdue <<< "$result"
+          echo "minutely cron last ran ${cron_age}s ago; ${overdue} job(s) overdue by more than 10 minutes"
+          if [ "$cron_age" -lt 0 ] || [ "$cron_age" -gt 600 ]; then
+            echo "::error::the worker has not run its minutely cron for ${cron_age}s — it is down or stuck (check Railway)"
+            exit 1
+          fi
+          if [ "$overdue" -gt 0 ]; then
+            echo "::error::${overdue} job(s) overdue by more than 10 minutes — the worker is not keeping up"
+            exit 1
+          fi

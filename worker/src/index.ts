@@ -8,6 +8,7 @@
 // probe.ts for why that is not optional.
 
 import { run } from "graphile-worker";
+import pg from "pg";
 import { poolerWarning, probeListenNotify, ProbeError } from "./probe.js";
 import { ping } from "./tasks/ping.js";
 import { promote_waitlist } from "./tasks/promote_waitlist.js";
@@ -85,8 +86,32 @@ if (probeOnly) process.exit(0);
 // said «60 s» for two waves after DEC-057 moved the interval to 15 s.
 const POLL_INTERVAL_MS = 15_000;
 
-const runner = await run({
+// ★ 2026-10-25: the worker sat silent from 19 Oct 13:04 UTC to 25 Oct 08:19 with
+// its process alive — no error, no log line, not even the minutely cron. Its
+// pooler connections had gone dead without a reset, and `pg` waits on a dead
+// socket forever: no keepalive, no connect timeout, no query timeout. Nothing
+// crashed, so Railway's ON_FAILURE policy never fired and `evaluate_alerts`,
+// running inside the same stuck process, could not raise anything. Six days of
+// mail waited for an unrelated redeploy. So the pool is ours, and every way a
+// connection can hang now ends in an error graphile-worker retries.
+const pgPool = new pg.Pool({
   connectionString: DATABASE_URL,
+  // graphile-worker's own default; the Supavisor session pool is 15 per user,
+  // and a deploy overlaps two containers for a moment (EMAXCONNSESSION, 25 Oct).
+  max: 10,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10_000,
+  connectionTimeoutMillis: 30_000,
+  // Client-side, per query: the LISTEN connection sits idle and is unaffected.
+  // Generous, because retention and anonymisation run long statements nightly.
+  query_timeout: 10 * 60_000,
+});
+// An idle client whose socket dies emits here; unhandled, it would crash the
+// process — which is survivable now, but the pool replaces the client anyway.
+pgPool.on("error", (e) => console.error(`worker: idle pool client error — ${e.message}`));
+
+const runner = await run({
+  pgPool,
   // 11 §1.4 sizes queues separately; graphile-worker's concurrency is per
   // process, so this is the `default` queue's figure. Render and convert get
   // their own processes when M6 and M4 introduce them.
@@ -124,4 +149,30 @@ const runner = await run({
 });
 
 console.log(`worker: running — queues dispatch over LISTEN/NOTIFY; polling every ${POLL_INTERVAL_MS / 1000} s as a fallback`);
+
+// ★ The watchdog. Four crontab lines fire every minute, so a healthy worker
+// finishes a job at least once a minute whatever the queue holds. Five minutes
+// without one is a stuck process, and the only cure that has ever worked is a
+// fresh one: exit non-zero and let Railway's restart policy (railway.json,
+// ALWAYS) start it again. It tries a graceful stop first, so held jobs are
+// unlocked at once; a stop that hangs on the same dead connections is abandoned
+// after ten seconds, and those jobs wait out graphile-worker's lock timeout.
+const WATCHDOG_STALL_MS = 5 * 60_000;
+let stopping = false;
+let lastJobFinishedAt = Date.now();
+const markAlive = () => {
+  lastJobFinishedAt = Date.now();
+};
+runner.events.on("job:success", markAlive);
+runner.events.on("job:error", markAlive); // a failing job is still a worker that is running
+setInterval(() => {
+  const silentMs = Date.now() - lastJobFinishedAt;
+  if (silentMs > WATCHDOG_STALL_MS && !stopping) {
+    stopping = true;
+    console.error(`worker: WATCHDOG — no job has finished for ${Math.round(silentMs / 1000)} s; exiting so the platform restarts a fresh process`);
+    const giveUp = new Promise((resolve) => setTimeout(resolve, 10_000).unref());
+    void Promise.race([runner.stop().catch(() => undefined), giveUp]).finally(() => process.exit(3));
+  }
+}, 30_000).unref();
+
 await runner.promise;

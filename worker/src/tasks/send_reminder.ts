@@ -15,6 +15,17 @@ export const send_reminder: Task = async (payload, helpers) => {
     throw new Error("send_reminder: payload needs session_id, member_id and offset_minutes");
   }
 
+  // ★ 2026-10-25: a reminder that runs after the moment it announces is noise.
+  // The job is queued at (start − offset), and SQL moves it when the session
+  // moves, so run_at + offset IS the start. On 25 Oct a worker that had been
+  // stuck for six days woke and sent «starts in 2 hours» for a session held
+  // five days earlier. A late reminder whose session has not started yet is
+  // still useful, and still goes.
+  const startsAt = new Date(helpers.job.run_at).getTime() + p.offset_minutes * 60_000;
+  if (Date.now() >= startsAt) {
+    helpers.logger.info(`send_reminder: -${p.offset_minutes} min for session ${p.session_id} ran after the start — dropped`);
+    return;
+  }
   // ★ WAVE 9 (REQ-SES-015): the day is the fourth argument, and it is optional
   // on purpose. A job queued before the migration carries no `session_day_id`,
   // and so does every job `main`'s worker ever enqueued; null resolves to the
