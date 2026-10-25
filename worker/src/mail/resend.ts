@@ -14,6 +14,27 @@ import { PermanentMailError, type MailMessage, type MailTransport, type SentMail
 const ENDPOINT = "https://api.resend.com/emails";
 const RESEND_TIMEOUT_MS = 30_000;
 
+// ★ Resend allows 10 requests a second per account. One worker runs ten jobs at
+// once, so a backlog — 25 Oct, six days of mail released together — sends a
+// burst: 5 of 21 change notices were refused with 429 and lived only because
+// the job retries. This gate spaces every send in the process by a fixed
+// interval, so a burst queues here instead of being refused there. A 429 can
+// still happen (another sender on the account) and is still retried below.
+const MIN_SEND_SPACING_MS = 125; // eight a second
+let nextSlotAt = 0;
+
+/** Books the next slot and returns how long to wait for it. Exported for the test. */
+export function reserveSendSlot(nowMs: number): number {
+  const at = Math.max(nowMs, nextSlotAt);
+  nextSlotAt = at + MIN_SEND_SPACING_MS;
+  return at - nowMs;
+}
+
+function takeSendSlot(): Promise<void> {
+  const wait = reserveSendSlot(Date.now());
+  return wait > 0 ? new Promise((resolve) => setTimeout(resolve, wait)) : Promise.resolve();
+}
+
 /** RFC 5322 §3.2.4 quoted-string: the org's name is the display name, and a name holding a
  *  comma, a quote or an angle bracket would otherwise be parsed as a second address — or
  *  refused outright, for every mail the org sends. */
@@ -32,6 +53,7 @@ export class ResendTransport implements MailTransport {
   }
 
   async send(message: MailMessage): Promise<SentMail> {
+    await takeSendSlot();
     const response = await fetch(ENDPOINT, {
       method: "POST",
       headers: {

@@ -10,5 +10,8 @@
       "package.json",
       "package-lock.json"
     ]
+  },
+  "deploy": {
+    "restartPolicyType": "ALWAYS"
   }
 }
